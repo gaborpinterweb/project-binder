@@ -68,6 +68,14 @@ import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 
+function nextTabName(mods, base) {
+  const used = new Set((mods || []).map((mod) => mod[1]));
+  if (!used.has(base)) return base;
+  let n = 2;
+  while (used.has(`${base} ${n}`)) n += 1;
+  return `${base} ${n}`;
+}
+
 export default function App() {
   const [folders, setFolders] = useState([]);
   const [stages, setStages] = useState(STAGES.slice());
@@ -628,15 +636,9 @@ export default function App() {
 
   const onAddTab = async (t, title) => {
     setMenuOpen(false);
-    const name = (
-      (await askPrompt({
-        title: `New ${title}`,
-        placeholder: `${title} name`,
-        confirmLabel: "Create",
-      })) || ""
-    ).trim();
-    if (!name) return;
     const folder = foldersRef.current[pRef.current];
+    if (!folder || isProjectArchived(folder)) return;
+    const name = nextTabName(folder.mods, title);
     let data;
     if (t === "Board") {
       data = await postBoard({ project: folder.slug, name });

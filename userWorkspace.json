@@ -328,6 +328,28 @@
             }
           ],
           "isDemo": true
+        },
+        {
+          "slug": "task-board",
+          "name": "Task board",
+          "columns": [
+            "Design",
+            "Frontend dev",
+            "Backend dev",
+            "Content"
+          ],
+          "cards": []
+        },
+        {
+          "slug": "task-board-2",
+          "name": "Task board 2",
+          "columns": [
+            "Design",
+            "Frontend dev",
+            "Backend dev",
+            "Content"
+          ],
+          "cards": []
         }
       ],
       "databases": [],
@@ -377,6 +399,14 @@
         {
           "type": "notes",
           "slug": "asdqwe"
+        },
+        {
+          "type": "board",
+          "slug": "task-board"
+        },
+        {
+          "type": "board",
+          "slug": "task-board-2"
         }
       ]
     },

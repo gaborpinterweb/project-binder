@@ -1,5 +1,56 @@
-import { Icon } from "../icons.jsx";
 import { PC, coverColorChoices } from "../utils.js";
+import RichTextEditor from "./RichTextEditor.jsx";
+
+const DESC_PLACEHOLDER = "Project description with goals, deadlines, links and more...";
+
+function isEmptyDescription(html) {
+  const text = String(html || "")
+    .replace(/<br\s*\/?>/gi, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return !text;
+}
+
+function CoverDescription({ value, onChange, editable }) {
+  return (
+    <div className={"cover-description" + (editable ? " is-edit" : "")}>
+      <RichTextEditor
+        value={value || ""}
+        placeholder={DESC_PLACEHOLDER}
+        editable={editable}
+        showToolbar={editable}
+        showLabel={false}
+        onChange={(html) => {
+          if (!editable) return;
+          onChange(html);
+        }}
+      />
+    </div>
+  );
+}
+
+function patchDraft(onChange, draft, patch) {
+  onChange((prev) => ({ ...(prev || draft), ...patch }));
+}
+
+function ColorSwatches({ draft, onChange }) {
+  return (
+    <div className="cover-swatches">
+      {coverColorChoices(draft.color).map((c) => (
+        <button
+          key={c}
+          type="button"
+          className={"cover-swatch" + (c === draft.color ? " on" : "")}
+          title={c}
+          style={{ background: c }}
+          onClick={() => patchDraft(onChange, draft, { color: c })}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function Cover({
   folder,
@@ -44,42 +95,23 @@ export default function Cover({
       <div id="view" className="mod cover-view" style={{ ["--tab"]: viewColor }}>
         <div className="cover-page">
           <div className="cover-fields">
-            <div className="cover-heading">
-              <span className="cover-heading-icon">
-                <Icon name="folder" size={22} />
-              </span>
-              <input
-                className="cover-title"
-                type="text"
-                value={viewName}
-                placeholder="Untitled"
-                onChange={(e) => onCoverDraftChange({ ...draft, name: e.target.value })}
-              />
-            </div>
-            <textarea
-              className="cover-desc"
-              value={viewDesc}
-              placeholder="Describe this project..."
-              rows={5}
+            <input
+              className="cover-title"
+              type="text"
+              value={viewName}
+              placeholder="Project name..."
               onChange={(e) =>
-                onCoverDraftChange({ ...draft, description: e.target.value })
+                patchDraft(onCoverDraftChange, draft, { name: e.target.value })
               }
             />
-            <div className="cover-meta">
-              <div className="cover-meta-label">Color</div>
-              <div className="cover-swatches">
-                {coverColorChoices(draft.color).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={"cover-swatch" + (c === draft.color ? " on" : "")}
-                    title={c}
-                    style={{ background: c }}
-                    onClick={() => onCoverDraftChange({ ...draft, color: c })}
-                  />
-                ))}
-              </div>
-            </div>
+            <CoverDescription
+              value={viewDesc}
+              editable
+              onChange={(html) =>
+                patchDraft(onCoverDraftChange, draft, { description: html })
+              }
+            />
+            <ColorSwatches draft={draft} onChange={onCoverDraftChange} />
             <button
               type="button"
               className="cover-save"
@@ -104,15 +136,12 @@ export default function Cover({
     <div id="view" className="mod cover-view" style={{ ["--tab"]: viewColor }}>
       <div className="cover-page">
         <div className="cover-fields">
-          <div className="cover-heading">
-            <span className="cover-heading-icon">
-              <Icon name="folder" size={22} />
-            </span>
-            <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
-          </div>
-          <p className={"cover-desc-display" + (viewDesc ? "" : " is-empty")}>
-            {viewDesc || "No description yet."}
-          </p>
+          <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
+          {isEmptyDescription(viewDesc) ? (
+            <p className="cover-desc-display is-empty">No description yet.</p>
+          ) : (
+            <CoverDescription value={viewDesc} editable={false} />
+          )}
           {!archived && (
             <button
               type="button"
@@ -145,17 +174,18 @@ function DraftCover({ draft, onChange, onCommit }) {
             className="cover-title"
             type="text"
             value={draft.name || ""}
-            placeholder="Untitled"
+            placeholder="Project name..."
             autoFocus
-            onChange={(e) => onChange({ ...draft, name: e.target.value })}
+            onChange={(e) => patchDraft(onChange, draft, { name: e.target.value })}
           />
-          <textarea
-            className="cover-desc"
+          <CoverDescription
             value={draft.description || ""}
-            placeholder="Describe this project..."
-            rows={5}
-            onChange={(e) => onChange({ ...draft, description: e.target.value })}
+            editable
+            onChange={(html) =>
+              patchDraft(onChange, draft, { description: html })
+            }
           />
+          <ColorSwatches draft={draft} onChange={onChange} />
           <button
             type="button"
             className="cover-create"

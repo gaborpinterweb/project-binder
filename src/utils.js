@@ -681,6 +681,25 @@ export function coverColorChoices(current) {
   return colors;
 }
 
+export function nextUnusedProjectColor(folders) {
+  const counts = new Map(PC.map((c) => [c.toLowerCase(), 0]));
+  for (const folder of folders || []) {
+    const color = String(folder?.color || "").trim().toLowerCase();
+    if (!color) continue;
+    counts.set(color, (counts.get(color) || 0) + 1);
+  }
+  let best = PC[0];
+  let bestCount = Infinity;
+  for (const color of PC) {
+    const n = counts.get(color.toLowerCase()) || 0;
+    if (n < bestCount) {
+      best = color;
+      bestCount = n;
+    }
+  }
+  return best;
+}
+
 export function loadLastTabs() {
   try {
     return JSON.parse(localStorage.getItem(LAST_TAB_KEY) || "{}") || {};

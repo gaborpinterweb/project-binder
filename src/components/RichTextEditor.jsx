@@ -148,6 +148,13 @@ export function RteToolbar({ editor, forNotes = false }) {
           <Icon name="bold" size={15} />
         </ToolbarBtn>
         <ToolbarBtn
+          title="Link"
+          active={editor.isActive("link")}
+          onClick={() => editLink(editor)}
+        >
+          <Icon name="link" size={15} />
+        </ToolbarBtn>
+        <ToolbarBtn
           title="Bullet list"
           active={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -183,13 +190,6 @@ export function RteToolbar({ editor, forNotes = false }) {
               onClick={() => editor.chain().focus().toggleHighlight().run()}
             >
               <Icon name="highlight" size={15} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              title="Link"
-              active={editor.isActive("link")}
-              onClick={() => editLink(editor)}
-            >
-              <Icon name="link" size={15} />
             </ToolbarBtn>
           </>
         )}
@@ -330,17 +330,17 @@ export default function RichTextEditor({
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: "https",
+        HTMLAttributes: {
+          rel: "noopener noreferrer nofollow",
+          target: "_blank",
+        },
+      }),
       ...(forNotes
         ? [
-            Link.configure({
-              openOnClick: false,
-              autolink: true,
-              defaultProtocol: "https",
-              HTMLAttributes: {
-                rel: "noopener noreferrer nofollow",
-                target: "_blank",
-              },
-            }),
             Highlight,
             Table.configure({ resizable: true }),
             TableRow,

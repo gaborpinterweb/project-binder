@@ -51,6 +51,7 @@ import {
   hasSeenLaunch,
   markLaunchSeen,
   defaultWorkspaceVisibility,
+  nextUnusedProjectColor,
 } from "./utils.js";
 import Sidebar from "./components/Sidebar.jsx";
 import TabBar from "./components/TabBar.jsx";
@@ -519,7 +520,7 @@ export default function App() {
 
   // --- project actions ---
   const startNewProject = () => {
-    const color = PC[folders.length % PC.length];
+    const color = nextUnusedProjectColor(folders);
     discardCoverEdit();
     setDraftProject({ name: "", color, description: "" });
     setG(null);

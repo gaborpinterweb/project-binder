@@ -3,6 +3,8 @@ const http = require("http");
 
 const APP_URL = "http://127.0.0.1:3456";
 
+app.setName("Project Binder");
+
 function waitForServer(url, attempts = 40) {
   return new Promise((resolve, reject) => {
     let left = attempts;
@@ -33,6 +35,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  process.env.PROJECT_BINDER_USER_DATA = app.getPath("userData");
   require("../server.cjs");
   await waitForServer(APP_URL);
   createWindow();

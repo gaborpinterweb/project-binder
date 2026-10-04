@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 const http = require("http");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
+const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
-const USER_WORKSPACE = path.join(__dirname, "userWorkspace.json");
 const LEGACY_SEED = path.join(__dirname, "launchData.json");
+const LEGACY_APP_USER_WORKSPACE = path.join(__dirname, "userWorkspace.json");
 const LEGACY_USER = path.join(__dirname, "userData.json");
+const { USER_DATA_DIR, USER_WORKSPACE } = resolveUserPaths();
 const PORT = 3456;
 const DIST = path.join(__dirname, "dist");
 const MIME = {
@@ -31,6 +34,42 @@ const DEFAULT_DB_COLS = [
 
 /** @type {object|null} */
 let store = null;
+
+/** Same location Electron uses for app.getPath('userData') with this app name. */
+function defaultUserDataDir() {
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library", "Application Support", APP_USER_DATA_NAME);
+  }
+  if (process.platform === "win32") {
+    return path.join(
+      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
+      APP_USER_DATA_NAME
+    );
+  }
+  return path.join(
+    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"),
+    APP_USER_DATA_NAME
+  );
+}
+
+function resolveUserPaths() {
+  const envDir = String(process.env.PROJECT_BINDER_USER_DATA || "").trim();
+  let dir = envDir;
+  if (!dir) {
+    try {
+      const electron = require("electron");
+      const app = electron && electron.app;
+      if (app && typeof app.getPath === "function") {
+        dir = app.getPath("userData");
+      }
+    } catch {
+      /* not running inside Electron */
+    }
+  }
+  if (!dir) dir = defaultUserDataDir();
+  fs.mkdirSync(dir, { recursive: true });
+  return { USER_DATA_DIR: dir, USER_WORKSPACE: path.join(dir, "userWorkspace.json") };
+}
 
 function slugify(s) {
   return String(s || "")
@@ -86,8 +125,12 @@ function migrateLegacyWorkspaceFiles() {
   if (!fs.existsSync(SEED_WORKSPACE) && fs.existsSync(LEGACY_SEED)) {
     fs.renameSync(LEGACY_SEED, SEED_WORKSPACE);
   }
-  if (!fs.existsSync(USER_WORKSPACE) && fs.existsSync(LEGACY_USER)) {
-    fs.renameSync(LEGACY_USER, USER_WORKSPACE);
+  if (fs.existsSync(USER_WORKSPACE)) return;
+  const candidates = [LEGACY_APP_USER_WORKSPACE, LEGACY_USER];
+  for (const src of candidates) {
+    if (!src || src === USER_WORKSPACE || !fs.existsSync(src)) continue;
+    fs.copyFileSync(src, USER_WORKSPACE);
+    return;
   }
 }
 
@@ -1136,6 +1179,28 @@ function deleteTimelog(slug) {
   return store.timelogs.length < before;
 }
 
+function revealUserDataDir() {
+  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+  try {
+    const electron = require("electron");
+    const shell = electron && electron.shell;
+    if (shell && typeof shell.openPath === "function") {
+      return shell.openPath(USER_DATA_DIR);
+    }
+  } catch {
+    /* fall through to OS opener */
+  }
+  const { spawn } = require("child_process");
+  const cmd =
+    process.platform === "darwin"
+      ? ["open", [USER_DATA_DIR]]
+      : process.platform === "win32"
+        ? ["explorer", [USER_DATA_DIR]]
+        : ["xdg-open", [USER_DATA_DIR]];
+  spawn(cmd[0], cmd[1], { detached: true, stdio: "ignore" }).unref();
+  return Promise.resolve("");
+}
+
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
@@ -1164,6 +1229,13 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/api/workspace") {
       return json(res, 200, readWorkspace());
+    }
+    if (req.method === "GET" && url.pathname === "/api/user-data") {
+      return json(res, 200, { dir: USER_DATA_DIR, file: USER_WORKSPACE });
+    }
+    if (req.method === "POST" && url.pathname === "/api/user-data/reveal") {
+      await revealUserDataDir();
+      return json(res, 200, { ok: true, dir: USER_DATA_DIR });
     }
     if (req.method === "GET" && url.pathname === "/api/export") {
       const body = JSON.stringify(store, null, 2) + "\n";
@@ -1523,6 +1595,7 @@ const server = http.createServer(async (req, res) => {
 const boot = ensureStore();
 server.listen(PORT, () => {
   console.log(`Project Binder v0.1.0 at http://localhost:${PORT}`);
+  console.log(`User data: ${USER_DATA_DIR}`);
   console.log(`User workspace: ${USER_WORKSPACE}`);
   console.log(`Seed workspace (read-only): ${SEED_WORKSPACE}`);
   if (boot.reseeded) console.log(`Seeded userWorkspace.json from seedWorkspace.json (${boot.reason})`);

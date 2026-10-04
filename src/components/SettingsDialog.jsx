@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { exportWorkspace, resetWorkspaceToSeed } from "../api.js";
+import { exportWorkspace, revealUserData, resetWorkspaceToSeed } from "../api.js";
 import {
   APP_NAME,
   APP_VERSION,
@@ -46,6 +46,14 @@ export default function SettingsDialog({
       await exportWorkspace();
     } catch {
       alert("Could not export workspace.");
+    }
+  };
+
+  const handleShowUserData = async () => {
+    try {
+      await revealUserData();
+    } catch {
+      alert("Could not open the user data folder.");
     }
   };
 
@@ -144,6 +152,15 @@ export default function SettingsDialog({
               <section className="settings-section">
                 <h3 className="settings-heading">Backup</h3>
                 <div className="settings-rows">
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Show user data</b>
+                      <span>Open the folder where your workspace is stored</span>
+                    </div>
+                    <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
+                      Show
+                    </button>
+                  </div>
                   <div className="settings-row">
                     <div className="settings-row-copy">
                       <b>Export data</b>

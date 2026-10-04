@@ -85,6 +85,14 @@
               "master": "Tomorrow",
               "body": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p><strong>qweqwe asd</strong></p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p><strong>qwe</strong></p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p><strong>qwe</strong></p></div></li></ul><p></p>",
               "ord": 0
+            },
+            {
+              "slug": "qwe",
+              "title": "qwe",
+              "status": "Design",
+              "master": "Today",
+              "body": "",
+              "ord": 4
             }
           ],
           "isDemo": true

@@ -447,16 +447,11 @@ export default function TabBar({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {TYPES.map(({ t, title, sub, off }) => (
+        {TYPES.filter((type) => !type.off).map(({ t, title, sub }) => (
           <button
             key={t}
             type="button"
-            disabled={!!off}
-            title={off ? "Coming soon" : undefined}
-            onClick={() => {
-              if (off) return;
-              onAddTab(t, title);
-            }}
+            onClick={() => onAddTab(t, title)}
           >
             <span className="mi" style={{ background: tabC }}>
               <Icon name={t} />

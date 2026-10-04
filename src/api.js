@@ -253,6 +253,12 @@ export async function cardTimeSpentSec(project, board, card) {
   }
 }
 
+export async function revealUserData() {
+  const r = await fetch("/api/user-data/reveal", { method: "POST" });
+  if (!r.ok) throw new Error("reveal failed");
+  return r.json();
+}
+
 export async function exportWorkspace() {
   const r = await fetch("/api/export");
   if (!r.ok) throw new Error("export failed");

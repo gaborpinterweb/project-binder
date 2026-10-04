@@ -1,5 +1,5 @@
-import { Icon, IC, projectIconName } from "../icons.jsx";
-import { PC, PROJECT_ICONS, coverColorChoices } from "../utils.js";
+import { Icon } from "../icons.jsx";
+import { PC, coverColorChoices } from "../utils.js";
 
 export default function Cover({
   folder,
@@ -33,11 +33,9 @@ export default function Cover({
     name: folder.name || "",
     description: values.description || "",
     color: folder.color || tabC || PC[0],
-    icon: projectIconName(folder),
   };
 
   const viewColor = editing ? draft.color || tabC : tabC;
-  const viewIcon = editing ? draft.icon || "folder" : projectIconName(folder);
   const viewName = editing ? draft.name || "" : folder.name || "";
   const viewDesc = editing ? draft.description || "" : values.description || "";
 
@@ -48,7 +46,7 @@ export default function Cover({
           <div className="cover-fields">
             <div className="cover-heading">
               <span className="cover-heading-icon">
-                <Icon name={IC[viewIcon] ? viewIcon : "folder"} size={22} />
+                <Icon name="folder" size={22} />
               </span>
               <input
                 className="cover-title"
@@ -81,20 +79,6 @@ export default function Cover({
                   />
                 ))}
               </div>
-              <div className="cover-meta-label">Icon</div>
-              <div className="cover-icons">
-                {PROJECT_ICONS.filter((name) => IC[name]).map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    className={"cover-icon-pick" + (name === draft.icon ? " on" : "")}
-                    title={name}
-                    onClick={() => onCoverDraftChange({ ...draft, icon: name })}
-                  >
-                    <Icon name={name} size={18} />
-                  </button>
-                ))}
-              </div>
             </div>
             <button
               type="button"
@@ -105,7 +89,6 @@ export default function Cover({
                   name,
                   description: draft.description || "",
                   color: draft.color || folder.color,
-                  icon: draft.icon || "folder",
                 });
               }}
             >
@@ -123,7 +106,7 @@ export default function Cover({
         <div className="cover-fields">
           <div className="cover-heading">
             <span className="cover-heading-icon">
-              <Icon name={IC[viewIcon] ? viewIcon : "folder"} size={22} />
+              <Icon name="folder" size={22} />
             </span>
             <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
           </div>
@@ -139,7 +122,6 @@ export default function Cover({
                   name: folder.name || "",
                   description: values.description || "",
                   color: folder.color || tabC || PC[0],
-                  icon: projectIconName(folder),
                 })
               }
             >

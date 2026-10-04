@@ -51,18 +51,6 @@ export const POMO_DURATION_SEC = 25 * 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const GACC = "#9a5b2e";
 export const PC = ["#6b4f8c", "#2f7a6e", "#b45a3c", "#8a5c2e"];
-export const PROJECT_ICONS = [
-  "folder",
-  "project",
-  "Board",
-  "Docs",
-  "Calendar",
-  "Timelogs",
-  "brand",
-  "Chat",
-  "Links",
-  "Workflows",
-];
 
 export function loadStages(list, setStages) {
   if (!list || !list.length) return;
@@ -154,7 +142,6 @@ export function fromApi(data, loadStagesFn) {
       slug: pr.slug,
       name: pr.name,
       color: pr.color || "#9a5b2e",
-      icon: pr.icon || "folder",
       archived: !!pr.archived,
       isDemo: !!pr.isDemo,
       mods,

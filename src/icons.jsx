@@ -62,7 +62,7 @@ export const IC = {
     "",
   ],
   folder: [
-    '<path d="M4 2.5h7.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 4 2.5z"/><path d="M6.5 5h4M6.5 7.5h4M6.5 10h2.5"/>',
+    '<path fill="currentColor" stroke="none" d="M2 4.25c0-.69.56-1.25 1.25-1.25h3.05c.28 0 .55.1.76.27L8.4 4.4h4.35c.69 0 1.25.56 1.25 1.25v6.6c0 .69-.56 1.25-1.25 1.25H3.25C2.56 13.5 2 12.94 2 12.25V4.25z"/>',
     "",
   ],
   settings: [
@@ -171,9 +171,4 @@ export function Icon({ name, size = 16 }) {
       dangerouslySetInnerHTML={{ __html: entry[0] }}
     />
   );
-}
-
-export function projectIconName(folder) {
-  const name = folder?.icon || "folder";
-  return IC[name] ? name : "folder";
 }

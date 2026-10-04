@@ -521,7 +521,7 @@ export default function App() {
   const startNewProject = () => {
     const color = PC[folders.length % PC.length];
     discardCoverEdit();
-    setDraftProject({ name: "", color, icon: "folder", description: "" });
+    setDraftProject({ name: "", color, description: "" });
     setG(null);
     setBoardEdit(false);
   };
@@ -536,7 +536,6 @@ export default function App() {
     const { ok, data } = await postProject({
       name,
       color: draftProject.color,
-      icon: draftProject.icon || "folder",
       cover: { values: { description: draftProject.description || "" } },
     });
     if (!ok) {
@@ -627,7 +626,6 @@ export default function App() {
       project: folder.slug,
       name: patch && patch.name != null ? patch.name : folder.name,
       color: patch && patch.color != null ? patch.color : folder.color,
-      icon: patch && patch.icon != null ? patch.icon : folder.icon || "folder",
       cover: { values: { description } },
     });
     discardCoverEdit();

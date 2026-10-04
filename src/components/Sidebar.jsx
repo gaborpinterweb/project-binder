@@ -1,4 +1,4 @@
-import { Icon, projectIconName } from "../icons.jsx";
+import { Icon } from "../icons.jsx";
 import {
   GACC,
   PC,
@@ -74,7 +74,6 @@ export default function Sidebar({
           )}
           {active.map(({ pr, i }) => {
             const editingHere = coverEdit && coverDraft && i === p && !g && !draftProject;
-            const icName = editingHere ? coverDraft.icon || "folder" : projectIconName(pr);
             const icColor = editingHere
               ? coverDraft.color || pr.color
               : pr.color || PC[i % PC.length];
@@ -87,7 +86,7 @@ export default function Sidebar({
                 onClick={() => onSelectProject(i)}
               >
                 <span style={{ color: icColor }}>
-                  <Icon name={icName} />
+                  <Icon name="folder" />
                 </span>
                 <span>{label}</span>
               </button>
@@ -109,7 +108,7 @@ export default function Sidebar({
                   onClick={() => onSelectProject(i)}
                 >
                   <span style={{ color: pr.color || PC[i % PC.length] }}>
-                    <Icon name={projectIconName(pr)} />
+                    <Icon name="folder" />
                   </span>
                   <span>{pr.name}</span>
                 </button>

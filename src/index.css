@@ -126,7 +126,21 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .notes-list.size-lg .notes-item-preview{-webkit-line-clamp:4}
 .notes-empty,.notes-placeholder{margin:16px 14px;font-size:13px;color:var(--mute)}
 .notes-main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:#fff}
-.notes-toolbar-mid{flex:1;display:flex;justify-content:center;align-items:center;min-width:0}
+.notes-toolbar-mid{flex:1;display:flex;justify-content:center;align-items:center;min-width:0;overflow:visible}
+.notes-toolbar-anim{display:flex;justify-content:center;align-items:center;min-width:0;opacity:0;transform:translateX(18px);transition:opacity .22s ease,transform .22s ease;pointer-events:none}
+.notes-toolbar-anim.in{opacity:1;transform:translateX(0);pointer-events:auto}
+@media (prefers-reduced-motion:reduce){
+  .notes-toolbar-anim{transition:none;transform:none}
+  .notes-toolbar-anim:not(.in){opacity:0}
+}
+.rte-toolbar [data-tip]{position:relative}
+.rte-toolbar [data-tip]::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 7px);transform:translateX(-50%) translateY(-2px);padding:5px 8px;border-radius:4px;background:#111;color:#fff;font:500 11px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.01em;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s ease,transform .12s ease;z-index:90;box-shadow:0 4px 12px #0005}
+.rte-toolbar [data-tip]:hover::after,
+.rte-toolbar [data-tip]:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0)}
+.rte-toolbar .dd.open > [data-tip]::after{opacity:0}
+@media (prefers-reduced-motion:reduce){
+  .rte-toolbar [data-tip]::after{transition:none}
+}
 .notes-chrome .rte-toolbar{display:flex;align-items:center;gap:28px;margin:0}
 .notes-chrome .rte-toolbar .rte-group{display:flex;align-items:center;gap:2px}
 .notes-chrome .rte-btn{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0;border:none;border-radius:calc(var(--radius) - 6px);font:inherit;color:color-mix(in srgb,#fff 78%,transparent);background:transparent;cursor:pointer;box-shadow:none}

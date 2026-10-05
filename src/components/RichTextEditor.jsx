@@ -74,7 +74,7 @@ function ToolbarBtn({ onClick, active, title, disabled, className, children }) {
         (active ? " on" : "") +
         (className ? " " + className : "")
       }
-      title={title}
+      data-tip={title || undefined}
       aria-label={title}
       disabled={disabled}
       onMouseDown={(e) => {
@@ -167,7 +167,7 @@ export function RteToolbar({
           <Icon name="link" size={15} />
         </ToolbarBtn>
         <ToolbarBtn
-          title="Bullet list"
+          title="List"
           active={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
@@ -183,7 +183,7 @@ export function RteToolbar({
         {forNotes && (
           <>
             <ToolbarBtn
-              title="Blockquote"
+              title="Quote"
               active={editor.isActive("blockquote")}
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
             >
@@ -222,14 +222,14 @@ export function RteToolbar({
             <Icon name="table" size={15} />
           </ToolbarBtn>
           <ToolbarBtn
-            title="Add column"
+            title="Insert column"
             disabled={!inTable}
             onClick={() => editor.chain().focus().addColumnAfter().run()}
           >
             <Icon name="tableCol" size={15} />
           </ToolbarBtn>
           <ToolbarBtn
-            title="Add row"
+            title="Insert row"
             disabled={!inTable}
             onClick={() => editor.chain().focus().addRowAfter().run()}
           >
@@ -245,7 +245,7 @@ export function RteToolbar({
         </div>
       )}
       <div className="rte-group" role="group" aria-label="Help">
-        <span className="dlg-desc-info" tabIndex={0} aria-label="Formatting help">
+        <span className="dlg-desc-info" tabIndex={0} aria-label="Help">
           <Icon name="About" size={15} />
           <div className="dlg-desc-tip" role="tooltip">
             <div>
@@ -307,8 +307,8 @@ export function RteToolbar({
             <Dropdown
               className="rte-move-dd"
               buttonClassName="rte-btn"
-              ariaLabel="Move note"
-              title="Move note"
+              ariaLabel="Move"
+              dataTip="Move"
               align="right"
               caret={false}
               options={moveOptions}
@@ -328,7 +328,7 @@ export function RteToolbar({
           )}
           {onDelete && (
             <ToolbarBtn
-              title="Delete note"
+              title="Delete"
               onClick={onDelete}
               className="rte-btn-danger"
             >

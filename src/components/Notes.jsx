@@ -81,6 +81,9 @@ export default function Notes({
   const [unlocked, setUnlocked] = useState({});
   const [editor, setEditor] = useState(null);
   const [search, setSearch] = useState("");
+  const [toolbarMounted, setToolbarMounted] = useState(false);
+  const [toolbarIn, setToolbarIn] = useState(false);
+  const [editingView, setEditingView] = useState(false);
   const moveOptions = useMemo(() => {
     const currentKey = `${folder?.slug || ""}/${d.slug || ""}`;
     return allNotesTabs(folders)
@@ -118,8 +121,32 @@ export default function Notes({
   }, [notes, selectedSlug]);
 
   useEffect(() => {
-    if (locked) setEditor(null);
-  }, [locked]);
+    let raf1 = 0;
+    let raf2 = 0;
+    let timeout = 0;
+    if (!selectedSlug || locked) {
+      setToolbarIn(false);
+      timeout = window.setTimeout(() => {
+        setToolbarMounted(false);
+        setEditingView(false);
+        setEditor(null);
+      }, 240);
+      return () => window.clearTimeout(timeout);
+    }
+    setEditingView(true);
+    if (!editor) {
+      setToolbarIn(false);
+      return undefined;
+    }
+    setToolbarMounted(true);
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setToolbarIn(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [locked, selectedSlug, editor]);
 
   const selected = notes.find((n) => n.slug === selectedSlug) || null;
 
@@ -274,14 +301,19 @@ export default function Notes({
           </Dropdown>
         </div>
         <div className="notes-toolbar-mid">
-          {selected && !locked && (
-            <RteToolbar
-              editor={editor}
-              forNotes
-              moveOptions={readonly ? [] : moveOptions}
-              onMove={readonly ? undefined : moveNote}
-              onDelete={readonly ? undefined : deleteNote}
-            />
+          {toolbarMounted && (
+            <div
+              className={"notes-toolbar-anim" + (toolbarIn ? " in" : "")}
+              aria-hidden={!toolbarIn}
+            >
+              <RteToolbar
+                editor={editor}
+                forNotes
+                moveOptions={readonly ? [] : moveOptions}
+                onMove={readonly ? undefined : moveNote}
+                onDelete={readonly ? undefined : deleteNote}
+              />
+            </div>
           )}
         </div>
         <div className="modbar-end">
@@ -349,22 +381,7 @@ export default function Notes({
         <div className="notes-main">
           {!selected ? (
             <p className="notes-placeholder">Select or create a note</p>
-          ) : locked ? (
-            <div className="notes-rte-wrap notes-preview">
-              <div className="rte">
-                {isEmptyNoteBody(selected.body) ? (
-                  <div className="tiptap">
-                    <h1 className="notes-empty-title">{NOTE_PLACEHOLDER}</h1>
-                  </div>
-                ) : (
-                  <div
-                    className="tiptap"
-                    dangerouslySetInnerHTML={{ __html: previewHtml(selected.body) }}
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
+          ) : editingView ? (
             <div className="notes-rte-wrap">
               <RichTextEditor
                 key={selected.slug}
@@ -378,6 +395,21 @@ export default function Notes({
                 onEditor={setEditor}
                 placeholder={NOTE_PLACEHOLDER}
               />
+            </div>
+          ) : (
+            <div className="notes-rte-wrap notes-preview">
+              <div className="rte">
+                {isEmptyNoteBody(selected.body) ? (
+                  <div className="tiptap">
+                    <h1 className="notes-empty-title">{NOTE_PLACEHOLDER}</h1>
+                  </div>
+                ) : (
+                  <div
+                    className="tiptap"
+                    dangerouslySetInnerHTML={{ __html: previewHtml(selected.body) }}
+                  />
+                )}
+              </div>
             </div>
           )}
         </div>

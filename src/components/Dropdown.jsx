@@ -51,6 +51,7 @@ export default function Dropdown({
   menuClassName = "",
   ariaLabel,
   title,
+  dataTip,
   align = "left",
   disabled = false,
   children,
@@ -86,8 +87,9 @@ export default function Dropdown({
       <button
         type="button"
         className={"dd-btn" + (buttonClassName ? " " + buttonClassName : "")}
-        aria-label={ariaLabel}
-        title={title}
+        aria-label={ariaLabel || title}
+        title={dataTip ? undefined : title}
+        data-tip={dataTip || undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}

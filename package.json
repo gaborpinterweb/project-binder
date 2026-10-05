@@ -25,7 +25,8 @@
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "semver": "^7.8.5"
   },
   "devDependencies": {
     "@electron/packager": "^19.0.0",

@@ -68,6 +68,8 @@ import ConfirmDialog from "./components/ConfirmDialog.jsx";
 import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
+import UpdateDialog from "./components/UpdateDialog.jsx";
+import { checkForUpdate } from "./checkUpdate.js";
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -110,6 +112,8 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workspaceVis, setWorkspaceVis] = useState(() => loadWorkspaceVisibility());
   const [launchOpen, setLaunchOpen] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   const masterOff = useRef(new Set());
   const colCollapsed = useRef(new Set());
@@ -254,6 +258,16 @@ export default function App() {
       setLoaded(true);
     });
   }, [reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkForUpdate().then((info) => {
+      if (!cancelled && info.available) setUpdateInfo(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (loaded && !loadError && !hasSeenLaunch()) setLaunchOpen(true);
@@ -819,6 +833,8 @@ export default function App() {
           if (hit) openItem(hit.row);
         }}
         onOpenSettings={() => setSettingsOpen(true)}
+        updateAvailable={!!updateInfo}
+        onOpenUpdate={() => setUpdateOpen(true)}
       />
       <main
         className={
@@ -1263,6 +1279,14 @@ export default function App() {
             markLaunchSeen();
             setLaunchOpen(false);
           }}
+        />
+      )}
+
+      {updateOpen && updateInfo && (
+        <UpdateDialog
+          notes={updateInfo.notes}
+          url={updateInfo.url}
+          onClose={() => setUpdateOpen(false)}
         />
       )}
 

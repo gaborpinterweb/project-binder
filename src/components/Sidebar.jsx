@@ -24,6 +24,8 @@ export default function Sidebar({
   onPomoNoteChange,
   onOpenPomoCard,
   onOpenSettings,
+  updateAvailable,
+  onOpenUpdate,
 }) {
   const active = folders.map((pr, i) => ({ pr, i })).filter((x) => !x.pr.archived);
   const archived = folders.map((pr, i) => ({ pr, i })).filter((x) => x.pr.archived);
@@ -124,6 +126,23 @@ export default function Sidebar({
           onNoteChange={onPomoNoteChange}
           onOpenCard={onOpenPomoCard}
         />
+        {updateAvailable && (
+          <button
+            type="button"
+            className="bm side-update"
+            id="app-update"
+            title="Update available"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenUpdate?.();
+            }}
+          >
+            <span>
+              <Icon name="arrow" />
+            </span>
+            <span>Update available</span>
+          </button>
+        )}
         <button
           type="button"
           className="bm"

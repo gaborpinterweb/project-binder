@@ -74,6 +74,7 @@ export const IC = {
     "",
   ],
   pencil: ['<path d="M11.5 2.5l2 2L5.5 12.5H3.5v-2zM9.8 4.2l2 2"/>', ""],
+  plus: ['<path d="M8 3.5v9M3.5 8h9"/>', ""],
   more: [
     '<circle cx="8" cy="3.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="12.5" r="1.4" fill="currentColor" stroke="none"/>',
     "",

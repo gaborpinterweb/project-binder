@@ -333,26 +333,42 @@ export function TaskCard({
   );
 }
 
-function CompletedViewBtn({ scope, completedViewByScope, onChange }) {
+const COMPLETED_VIEW_OPTIONS = [
+  { value: "hide", label: "Hide completed" },
+  { value: "inplace", label: "Show completed tasks" },
+  { value: "virtual", label: "Show completed column" },
+];
+
+function CompletedViewBtn({
+  scope,
+  completedViewByScope,
+  onChange,
+  triggerLabel,
+  align = "right",
+}) {
   const mode = getCompletedView(scope, completedViewByScope);
+  const asViewMenu = Boolean(triggerLabel);
   return (
     <Dropdown
-      className="done-view-dd"
-      buttonClassName="done-view"
-      ariaLabel="Completed tasks view"
-      title="Completed tasks view"
-      align="right"
+      className={asViewMenu ? "mod-view-dd" : "done-view-dd"}
+      buttonClassName={asViewMenu ? "mod-act" : "done-view"}
+      ariaLabel={asViewMenu ? "View options" : "Completed tasks view"}
+      title={asViewMenu ? "View options" : "Completed tasks view"}
+      align={align}
       value={mode}
-      options={[
-        { value: "hide", label: "Hide completed" },
-        { value: "inplace", label: "Show completed tasks" },
-        { value: "virtual", label: "Show completed column" },
-      ]}
+      options={COMPLETED_VIEW_OPTIONS}
       onChange={(next) => {
         if (next === mode) return;
         onChange(scope, next);
       }}
-    />
+    >
+      {asViewMenu ? (
+        <>
+          <Icon name="gallery" size={14} />
+          {triggerLabel}
+        </>
+      ) : undefined}
+    </Dropdown>
   );
 }
 
@@ -361,11 +377,12 @@ function BoardEditBtn({ boardEdit, onToggle }) {
   return (
     <button
       type="button"
-      className={"bedit" + (boardEdit ? " on" : "")}
+      className={"mod-act bedit" + (boardEdit ? " on" : "")}
       title={label}
       aria-label={label}
       onClick={onToggle}
     >
+      <Icon name={boardEdit ? "Task" : "pencil"} size={14} />
       {label}
     </button>
   );
@@ -1599,13 +1616,34 @@ export default function Board({
   return (
     <div id="view" className="db" style={{ ["--tab"]: tabC }}>
       <div className="modbar">
-        {!editing && (
-          <CompletedViewBtn
-            scope={scope}
-            completedViewByScope={completedViewByScope}
-            onChange={onSetCompletedView}
-          />
-        )}
+        <div className="modbar-start">
+          {!readonly && !editing && (
+            <button
+              type="button"
+              className="mod-act"
+              title="Add task"
+              aria-label="Add task"
+              onClick={() =>
+                onStartNewCard(folder, mod, {
+                  status: (d.columns || stages)[0],
+                  master: stages[0],
+                })
+              }
+            >
+              <Icon name="plus" size={14} />
+              Add task
+            </button>
+          )}
+          {!editing && (
+            <CompletedViewBtn
+              scope={scope}
+              completedViewByScope={completedViewByScope}
+              onChange={onSetCompletedView}
+              triggerLabel="View"
+              align="left"
+            />
+          )}
+        </div>
         {!readonly && (
           <BoardEditBtn boardEdit={editing} onToggle={onToggleBoardEdit} />
         )}

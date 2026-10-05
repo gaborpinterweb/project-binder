@@ -157,6 +157,16 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
     setSelectedSlug(slug);
   };
 
+  const filteredNotes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return notes;
+    return notes.filter((n) => {
+      const title = noteListTitle(n.body).toLowerCase();
+      const preview = noteListPreview(n.body, 280).toLowerCase();
+      return title.includes(q) || preview.includes(q);
+    });
+  }, [notes, search]);
+
   if (notes.length === 0) {
     return (
       <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>
@@ -176,22 +186,25 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
   return (
     <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>
       <div className="modbar notes-chrome">
-        <div className="notes-chrome-list">
-          <input
-            className="url notes-search"
-            type="search"
-            placeholder="Search notes…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search notes"
-          />
+        <div className="modbar-start">
+          {!readonly && (
+            <button
+              type="button"
+              className="mod-act"
+              onClick={addNote}
+              title="Add note"
+              aria-label="Add note"
+            >
+              <Icon name="plus" size={14} />
+              Add note
+            </button>
+          )}
           <Dropdown
-            className="notes-view-dd"
-            buttonClassName="notes-view-bar"
+            className="mod-view-dd"
+            buttonClassName="mod-act"
             ariaLabel="View options"
             title="View options"
-            align="right"
-            caret={false}
+            align="left"
             sections={[
               { label: "Sort", value: sort, onChange: setSort, options: NOTE_SORT_OPTIONS },
               {
@@ -202,65 +215,57 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
               },
             ]}
           >
-            <Icon name="gallery" size={15} />
+            <Icon name="gallery" size={14} />
+            View
           </Dropdown>
-          {!readonly && (
-            <button
-              type="button"
-              className="notes-add-bar"
-              onClick={addNote}
-              title="New note"
-              aria-label="New note"
-            >
-              +
-            </button>
+        </div>
+        <div className="notes-toolbar-mid">
+          {selected && !locked && (
+            <RteToolbar editor={editor} forNotes onDelete={readonly ? undefined : deleteNote} />
           )}
         </div>
-        <div className="notes-chrome-editor">
-          <div className="notes-toolbar-left" />
-          <div className="notes-toolbar-mid">
-            {selected && !locked && <RteToolbar editor={editor} forNotes />}
-          </div>
-          <div className="notes-toolbar-right">
-            {selected && !readonly && (
-              <>
-                <button
-                  type="button"
-                  className="notes-act notes-act-danger"
-                  onClick={deleteNote}
-                  title="Delete note"
-                >
-                  <Icon name="Trash" size={14} />
-                  Delete
-                </button>
-                {locked ? (
-                  <button
-                    type="button"
-                    className="notes-act"
-                    onClick={() => setLocked(false)}
-                  >
-                    <Icon name="pencil" size={14} />
-                    Edit
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="notes-act on"
-                    onClick={() => setLocked(true)}
-                  >
-                    <Icon name="lock" size={14} />
-                    Lock
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+        <div className="modbar-end">
+          {selected && !readonly && (
+            locked ? (
+              <button
+                type="button"
+                className="mod-act"
+                onClick={() => setLocked(false)}
+                title="Edit note"
+                aria-label="Edit note"
+              >
+                <Icon name="pencil" size={14} />
+                Edit note
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="mod-act on"
+                onClick={() => setLocked(true)}
+                title="Lock note"
+                aria-label="Lock note"
+              >
+                <Icon name="lock" size={14} />
+                Lock
+              </button>
+            )
+          )}
         </div>
       </div>
       <div className="notes-layout">
         <aside className="notes-sidebar">
+          <div className="notes-sidebar-tools">
+            <input
+              className="notes-search"
+              type="search"
+              placeholder="Search notes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search notes"
+            />
+          </div>
           <div className={"notes-list size-" + cardSize}>
-            {notes.map((n) => {
+            {filteredNotes.map((n) => {
               const preview =
                 cardSize === "sm"
                   ? ""

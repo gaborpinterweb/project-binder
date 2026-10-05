@@ -83,7 +83,7 @@ function ToolbarBtn({ onClick, active, title, disabled, children }) {
   );
 }
 
-export function RteToolbar({ editor, forNotes = false }) {
+export function RteToolbar({ editor, forNotes = false, onDelete }) {
   const [, bump] = useState(0);
   useEffect(() => {
     if (!editor) return;
@@ -289,6 +289,13 @@ export function RteToolbar({ editor, forNotes = false }) {
           </div>
         </span>
       </div>
+      {onDelete && (
+        <div className="rte-group" role="group" aria-label="Note actions">
+          <ToolbarBtn title="Delete note" onClick={onDelete}>
+            <Icon name="Trash" size={15} />
+          </ToolbarBtn>
+        </div>
+      )}
     </div>
   );
 }

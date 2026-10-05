@@ -157,13 +157,7 @@ export default function CardDialog({
     >
       <div className={"dlg" + (curLoc ? " tint" : "")} style={tintStyle}>
         <div className="dlg-content">
-          {isDb ? (
-            <DbTitle
-              row={draft}
-              loc={originLoc}
-              onPatch={patch}
-            />
-          ) : (
+          {isDb ? null : (
             <div className="title-row">
               <input
                 type="checkbox"
@@ -205,7 +199,7 @@ export default function CardDialog({
             {isDb ? (
               <DbFields
                 row={draft}
-                loc={originLoc}
+                loc={originLoc || curLoc}
                 stages={stages}
                 onPatch={patch}
                 onPersist={persist}
@@ -432,54 +426,37 @@ export default function CardDialog({
   );
 }
 
-function DbTitle({ row, loc, onPatch }) {
-  const cols = loc.mod[2].cols || [];
-  const titleCol = cols.find((c) => c.id === "n") || cols[0];
-  return (
-    <input
-      className="title"
-      value={row[titleCol?.id] || ""}
-      placeholder="Untitled"
-      autoFocus
-      onChange={(e) => {
-        if (titleCol) onPatch({ [titleCol.id]: e.target.value });
-      }}
-    />
-  );
-}
-
 function DbFields({ row, loc, stages, onPatch, onPersist }) {
-  const cols = loc.mod[2].cols || [];
-  const titleCol = cols.find((c) => c.id === "n") || cols[0];
+  const cols = loc?.mod?.[2]?.cols || [];
   return (
     <table className="props">
       <tbody>
-        {cols
-          .filter((c) => c !== titleCol)
-          .map((c) => (
-            <tr key={c.id}>
-              <td>{c.label}</td>
-              <td>
-                {c.type === "stage" ? (
-                  <PropDropdown
-                    value={row[c.id] || stages[0]}
-                    options={stages}
-                    onChange={(o) => {
-                      onPatch({ [c.id]: o });
-                      onPersist();
-                    }}
-                  >
-                    <span className="lab">{row[c.id] || stages[0] || ""}</span>
-                  </PropDropdown>
-                ) : (
-                  <input
-                    value={row[c.id] || ""}
-                    onChange={(e) => onPatch({ [c.id]: e.target.value })}
-                  />
-                )}
-              </td>
-            </tr>
-          ))}
+        {cols.map((c, i) => (
+          <tr key={c.id}>
+            <td>{c.label}</td>
+            <td>
+              {c.type === "stage" ? (
+                <PropDropdown
+                  value={row[c.id] || stages[0]}
+                  options={stages}
+                  onChange={(o) => {
+                    onPatch({ [c.id]: o });
+                    onPersist();
+                  }}
+                >
+                  <span className="lab">{row[c.id] || stages[0] || ""}</span>
+                </PropDropdown>
+              ) : (
+                <input
+                  value={row[c.id] || ""}
+                  placeholder={c.id === "n" ? "Untitled" : ""}
+                  autoFocus={i === 0}
+                  onChange={(e) => onPatch({ [c.id]: e.target.value })}
+                />
+              )}
+            </td>
+          </tr>
+        ))}
       </tbody>
     </table>
   );

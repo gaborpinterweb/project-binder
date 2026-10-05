@@ -1336,16 +1336,16 @@ function MasterBoard({
   );
 }
 
-function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, setM, p, folders }) {
+function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
   return (
     <div className="scroll">
       <table>
         <thead>
           <tr>
+            <th className="db-enlarge-col" aria-hidden="true" />
             {d.cols.map((c) => (
               <th key={c.id}>{c.label}</th>
             ))}
-            <th />
             <th
               className="addcol"
               onClick={async () => {
@@ -1391,6 +1391,17 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, setM, p, fo
         <tbody>
           {d.rows.map((r) => (
             <tr key={r.slug}>
+              <td className="db-enlarge-col">
+                <button
+                  type="button"
+                  className="db-enlarge"
+                  title="Open"
+                  aria-label="Open entry"
+                  onClick={() => onOpen(r, { folder, mod })}
+                >
+                  <Icon name="enlarge" size={14} />
+                </button>
+              </td>
               {d.cols.map((c) =>
                 c.type === "stage" ? (
                   <td key={c.id}>
@@ -1438,11 +1449,6 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, setM, p, fo
                   </td>
                 )
               )}
-              <td className="open">
-                <button type="button" onClick={() => onOpen(r)}>
-                  Open
-                </button>
-              </td>
               <td />
             </tr>
           ))}
@@ -1497,6 +1503,7 @@ export function DatabaseView({
   onOpenCard,
   onApplyWorkspace,
 }) {
+  const [customViews, setCustomViews] = useState(false);
   const d = mod[2] || {
     cur: 0,
     views: [{ n: "Table", t: "table" }],
@@ -1512,7 +1519,45 @@ export function DatabaseView({
   }
   if (!d.views) d.views = [{ n: "Table", t: "table" }, { n: "Gallery", t: "gallery" }];
   if (d.cur >= d.views.length) d.cur = 0;
-  const [, bump] = useState(0);
+
+  const addEntry = async () => {
+    const fields = {};
+    (d.cols || []).forEach((c) => {
+      fields[c.id] = c.type === "stage" ? stages[0] : "";
+    });
+    const data = await postItem({
+      project: folder.slug,
+      database: mod[2].slug,
+      fields,
+    });
+    const next = onApplyWorkspace(data, {
+      project: folder.slug,
+      board: mod[2].slug,
+    });
+    const nextFolder = next.find((f) => f.slug === folder.slug);
+    const nextMod = nextFolder?.mods?.find((m) => m[2]?.slug === mod[2].slug);
+    const row = nextMod?.[2]?.rows?.find((r) => r.slug === data.slug);
+    if (row && nextFolder && nextMod) {
+      onOpenCard(row, { folder: nextFolder, mod: nextMod });
+    }
+  };
+
+  const main =
+    d.views[d.cur].t === "gallery" ? (
+      <DbGallery
+        d={d}
+        onOpen={(r) => onOpenCard(r, { folder, mod })}
+      />
+    ) : (
+      <DbTable
+        d={d}
+        folder={folder}
+        mod={mod}
+        stages={stages}
+        onOpen={onOpenCard}
+        onApplyWorkspace={onApplyWorkspace}
+      />
+    );
 
   return (
     <div
@@ -1520,34 +1565,38 @@ export function DatabaseView({
       className="db"
       style={{ ["--tab"]: tabC, ["--tab-ink"]: "#fff" }}
     >
-      <div className="vbar">
-        {d.views.map((w, i) => (
+      <div className="modbar">
+        <div className="modbar-start">
           <button
-            key={w.n + i}
             type="button"
-            className={i === d.cur ? "on" : ""}
-            onClick={() => {
-              d.cur = i;
-              bump((n) => n + 1);
-            }}
+            className="mod-act"
+            title="Add entry"
+            aria-label="Add entry"
+            onClick={addEntry}
           >
-            {({ table: "▦ ", gallery: "▩ " })[w.t]}
-            {w.n}
+            <Icon name="plus" size={18} />
+            <span className="mod-act-lab">Add entry</span>
           </button>
-        ))}
+          <Dropdown
+            className="mod-view-dd"
+            buttonClassName={"mod-act" + (customViews ? " on" : "")}
+            ariaLabel="View options"
+            title="View options"
+            align="left"
+            caret={false}
+            value={customViews ? "customViews" : ""}
+            options={[{ value: "customViews", label: "Custom views" }]}
+            onChange={() => setCustomViews((v) => !v)}
+          >
+            <Icon name="eye" size={18} />
+            <span className="mod-act-lab">View</span>
+          </Dropdown>
+        </div>
       </div>
-      {d.views[d.cur].t === "gallery" ? (
-        <DbGallery d={d} onOpen={onOpenCard} />
-      ) : (
-        <DbTable
-          d={d}
-          folder={folder}
-          mod={mod}
-          stages={stages}
-          onOpen={onOpenCard}
-          onApplyWorkspace={onApplyWorkspace}
-        />
-      )}
+      <div className="db-layout">
+        {customViews ? <aside className="db-sidebar" aria-label="Custom views" /> : null}
+        <div className="db-main">{main}</div>
+      </div>
     </div>
   );
 }

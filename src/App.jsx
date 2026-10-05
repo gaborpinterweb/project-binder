@@ -481,7 +481,7 @@ export default function App() {
     (r, opts) => {
       const isDraft = !!(opts && opts.draft);
       let loc = isDraft ? null : locateRow(foldersRef.current, r);
-      if (isDraft && opts.folder && opts.mod) {
+      if ((!loc || isDraft) && opts?.folder && opts?.mod) {
         loc = { folder: opts.folder, mod: opts.mod };
       }
       setDialog({ row: { ...r }, isDraft, loc });

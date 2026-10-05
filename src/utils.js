@@ -7,7 +7,7 @@ export const APP_VERSION = "0.1.0";
 export const TYPES = [
   { t: "Board", title: "Task board", sub: "Kanban columns and cards" },
   { t: "Notes", title: "Notes", sub: "Notes with rich text editor" },
-  { t: "Database", title: "Database", sub: "Tables and structured records", off: true },
+  { t: "Database", title: "Database", sub: "Tables and structured records" },
   { t: "Files", title: "Files", sub: "Assets, kits, and uploads", off: true },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
@@ -117,10 +117,36 @@ export function fromApi(data, loadStagesFn) {
         },
       ]);
     });
+    const dbMods = new Map();
+    (pr.databases || []).forEach((db) => {
+      dbMods.set(db.slug, [
+        "Database",
+        db.name,
+        {
+          slug: db.slug,
+          cols: (db.columns || []).map((c) => ({
+            id: c.id,
+            label: c.label || c.id,
+            type: c.type || "text",
+          })),
+          rows: (db.items || []).map((item) => ({
+            slug: item.slug,
+            body: item.body || "",
+            ...(item.fields || {}),
+          })),
+          views: [
+            { n: "Table", t: "table" },
+            { n: "Gallery", t: "gallery" },
+          ],
+          cur: 0,
+        },
+      ]);
+    });
 
     const pick = (type, slug) => {
       if (type === "board") return boardMods.get(slug);
       if (type === "notes") return notesMods.get(slug);
+      if (type === "database") return dbMods.get(slug);
       return null;
     };
 
@@ -148,6 +174,7 @@ export function fromApi(data, loadStagesFn) {
     }
     for (const mod of boardMods.values()) pushMod(mod);
     for (const mod of notesMods.values()) pushMod(mod);
+    for (const mod of dbMods.values()) pushMod(mod);
 
     return {
       slug: pr.slug,
@@ -785,10 +812,15 @@ export function pomoElapsedSec(session) {
 }
 
 export function locateRow(folders, r) {
-  for (const folder of folders)
-    for (const mod of folder.mods)
-      if ((mod[0] === "Board" || mod[0] === "Database") && mod[2]?.rows?.includes(r))
-        return { folder, mod };
+  for (const folder of folders) {
+    for (const mod of folder.mods) {
+      if (mod[0] !== "Board" && mod[0] !== "Database") continue;
+      const rows = mod[2]?.rows;
+      if (!rows) continue;
+      if (rows.includes(r)) return { folder, mod };
+      if (r?.slug && rows.some((row) => row.slug === r.slug)) return { folder, mod };
+    }
+  }
   return null;
 }
 

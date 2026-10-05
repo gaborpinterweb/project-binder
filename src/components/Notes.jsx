@@ -195,8 +195,8 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
               title="Add note"
               aria-label="Add note"
             >
-              <Icon name="plus" size={14} />
-              Add note
+              <Icon name="plus" size={18} />
+              <span className="mod-act-lab">Add note</span>
             </button>
           )}
           <Dropdown
@@ -205,6 +205,7 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
             ariaLabel="View options"
             title="View options"
             align="left"
+            caret={false}
             sections={[
               { label: "Sort", value: sort, onChange: setSort, options: NOTE_SORT_OPTIONS },
               {
@@ -215,8 +216,8 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
               },
             ]}
           >
-            <Icon name="gallery" size={14} />
-            View
+            <Icon name="eye" size={18} />
+            <span className="mod-act-lab">View</span>
           </Dropdown>
         </div>
         <div className="notes-toolbar-mid">
@@ -234,8 +235,8 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
                 title="Edit note"
                 aria-label="Edit note"
               >
-                <Icon name="pencil" size={14} />
-                Edit note
+                <Icon name="pencil" size={18} />
+                <span className="mod-act-lab">Edit note</span>
               </button>
             ) : (
               <button
@@ -245,8 +246,8 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
                 title="Lock note"
                 aria-label="Lock note"
               >
-                <Icon name="lock" size={14} />
-                Lock
+                <Icon name="lock" size={18} />
+                <span className="mod-act-lab">Lock note</span>
               </button>
             )
           )}

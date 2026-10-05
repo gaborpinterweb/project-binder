@@ -75,6 +75,14 @@ export const IC = {
   ],
   pencil: ['<path d="M11.5 2.5l2 2L5.5 12.5H3.5v-2zM9.8 4.2l2 2"/>', ""],
   plus: ['<path d="M8 3.5v9M3.5 8h9"/>', ""],
+  eye: [
+    '<path d="M1.75 8s2.25-4.25 6.25-4.25S14.25 8 14.25 8s-2.25 4.25-6.25 4.25S1.75 8 1.75 8z"/><circle cx="8" cy="8" r="1.75"/>',
+    "",
+  ],
+  export: [
+    '<path d="M8 2.5v7M5.5 7L8 9.5 10.5 7M3.5 11.5v1a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1"/>',
+    "",
+  ],
   more: [
     '<circle cx="8" cy="3.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="12.5" r="1.4" fill="currentColor" stroke="none"/>',
     "",

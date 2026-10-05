@@ -355,6 +355,7 @@ function CompletedViewBtn({
       ariaLabel={asViewMenu ? "View options" : "Completed tasks view"}
       title={asViewMenu ? "View options" : "Completed tasks view"}
       align={align}
+      caret={!asViewMenu}
       value={mode}
       options={COMPLETED_VIEW_OPTIONS}
       onChange={(next) => {
@@ -364,8 +365,8 @@ function CompletedViewBtn({
     >
       {asViewMenu ? (
         <>
-          <Icon name="gallery" size={14} />
-          {triggerLabel}
+          <Icon name="eye" size={18} />
+          <span className="mod-act-lab">{triggerLabel}</span>
         </>
       ) : undefined}
     </Dropdown>
@@ -382,8 +383,8 @@ function BoardEditBtn({ boardEdit, onToggle }) {
       aria-label={label}
       onClick={onToggle}
     >
-      <Icon name={boardEdit ? "Task" : "pencil"} size={14} />
-      {label}
+      <Icon name={boardEdit ? "Task" : "pencil"} size={18} />
+      <span className="mod-act-lab">{label}</span>
     </button>
   );
 }
@@ -1576,14 +1577,42 @@ export default function Board({
   keepNav,
 }) {
   if (mode === "master") {
+    const addMasterTask = () => {
+      const boards = allBoards(folders).filter((b) => !masterOff.has(b.key));
+      if (!boards.length) {
+        alert("Enable at least one board in the footer to create a card.");
+        return;
+      }
+      const target = boards.find((b) => b.folder === folder) || boards[0];
+      const boardStatus = (target.mod[2].columns || stages)[0];
+      onStartNewCard(target.folder, target.mod, {
+        status: boardStatus,
+        master: stages[0],
+      });
+    };
+
     return (
       <div id="view" className="db" style={{ ["--tab"]: tabC }}>
         <GlobalBar name="Masterboard">
+          {!boardEdit && (
+            <button
+              type="button"
+              className="mod-act"
+              title="Add task"
+              aria-label="Add task"
+              onClick={addMasterTask}
+            >
+              <Icon name="plus" size={18} />
+              <span className="mod-act-lab">Add task</span>
+            </button>
+          )}
           {!boardEdit && (
             <CompletedViewBtn
               scope="master"
               completedViewByScope={completedViewByScope}
               onChange={onSetCompletedView}
+              triggerLabel="View"
+              align="right"
             />
           )}
           <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
@@ -1630,8 +1659,8 @@ export default function Board({
                 })
               }
             >
-              <Icon name="plus" size={14} />
-              Add task
+              <Icon name="plus" size={18} />
+              <span className="mod-act-lab">Add task</span>
             </button>
           )}
           {!editing && (

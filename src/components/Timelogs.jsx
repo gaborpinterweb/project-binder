@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { deleteTimelogApi, fetchTimelogs, putTimelog } from "../api.js";
+import { deleteTimelogApi, fetchTimelogs, postTimelog, putTimelog } from "../api.js";
 import {
   GACC,
   TIMELOG_GROUP_BYS,
@@ -17,6 +17,7 @@ import { Icon } from "../icons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import Dropdown from "./Dropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
+import { askPrompt } from "../promptDialog.js";
 
 function entryBoardKey(entry) {
   return `${entry.project || ""}/${entry.board || ""}`;
@@ -154,7 +155,7 @@ function ExportDropdown({ entries, period, disabled }) {
     >
       <button
         type="button"
-        className="done-view export-btn"
+        className="mod-act export-btn"
         aria-label="Export timelogs"
         title="Export timelogs"
         aria-haspopup="menu"
@@ -162,7 +163,8 @@ function ExportDropdown({ entries, period, disabled }) {
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
       >
-        Export
+        <Icon name="export" size={18} />
+        <span className="mod-act-lab">Export</span>
       </button>
       {open && !disabled && (
         <div className="pop" role="menu">
@@ -191,18 +193,6 @@ function BoardFilterDropdown({ boards, boardOff, onToggle }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const selected = boards.filter((b) => !boardOff.has(b.key));
-  const label =
-    !boards.length
-      ? "No boards"
-      : selected.length === boards.length
-        ? "All boards"
-        : selected.length === 0
-          ? "No boards"
-          : selected.length === 1
-            ? selected[0].label
-            : `${selected.length} boards`;
-
   return (
     <div
       className={"board-filter" + (open ? " open" : "")}
@@ -210,14 +200,15 @@ function BoardFilterDropdown({ boards, boardOff, onToggle }) {
     >
       <button
         type="button"
-        className="done-view board-filter-btn"
+        className="mod-act board-filter-btn"
         aria-label="Task boards"
         title="Task boards"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        {label}
+        <Icon name="board" size={18} />
+        <span className="mod-act-lab">Boards</span>
       </button>
       {open && (
         <div className="pop" role="listbox" aria-multiselectable="true">
@@ -424,6 +415,45 @@ export default function Timelogs({
     });
   };
 
+  const addLog = async () => {
+    const boardsList = allBoards(folders);
+    if (!boardsList.length) {
+      alert("Create a task board first to add a log.");
+      return;
+    }
+    const mins = await askPrompt({
+      title: "Add log",
+      defaultValue: "25",
+      placeholder: "Duration in minutes",
+      confirmLabel: "Add",
+    });
+    if (mins == null) return;
+    const durationSec = Math.max(0, Math.round(parseFloat(String(mins).replace(",", ".")) * 60) || 0);
+    const { folder, mod, color } = boardsList[0];
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - durationSec * 1000);
+    try {
+      await postTimelog({
+        project: folder.slug,
+        board: mod[2]?.slug || "",
+        card: "",
+        title: "Manual entry",
+        projectName: folder.name,
+        boardName: mod[1],
+        color: color || folder.color || GACC,
+        kind: "manual",
+        note: "",
+        startedAt: startedAt.toISOString(),
+        endedAt: endedAt.toISOString(),
+        durationSec,
+      });
+      const list = await fetchTimelogs();
+      setEntries(list);
+    } catch {
+      alert("Could not add timelog.");
+    }
+  };
+
   const startEdit = (entry) => {
     if (busySlug) return;
     setEditingSlug(entry.slug);
@@ -487,40 +517,54 @@ export default function Timelogs({
   return (
     <div id="view" className="mod" style={{ ["--tab"]: tabC }}>
       <GlobalBar name="Timelogs">
-        <div className="gbar-tools">
-          <BoardFilterDropdown
-            boards={boards}
-            boardOff={boardOff}
-            onToggle={toggleBoard}
-          />
-          <Dropdown
-            className="done-view-dd"
-            buttonClassName="done-view"
-            ariaLabel="Group by"
-            title="Group by"
-            align="right"
-            value={groupBy}
-            options={TIMELOG_GROUP_BYS}
-            onChange={setGroupBy}
-          >
-            <span className="dd-lab">Group by: {groupBy}</span>
-          </Dropdown>
-          <Dropdown
-            className="done-view-dd"
-            buttonClassName="done-view"
-            ariaLabel="Timelog period"
-            title="Timelog period"
-            align="right"
-            value={period}
-            options={TIMELOG_PERIODS}
-            onChange={setPeriod}
-          />
-          <ExportDropdown
-            entries={shown || []}
-            period={period}
-            disabled={!shown?.length}
-          />
-        </div>
+        <button
+          type="button"
+          className="mod-act"
+          title="Add log"
+          aria-label="Add log"
+          onClick={addLog}
+        >
+          <Icon name="plus" size={18} />
+          <span className="mod-act-lab">Add log</span>
+        </button>
+        <BoardFilterDropdown
+          boards={boards}
+          boardOff={boardOff}
+          onToggle={toggleBoard}
+        />
+        <Dropdown
+          className="mod-view-dd"
+          buttonClassName="mod-act"
+          ariaLabel="Group by"
+          title="Group by"
+          align="right"
+          caret={false}
+          value={groupBy}
+          options={TIMELOG_GROUP_BYS}
+          onChange={setGroupBy}
+        >
+          <Icon name="list" size={18} />
+          <span className="mod-act-lab">Group</span>
+        </Dropdown>
+        <Dropdown
+          className="mod-view-dd"
+          buttonClassName="mod-act"
+          ariaLabel="Timelog period"
+          title="Timelog period"
+          align="right"
+          caret={false}
+          value={period}
+          options={TIMELOG_PERIODS}
+          onChange={setPeriod}
+        >
+          <Icon name="Calendar" size={18} />
+          <span className="mod-act-lab">Period</span>
+        </Dropdown>
+        <ExportDropdown
+          entries={shown || []}
+          period={period}
+          disabled={!shown?.length}
+        />
       </GlobalBar>
       {filter && (
         <div className="log-filter">

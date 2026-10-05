@@ -175,6 +175,34 @@ export const IC = {
     '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 7h12M6 7v6"/><path d="M5.2 9.2l5.6 2.6M10.8 9.2l-5.6 2.6"/>',
     "",
   ],
+  fieldText: [
+    '<path d="M3.5 4.5h9M8 4.5v7M6 11.5h4"/>',
+    "",
+  ],
+  fieldLongText: [
+    '<path d="M3.5 4h9M3.5 7h9M3.5 10h6"/>',
+    "",
+  ],
+  fieldSelect: [
+    '<rect x="2.5" y="3.5" width="11" height="9" rx="1.5"/><path d="M5.5 8l2.5 2.5L10.5 8"/>',
+    "",
+  ],
+  fieldMultiSelect: [
+    '<rect x="2.5" y="2.5" width="4" height="4" rx="1"/><path d="M3.5 4.5l1 1 1.5-1.8"/><rect x="2.5" y="9.5" width="4" height="4" rx="1"/><path d="M3.5 11.5l1 1 1.5-1.8"/><path d="M9 4.5h4.5M9 11.5h4.5"/>',
+    "",
+  ],
+  fieldCheckbox: [
+    '<rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 8.2l2 2 4-4.5"/>',
+    "",
+  ],
+  fieldNumber: [
+    '<path d="M5 3.5v9M3.5 5.5h3M3.5 10.5h3M11 3.5v9M9.5 5.5h3M9.5 10.5h3"/>',
+    "",
+  ],
+  fieldDate: [
+    '<rect x="3" y="3.5" width="10" height="10" rx="1.5"/><path d="M3 6.5h10M6 2.5v2M10 2.5v2"/>',
+    "",
+  ],
 };
 
 export function Icon({ name, size = 16 }) {

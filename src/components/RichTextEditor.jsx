@@ -345,6 +345,7 @@ export default function RichTextEditor({
   value,
   onChange,
   placeholder,
+  label = "Description",
   showLabel = true,
   showToolbar = true,
   editable = true,
@@ -438,7 +439,7 @@ export default function RichTextEditor({
       {showToolbar &&
         (showLabel ? (
           <div className="dlg-desc-head">
-            <span className="dlg-desc-label">Description</span>
+            <span className="dlg-desc-label">{label}</span>
             <RteToolbar editor={editor} forNotes={forNotes} />
           </div>
         ) : (

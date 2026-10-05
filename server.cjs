@@ -32,6 +32,70 @@ const DEFAULT_DB_COLS = [
   { id: "s", label: "Stage", type: "stage" },
 ];
 
+const DB_FIELD_TYPES = new Set([
+  "text",
+  "longtext",
+  "select",
+  "multiselect",
+  "checkbox",
+  "number",
+  "date",
+  "stage",
+]);
+
+const DB_SELECT_COLORS = [
+  "default",
+  "gray",
+  "brown",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "pink",
+  "red",
+];
+
+function normalizeSelectOption(o, index) {
+  if (o == null) return null;
+  if (typeof o === "string") {
+    const label = o.trim();
+    if (!label) return null;
+    const palette = DB_SELECT_COLORS.filter((c) => c !== "default");
+    return { label, color: palette[index % palette.length] };
+  }
+  if (typeof o !== "object") return null;
+  const label = String(o.label != null ? o.label : o.value != null ? o.value : "")
+    .trim();
+  if (!label) return null;
+  const color = DB_SELECT_COLORS.includes(o.color)
+    ? o.color
+    : DB_SELECT_COLORS.filter((c) => c !== "default")[index % (DB_SELECT_COLORS.length - 1)];
+  return { label, color };
+}
+
+function normalizeDbColumn(c) {
+  if (!c || !c.id) return null;
+  const type = DB_FIELD_TYPES.has(c.type) ? c.type : "text";
+  const out = { id: String(c.id), label: c.label || String(c.id), type };
+  if (c.required) out.required = true;
+  if (type === "number" && c.decimal) out.decimal = true;
+  if (type === "select" || type === "multiselect") {
+    out.options = Array.isArray(c.options)
+      ? c.options.map((o, i) => normalizeSelectOption(o, i)).filter(Boolean)
+      : [];
+  }
+  return out;
+}
+
+function normalizeDbColumns(columns) {
+  if (!Array.isArray(columns) || !columns.length) {
+    return DEFAULT_DB_COLS.map((c) => ({ ...c }));
+  }
+  const mapped = columns.map(normalizeDbColumn).filter(Boolean);
+  return mapped.length ? mapped : DEFAULT_DB_COLS.map((c) => ({ ...c }));
+}
+
 /** @type {object|null} */
 let store = null;
 
@@ -390,9 +454,7 @@ function projectToApi(p) {
     databases: (p.databases || []).map((d) => ({
       slug: d.slug,
       name: d.name || d.slug,
-      columns: Array.isArray(d.columns) && d.columns.length
-        ? d.columns.map((c) => ({ id: c.id, label: c.label || c.id, type: c.type || "text" }))
-        : DEFAULT_DB_COLS.map((c) => ({ ...c })),
+      columns: normalizeDbColumns(d.columns),
       items: (d.items || []).map((item) => ({
         slug: item.slug,
         fields: { ...(item.fields || {}) },
@@ -1003,10 +1065,7 @@ function writeWorkspaceMeta({ stages }) {
 
 function loadDbColumns(projectSlug, databaseSlug) {
   const db = findDatabase(findProject(projectSlug), databaseSlug);
-  if (!db || !Array.isArray(db.columns) || !db.columns.length) {
-    return DEFAULT_DB_COLS.map((c) => ({ ...c }));
-  }
-  return db.columns.map((c) => ({ id: c.id, label: c.label || c.id, type: c.type || "text" }));
+  return normalizeDbColumns(db && db.columns);
 }
 
 function writeDatabase(projectSlug, databaseSlug, { name, columns }) {
@@ -1019,9 +1078,7 @@ function writeDatabase(projectSlug, databaseSlug, { name, columns }) {
     project.databases.push(db);
   }
   db.name = name || db.name || databaseSlug;
-  db.columns = Array.isArray(columns) && columns.length
-    ? columns.map((c) => ({ id: c.id, label: c.label || c.id, type: c.type || "text" }))
-    : DEFAULT_DB_COLS.map((c) => ({ ...c }));
+  db.columns = normalizeDbColumns(columns);
   if (!db.items) db.items = [];
 }
 

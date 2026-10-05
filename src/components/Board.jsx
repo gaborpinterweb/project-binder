@@ -9,8 +9,16 @@ import {
   putCardOrder,
   fetchWorkspace,
 } from "../api.js";
+import {
+  emptyFieldValue,
+  fieldTypeIcon,
+  normalizeDbCol,
+  serializeDbCol,
+} from "../dbFields.js";
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
+import DbFieldInput from "./DbFieldInput.jsx";
+import FieldEditDialog from "./FieldEditDialog.jsx";
 import { askPrompt } from "../promptDialog.js";
 import {
   PC,
@@ -1336,52 +1344,197 @@ function MasterBoard({
   );
 }
 
+function DbColHeader({
+  col,
+  canLeft,
+  canRight,
+  onMoveLeft,
+  onMoveRight,
+  onEdit,
+}) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const run = (fn) => {
+    setOpen(false);
+    fn?.();
+  };
+
+  return (
+    <th
+      className={"db-col-th" + (open ? " open" : "")}
+      ref={wrapRef}
+      onClick={() => setOpen((o) => !o)}
+    >
+      <span className="db-col-lab">
+        <Icon name={fieldTypeIcon(col.type)} size={14} />
+        <span className="db-col-name">{col.label}</span>
+        {col.required ? (
+          <span className="db-req" title="Required">
+            *
+          </span>
+        ) : null}
+      </span>
+      {open ? (
+        <div
+          className="pop db-col-menu"
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canLeft}
+            onClick={() => run(onMoveLeft)}
+          >
+            <Icon name="arrowLeft" size={14} />
+            Move left
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canRight}
+            onClick={() => run(onMoveRight)}
+          >
+            <Icon name="arrowRight" size={14} />
+            Move right
+          </button>
+          <button type="button" role="menuitem" onClick={() => run(onEdit)}>
+            <Icon name="pencil" size={14} />
+            Edit field
+          </button>
+        </div>
+      ) : null}
+    </th>
+  );
+}
+
+async function persistDbColumns(folder, mod, cols) {
+  const columns = cols.map(serializeDbCol).filter(Boolean);
+  await putDatabase({
+    project: folder.slug,
+    database: mod[2].slug,
+    name: mod[1],
+    columns,
+  });
+}
+
+async function persistDbRow(folder, mod, row, cols) {
+  const fields = {};
+  cols.forEach((c) => {
+    fields[c.id] = row[c.id] != null ? row[c.id] : emptyFieldValue(c);
+  });
+  await putItem({
+    project: folder.slug,
+    database: mod[2].slug,
+    slug: row.slug,
+    fields,
+    body: row.body || "",
+  });
+}
+
 function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
+  const [editCol, setEditCol] = useState(null);
+  const [editIsNew, setEditIsNew] = useState(false);
+  const [, bump] = useState(0);
+
+  const refresh = async () => {
+    onApplyWorkspace(await fetchWorkspace());
+  };
+
+  const moveCol = async (index, dir) => {
+    const next = index + dir;
+    if (next < 0 || next >= d.cols.length) return;
+    const list = d.cols.slice();
+    const [item] = list.splice(index, 1);
+    list.splice(next, 0, item);
+    d.cols = list;
+    await persistDbColumns(folder, mod, list);
+    await refresh();
+  };
+
+  const saveCol = async (saved) => {
+    const list = d.cols.slice();
+    const idx = list.findIndex((c) => c.id === saved.id);
+    if (editIsNew || idx < 0) {
+      list.push(normalizeDbCol(saved));
+      d.rows.forEach((r) => {
+        if (r[saved.id] == null) r[saved.id] = emptyFieldValue(saved, stages);
+      });
+    } else {
+      list[idx] = normalizeDbCol(saved);
+    }
+    d.cols = list;
+    await persistDbColumns(folder, mod, list);
+    for (const r of d.rows) {
+      await persistDbRow(folder, mod, r, list);
+    }
+    setEditCol(null);
+    setEditIsNew(false);
+    await refresh();
+  };
+
+  const deleteCol = async (col) => {
+    if (d.cols.length <= 1) return;
+    const list = d.cols.filter((c) => c.id !== col.id);
+    d.cols = list;
+    d.rows.forEach((r) => {
+      delete r[col.id];
+    });
+    await persistDbColumns(folder, mod, list);
+    for (const r of d.rows) {
+      await persistDbRow(folder, mod, r, list);
+    }
+    setEditCol(null);
+    setEditIsNew(false);
+    await refresh();
+  };
+
+  const setCell = async (row, col, next) => {
+    row[col.id] = next;
+    bump((n) => n + 1);
+    await persistDbRow(folder, mod, row, d.cols);
+  };
+
   return (
     <div className="scroll">
       <table>
         <thead>
           <tr>
             <th className="db-enlarge-col" aria-hidden="true" />
-            {d.cols.map((c) => (
-              <th key={c.id}>{c.label}</th>
+            {d.cols.map((c, i) => (
+              <DbColHeader
+                key={c.id}
+                col={c}
+                canLeft={i > 0}
+                canRight={i < d.cols.length - 1}
+                onMoveLeft={() => moveCol(i, -1)}
+                onMoveRight={() => moveCol(i, 1)}
+                onEdit={() => {
+                  setEditIsNew(false);
+                  setEditCol(c);
+                }}
+              />
             ))}
             <th
               className="addcol"
-              onClick={async () => {
-                const label = (
-                  (await askPrompt({
-                    title: "New column",
-                    placeholder: "Column name",
-                    confirmLabel: "Add",
-                  })) || ""
-                ).trim();
-                if (!label) return;
-                const id = "f" + Date.now();
-                d.cols.push({ id, label, type: "text" });
-                d.rows.forEach((r) => {
-                  if (r[id] == null) r[id] = "";
+              onClick={() => {
+                setEditIsNew(true);
+                setEditCol({
+                  id: "f" + Date.now(),
+                  label: "",
+                  type: "text",
+                  required: false,
                 });
-                await putDatabase({
-                  project: folder.slug,
-                  database: mod[2].slug,
-                  name: mod[1],
-                  columns: d.cols,
-                });
-                for (const r of d.rows) {
-                  const fields = {};
-                  d.cols.forEach((c) => {
-                    fields[c.id] = r[c.id] != null ? r[c.id] : "";
-                  });
-                  await putItem({
-                    project: folder.slug,
-                    database: mod[2].slug,
-                    slug: r.slug,
-                    fields,
-                    body: r.body || "",
-                  });
-                }
-                onApplyWorkspace(await fetchWorkspace());
               }}
             >
               + Add column
@@ -1402,53 +1555,17 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
                   <Icon name="enlarge" size={14} />
                 </button>
               </td>
-              {d.cols.map((c) =>
-                c.type === "stage" ? (
-                  <td key={c.id}>
-                    <Dropdown
-                      className="table-dd"
-                      value={r[c.id] || stages[0]}
-                      options={stages}
-                      onChange={async (next) => {
-                        r[c.id] = next;
-                        const fields = {};
-                        d.cols.forEach((col) => {
-                          fields[col.id] = r[col.id] != null ? r[col.id] : "";
-                        });
-                        await putItem({
-                          project: folder.slug,
-                          database: mod[2].slug,
-                          slug: r.slug,
-                          fields,
-                          body: r.body || "",
-                        });
-                      }}
-                    />
-                  </td>
-                ) : (
-                  <td
-                    key={c.id}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={async (e) => {
-                      r[c.id] = e.currentTarget.textContent;
-                      const fields = {};
-                      d.cols.forEach((col) => {
-                        fields[col.id] = r[col.id] != null ? r[col.id] : "";
-                      });
-                      await putItem({
-                        project: folder.slug,
-                        database: mod[2].slug,
-                        slug: r.slug,
-                        fields,
-                        body: r.body || "",
-                      });
-                    }}
-                  >
-                    {r[c.id] ?? ""}
-                  </td>
-                )
-              )}
+              {d.cols.map((c) => (
+                <td key={c.id} className={"db-td db-td-" + (c.type || "text")}>
+                  <DbFieldInput
+                    col={c}
+                    value={r[c.id]}
+                    stages={stages}
+                    variant="cell"
+                    onCommit={(next) => setCell(r, c, next)}
+                  />
+                </td>
+              ))}
               <td />
             </tr>
           ))}
@@ -1458,7 +1575,7 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
               onClick={async () => {
                 const fields = {};
                 d.cols.forEach((c) => {
-                  fields[c.id] = c.type === "stage" ? stages[0] : "";
+                  fields[c.id] = emptyFieldValue(c, stages);
                 });
                 const data = await postItem({
                   project: folder.slug,
@@ -1476,6 +1593,19 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
           </tr>
         </tbody>
       </table>
+      {editCol ? (
+        <FieldEditDialog
+          col={editCol}
+          isNew={editIsNew}
+          canDelete={d.cols.length > 1 && !editIsNew}
+          onClose={() => {
+            setEditCol(null);
+            setEditIsNew(false);
+          }}
+          onSave={saveCol}
+          onDelete={deleteCol}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1523,7 +1653,7 @@ export function DatabaseView({
   const addEntry = async () => {
     const fields = {};
     (d.cols || []).forEach((c) => {
-      fields[c.id] = c.type === "stage" ? stages[0] : "";
+      fields[c.id] = emptyFieldValue(c, stages);
     });
     const data = await postItem({
       project: folder.slug,

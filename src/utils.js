@@ -124,11 +124,36 @@ export function fromApi(data, loadStagesFn) {
         db.name,
         {
           slug: db.slug,
-          cols: (db.columns || []).map((c) => ({
-            id: c.id,
-            label: c.label || c.id,
-            type: c.type || "text",
-          })),
+          cols: (db.columns || []).map((c) => {
+            const col = {
+              id: c.id,
+              label: c.label || c.id,
+              type: c.type || "text",
+              required: !!c.required,
+            };
+            if (c.type === "number") col.decimal = !!c.decimal;
+            if (c.type === "select" || c.type === "multiselect") {
+              col.options = Array.isArray(c.options)
+                ? c.options
+                    .map((o, i) => {
+                      if (typeof o === "string") {
+                        const label = o.trim();
+                        if (!label) return null;
+                        return { label, color: "default" };
+                      }
+                      if (!o || typeof o !== "object") return null;
+                      const label = String(o.label || o.value || "").trim();
+                      if (!label) return null;
+                      return {
+                        label,
+                        color: o.color || "default",
+                      };
+                    })
+                    .filter(Boolean)
+                : [];
+            }
+            return col;
+          }),
           rows: (db.items || []).map((item) => ({
             slug: item.slug,
             body: item.body || "",

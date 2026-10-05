@@ -8,7 +8,9 @@ import {
   isDone,
   pastel,
 } from "../utils.js";
+import { fieldTypeIcon } from "../dbFields.js";
 import Dropdown from "./Dropdown.jsx";
+import DbFieldInput from "./DbFieldInput.jsx";
 import PropDropdown, { PropAffix, closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 import { askConfirm } from "../confirmDialog.js";
@@ -76,7 +78,7 @@ export default function CardDialog({
   }, []);
 
   const tintStyle = (() => {
-    if (!curLoc) return {};
+    if (isDb || !curLoc) return {};
     const pc = curLoc.folder.color || PC[0];
     return { ["--pc"]: pc, background: pastel(pc) };
   })();
@@ -155,7 +157,7 @@ export default function CardDialog({
         else if (!e.target.closest?.(".prop-dd")) closePropDrops();
       }}
     >
-      <div className={"dlg" + (curLoc ? " tint" : "")} style={tintStyle}>
+      <div className={"dlg" + (curLoc && !isDb ? " tint" : "")} style={tintStyle}>
         <div className="dlg-content">
           {isDb ? null : (
             <div className="title-row">
@@ -195,183 +197,186 @@ export default function CardDialog({
               />
             </div>
           )}
-          <div className="dlg-fields">
-            {isDb ? (
-              <DbFields
-                row={draft}
-                loc={originLoc || curLoc}
-                stages={stages}
-                onPatch={patch}
-                onPersist={persist}
-              />
-            ) : (
-              <div className="prop-chips">
-                {readonly ? (
-                  <span className="prop-chip prop-chip-ro">
-                    <span
-                      className="dot"
-                      style={{
-                        background: curLoc?.folder.color || PC[0],
-                      }}
-                    />
-                    <span className="lab">
-                      {(curLoc?.folder.name || "Project") +
-                        " · " +
-                        (curLoc?.mod[1] || "Tab")}
-                    </span>
-                  </span>
-                ) : (
-                  <PropDropdown
-                    className="prop-chip"
-                    value={
-                      curLoc
-                        ? curLoc.folder.slug + "/" + curLoc.mod[2].slug
-                        : ""
-                    }
-                    options={boards.map(({ folder, mod }) => ({
-                      value: folder.slug + "/" + mod[2].slug,
-                      label: `${folder.name} · ${mod[1]}`,
-                      folder,
-                      mod,
-                    }))}
-                    onChange={(_v, o) => {
-                      const next = { folder: o.folder, mod: o.mod };
-                      setCurLoc(next);
-                      curLocRef.current = next;
-                      const cols = next.mod[2]?.columns || stages;
-                      if (!cols.includes(draftRef.current.s)) {
-                        patch({ s: cols[0] || stages[0] });
-                      }
-                      clearTimeout(persistTimer.current);
-                      persist();
-                    }}
-                    renderOption={(o) => (
-                      <>
-                        <span
-                          className="dot"
-                          style={{
-                            background: o.folder.color || PC[0],
-                          }}
-                        />
-                        {o.label}
-                      </>
-                    )}
-                  >
-                    <span
-                      className="dot"
-                      style={{
-                        background: curLoc?.folder.color || PC[0],
-                      }}
-                    />
-                    <span className="lab">
-                      {(curLoc?.folder.name || "Project") +
-                        " · " +
-                        (curLoc?.mod[1] || "Tab")}
-                    </span>
-                  </PropDropdown>
-                )}
-                {readonly ? (
-                  <span className="prop-chip prop-chip-ro">
-                    <span className="lab">{draft.s || ""}</span>
-                  </span>
-                ) : (
-                  <PropDropdown
-                    className="prop-chip"
-                    value={draft.s || ""}
-                    options={curLoc?.mod[2]?.columns || stages}
-                    onChange={(o) => {
-                      patch({ s: o });
-                      clearTimeout(persistTimer.current);
-                      draftRef.current = { ...draftRef.current, s: o };
-                      persist();
-                    }}
-                  >
-                    <span className="lab">{draft.s || ""}</span>
-                  </PropDropdown>
-                )}
-                {showMasterColumn &&
-                  (readonly ? (
+          {isDb ? (
+            <DbFields
+              row={draft}
+              loc={originLoc || curLoc}
+              stages={stages}
+              readonly={readonly}
+              onPatch={patch}
+              onPersist={persist}
+            />
+          ) : (
+            <>
+              <div className="dlg-fields">
+                <div className="prop-chips">
+                  {readonly ? (
                     <span className="prop-chip prop-chip-ro">
-                      <span className="chip-k">Master</span>
-                      <span className="lab">{draft.ms || stages[0]}</span>
+                      <span
+                        className="dot"
+                        style={{
+                          background: curLoc?.folder.color || PC[0],
+                        }}
+                      />
+                      <span className="lab">
+                        {(curLoc?.folder.name || "Project") +
+                          " · " +
+                          (curLoc?.mod[1] || "Tab")}
+                      </span>
                     </span>
                   ) : (
                     <PropDropdown
                       className="prop-chip"
-                      value={draft.ms || stages[0]}
-                      options={stages}
-                      onChange={(o) => {
-                        patch({ ms: o });
+                      value={
+                        curLoc
+                          ? curLoc.folder.slug + "/" + curLoc.mod[2].slug
+                          : ""
+                      }
+                      options={boards.map(({ folder, mod }) => ({
+                        value: folder.slug + "/" + mod[2].slug,
+                        label: `${folder.name} · ${mod[1]}`,
+                        folder,
+                        mod,
+                      }))}
+                      onChange={(_v, o) => {
+                        const next = { folder: o.folder, mod: o.mod };
+                        setCurLoc(next);
+                        curLocRef.current = next;
+                        const cols = next.mod[2]?.columns || stages;
+                        if (!cols.includes(draftRef.current.s)) {
+                          patch({ s: cols[0] || stages[0] });
+                        }
                         clearTimeout(persistTimer.current);
-                        draftRef.current = { ...draftRef.current, ms: o };
+                        persist();
+                      }}
+                      renderOption={(o) => (
+                        <>
+                          <span
+                            className="dot"
+                            style={{
+                              background: o.folder.color || PC[0],
+                            }}
+                          />
+                          {o.label}
+                        </>
+                      )}
+                    >
+                      <span
+                        className="dot"
+                        style={{
+                          background: curLoc?.folder.color || PC[0],
+                        }}
+                      />
+                      <span className="lab">
+                        {(curLoc?.folder.name || "Project") +
+                          " · " +
+                          (curLoc?.mod[1] || "Tab")}
+                      </span>
+                    </PropDropdown>
+                  )}
+                  {readonly ? (
+                    <span className="prop-chip prop-chip-ro">
+                      <span className="lab">{draft.s || ""}</span>
+                    </span>
+                  ) : (
+                    <PropDropdown
+                      className="prop-chip"
+                      value={draft.s || ""}
+                      options={curLoc?.mod[2]?.columns || stages}
+                      onChange={(o) => {
+                        patch({ s: o });
+                        clearTimeout(persistTimer.current);
+                        draftRef.current = { ...draftRef.current, s: o };
                         persist();
                       }}
                     >
-                      <span className="chip-k">Master</span>
-                      <span className="lab">{draft.ms || ""}</span>
+                      <span className="lab">{draft.s || ""}</span>
                     </PropDropdown>
-                  ))}
-                {!isDraft &&
-                  !readonly &&
-                  curLoc?.mod[0] === "Board" &&
-                  draft.slug && (
-                    <Dropdown
-                      className="prop-dd prop-chip"
-                      buttonClassName="prop-dd-btn"
-                      ariaLabel="Timelog"
-                      title="Timelog"
-                      caret={false}
-                      options={[
-                        ...(showTimelogs
-                          ? [{ value: "pomo", label: "Start pomodoro" }]
-                          : []),
-                        { value: "logs", label: "Open timelogs..." },
-                      ]}
-                      onChange={async (v) => {
-                        if (v === "pomo") {
-                          await onStartPomo({
-                            project: curLoc.folder.slug,
-                            board: curLoc.mod[2].slug,
-                            card: draft.slug,
-                            title: draft.n || "Untitled",
-                            projectName: curLoc.folder.name,
-                            boardName: curLoc.mod[1],
-                            color: curLoc.folder.color || PC[0],
-                          });
-                          await close(false);
-                          return;
-                        }
-                        if (v === "logs") {
-                          await onOpenTimelogs({
-                            project: curLoc.folder.slug,
-                            board: curLoc.mod[2].slug,
-                            card: draft.slug,
-                            title: draft.n || "Untitled",
-                          });
-                          await close(false);
-                        }
-                      }}
-                    >
-                      <Icon name="Timelogs" size={12} />
-                      <span className="lab">{formatSpent(spent)}</span>
-                      <PropAffix kind="caret" />
-                    </Dropdown>
                   )}
+                  {showMasterColumn &&
+                    (readonly ? (
+                      <span className="prop-chip prop-chip-ro">
+                        <span className="chip-k">Master</span>
+                        <span className="lab">{draft.ms || stages[0]}</span>
+                      </span>
+                    ) : (
+                      <PropDropdown
+                        className="prop-chip"
+                        value={draft.ms || stages[0]}
+                        options={stages}
+                        onChange={(o) => {
+                          patch({ ms: o });
+                          clearTimeout(persistTimer.current);
+                          draftRef.current = { ...draftRef.current, ms: o };
+                          persist();
+                        }}
+                      >
+                        <span className="chip-k">Master</span>
+                        <span className="lab">{draft.ms || ""}</span>
+                      </PropDropdown>
+                    ))}
+                  {!isDraft &&
+                    !readonly &&
+                    curLoc?.mod[0] === "Board" &&
+                    draft.slug && (
+                      <Dropdown
+                        className="prop-dd prop-chip"
+                        buttonClassName="prop-dd-btn"
+                        ariaLabel="Timelog"
+                        title="Timelog"
+                        caret={false}
+                        options={[
+                          ...(showTimelogs
+                            ? [{ value: "pomo", label: "Start pomodoro" }]
+                            : []),
+                          { value: "logs", label: "Open timelogs..." },
+                        ]}
+                        onChange={async (v) => {
+                          if (v === "pomo") {
+                            await onStartPomo({
+                              project: curLoc.folder.slug,
+                              board: curLoc.mod[2].slug,
+                              card: draft.slug,
+                              title: draft.n || "Untitled",
+                              projectName: curLoc.folder.name,
+                              boardName: curLoc.mod[1],
+                              color: curLoc.folder.color || PC[0],
+                            });
+                            await close(false);
+                            return;
+                          }
+                          if (v === "logs") {
+                            await onOpenTimelogs({
+                              project: curLoc.folder.slug,
+                              board: curLoc.mod[2].slug,
+                              card: draft.slug,
+                              title: draft.n || "Untitled",
+                            });
+                            await close(false);
+                          }
+                        }}
+                      >
+                        <Icon name="Timelogs" size={12} />
+                        <span className="lab">{formatSpent(spent)}</span>
+                        <PropAffix kind="caret" />
+                      </Dropdown>
+                    )}
+                </div>
               </div>
-            )}
-          </div>
-          <div className="dlg-description">
-            <RichTextEditor
-              value={draft.body || ""}
-              placeholder="Write something…"
-              editable={!readonly}
-              showToolbar={!readonly}
-              onChange={(html) => {
-                if (readonly) return;
-                patch({ body: html });
-              }}
-            />
-          </div>
+              <div className="dlg-description">
+                <RichTextEditor
+                  value={draft.body || ""}
+                  placeholder="Write something…"
+                  editable={!readonly}
+                  showToolbar={!readonly}
+                  onChange={(html) => {
+                    if (readonly) return;
+                    patch({ body: html });
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
         {!readonly &&
         ((!isDraft && curLoc?.mod[0] === "Board" && draft.slug) || isDraft) ? (
@@ -426,38 +431,66 @@ export default function CardDialog({
   );
 }
 
-function DbFields({ row, loc, stages, onPatch, onPersist }) {
+function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
   const cols = loc?.mod?.[2]?.cols || [];
+  const regular = cols.filter((c) => c.type !== "longtext");
+  const rich = cols.filter((c) => c.type === "longtext");
+  const firstRegular = regular[0];
+
   return (
-    <table className="props">
-      <tbody>
-        {cols.map((c, i) => (
-          <tr key={c.id}>
-            <td>{c.label}</td>
-            <td>
-              {c.type === "stage" ? (
-                <PropDropdown
-                  value={row[c.id] || stages[0]}
-                  options={stages}
-                  onChange={(o) => {
-                    onPatch({ [c.id]: o });
-                    onPersist();
-                  }}
-                >
-                  <span className="lab">{row[c.id] || stages[0] || ""}</span>
-                </PropDropdown>
-              ) : (
-                <input
-                  value={row[c.id] || ""}
-                  placeholder={c.id === "n" ? "Untitled" : ""}
-                  autoFocus={i === 0}
-                  onChange={(e) => onPatch({ [c.id]: e.target.value })}
-                />
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <>
+      {regular.length ? (
+        <div className="dlg-fields">
+          <table className="props">
+            <tbody>
+              {regular.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <span className="db-prop-lab">
+                      <Icon name={fieldTypeIcon(c.type)} size={14} />
+                      {c.label}
+                      {c.required ? <span className="db-req">*</span> : null}
+                    </span>
+                  </td>
+                  <td>
+                    <DbFieldInput
+                      col={c}
+                      value={row[c.id]}
+                      stages={stages}
+                      variant="prop"
+                      autoFocus={!readonly && c.id === firstRegular?.id}
+                      placeholder={c.id === "n" ? "New entry" : ""}
+                      onChange={(next) => onPatch({ [c.id]: next })}
+                      onCommit={() => onPersist()}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {rich.map((c) => (
+        <div key={c.id} className="dlg-description db-rich-field">
+          <RichTextEditor
+            value={row[c.id] || ""}
+            label={
+              <span className="db-prop-lab">
+                <Icon name={fieldTypeIcon(c.type)} size={14} />
+                {c.label}
+                {c.required ? <span className="db-req">*</span> : null}
+              </span>
+            }
+            placeholder="Write something…"
+            editable={!readonly}
+            showToolbar={!readonly}
+            onChange={(html) => {
+              if (readonly) return;
+              onPatch({ [c.id]: html });
+            }}
+          />
+        </div>
+      ))}
+    </>
   );
 }

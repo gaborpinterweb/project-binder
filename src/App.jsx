@@ -1047,6 +1047,8 @@ export default function App() {
                 setCoverDraft(draft);
               }}
               onSave={(patch) => saveCover(folder, x, patch)}
+              onArchive={() => confirmArchiveProject(folder)}
+              onDelete={() => confirmDeleteProject(folder)}
             />
           )}
           {loaded &&

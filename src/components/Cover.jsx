@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { PC, coverColorChoices } from "../utils.js";
 import RichTextEditor from "./RichTextEditor.jsx";
 
@@ -52,6 +53,58 @@ function ColorSwatches({ draft, onChange }) {
   );
 }
 
+function CoverMoreMenu({ onArchive, onDelete }) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const run = (fn) => {
+    setOpen(false);
+    fn?.();
+  };
+
+  return (
+    <div className={"cover-more" + (open ? " open" : "")} ref={wrapRef}>
+      <button
+        type="button"
+        className="cover-more-btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        More
+      </button>
+      {open && (
+        <div className="pop" role="menu" style={{ display: "block" }}>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onArchive)}
+          >
+            Archive
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => run(onDelete)}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Cover({
   folder,
   mod,
@@ -64,6 +117,8 @@ export default function Cover({
   onStartEdit,
   onSave,
   onCommitDraft,
+  onArchive,
+  onDelete,
 }) {
   if (draftProject) {
     return (
@@ -112,20 +167,23 @@ export default function Cover({
               }
             />
             <ColorSwatches draft={draft} onChange={onCoverDraftChange} />
-            <button
-              type="button"
-              className="cover-save"
-              onClick={() => {
-                const name = (draft.name || "").trim() || folder.name || "Untitled";
-                onSave({
-                  name,
-                  description: draft.description || "",
-                  color: draft.color || folder.color,
-                });
-              }}
-            >
-              Save
-            </button>
+            <div className="cover-actions">
+              <button
+                type="button"
+                className="cover-save"
+                onClick={() => {
+                  const name = (draft.name || "").trim() || folder.name || "Untitled";
+                  onSave({
+                    name,
+                    description: draft.description || "",
+                    color: draft.color || folder.color,
+                  });
+                }}
+              >
+                Save
+              </button>
+              <CoverMoreMenu onArchive={onArchive} onDelete={onDelete} />
+            </div>
           </div>
         </div>
       </div>

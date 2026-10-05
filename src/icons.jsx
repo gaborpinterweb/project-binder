@@ -83,6 +83,10 @@ export const IC = {
     '<path d="M8 2.5v7M5.5 7L8 9.5 10.5 7M3.5 11.5v1a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1"/>',
     "",
   ],
+  move: [
+    '<path d="M2.5 8h7M7 5l3 3-3 3M13.5 3.5v9"/><path d="M11 5.5h3.5v5H11"/>',
+    "",
+  ],
   more: [
     '<circle cx="8" cy="3.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="12.5" r="1.4" fill="currentColor" stroke="none"/>',
     "",

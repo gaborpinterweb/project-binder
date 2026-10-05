@@ -14,6 +14,7 @@ import {
 } from "@tiptap/extension-table";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
+import Dropdown from "./Dropdown.jsx";
 
 function toEditorContent(body) {
   if (!body) return "";
@@ -64,11 +65,15 @@ async function editLink(editor) {
   editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
 }
 
-function ToolbarBtn({ onClick, active, title, disabled, children }) {
+function ToolbarBtn({ onClick, active, title, disabled, className, children }) {
   return (
     <button
       type="button"
-      className={"rte-btn" + (active ? " on" : "")}
+      className={
+        "rte-btn" +
+        (active ? " on" : "") +
+        (className ? " " + className : "")
+      }
       title={title}
       aria-label={title}
       disabled={disabled}
@@ -83,7 +88,13 @@ function ToolbarBtn({ onClick, active, title, disabled, children }) {
   );
 }
 
-export function RteToolbar({ editor, forNotes = false, onDelete }) {
+export function RteToolbar({
+  editor,
+  forNotes = false,
+  onDelete,
+  moveOptions = [],
+  onMove,
+}) {
   const [, bump] = useState(0);
   useEffect(() => {
     if (!editor) return;
@@ -98,6 +109,7 @@ export function RteToolbar({ editor, forNotes = false, onDelete }) {
 
   if (!editor) return null;
   const inTable = forNotes && editor.isActive("table");
+  const canMove = typeof onMove === "function" && moveOptions.length > 0;
   return (
     <div className={"rte-toolbar" + (forNotes ? " notes-rte-toolbar" : "")}>
       {forNotes && (
@@ -289,11 +301,40 @@ export function RteToolbar({ editor, forNotes = false, onDelete }) {
           </div>
         </span>
       </div>
-      {onDelete && (
+      {(canMove || onDelete) && (
         <div className="rte-group" role="group" aria-label="Note actions">
-          <ToolbarBtn title="Delete note" onClick={onDelete}>
-            <Icon name="Trash" size={15} />
-          </ToolbarBtn>
+          {canMove && (
+            <Dropdown
+              className="rte-move-dd"
+              buttonClassName="rte-btn"
+              ariaLabel="Move note"
+              title="Move note"
+              align="right"
+              caret={false}
+              options={moveOptions}
+              onChange={(_val, opt) => onMove(opt)}
+              renderOption={(o) => (
+                <>
+                  <span
+                    className="rte-move-dot"
+                    style={{ background: o.color || "var(--acc)" }}
+                  />
+                  {o.label}
+                </>
+              )}
+            >
+              <Icon name="move" size={15} />
+            </Dropdown>
+          )}
+          {onDelete && (
+            <ToolbarBtn
+              title="Delete note"
+              onClick={onDelete}
+              className="rte-btn-danger"
+            >
+              <Icon name="Trash" size={15} />
+            </ToolbarBtn>
+          )}
         </div>
       )}
     </div>

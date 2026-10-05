@@ -1130,6 +1130,7 @@ export default function App() {
               <Notes
                 mod={x}
                 folder={folder}
+                folders={folders}
                 tabC={tabC}
                 readonly={archived}
                 onApplyWorkspace={applyWorkspace}

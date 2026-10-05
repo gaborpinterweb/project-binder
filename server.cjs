@@ -1091,6 +1091,47 @@ function deleteNote(projectSlug, notesTabSlug, noteSlug) {
   return { ok: true };
 }
 
+function moveNote(fromProjectSlug, fromTabSlug, noteSlug, toProjectSlug, toTabSlug) {
+  if (projectIsArchived(fromProjectSlug) || projectIsArchived(toProjectSlug)) {
+    return { ok: false, error: "project is archived" };
+  }
+  if (
+    fromProjectSlug === toProjectSlug &&
+    fromTabSlug === toTabSlug
+  ) {
+    return { ok: false, error: "same destination" };
+  }
+  const fromProject = findProject(fromProjectSlug);
+  const fromTab = findNotesTab(fromProject, fromTabSlug);
+  const toProject = findProject(toProjectSlug);
+  const toTab = findNotesTab(toProject, toTabSlug);
+  if (!fromProject || !fromTab) return { ok: false, error: "note not found" };
+  if (!toProject || !toTab) return { ok: false, error: "destination not found" };
+  if (!fromTab.notes) return { ok: false, error: "note not found" };
+  const idx = fromTab.notes.findIndex((n) => n.slug === noteSlug);
+  if (idx < 0) return { ok: false, error: "note not found" };
+  const [note] = fromTab.notes.splice(idx, 1);
+  if (!toTab.notes) toTab.notes = [];
+  let slug = note.slug || slugify(note.title || "note") || "note";
+  if (toTab.notes.some((n) => n.slug === slug)) {
+    slug = uniqueNoteSlug(toTab, note.title || slug);
+  }
+  const now = new Date().toISOString();
+  toTab.notes.push({
+    slug,
+    title: note.title || slug,
+    body: note.body || "",
+    createdAt: note.createdAt || note.updatedAt || now,
+    updatedAt: now,
+  });
+  return {
+    ok: true,
+    slug,
+    project: toProjectSlug,
+    notesTab: toTabSlug,
+  };
+}
+
 function writeItem(projectSlug, databaseSlug, item, columns) {
   const project = findProject(projectSlug);
   const db = findDatabase(project, databaseSlug);
@@ -1488,6 +1529,41 @@ const server = http.createServer(async (req, res) => {
       });
       saveStore();
       return json(res, 200, readWorkspace());
+    }
+    if (req.method === "POST" && url.pathname === "/api/note/move") {
+      const body = await readBody(req);
+      if (
+        !body.project ||
+        !body.notesTab ||
+        !body.note ||
+        !body.toProject ||
+        !body.toNotesTab
+      ) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      const result = moveNote(
+        body.project,
+        body.notesTab,
+        body.note,
+        body.toProject,
+        body.toNotesTab
+      );
+      if (!result.ok) {
+        const status =
+          result.error === "note not found" || result.error === "destination not found"
+            ? 404
+            : result.error === "project is archived"
+              ? 403
+              : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 200, {
+        slug: result.slug,
+        project: result.project,
+        notesTab: result.notesTab,
+        ...readWorkspace(),
+      });
     }
     if (req.method === "DELETE" && url.pathname === "/api/note") {
       const body = await readBody(req);

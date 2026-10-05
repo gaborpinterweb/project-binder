@@ -241,6 +241,19 @@ export async function deleteNoteApi(body) {
   return r.json();
 }
 
+export async function moveNoteApi(body) {
+  const r = await fetch("/api/note/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "Could not move note");
+  }
+  return r.json();
+}
+
 export async function cardTimeSpentSec(project, board, card) {
   if (!project || !board || !card) return 0;
   try {

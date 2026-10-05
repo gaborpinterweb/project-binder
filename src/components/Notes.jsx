@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { postNote, putNote, deleteNoteApi } from "../api.js";
+import { postNote, putNote, deleteNoteApi, moveNoteApi } from "../api.js";
 import { Icon } from "../icons.jsx";
-import { noteListTitle, noteListPreview, isEmptyNoteBody } from "../utils.js";
+import {
+  allNotesTabs,
+  noteListTitle,
+  noteListPreview,
+  isEmptyNoteBody,
+} from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import Dropdown from "./Dropdown.jsx";
 import RichTextEditor, { RteToolbar } from "./RichTextEditor.jsx";
@@ -60,7 +65,14 @@ function sortNotes(list, sort) {
   }
 }
 
-export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace }) {
+export default function Notes({
+  mod,
+  folder,
+  folders = [],
+  tabC,
+  readonly,
+  onApplyWorkspace,
+}) {
   const d = mod[2] || { slug: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
   const [cardSize, setCardSize] = useState("md");
@@ -69,6 +81,18 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
   const [unlocked, setUnlocked] = useState({});
   const [editor, setEditor] = useState(null);
   const [search, setSearch] = useState("");
+  const moveOptions = useMemo(() => {
+    const currentKey = `${folder?.slug || ""}/${d.slug || ""}`;
+    return allNotesTabs(folders)
+      .filter((t) => t.key !== currentKey)
+      .map((t) => ({
+        value: t.key,
+        label: t.label,
+        color: t.color,
+        folder: t.folder,
+        mod: t.mod,
+      }));
+  }, [folders, folder?.slug, d.slug]);
 
   const unlockKey = (noteSlug) => `${d.slug}:${noteSlug}`;
   const locked = !selectedSlug || !unlocked[unlockKey(selectedSlug)];
@@ -152,6 +176,35 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
     onApplyWorkspace(data);
   };
 
+  const moveNote = async (dest) => {
+    if (!selected || readonly || !dest?.folder || !dest?.mod) return;
+    const toProject = dest.folder.slug;
+    const toNotesTab = dest.mod[2]?.slug;
+    if (!toProject || !toNotesTab) return;
+    try {
+      const data = await moveNoteApi({
+        project: folder.slug,
+        notesTab: d.slug,
+        note: selected.slug,
+        toProject,
+        toNotesTab,
+      });
+      const key = unlockKey(selected.slug);
+      setUnlocked((prev) => {
+        if (!prev[key]) return prev;
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+      setSelectedSlug(null);
+      onApplyWorkspace(data, {
+        keepNav: { project: toProject, board: toNotesTab, g: null },
+      });
+    } catch (err) {
+      alert(err?.message || "Could not move note.");
+    }
+  };
+
   const selectNote = (slug) => {
     if (slug === selectedSlug) return;
     setSelectedSlug(slug);
@@ -222,7 +275,13 @@ export default function Notes({ mod, folder, tabC, readonly, onApplyWorkspace })
         </div>
         <div className="notes-toolbar-mid">
           {selected && !locked && (
-            <RteToolbar editor={editor} forNotes onDelete={readonly ? undefined : deleteNote} />
+            <RteToolbar
+              editor={editor}
+              forNotes
+              moveOptions={readonly ? [] : moveOptions}
+              onMove={readonly ? undefined : moveNote}
+              onDelete={readonly ? undefined : deleteNote}
+            />
           )}
         </div>
         <div className="modbar-end">

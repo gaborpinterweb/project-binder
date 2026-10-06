@@ -75,14 +75,148 @@
               "status": "Backend dev",
               "master": "Today",
               "doneAt": "",
-              "body": "Wire Formspark → Notion, confirmation email, and success state.",
+              "body": "Wire Formspark \u2192 Notion, confirmation email, and success state.",
               "isDemo": true
             }
           ],
           "isDemo": true
         }
       ],
-      "databases": [],
+      "databases": [
+        {
+          "slug": "launch-tracker",
+          "name": "Launch tracker",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "type": "longtext"
+            },
+            {
+              "id": "priority",
+              "label": "Priority",
+              "type": "select",
+              "options": [
+                {
+                  "label": "High",
+                  "color": "red"
+                },
+                {
+                  "label": "Medium",
+                  "color": "orange"
+                },
+                {
+                  "label": "Low",
+                  "color": "green"
+                }
+              ]
+            },
+            {
+              "id": "tags",
+              "label": "Tags",
+              "type": "multiselect",
+              "options": [
+                {
+                  "label": "Client",
+                  "color": "blue"
+                },
+                {
+                  "label": "Internal",
+                  "color": "purple"
+                },
+                {
+                  "label": "Blocked",
+                  "color": "pink"
+                },
+                {
+                  "label": "Launch",
+                  "color": "yellow"
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "type": "checkbox"
+            },
+            {
+              "id": "estimate",
+              "label": "Estimate (h)",
+              "type": "number",
+              "decimal": true
+            },
+            {
+              "id": "due",
+              "label": "Due",
+              "type": "date"
+            },
+            {
+              "id": "s",
+              "label": "Stage",
+              "type": "stage"
+            }
+          ],
+          "items": [
+            {
+              "slug": "waitlist-page",
+              "fields": {
+                "n": "Waitlist page",
+                "notes": "<p>Hero, email capture, and confirmation state for early access.</p>",
+                "priority": "High",
+                "tags": [
+                  "Client",
+                  "Launch"
+                ],
+                "done": false,
+                "estimate": 12,
+                "due": "2026-10-08",
+                "s": "Today"
+              },
+              "body": ""
+            },
+            {
+              "slug": "press-kit-assets",
+              "fields": {
+                "n": "Press kit assets",
+                "notes": "<p>Logo pack, screenshots, and founder bios for journalists.</p>",
+                "priority": "Medium",
+                "tags": [
+                  "Client"
+                ],
+                "done": true,
+                "estimate": 4,
+                "due": "2026-09-29",
+                "s": "This week"
+              },
+              "body": ""
+            },
+            {
+              "slug": "product-hunt-draft",
+              "fields": {
+                "n": "Product Hunt draft",
+                "notes": "<p>Tagline, gallery, and maker comment ready before launch day.</p>",
+                "priority": "Low",
+                "tags": [
+                  "Internal",
+                  "Launch"
+                ],
+                "done": false,
+                "estimate": 3.5,
+                "due": "2026-10-14",
+                "s": "Next week"
+              },
+              "body": ""
+            }
+          ],
+          "isDemo": true
+        }
+      ],
       "isDemo": true
     },
     {
@@ -157,14 +291,147 @@
           "isDemo": true
         }
       ],
-      "databases": [],
+      "databases": [
+        {
+          "slug": "brand-inventory",
+          "name": "Brand inventory",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "type": "longtext"
+            },
+            {
+              "id": "priority",
+              "label": "Priority",
+              "type": "select",
+              "options": [
+                {
+                  "label": "High",
+                  "color": "red"
+                },
+                {
+                  "label": "Medium",
+                  "color": "orange"
+                },
+                {
+                  "label": "Low",
+                  "color": "green"
+                }
+              ]
+            },
+            {
+              "id": "tags",
+              "label": "Tags",
+              "type": "multiselect",
+              "options": [
+                {
+                  "label": "Client",
+                  "color": "blue"
+                },
+                {
+                  "label": "Internal",
+                  "color": "purple"
+                },
+                {
+                  "label": "Blocked",
+                  "color": "pink"
+                },
+                {
+                  "label": "Launch",
+                  "color": "yellow"
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "type": "checkbox"
+            },
+            {
+              "id": "estimate",
+              "label": "Estimate (h)",
+              "type": "number",
+              "decimal": true
+            },
+            {
+              "id": "due",
+              "label": "Due",
+              "type": "date"
+            },
+            {
+              "id": "s",
+              "label": "Stage",
+              "type": "stage"
+            }
+          ],
+          "items": [
+            {
+              "slug": "logo-system",
+              "fields": {
+                "n": "Logo system",
+                "notes": "<p>Primary mark, wordmark, and mono variants for print and web.</p>",
+                "priority": "High",
+                "tags": [
+                  "Client"
+                ],
+                "done": false,
+                "estimate": 8,
+                "due": "2026-10-06",
+                "s": "Today"
+              },
+              "body": ""
+            },
+            {
+              "slug": "case-study-template",
+              "fields": {
+                "n": "Case study template",
+                "notes": "<p>Reusable layout for property stories; first pass on Casa Verde.</p>",
+                "priority": "Medium",
+                "tags": [
+                  "Client",
+                  "Internal"
+                ],
+                "done": false,
+                "estimate": 6,
+                "due": "2026-10-10",
+                "s": "This week"
+              },
+              "body": ""
+            },
+            {
+              "slug": "moodboard-directions",
+              "fields": {
+                "n": "Moodboard directions",
+                "notes": "<p>Three directions locked with client \u2014 type, color, photography.</p>",
+                "priority": "Low",
+                "tags": [
+                  "Client"
+                ],
+                "done": true,
+                "estimate": 5,
+                "due": "2026-09-28",
+                "s": "Backlog"
+              },
+              "body": ""
+            }
+          ],
+          "isDemo": true
+        }
+      ],
       "isDemo": true
     },
     {
       "slug": "meridian-site-redesign",
       "name": "Meridian site redesign",
       "color": "#2f7a6e",
-      "description": "Marketing site redesign for Meridian Advisory — clearer positioning, service pages, and lead capture.",
+      "description": "Marketing site redesign for Meridian Advisory \u2014 clearer positioning, service pages, and lead capture.",
       "boards": [
         {
           "slug": "website",
@@ -230,14 +497,147 @@
           "isDemo": true
         }
       ],
-      "databases": [],
+      "databases": [
+        {
+          "slug": "content-inventory",
+          "name": "Content inventory",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "type": "longtext"
+            },
+            {
+              "id": "priority",
+              "label": "Priority",
+              "type": "select",
+              "options": [
+                {
+                  "label": "High",
+                  "color": "red"
+                },
+                {
+                  "label": "Medium",
+                  "color": "orange"
+                },
+                {
+                  "label": "Low",
+                  "color": "green"
+                }
+              ]
+            },
+            {
+              "id": "tags",
+              "label": "Tags",
+              "type": "multiselect",
+              "options": [
+                {
+                  "label": "Client",
+                  "color": "blue"
+                },
+                {
+                  "label": "Internal",
+                  "color": "purple"
+                },
+                {
+                  "label": "Blocked",
+                  "color": "pink"
+                },
+                {
+                  "label": "Launch",
+                  "color": "yellow"
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "type": "checkbox"
+            },
+            {
+              "id": "estimate",
+              "label": "Estimate (h)",
+              "type": "number",
+              "decimal": true
+            },
+            {
+              "id": "due",
+              "label": "Due",
+              "type": "date"
+            },
+            {
+              "id": "s",
+              "label": "Stage",
+              "type": "stage"
+            }
+          ],
+          "items": [
+            {
+              "slug": "services-page",
+              "fields": {
+                "n": "Services page",
+                "notes": "<p>Four service blocks with outcomes; pull quotes from past proposals.</p>",
+                "priority": "High",
+                "tags": [
+                  "Client"
+                ],
+                "done": false,
+                "estimate": 7,
+                "due": "2026-10-09",
+                "s": "This week"
+              },
+              "body": ""
+            },
+            {
+              "slug": "lead-form",
+              "fields": {
+                "n": "Lead form + CRM",
+                "notes": "<p>HubSpot embed, thank-you page, and UTM capture.</p>",
+                "priority": "Medium",
+                "tags": [
+                  "Client",
+                  "Blocked"
+                ],
+                "done": false,
+                "estimate": 4.5,
+                "due": "2026-10-12",
+                "s": "Tomorrow"
+              },
+              "body": ""
+            },
+            {
+              "slug": "discovery-notes",
+              "fields": {
+                "n": "Discovery workshop notes",
+                "notes": "<p>Goals, audiences, and must-have pages from the kickoff call.</p>",
+                "priority": "Low",
+                "tags": [
+                  "Internal"
+                ],
+                "done": true,
+                "estimate": 2,
+                "due": "2026-09-29",
+                "s": "Today"
+              },
+              "body": ""
+            }
+          ],
+          "isDemo": true
+        }
+      ],
       "isDemo": true
     },
     {
       "slug": "shopify-store-migration",
       "name": "Shopify store migration",
       "color": "#8a5c2e",
-      "description": "Migrate North & Co. from WooCommerce to Shopify Plus — catalog, redirects, theme, and checkout apps.",
+      "description": "Migrate North & Co. from WooCommerce to Shopify Plus \u2014 catalog, redirects, theme, and checkout apps.",
       "boards": [
         {
           "slug": "migration",
@@ -299,14 +699,149 @@
               "status": "SEO",
               "master": "Today",
               "doneAt": "2026-09-29T13:36:11.006Z",
-              "body": "CSV of old Woo paths → new Shopify handles; keep top 200 SEO pages.",
+              "body": "CSV of old Woo paths \u2192 new Shopify handles; keep top 200 SEO pages.",
               "isDemo": true
             }
           ],
           "isDemo": true
         }
       ],
-      "databases": [],
+      "databases": [
+        {
+          "slug": "migration-checklist",
+          "name": "Migration checklist",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "type": "longtext"
+            },
+            {
+              "id": "priority",
+              "label": "Priority",
+              "type": "select",
+              "options": [
+                {
+                  "label": "High",
+                  "color": "red"
+                },
+                {
+                  "label": "Medium",
+                  "color": "orange"
+                },
+                {
+                  "label": "Low",
+                  "color": "green"
+                }
+              ]
+            },
+            {
+              "id": "tags",
+              "label": "Tags",
+              "type": "multiselect",
+              "options": [
+                {
+                  "label": "Client",
+                  "color": "blue"
+                },
+                {
+                  "label": "Internal",
+                  "color": "purple"
+                },
+                {
+                  "label": "Blocked",
+                  "color": "pink"
+                },
+                {
+                  "label": "Launch",
+                  "color": "yellow"
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "type": "checkbox"
+            },
+            {
+              "id": "estimate",
+              "label": "Estimate (h)",
+              "type": "number",
+              "decimal": true
+            },
+            {
+              "id": "due",
+              "label": "Due",
+              "type": "date"
+            },
+            {
+              "id": "s",
+              "label": "Stage",
+              "type": "stage"
+            }
+          ],
+          "items": [
+            {
+              "slug": "catalog-import",
+              "fields": {
+                "n": "Catalog import",
+                "notes": "<p>Products, variants, and images from WooCommerce into Shopify Plus.</p>",
+                "priority": "High",
+                "tags": [
+                  "Client",
+                  "Launch"
+                ],
+                "done": false,
+                "estimate": 16,
+                "due": "2026-10-07",
+                "s": "Today"
+              },
+              "body": ""
+            },
+            {
+              "slug": "url-redirects",
+              "fields": {
+                "n": "URL redirects",
+                "notes": "<p>CSV of legacy paths mapped to new collection and product URLs.</p>",
+                "priority": "High",
+                "tags": [
+                  "Client",
+                  "Internal"
+                ],
+                "done": false,
+                "estimate": 5,
+                "due": "2026-10-11",
+                "s": "This week"
+              },
+              "body": ""
+            },
+            {
+              "slug": "checkout-apps",
+              "fields": {
+                "n": "Checkout apps",
+                "notes": "<p>Shop Pay and Klaviyo installed; gift-card app credentials pending.</p>",
+                "priority": "Medium",
+                "tags": [
+                  "Blocked",
+                  "Launch"
+                ],
+                "done": false,
+                "estimate": 3,
+                "due": "2026-10-15",
+                "s": "Next week"
+              },
+              "body": ""
+            }
+          ],
+          "isDemo": true
+        }
+      ],
       "isDemo": true
     }
   ],
@@ -411,7 +946,7 @@
       "boardName": "Website",
       "color": "#2f7a6e",
       "kind": "pomodoro",
-      "note": "Outline only — need case-study pull quotes from client.",
+      "note": "Outline only \u2014 need case-study pull quotes from client.",
       "startedAt": "2026-09-28T11:00:00.000Z",
       "endedAt": "2026-09-28T11:20:00.000Z",
       "durationSec": 1200
@@ -606,7 +1141,7 @@
       "boardName": "Brand",
       "color": "#6b4f8c",
       "kind": "pomodoro",
-      "note": "Structure: challenge → approach → results; needs photo slots.",
+      "note": "Structure: challenge \u2192 approach \u2192 results; needs photo slots.",
       "startedAt": "2026-09-23T14:40:00.000Z",
       "endedAt": "2026-09-23T15:05:00.000Z",
       "durationSec": 1500

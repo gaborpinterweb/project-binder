@@ -34,26 +34,54 @@ export default function Sidebar({
   return (
     <aside>
       <div className="side-scroll">
-        {globals.length > 0 && (
-          <>
-            <h2>Workspace</h2>
-            <div id="globals">
-              {globals.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  className={"bm" + (g === n ? " on" : "")}
-                  onClick={() => onSelectGlobal(n)}
-                >
-                  <span style={{ color: GACC }}>
-                    <Icon name={n} />
-                  </span>
-                  <span>{globalLabel(n)}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+        <h2>Workspace</h2>
+        <div id="globals">
+          {globals.map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={"bm" + (g === n ? " on" : "")}
+              onClick={() => onSelectGlobal(n)}
+            >
+              <span style={{ color: GACC }}>
+                <Icon name={n} />
+              </span>
+              <span>{globalLabel(n)}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className="bm"
+            id="app-settings"
+            title="Settings"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSettings?.();
+            }}
+          >
+            <span style={{ color: GACC }}>
+              <Icon name="settings" />
+            </span>
+            <span>Settings</span>
+          </button>
+          {updateAvailable && (
+            <button
+              type="button"
+              className="bm side-update"
+              id="app-update"
+              title="Update available"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenUpdate?.();
+              }}
+            >
+              <span style={{ color: GACC }}>
+                <Icon name="arrow" />
+              </span>
+              <span>Update available</span>
+            </button>
+          )}
+        </div>
         <div className="side-head">
           <h2>Projects</h2>
           <button
@@ -119,58 +147,25 @@ export default function Sidebar({
           </div>
         )}
       </div>
-      <div className="side-foot">
-        <PomoBlock
-          activePomo={activePomo}
-          onStop={onStopPomo}
-          onNoteChange={onPomoNoteChange}
-          onOpenCard={onOpenPomoCard}
-        />
-        {updateAvailable && (
-          <button
-            type="button"
-            className="bm side-update"
-            id="app-update"
-            title="Update available"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenUpdate?.();
-            }}
-          >
-            <span>
-              <Icon name="arrow" />
-            </span>
-            <span>Update available</span>
-          </button>
-        )}
-        <button
-          type="button"
-          className="bm"
-          id="app-settings"
-          title="Settings"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenSettings?.();
-          }}
-        >
-          <span>
-            <Icon name="settings" />
-          </span>
-          <span>Settings</span>
-        </button>
-      </div>
+      {activePomo ? (
+        <div className="side-foot">
+          <PomoBlock
+            activePomo={activePomo}
+            onStop={onStopPomo}
+            onNoteChange={onPomoNoteChange}
+            onOpenCard={onOpenPomoCard}
+          />
+        </div>
+      ) : null}
     </aside>
   );
 }
 
 function PomoBlock({ activePomo, onStop, onNoteChange, onOpenCard }) {
-  if (!activePomo) {
-    return <div className="pomo-block" id="pomo-block" hidden />;
-  }
   const rem = pomoRemainingSec(activePomo);
   const color = activePomo.color || GACC;
   return (
-    <div className="pomo-block on" id="pomo-block">
+    <div className="pomo-block" id="pomo-block">
       <div className="pomo-time" id="pomo-time">
         {formatDuration(rem)}
       </div>

@@ -15,9 +15,11 @@ import {
   normalizeDbCol,
   serializeDbCol,
 } from "../dbFields.js";
+import { createFilterState, filterRows } from "../dbFilters.js";
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
+import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
 import FieldEditDialog from "./FieldEditDialog.jsx";
 import { askPrompt } from "../promptDialog.js";
 import {
@@ -1442,10 +1444,11 @@ async function persistDbRow(folder, mod, row, cols) {
   });
 }
 
-function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
+function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, displayRows }) {
   const [editCol, setEditCol] = useState(null);
   const [editIsNew, setEditIsNew] = useState(false);
   const [, bump] = useState(0);
+  const rows = displayRows || d.rows;
 
   const refresh = async () => {
     onApplyWorkspace(await fetchWorkspace());
@@ -1542,7 +1545,7 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
           </tr>
         </thead>
         <tbody>
-          {d.rows.map((r) => (
+          {rows.map((r) => (
             <tr key={r.slug}>
               <td className="db-enlarge-col">
                 <button
@@ -1610,10 +1613,11 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace }) {
   );
 }
 
-function DbGallery({ d, onOpen }) {
+function DbGallery({ d, onOpen, displayRows }) {
+  const rows = displayRows || d.rows;
   return (
     <div className="gallery">
-      {d.rows.map((r) => (
+      {rows.map((r) => (
         <div className="gcard" key={r.slug} onClick={() => onOpen(r)}>
           <div className="cover">{(r.n || "?")[0].toUpperCase()}</div>
           <b>{r.n || "Untitled"}</b>
@@ -1634,6 +1638,11 @@ export function DatabaseView({
   onApplyWorkspace,
 }) {
   const [customViews, setCustomViews] = useState(false);
+  const [filters, setFilters] = useState(createFilterState);
+  const dbSlug = mod[2]?.slug;
+  useEffect(() => {
+    setFilters(createFilterState());
+  }, [dbSlug]);
   const d = mod[2] || {
     cur: 0,
     views: [{ n: "Table", t: "table" }],
@@ -1649,6 +1658,8 @@ export function DatabaseView({
   }
   if (!d.views) d.views = [{ n: "Table", t: "table" }, { n: "Gallery", t: "gallery" }];
   if (d.cur >= d.views.length) d.cur = 0;
+
+  const displayRows = filterRows(d.rows || [], filters, d.cols || []);
 
   const addEntry = async () => {
     const fields = {};
@@ -1676,11 +1687,13 @@ export function DatabaseView({
     d.views[d.cur].t === "gallery" ? (
       <DbGallery
         d={d}
+        displayRows={displayRows}
         onOpen={(r) => onOpenCard(r, { folder, mod })}
       />
     ) : (
       <DbTable
         d={d}
+        displayRows={displayRows}
         folder={folder}
         mod={mod}
         stages={stages}
@@ -1721,6 +1734,12 @@ export function DatabaseView({
             <Icon name="eye" size={18} />
             <span className="mod-act-lab">View</span>
           </Dropdown>
+          <DbFiltersDropdown
+            cols={d.cols || []}
+            stages={stages}
+            filters={filters}
+            onChange={setFilters}
+          />
         </div>
       </div>
       <div className="db-layout">

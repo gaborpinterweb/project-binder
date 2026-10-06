@@ -267,8 +267,8 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .modbar .mod-view-dd .dd-menu{min-width:200px;max-height:none;overflow:visible}
 .modbar .gbar-tools .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
 .modbar .db-view-check{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;color:var(--ink)}
-.modbar .db-cols-dd,.modbar .db-filters-dd{position:relative;flex:none;width:72px}
-.modbar .db-cols-dd .mod-act,.modbar .db-filters-dd .mod-act{width:100%}
+.modbar .db-cols-dd,.modbar .db-filters-dd,.modbar .db-sorts-dd{position:relative;flex:none;width:72px}
+.modbar .db-cols-dd .mod-act,.modbar .db-filters-dd .mod-act,.modbar .db-sorts-dd .mod-act{width:100%}
 .modbar .db-cols-menu{display:block;left:0;right:auto;min-width:220px;max-width:min(320px,92vw);max-height:min(360px,50vh);padding:8px;z-index:70;overflow:auto}
 .db-cols-list{display:flex;flex-direction:column;gap:2px}
 .db-cols-item{display:flex;align-items:center;gap:8px;min-width:0;padding:7px 8px;border-radius:calc(var(--radius) - 6px);color:var(--ink);font-size:13px;font-weight:500;cursor:pointer}
@@ -276,13 +276,27 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .db-cols-item input{flex:none;width:14px;height:14px;margin:0;accent-color:var(--acc);cursor:pointer}
 .db-cols-item svg{flex:none;opacity:.7}
 .db-cols-item span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.modbar .db-filters-menu{display:block;left:0;right:auto;min-width:min(640px,92vw);max-width:min(720px,94vw);padding:10px;z-index:70;overflow:visible}
+.modbar .db-filters-menu,.modbar .db-sorts-menu{display:block;left:0;right:auto;min-width:min(420px,92vw);max-width:min(520px,94vw);padding:10px;z-index:70;overflow:visible}
+.modbar .db-filters-menu{min-width:min(640px,92vw);max-width:min(720px,94vw)}
 .modbar .db-filters-menu .db-filter-remove,
-.modbar .db-filters-menu .db-filters-add{width:auto}
-.modbar .db-filters-menu .dd-btn{display:inline-flex;align-items:center;gap:6px;width:100%}
-.modbar .db-filters-menu .dd-menu button{width:100%}
-.db-filters-rows{display:flex;flex-direction:column;gap:8px}
-.db-filter-row{display:flex;align-items:center;gap:6px;min-width:0}
+.modbar .db-filters-menu .db-filters-add,
+.modbar .db-sorts-menu .db-filter-remove,
+.modbar .db-sorts-menu .db-filters-add{width:auto}
+.modbar .db-filters-menu .dd-btn,.modbar .db-sorts-menu .dd-btn{display:inline-flex;align-items:center;gap:6px;width:100%}
+.modbar .db-filters-menu .dd-menu button,.modbar .db-sorts-menu .dd-menu button{width:100%}
+.db-filters-rows,.db-sorts-rows{display:flex;flex-direction:column;gap:8px}
+.db-filter-row,.db-sort-row{display:flex;align-items:center;gap:6px;min-width:0}
+.db-sort-row.dragging{opacity:.55}
+.db-sort-field-dd.dd{flex:1 1 180px;min-width:160px;width:auto;max-width:none}
+.db-sort-dir-dd.dd{flex:0 0 110px;min-width:96px;width:auto;max-width:none}
+.db-sort-dir-dd .dd-btn,.db-sort-field-dd .dd-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;width:100%;min-height:28px;padding:4px 8px;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px);background:#fff;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left}
+.db-sort-field-dd .dd-btn > span,.db-sort-field-dd .dd-btn > .db-filter-field-opt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-sort-dir-dd .dd-btn:hover,.db-sort-field-dd .dd-btn:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.db-sort-dir-dd.open .dd-btn,.db-sort-field-dd.open .dd-btn{border-color:var(--acc);box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 35%,transparent)}
+.db-sort-dir-dd .dd-menu,.db-sort-field-dd .dd-menu{min-width:max(100%,120px);z-index:80}
+.db-sort-handle{flex:none;display:inline-grid;place-items:center;width:26px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:grab}
+.db-sort-handle:hover{background:var(--sel);color:var(--ink)}
+.db-sort-handle:active{cursor:grabbing}
 .db-filter-remove{flex:none;display:inline-grid;place-items:center;width:26px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
 .db-filter-remove:hover:not(:disabled){background:var(--sel);color:var(--ink)}
 .db-filter-remove:disabled{opacity:.35;cursor:default}

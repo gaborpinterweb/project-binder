@@ -22,7 +22,7 @@ const STEPS = [
   },
   {
     title: "... and there's much more!",
-    text: "To learn more, visit GitHub.",
+    text: "We've created some demo projects so you can look around. Feel free to delete them when you're ready.",
     link: { href: GITHUB_URL, label: "Visit GitHub" },
   },
 ];

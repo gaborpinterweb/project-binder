@@ -16,6 +16,7 @@ import {
   serializeDbCol,
 } from "../dbFields.js";
 import { filterRows } from "../dbFilters.js";
+import { sortRows } from "../dbSorts.js";
 import {
   createCustomView,
   DEFAULT_VIEW_ID,
@@ -29,6 +30,7 @@ import Dropdown from "./Dropdown.jsx";
 import DbColumnsDropdown from "./DbColumnsDropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
 import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
+import DbSortsDropdown from "./DbSortsDropdown.jsx";
 import FieldEditDialog from "./FieldEditDialog.jsx";
 import { askPrompt } from "../promptDialog.js";
 import { askConfirm } from "../confirmDialog.js";
@@ -1791,6 +1793,7 @@ export function DatabaseView({
   const activeView =
     customViews.find((v) => v.id === d.customViewId) || customViews[0];
   const filters = activeView.filters;
+  const sorts = activeView.sorts;
   const hiddenCols = activeView.hiddenCols || [];
 
   useEffect(() => {
@@ -1825,6 +1828,13 @@ export function DatabaseView({
 
   const setHiddenCols = (next) => {
     activeView.hiddenCols = next;
+    d.customViews = normalizeCustomViews(customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const setSorts = (next) => {
+    activeView.sorts = next;
     d.customViews = normalizeCustomViews(customViews);
     bump((n) => n + 1);
     schedulePersistViews();
@@ -1876,7 +1886,11 @@ export function DatabaseView({
     schedulePersistViews();
   };
 
-  const displayRows = filterRows(d.rows || [], filters, d.cols || []);
+  const displayRows = sortRows(
+    filterRows(d.rows || [], filters, d.cols || []),
+    sorts,
+    d.cols || []
+  );
 
   const addEntry = async () => {
     const fields = {};
@@ -1959,6 +1973,11 @@ export function DatabaseView({
             stages={stages}
             filters={filters}
             onChange={setFilters}
+          />
+          <DbSortsDropdown
+            cols={d.cols || []}
+            sorts={sorts}
+            onChange={setSorts}
           />
         </div>
       </div>

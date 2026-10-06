@@ -74,12 +74,42 @@ function normalizeHiddenCols(hiddenCols) {
   return out;
 }
 
-function createDefaultCustomView(filters, hiddenCols) {
+function createSortRule() {
+  return {
+    id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    fieldId: "",
+    dir: "asc",
+  };
+}
+
+function emptySortState() {
+  return { rules: [createSortRule()] };
+}
+
+function normalizeSorts(sorts) {
+  if (!sorts || typeof sorts !== "object") return emptySortState();
+  const rules = Array.isArray(sorts.rules)
+    ? sorts.rules
+        .map((r, i) => {
+          if (!r || typeof r !== "object") return null;
+          return {
+            id: String(r.id || "s" + i),
+            fieldId: String(r.fieldId || ""),
+            dir: r.dir === "desc" ? "desc" : "asc",
+          };
+        })
+        .filter(Boolean)
+    : [];
+  return { rules: rules.length ? rules : emptySortState().rules };
+}
+
+function createDefaultCustomView(filters, hiddenCols, sorts) {
   return {
     id: DEFAULT_CUSTOM_VIEW_ID,
     name: DEFAULT_CUSTOM_VIEW_NAME,
     filters: normalizeFilters(filters),
     hiddenCols: normalizeHiddenCols(hiddenCols),
+    sorts: normalizeSorts(sorts),
   };
 }
 
@@ -87,12 +117,14 @@ function normalizeCustomViews(views) {
   const extras = [];
   let defaultFilters = emptyFilterState();
   let defaultHiddenCols = [];
+  let defaultSorts = emptySortState();
   for (const v of Array.isArray(views) ? views : []) {
     if (!v || v.id == null) continue;
     const id = String(v.id);
     if (id === DEFAULT_CUSTOM_VIEW_ID) {
       defaultFilters = normalizeFilters(v.filters);
       defaultHiddenCols = normalizeHiddenCols(v.hiddenCols);
+      defaultSorts = normalizeSorts(v.sorts);
       continue;
     }
     extras.push({
@@ -100,9 +132,10 @@ function normalizeCustomViews(views) {
       name: String(v.name || "Untitled view").trim() || "Untitled view",
       filters: normalizeFilters(v.filters),
       hiddenCols: normalizeHiddenCols(v.hiddenCols),
+      sorts: normalizeSorts(v.sorts),
     });
   }
-  return [createDefaultCustomView(defaultFilters, defaultHiddenCols), ...extras];
+  return [createDefaultCustomView(defaultFilters, defaultHiddenCols, defaultSorts), ...extras];
 }
 
 function resolveCustomViewId(viewId, views) {

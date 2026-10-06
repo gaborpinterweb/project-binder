@@ -83,6 +83,14 @@ export const IC = {
     '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6 3v10"/>',
     "",
   ],
+  sort: [
+    '<path d="M5 3.5v9M3.2 5.2L5 3.5l1.8 1.7M11 12.5v-9M9.2 10.8L11 12.5l1.8-1.7"/>',
+    "",
+  ],
+  grip: [
+    '<circle cx="5.5" cy="4" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="4" r="1.1" fill="currentColor" stroke="none"/><circle cx="5.5" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="5.5" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="12" r="1.1" fill="currentColor" stroke="none"/>',
+    "",
+  ],
   filter: [
     '<path d="M2.5 3.5h11l-4 5v3.5L6.5 14V8.5z"/>',
     "",

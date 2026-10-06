@@ -262,16 +262,16 @@
               }
             },
             {
-              "id": "this-week",
-              "name": "This week",
+              "id": "launch-tag",
+              "name": "Launch tagged",
               "filters": {
                 "junction": "and",
                 "rules": [
                   {
                     "id": "r1",
-                    "fieldId": "s",
-                    "op": "is",
-                    "value": "This week"
+                    "fieldId": "tags",
+                    "op": "contains",
+                    "value": "Launch"
                   }
                 ]
               }
@@ -548,13 +548,19 @@
               }
             },
             {
-              "id": "open-items",
-              "name": "Open items",
+              "id": "client-work",
+              "name": "Client work",
               "filters": {
                 "junction": "and",
                 "rules": [
                   {
                     "id": "r1",
+                    "fieldId": "tags",
+                    "op": "contains",
+                    "value": "Client"
+                  },
+                  {
+                    "id": "r2",
                     "fieldId": "done",
                     "op": "is_not_checked",
                     "value": ""
@@ -563,16 +569,16 @@
               }
             },
             {
-              "id": "this-week",
-              "name": "This week",
+              "id": "done",
+              "name": "Completed",
               "filters": {
                 "junction": "and",
                 "rules": [
                   {
                     "id": "r1",
-                    "fieldId": "s",
-                    "op": "is",
-                    "value": "This week"
+                    "fieldId": "done",
+                    "op": "is_checked",
+                    "value": ""
                   }
                 ]
               }
@@ -832,36 +838,6 @@
               }
             },
             {
-              "id": "high-priority",
-              "name": "High priority",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "priority",
-                    "op": "is",
-                    "value": "High"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "open-items",
-              "name": "Open items",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "done",
-                    "op": "is_not_checked",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
               "id": "this-week",
               "name": "This week",
               "filters": {
@@ -872,6 +848,42 @@
                     "fieldId": "s",
                     "op": "is",
                     "value": "This week"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "blocked",
+              "name": "Blocked",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "tags",
+                    "op": "contains",
+                    "value": "Blocked"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "active-or-today",
+              "name": "Today or open",
+              "filters": {
+                "junction": "or",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "s",
+                    "op": "is",
+                    "value": "Today"
+                  },
+                  {
+                    "id": "r2",
+                    "fieldId": "done",
+                    "op": "is_not_checked",
+                    "value": ""
                   }
                 ]
               }
@@ -1151,13 +1163,19 @@
               }
             },
             {
-              "id": "open-items",
-              "name": "Open items",
+              "id": "launch-open",
+              "name": "Launch & open",
               "filters": {
                 "junction": "and",
                 "rules": [
                   {
                     "id": "r1",
+                    "fieldId": "tags",
+                    "op": "contains",
+                    "value": "Launch"
+                  },
+                  {
+                    "id": "r2",
                     "fieldId": "done",
                     "op": "is_not_checked",
                     "value": ""
@@ -1166,16 +1184,16 @@
               }
             },
             {
-              "id": "this-week",
-              "name": "This week",
+              "id": "heavy",
+              "name": "8h+ estimates",
               "filters": {
                 "junction": "and",
                 "rules": [
                   {
                     "id": "r1",
-                    "fieldId": "s",
-                    "op": "is",
-                    "value": "This week"
+                    "fieldId": "estimate",
+                    "op": "gte",
+                    "value": "8"
                   }
                 ]
               }

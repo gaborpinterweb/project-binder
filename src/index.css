@@ -739,6 +739,8 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dd-menu{min-width:100%;max-height:min(360px,60vh);overflow:auto}
 .dd-menu button{display:block;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
 .dd-menu button:hover,.dd-menu button.on{background:var(--sel)}
+.dd-opt{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.dd-opt>svg{flex:none;opacity:.75}
 .dd-section + .dd-section{margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
 .dd-heading{padding:6px 10px 4px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
 .modbar .done-view-dd{margin-left:auto}

@@ -5,6 +5,7 @@ import {
   TIMELOG_GROUP_BYS,
   TIMELOG_PERIODS,
   allBoards,
+  findCardBySlugs,
   formatClock,
   formatDuration,
   formatSpent,
@@ -24,6 +25,50 @@ const TIMELOG_VIEWS = [
   { value: "list", label: "List view" },
   { value: "calendar", label: "Calendar view" },
 ];
+
+const ADD_LOG_OPTIONS = [
+  { value: "manual", label: "Add manually", icon: "pencil" },
+  { value: "pomo", label: "Start pomodoro", icon: "tomato" },
+  { value: "stopwatch", label: "Start stopwatch", icon: "stopwatch" },
+];
+
+function sessionTarget(folders, filter, titleFallback) {
+  if (filter?.project && filter?.board && filter?.card) {
+    const hit = findCardBySlugs(folders, filter.project, filter.board, filter.card);
+    if (hit) {
+      return {
+        project: hit.folder.slug,
+        board: hit.mod[2].slug,
+        card: hit.row.slug,
+        title: hit.row.n || filter.title || "Untitled",
+        projectName: hit.folder.name,
+        boardName: hit.mod[1],
+        color: hit.folder.color || GACC,
+      };
+    }
+    return {
+      project: filter.project,
+      board: filter.board,
+      card: filter.card,
+      title: filter.title || "Untitled",
+      projectName: filter.projectName || "",
+      boardName: filter.boardName || "",
+      color: filter.color || GACC,
+    };
+  }
+  const boardsList = allBoards(folders);
+  if (!boardsList.length) return null;
+  const { folder, mod, color } = boardsList[0];
+  return {
+    project: folder.slug,
+    board: mod[2]?.slug || "",
+    card: "",
+    title: titleFallback,
+    projectName: folder.name,
+    boardName: mod[1],
+    color: color || folder.color || GACC,
+  };
+}
 
 function entryBoardKey(entry) {
   return `${entry.project || ""}/${entry.board || ""}`;
@@ -352,6 +397,7 @@ export default function Timelogs({
   timelogFilter,
   onClearFilter,
   onOpenCard,
+  onStartPomo,
   refreshKey,
 }) {
   const [entries, setEntries] = useState(null);
@@ -437,8 +483,8 @@ export default function Timelogs({
   };
 
   const addLog = async () => {
-    const boardsList = allBoards(folders);
-    if (!boardsList.length) {
+    const target = sessionTarget(folders, filter, "Manual entry");
+    if (!target) {
       alert("Create a task board first to add a log.");
       return;
     }
@@ -450,18 +496,11 @@ export default function Timelogs({
     });
     if (mins == null) return;
     const durationSec = Math.max(0, Math.round(parseFloat(String(mins).replace(",", ".")) * 60) || 0);
-    const { folder, mod, color } = boardsList[0];
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - durationSec * 1000);
     try {
       await postTimelog({
-        project: folder.slug,
-        board: mod[2]?.slug || "",
-        card: "",
-        title: "Manual entry",
-        projectName: folder.name,
-        boardName: mod[1],
-        color: color || folder.color || GACC,
+        ...target,
         kind: "manual",
         note: "",
         startedAt: startedAt.toISOString(),
@@ -473,6 +512,22 @@ export default function Timelogs({
     } catch {
       alert("Could not add timelog.");
     }
+  };
+
+  const startTimer = async (kind) => {
+    const title = kind === "stoptimer" ? "Stopwatch" : "Pomodoro";
+    const target = sessionTarget(folders, filter, title);
+    if (!target) {
+      alert("Create a task board first to start a timer.");
+      return;
+    }
+    await onStartPomo?.({ ...target, kind });
+  };
+
+  const onAddLogAction = (value) => {
+    if (value === "manual") addLog();
+    else if (value === "pomo") startTimer("pomodoro");
+    else if (value === "stopwatch") startTimer("stoptimer");
   };
 
   const startEdit = (entry) => {
@@ -559,16 +614,19 @@ export default function Timelogs({
   return (
     <div id="view" className="mod" style={{ ["--tab"]: tabC }}>
       <GlobalBar name="Timelogs">
-        <button
-          type="button"
-          className="mod-act"
+        <Dropdown
+          className="mod-view-dd"
+          buttonClassName="mod-act"
+          ariaLabel="Add log"
           title="Add log"
-          aria-label="Add log"
-          onClick={addLog}
+          align="right"
+          caret={false}
+          options={ADD_LOG_OPTIONS}
+          onChange={onAddLogAction}
         >
           <Icon name="plus" size={18} />
           <span className="mod-act-lab">Add log</span>
-        </button>
+        </Dropdown>
         <Dropdown
           className="mod-view-dd"
           buttonClassName={"mod-act" + (viewMode === "calendar" ? " on" : "")}

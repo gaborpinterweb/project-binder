@@ -373,13 +373,13 @@ export default function App() {
   }
 
   async function startPomodoro(payload) {
-    if (!payload.project || !payload.board || !payload.card) return;
+    if (!payload.project || !payload.board) return;
     if (activePomoRef.current) await stopPomodoro();
     const kind = payload.kind === "stoptimer" ? "stoptimer" : "pomodoro";
     const session = {
       project: payload.project,
       board: payload.board,
-      card: payload.card,
+      card: payload.card || "",
       title: payload.title || "Untitled",
       projectName: payload.projectName || payload.project,
       boardName: payload.boardName || payload.board,
@@ -961,6 +961,7 @@ export default function App() {
                 if (hit) openItem(hit.row);
               }}
               refreshKey={timelogRefresh}
+              onStartPomo={startPomodoro}
             />
           )}
           {loaded && !loadError && !draftProject && g === "Trash" && (

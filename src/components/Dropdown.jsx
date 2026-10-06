@@ -34,7 +34,16 @@ function renderOptions({ options, value, onChange, renderOption, close }) {
           close?.();
         }}
       >
-        {renderOption ? renderOption(o) : optionLabel(o)}
+        {renderOption ? (
+          renderOption(o)
+        ) : typeof o === "object" && o?.icon ? (
+          <span className="dd-opt">
+            <Icon name={o.icon} size={14} />
+            {optionLabel(o)}
+          </span>
+        ) : (
+          optionLabel(o)
+        )}
       </button>
     );
   });

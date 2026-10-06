@@ -328,11 +328,23 @@ export default function CardDialog({
                         options={[
                           ...(showTimelogs
                             ? [
-                                { value: "pomo", label: "Start pomodoro" },
-                                { value: "stoptimer", label: "Start stoptimer" },
+                                {
+                                  value: "pomo",
+                                  label: "Start pomodoro",
+                                  icon: "tomato",
+                                },
+                                {
+                                  value: "stoptimer",
+                                  label: "Start stopwatch",
+                                  icon: "stopwatch",
+                                },
                               ]
                             : []),
-                          { value: "logs", label: "Open timelogs..." },
+                          {
+                            value: "logs",
+                            label: "Open timelogs...",
+                            icon: "list",
+                          },
                         ]}
                         onChange={async (v) => {
                           if (v === "pomo" || v === "stoptimer") {

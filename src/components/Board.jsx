@@ -15,13 +15,23 @@ import {
   normalizeDbCol,
   serializeDbCol,
 } from "../dbFields.js";
-import { createFilterState, filterRows } from "../dbFilters.js";
+import { filterRows } from "../dbFilters.js";
+import {
+  activeCustomView,
+  createCustomView,
+  DEFAULT_VIEW_ID,
+  isDefaultCustomView,
+  normalizeCustomViews,
+  resolveCustomViewId,
+} from "../dbViews.js";
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
 import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
+import DbViewMenu from "./DbViewMenu.jsx";
 import FieldEditDialog from "./FieldEditDialog.jsx";
 import { askPrompt } from "../promptDialog.js";
+import { askConfirm } from "../confirmDialog.js";
 import {
   PC,
   STAGES,
@@ -37,6 +47,8 @@ import {
   pastel,
   COMPLETED_VIEWS,
   loadCompletedViews,
+  loadDbViewsSidebar,
+  saveDbViewsSidebar,
 } from "../utils.js";
 import GlobalBar from "./GlobalBar.jsx";
 
@@ -1427,6 +1439,19 @@ async function persistDbColumns(folder, mod, cols) {
     database: mod[2].slug,
     name: mod[1],
     columns,
+    customViews: normalizeCustomViews(mod[2].customViews),
+    customViewId: resolveCustomViewId(mod[2].customViewId, mod[2].customViews),
+  });
+}
+
+async function persistDbCustomViews(folder, mod) {
+  await putDatabase({
+    project: folder.slug,
+    database: mod[2].slug,
+    name: mod[1],
+    columns: (mod[2].cols || []).map(serializeDbCol).filter(Boolean),
+    customViews: normalizeCustomViews(mod[2].customViews),
+    customViewId: resolveCustomViewId(mod[2].customViewId, mod[2].customViews),
   });
 }
 
@@ -1637,12 +1662,12 @@ export function DatabaseView({
   onOpenCard,
   onApplyWorkspace,
 }) {
-  const [customViews, setCustomViews] = useState(false);
-  const [filters, setFilters] = useState(createFilterState);
-  const dbSlug = mod[2]?.slug;
-  useEffect(() => {
-    setFilters(createFilterState());
-  }, [dbSlug]);
+  const scope = boardKey(folder, mod);
+  const [showViews, setShowViews] = useState(
+    () => !!loadDbViewsSidebar()[scope]
+  );
+  const [, bump] = useState(0);
+  const persistTimer = useRef(null);
   const d = mod[2] || {
     cur: 0,
     views: [{ n: "Table", t: "table" }],
@@ -1658,6 +1683,72 @@ export function DatabaseView({
   }
   if (!d.views) d.views = [{ n: "Table", t: "table" }, { n: "Gallery", t: "gallery" }];
   if (d.cur >= d.views.length) d.cur = 0;
+  d.customViews = normalizeCustomViews(d.customViews);
+  d.customViewId = resolveCustomViewId(d.customViewId, d.customViews);
+
+  const customViews = d.customViews;
+  const activeView = activeCustomView(customViews, d.customViewId);
+  const filters = activeView.filters;
+
+  useEffect(() => {
+    setShowViews(!!loadDbViewsSidebar()[scope]);
+  }, [scope]);
+
+  useEffect(() => {
+    return () => clearTimeout(persistTimer.current);
+  }, []);
+
+  const toggleViewsSidebar = () => {
+    setShowViews((v) => {
+      const next = !v;
+      saveDbViewsSidebar(scope, next);
+      return next;
+    });
+  };
+
+  const schedulePersistViews = () => {
+    clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => {
+      persistDbCustomViews(folder, mod).catch(() => {});
+    }, 300);
+  };
+
+  const setFilters = (next) => {
+    activeView.filters = next;
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const selectView = (id) => {
+    if (id === d.customViewId) return;
+    d.customViewId = resolveCustomViewId(id, customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const addView = () => {
+    const view = createCustomView("Untitled view");
+    d.customViews = normalizeCustomViews([...customViews, view]);
+    d.customViewId = view.id;
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const deleteView = async (view) => {
+    if (isDefaultCustomView(view)) return;
+    const ok = await askConfirm({
+      title: `Delete "${view.name}"?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    const next = customViews.filter((v) => v.id !== view.id);
+    d.customViews = normalizeCustomViews(next);
+    if (d.customViewId === view.id) d.customViewId = DEFAULT_VIEW_ID;
+    d.customViewId = resolveCustomViewId(d.customViewId, d.customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
 
   const displayRows = filterRows(d.rows || [], filters, d.cols || []);
 
@@ -1720,20 +1811,13 @@ export function DatabaseView({
             <Icon name="plus" size={18} />
             <span className="mod-act-lab">Add entry</span>
           </button>
-          <Dropdown
-            className="mod-view-dd"
-            buttonClassName={"mod-act" + (customViews ? " on" : "")}
-            ariaLabel="View options"
-            title="View options"
-            align="left"
-            caret={false}
-            value={customViews ? "customViews" : ""}
-            options={[{ value: "customViews", label: "Custom views" }]}
-            onChange={() => setCustomViews((v) => !v)}
-          >
-            <Icon name="eye" size={18} />
-            <span className="mod-act-lab">View</span>
-          </Dropdown>
+          <DbViewMenu
+            showViews={showViews}
+            onToggleSidebar={toggleViewsSidebar}
+            customViews={customViews}
+            activeViewId={activeView.id}
+            onSelectView={selectView}
+          />
           <DbFiltersDropdown
             cols={d.cols || []}
             stages={stages}
@@ -1743,7 +1827,47 @@ export function DatabaseView({
         </div>
       </div>
       <div className="db-layout">
-        {customViews ? <aside className="db-sidebar" aria-label="Custom views" /> : null}
+        {showViews ? (
+          <aside className="db-sidebar" aria-label="Custom views">
+            <div className="db-views-list">
+              {customViews.map((view) => {
+                const on = view.id === activeView.id;
+                const locked = isDefaultCustomView(view);
+                return (
+                  <div
+                    key={view.id}
+                    className={"db-view-item" + (on ? " on" : "")}
+                  >
+                    <button
+                      type="button"
+                      className="db-view-select"
+                      aria-current={on ? "true" : undefined}
+                      onClick={() => selectView(view.id)}
+                    >
+                      <Icon name="eye" size={14} />
+                      <span>{view.name}</span>
+                    </button>
+                    {locked ? null : (
+                      <button
+                        type="button"
+                        className="db-view-delete"
+                        title="Delete view"
+                        aria-label={`Delete ${view.name}`}
+                        onClick={() => deleteView(view)}
+                      >
+                        <Icon name="close" size={12} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <button type="button" className="db-views-add" onClick={addView}>
+              <Icon name="plus" size={14} />
+              Add view
+            </button>
+          </aside>
+        ) : null}
         <div className="db-main">{main}</div>
       </div>
     </div>

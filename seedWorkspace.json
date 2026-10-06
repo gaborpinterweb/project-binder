@@ -214,10 +214,103 @@
               "body": ""
             }
           ],
-          "isDemo": true
+          "isDemo": true,
+          "customViews": [
+            {
+              "id": "default",
+              "name": "Default view",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "",
+                    "op": "",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "high-priority",
+              "name": "High priority",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "priority",
+                    "op": "is",
+                    "value": "High"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "open-items",
+              "name": "Open items",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "done",
+                    "op": "is_not_checked",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "this-week",
+              "name": "This week",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "s",
+                    "op": "is",
+                    "value": "This week"
+                  }
+                ]
+              }
+            }
+          ],
+          "customViewId": "default"
         }
       ],
-      "isDemo": true
+      "isDemo": true,
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "launch-brief",
+              "title": "Launch brief",
+              "body": "<h1>Launch brief</h1><p>Ship the Aurora waitlist landing and press kit before Product Hunt day.</p><h2>Must ship</h2><ul><li><p>Hero copy + CTA</p></li><li><p>Formspark \u2192 Notion waitlist</p></li><li><p>Press kit PDF</p></li></ul><h3>Risks</h3><p><mark>DNS cutover needs Luis online Saturday morning.</mark></p><p>Tracking pixel ID lives in <code>NEXT_PUBLIC_PH_PIXEL</code>.</p><p><strong>Owner:</strong> G\u00e1bor \u00b7 <em>Target: Oct 14</em></p>",
+              "createdAt": "2026-09-22T10:00:00.000Z",
+              "updatedAt": "2026-09-30T16:20:00.000Z"
+            },
+            {
+              "slug": "stakeholder-map",
+              "title": "Stakeholder map",
+              "body": "<h1>Stakeholder map</h1><p>Who needs to approve what before launch day.</p><table><tbody><tr><th><p>Person</p></th><th><p>Role</p></th><th><p>Sign-off</p></th></tr><tr><td><p>Maya</p></td><td><p>Founder</p></td><td><p>Copy + brand</p></td></tr><tr><td><p>Luis</p></td><td><p>Eng</p></td><td><p>DNS + Formspark</p></td></tr><tr><td><p>Priya</p></td><td><p>Design</p></td><td><p>Hero review</p></td></tr></tbody></table><blockquote><p>Keep the waitlist page under 3 scrolls on mobile.</p></blockquote>",
+              "createdAt": "2026-09-24T14:15:00.000Z",
+              "updatedAt": "2026-09-28T09:40:00.000Z"
+            },
+            {
+              "slug": "ph-checklist",
+              "title": "Product Hunt checklist",
+              "body": "<h1>Product Hunt checklist</h1><p>Draft assets so launch day is mostly scheduling.</p><ol><li><p>Tagline (\u226460 chars)</p></li><li><p>Gallery: 4 screenshots + 1 GIF</p></li><li><p>Maker comment ready the night before</p></li></ol><h2>Snippet for first comment</h2><pre><code>Thanks for hunting Aurora!\nWaitlist \u2192 https://aurora.app/waitlist\nQuestions? Drop them below \u2014 we'll reply in the first hour.</code></pre><p>Link the waitlist URL in the first comment, not only the website field.</p>",
+              "createdAt": "2026-09-29T11:00:00.000Z",
+              "updatedAt": "2026-10-01T08:05:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
+      ]
     },
     {
       "slug": "cove-brand-redesign",
@@ -422,10 +515,103 @@
               "body": ""
             }
           ],
-          "isDemo": true
+          "isDemo": true,
+          "customViews": [
+            {
+              "id": "default",
+              "name": "Default view",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "",
+                    "op": "",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "high-priority",
+              "name": "High priority",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "priority",
+                    "op": "is",
+                    "value": "High"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "open-items",
+              "name": "Open items",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "done",
+                    "op": "is_not_checked",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "this-week",
+              "name": "This week",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "s",
+                    "op": "is",
+                    "value": "This week"
+                  }
+                ]
+              }
+            }
+          ],
+          "customViewId": "default"
         }
       ],
-      "isDemo": true
+      "isDemo": true,
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "brand-principles",
+              "title": "Brand principles",
+              "body": "<h1>Brand principles</h1><p>Cove should feel warm, editorial, and quietly luxurious \u2014 never corporate.</p><h2>Do</h2><ul><li><p>Soft neutrals with one terracotta accent</p></li><li><p>Generous whitespace in hero layouts</p></li></ul><h3>Type pairing</h3><p>Display: Fraunces \u00b7 UI: Source Sans. Token file is <code>cove-tokens.json</code>.</p><h2>Don't</h2><ul><li><p>Harsh black type on pure white</p></li><li><p>Generic stock \u201chandshake\u201d imagery</p></li></ul>",
+              "createdAt": "2026-09-20T09:30:00.000Z",
+              "updatedAt": "2026-09-27T15:10:00.000Z"
+            },
+            {
+              "slug": "kickoff-notes",
+              "title": "Kickoff notes",
+              "body": "<h1>Kickoff notes</h1><p>Workshop with Cove on Sept 18 \u2014 decisions to lock.</p><p><mark>Direction B is approved</mark> for moodboard, type, and photography style.</p><ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>Moodboard direction B chosen</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Confirm photography license pack</p></div></li></ul><pre><code>/* accent swatch */\n--cove-terracotta: #b45a3c;\n--cove-ink: #2c2a26;</code></pre><p>Next review: homepage wires + first case study.</p>",
+              "createdAt": "2026-09-18T16:00:00.000Z",
+              "updatedAt": "2026-09-25T12:45:00.000Z"
+            },
+            {
+              "slug": "webflow-handoff",
+              "title": "Webflow handoff",
+              "body": "<h1>Webflow handoff</h1><p>Component library notes for the build phase.</p><table><tbody><tr><th><p>Component</p></th><th><p>Symbol?</p></th><th><p>Notes</p></th></tr><tr><td><p>Button</p></td><td><p>Yes</p></td><td><p>primary / ghost / text</p></td></tr><tr><td><p>Nav</p></td><td><p>Yes</p></td><td><p>desktop + mobile</p></td></tr><tr><td><p>Case card</p></td><td><p>CMS</p></td><td><p>fields in Figma</p></td></tr></tbody></table><p>Export logo SVG set from the brand PDF before build week.</p>",
+              "createdAt": "2026-09-26T10:20:00.000Z",
+              "updatedAt": "2026-09-30T18:00:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
+      ]
     },
     {
       "slug": "meridian-site-redesign",
@@ -628,10 +814,103 @@
               "body": ""
             }
           ],
-          "isDemo": true
+          "isDemo": true,
+          "customViews": [
+            {
+              "id": "default",
+              "name": "Default view",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "",
+                    "op": "",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "high-priority",
+              "name": "High priority",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "priority",
+                    "op": "is",
+                    "value": "High"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "open-items",
+              "name": "Open items",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "done",
+                    "op": "is_not_checked",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "this-week",
+              "name": "This week",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "s",
+                    "op": "is",
+                    "value": "This week"
+                  }
+                ]
+              }
+            }
+          ],
+          "customViewId": "default"
         }
       ],
-      "isDemo": true
+      "isDemo": true,
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "positioning",
+              "title": "Positioning draft",
+              "body": "<h1>Positioning draft</h1><p>Meridian Advisory helps mid-market firms clarify strategy and act on it.</p><h2>Audience</h2><ul><li><p>Ops leaders evaluating a transformation partner</p></li><li><p>Founders preparing for a board narrative</p></li></ul><h3>Promise</h3><p>Clearer positioning, sharper service pages, and a lead path that feeds HubSpot.</p><p>Working tagline option: <mark>Strategy you can operationalize.</mark></p>",
+              "createdAt": "2026-09-21T08:45:00.000Z",
+              "updatedAt": "2026-09-29T13:20:00.000Z"
+            },
+            {
+              "slug": "ia-notes",
+              "title": "IA notes",
+              "body": "<h1>IA notes</h1><p>Proposed nav after discovery workshop.</p><ol><li><p>Services</p></li><li><p>Industries</p></li><li><p>Insights</p></li><li><p>About</p></li><li><p>Contact</p></li></ol><h2>UTM convention</h2><p>Campaign codes use <code>utm_source=site&amp;utm_medium=cta</code> on Contact.</p><pre><code>Services\n  \u251c\u2500 Strategy\n  \u251c\u2500 Operating model\n  \u2514\u2500 Interim leadership\nInsights (de-emphasized)</code></pre><blockquote><p>Keep Insights lightly featured \u2014 they care more about service outcomes than a blog.</p></blockquote>",
+              "createdAt": "2026-09-23T11:30:00.000Z",
+              "updatedAt": "2026-09-28T17:05:00.000Z"
+            },
+            {
+              "slug": "accessibility-qa",
+              "title": "Accessibility QA",
+              "body": "<h1>Accessibility QA</h1><p>Pass before client review.</p><table><tbody><tr><th><p>Check</p></th><th><p>Owner</p></th><th><p>Status</p></th></tr><tr><td><p>Contrast on accent buttons</p></td><td><p>Design</p></td><td><p>Open</p></td></tr><tr><td><p>Focus rings on nav + form</p></td><td><p>Frontend</p></td><td><p>Open</p></td></tr><tr><td><p>Alt text on hero images</p></td><td><p>Content</p></td><td><p>Done</p></td></tr></tbody></table><p>Use axe + keyboard-only pass on Services and Contact.</p>",
+              "createdAt": "2026-09-30T09:00:00.000Z",
+              "updatedAt": "2026-10-02T10:15:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
+      ]
     },
     {
       "slug": "shopify-store-migration",
@@ -839,10 +1118,103 @@
               "body": ""
             }
           ],
-          "isDemo": true
+          "isDemo": true,
+          "customViews": [
+            {
+              "id": "default",
+              "name": "Default view",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "",
+                    "op": "",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "high-priority",
+              "name": "High priority",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "priority",
+                    "op": "is",
+                    "value": "High"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "open-items",
+              "name": "Open items",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "done",
+                    "op": "is_not_checked",
+                    "value": ""
+                  }
+                ]
+              }
+            },
+            {
+              "id": "this-week",
+              "name": "This week",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "r1",
+                    "fieldId": "s",
+                    "op": "is",
+                    "value": "This week"
+                  }
+                ]
+              }
+            }
+          ],
+          "customViewId": "default"
         }
       ],
-      "isDemo": true
+      "isDemo": true,
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "migration-plan",
+              "title": "Migration plan",
+              "body": "<h1>Migration plan</h1><p>North &amp; Co. WooCommerce \u2192 Shopify Plus cutover outline.</p><h2>Phases</h2><ol><li><p>Catalog + redirects dry run</p></li><li><p>Theme polish + apps</p></li><li><p>DNS cutover weekend</p></li></ol><h3>Freeze window</h3><p><mark>No catalog edits 48h before go-live.</mark> Store theme repo branch is <code>cutover/shopify-plus</code>.</p>",
+              "createdAt": "2026-09-19T13:00:00.000Z",
+              "updatedAt": "2026-09-28T11:30:00.000Z"
+            },
+            {
+              "slug": "redirect-rules",
+              "title": "Redirect rules",
+              "body": "<h1>Redirect rules</h1><p>How we map legacy URLs into Shopify.</p><table><tbody><tr><th><p>From</p></th><th><p>To</p></th><th><p>Notes</p></th></tr><tr><td><p>/product/*</p></td><td><p>/products/*</p></td><td><p>slug preserved</p></td></tr><tr><td><p>/shop/*</p></td><td><p>/collections/*</p></td><td><p>CSV reviewed</p></td></tr><tr><td><p>/blog/*</p></td><td><p>\u2014</p></td><td><p>stays on Webflow</p></td></tr></tbody></table><pre><code># sample Liquid redirect check\n{% if request.path contains '/product/' %}\n  assign dest = request.path | replace: '/product/', '/products/'\n{% endif %}</code></pre><p>Validate top 200 URLs in Screaming Frog after import.</p>",
+              "createdAt": "2026-09-25T15:40:00.000Z",
+              "updatedAt": "2026-10-01T09:50:00.000Z"
+            },
+            {
+              "slug": "go-live-runbook",
+              "title": "Go-live runbook",
+              "body": "<h1>Go-live runbook</h1><p>Saturday cutover checklist for the team.</p><h2>Morning</h2><ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Enable password page off</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Point DNS + clear CDN</p></div></li></ul><h3>Smoke tests</h3><ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Place test order with Shop Pay</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Confirm Klaviyo events</p></div></li></ul><p>Rollback: re-point DNS to Woo, keep Shopify passworded.</p>",
+              "createdAt": "2026-09-27T08:20:00.000Z",
+              "updatedAt": "2026-10-02T14:00:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
+      ]
     }
   ],
   "timelogs": [

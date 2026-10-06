@@ -101,7 +101,18 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 #view{flex:1;min-height:0}
 #view.db,#view.mod{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;font-size:15px;color:var(--ink);flex:1;min-height:0;margin:0;border-radius:0 var(--radius) var(--radius) var(--radius);overflow:hidden;background:var(--bg)}
 .db-layout{display:flex;flex:1;min-height:0}
-.db-sidebar{width:260px;flex:none;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));min-height:0}
+.db-sidebar{width:260px;flex:none;display:flex;flex-direction:column;gap:8px;padding:10px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));min-height:0}
+.db-views-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.db-view-item{display:flex;align-items:center;gap:2px;min-width:0;border-radius:calc(var(--radius) - 6px)}
+.db-view-item.on{background:color-mix(in srgb,var(--tab,var(--acc)) 14%,transparent)}
+.db-view-select{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer}
+.db-view-select span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-view-select svg{flex:none;opacity:.7}
+.db-view-item:not(.on) .db-view-select:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.db-view-delete{flex:none;display:inline-grid;place-items:center;width:28px;height:28px;margin-right:4px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
+.db-view-delete:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.db-views-add{flex:none;display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.db-views-add:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .db-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
 #view.mod{place-items:unset}
 #view.cover-view{background-color:var(--tab);background-image:var(--leather),linear-gradient(180deg,transparent 12%,color-mix(in srgb,#000 12%,transparent));background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light}
@@ -245,10 +256,25 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .modbar .mod-act:disabled{opacity:.45;cursor:default;pointer-events:none}
 .modbar .mod-act svg{display:block;flex:none;width:18px;height:18px}
 .modbar .mod-act-lab{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:center}
-.modbar .mod-view-dd{flex:none;width:72px}
+.modbar .mod-view-dd{flex:none;width:72px;position:relative}
 .modbar .mod-view-dd .mod-act{width:100%}
 .modbar .mod-view-dd .dd-caret{display:none}
 .modbar .mod-view-dd .dd-menu{min-width:200px;max-height:none;overflow:visible}
+.modbar .db-view-menu-pop{display:block;min-width:240px;z-index:70;overflow:visible}
+.modbar .db-view-sidebar-item,
+.modbar .db-view-switch-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer}
+.modbar .db-view-sidebar-item:hover,
+.modbar .db-view-switch-btn:hover,
+.modbar .db-view-sidebar-item.on,
+.modbar .db-view-switch.open > .db-view-switch-btn{background:var(--sel)}
+.modbar .db-view-check{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;color:var(--ink)}
+.modbar .db-view-switch{position:relative}
+.modbar .db-view-switch-btn{justify-content:space-between;cursor:default}
+.modbar .db-view-switch-btn svg{flex:none;opacity:.65}
+.modbar .db-view-switch-menu{display:block;left:calc(100% - 2px);right:auto;top:0;min-width:180px;max-width:260px;max-height:min(320px,50vh);overflow:auto;z-index:80}
+.modbar .db-view-switch-menu button{display:block;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modbar .db-view-switch-menu button:hover,
+.modbar .db-view-switch-menu button.on{background:var(--sel)}
 .modbar .db-filters-dd{position:relative;flex:none;width:72px}
 .modbar .db-filters-dd .mod-act{width:100%}
 .modbar .db-filters-menu{display:block;left:0;right:auto;min-width:min(640px,92vw);max-width:min(720px,94vw);padding:10px;z-index:70;overflow:visible}

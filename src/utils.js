@@ -1,4 +1,5 @@
 import { askConfirm } from "./confirmDialog.js";
+import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 export const APP_NAME = "Project Binder";
@@ -41,6 +42,7 @@ migrateStorageKeys();
 export const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
 export const SESSION_KEY = `${STORAGE_PREFIX}session`;
 export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
+export const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 export const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 export const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
 export const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
@@ -164,6 +166,8 @@ export function fromApi(data, loadStagesFn) {
             { n: "Gallery", t: "gallery" },
           ],
           cur: 0,
+          customViews: normalizeCustomViews(db.customViews),
+          customViewId: resolveCustomViewId(db.customViewId, db.customViews),
         },
       ]);
     });
@@ -775,6 +779,23 @@ export function loadCompletedViews() {
   } catch {
     return {};
   }
+}
+
+export function loadDbViewsSidebar() {
+  try {
+    return JSON.parse(localStorage.getItem(DB_VIEWS_SIDEBAR_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveDbViewsSidebar(scope, open) {
+  if (!scope) return;
+  const map = loadDbViewsSidebar();
+  map[scope] = !!open;
+  try {
+    localStorage.setItem(DB_VIEWS_SIDEBAR_KEY, JSON.stringify(map));
+  } catch {}
 }
 
 export function loadSession() {

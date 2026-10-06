@@ -32,6 +32,68 @@ const DEFAULT_DB_COLS = [
   { id: "s", label: "Stage", type: "stage" },
 ];
 
+const DEFAULT_CUSTOM_VIEW_ID = "default";
+const DEFAULT_CUSTOM_VIEW_NAME = "Default view";
+
+function emptyFilterState() {
+  return {
+    junction: "and",
+    rules: [{ id: "f0", fieldId: "", op: "", value: "" }],
+  };
+}
+
+function normalizeFilters(filters) {
+  if (!filters || typeof filters !== "object") return emptyFilterState();
+  const junction = filters.junction === "or" ? "or" : "and";
+  const rules = Array.isArray(filters.rules)
+    ? filters.rules
+        .map((r, i) => {
+          if (!r || typeof r !== "object") return null;
+          return {
+            id: String(r.id || "f" + i),
+            fieldId: String(r.fieldId || ""),
+            op: String(r.op || ""),
+            value: r.value != null ? r.value : "",
+          };
+        })
+        .filter(Boolean)
+    : [];
+  return { junction, rules: rules.length ? rules : emptyFilterState().rules };
+}
+
+function createDefaultCustomView(filters) {
+  return {
+    id: DEFAULT_CUSTOM_VIEW_ID,
+    name: DEFAULT_CUSTOM_VIEW_NAME,
+    filters: normalizeFilters(filters),
+  };
+}
+
+function normalizeCustomViews(views) {
+  const extras = [];
+  let defaultFilters = emptyFilterState();
+  for (const v of Array.isArray(views) ? views : []) {
+    if (!v || v.id == null) continue;
+    const id = String(v.id);
+    if (id === DEFAULT_CUSTOM_VIEW_ID) {
+      defaultFilters = normalizeFilters(v.filters);
+      continue;
+    }
+    extras.push({
+      id,
+      name: String(v.name || "Untitled view").trim() || "Untitled view",
+      filters: normalizeFilters(v.filters),
+    });
+  }
+  return [createDefaultCustomView(defaultFilters), ...extras];
+}
+
+function resolveCustomViewId(viewId, views) {
+  const list = normalizeCustomViews(views);
+  if (viewId && list.some((v) => v.id === viewId)) return String(viewId);
+  return DEFAULT_CUSTOM_VIEW_ID;
+}
+
 const DB_FIELD_TYPES = new Set([
   "text",
   "longtext",
@@ -451,16 +513,21 @@ function projectToApi(p) {
       if (isDemoValue(b.isDemo)) board.isDemo = true;
       return board;
     }),
-    databases: (p.databases || []).map((d) => ({
-      slug: d.slug,
-      name: d.name || d.slug,
-      columns: normalizeDbColumns(d.columns),
-      items: (d.items || []).map((item) => ({
-        slug: item.slug,
-        fields: { ...(item.fields || {}) },
-        body: item.body || "",
-      })),
-    })),
+    databases: (p.databases || []).map((d) => {
+      const customViews = normalizeCustomViews(d.customViews);
+      return {
+        slug: d.slug,
+        name: d.name || d.slug,
+        columns: normalizeDbColumns(d.columns),
+        customViews,
+        customViewId: resolveCustomViewId(d.customViewId, customViews),
+        items: (d.items || []).map((item) => ({
+          slug: item.slug,
+          fields: { ...(item.fields || {}) },
+          body: item.body || "",
+        })),
+      };
+    }),
     notesTabs: (p.notesTabs || []).map((t) => ({
       slug: t.slug,
       name: t.name || t.slug,
@@ -1068,24 +1135,43 @@ function loadDbColumns(projectSlug, databaseSlug) {
   return normalizeDbColumns(db && db.columns);
 }
 
-function writeDatabase(projectSlug, databaseSlug, { name, columns }) {
+function writeDatabase(projectSlug, databaseSlug, { name, columns, customViews, customViewId }) {
   const project = findProject(projectSlug);
   if (!project) throw new Error("project not found");
   if (!project.databases) project.databases = [];
   let db = findDatabase(project, databaseSlug);
   if (!db) {
-    db = { slug: databaseSlug, name: name || databaseSlug, columns: [], items: [] };
+    db = {
+      slug: databaseSlug,
+      name: name || databaseSlug,
+      columns: [],
+      items: [],
+      customViews: normalizeCustomViews(null),
+      customViewId: DEFAULT_CUSTOM_VIEW_ID,
+    };
     project.databases.push(db);
   }
   db.name = name || db.name || databaseSlug;
-  db.columns = normalizeDbColumns(columns);
+  if (columns !== undefined) db.columns = normalizeDbColumns(columns);
+  else if (!db.columns || !db.columns.length) db.columns = normalizeDbColumns(null);
+  if (customViews !== undefined) db.customViews = normalizeCustomViews(customViews);
+  else db.customViews = normalizeCustomViews(db.customViews);
+  db.customViewId = resolveCustomViewId(
+    customViewId !== undefined ? customViewId : db.customViewId,
+    db.customViews
+  );
   if (!db.items) db.items = [];
 }
 
 function createDatabase(projectSlug, name) {
   const project = findProject(projectSlug);
   const dSlug = slugify(name);
-  writeDatabase(projectSlug, dSlug, { name, columns: DEFAULT_DB_COLS });
+  writeDatabase(projectSlug, dSlug, {
+    name,
+    columns: DEFAULT_DB_COLS,
+    customViews: normalizeCustomViews(null),
+    customViewId: DEFAULT_CUSTOM_VIEW_ID,
+  });
   if (project) appendTabOrder(project, "database", dSlug);
   return dSlug;
 }
@@ -1638,12 +1724,17 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "PUT" && url.pathname === "/api/database") {
       const body = await readBody(req);
-      if (!body.project || !body.database || !body.columns) return json(res, 400, { error: "missing fields" });
+      if (!body.project || !body.database) return json(res, 400, { error: "missing fields" });
+      if (body.columns == null && body.customViews == null && body.customViewId == null) {
+        return json(res, 400, { error: "missing fields" });
+      }
       const db = findDatabase(findProject(body.project), body.database);
       if (!db && !findProject(body.project)) return json(res, 404, { error: "project not found" });
       writeDatabase(body.project, body.database, {
         name: body.name || (db && db.name) || body.database,
-        columns: body.columns,
+        columns: body.columns !== undefined ? body.columns : db && db.columns,
+        customViews: body.customViews,
+        customViewId: body.customViewId,
       });
       saveStore();
       return json(res, 200, readWorkspace());

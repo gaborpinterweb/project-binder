@@ -249,6 +249,19 @@ export async function revealFile(body) {
   return r.json();
 }
 
+export async function revealFilesTab(body) {
+  const r = await fetch("/api/files-tab/reveal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "Could not open folder");
+  }
+  return r.json();
+}
+
 export async function moveFileApi(body) {
   const r = await fetch("/api/file/move", {
     method: "POST",

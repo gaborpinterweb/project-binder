@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
 import { fileDownloadUrl, revealFile } from "../api.js";
+import FileTypeIcon from "./FileTypeIcon.jsx";
 import pdfiumWasmUrl from "@embedpdf/pdfium/pdfium.wasm?url";
 
 const FORMAT_BY_EXT = {
@@ -34,13 +35,17 @@ const VIEWER_LABELS = {
   "下一張 ›": "Next ›",
 };
 
+const PREVIEW_PAD = 12;
+const STAGE_BG = "#15171c";
+const TOOLBAR_LINE = "#2e333d";
+
 function formatFromName(name) {
   const ext = String(name || "").split(".").pop()?.toLowerCase();
   return FORMAT_BY_EXT[ext] || undefined;
 }
 
 function fitsContent(format) {
-  return format === "image" || format === "pptx";
+  return format === "image" || format === "pptx" || format === "pdf" || format === "docx";
 }
 
 function showInFolderLabel() {
@@ -82,67 +87,135 @@ function localizeViewerUi(host) {
   }
 }
 
+function viewerToolbar(host, format) {
+  if (format === "pptx") return null;
+  const el = host.firstElementChild;
+  if (!el || !el.querySelector?.("button")) return null;
+  if (el.style.display === "none") return null;
+  return el;
+}
+
+function viewerStage(host) {
+  const kids = [...host.children];
+  return kids.length > 1 ? kids[1] : kids[0];
+}
+
+function restyleViewer(host, format) {
+  const bar = host.firstElementChild;
+  const stage = viewerStage(host);
+  if (bar && bar !== stage && format !== "pptx") {
+    bar.style.margin = "0";
+    bar.style.padding = "8px 12px";
+    bar.style.boxSizing = "border-box";
+    bar.style.flex = "none";
+    bar.style.borderBottom = `1px solid ${TOOLBAR_LINE}`;
+    bar.style.background = STAGE_BG;
+  }
+  if (!stage) return stage;
+  stage.style.margin = "0";
+  stage.style.border = "none";
+  stage.style.borderRadius = "0";
+  stage.style.boxSizing = "border-box";
+  stage.style.padding = `${PREVIEW_PAD}px`;
+  stage.style.background = STAGE_BG;
+  stage.style.overflow = "auto";
+  stage.style.minHeight = "0";
+  stage.style.scrollPadding = `${PREVIEW_PAD}px`;
+  for (const page of stage.querySelectorAll("[data-page], .dv-page")) {
+    page.style.margin = `0 auto ${PREVIEW_PAD}px`;
+    page.style.boxShadow = "none";
+  }
+  const last = stage.querySelector("[data-page]:last-child, .dv-page:last-child");
+  if (last) last.style.marginBottom = "0";
+  const canvas = stage.querySelector("canvas");
+  if (canvas) {
+    canvas.style.boxShadow = "none";
+    canvas.style.margin = "0 auto";
+    canvas.style.display = "block";
+  }
+  if (format === "image") {
+    stage.style.display = "flex";
+    stage.style.alignItems = "center";
+    stage.style.justifyContent = "center";
+  }
+  return stage;
+}
+
+function intrinsicSize(host, format, viewer) {
+  if (format === "image") {
+    const img = host.querySelector("img");
+    if (img?.naturalWidth && img.naturalHeight) {
+      return { w: img.naturalWidth, h: img.naturalHeight };
+    }
+  }
+  if (format === "pptx" && viewer.slideW && viewer.slideH) {
+    return { w: viewer.slideW, h: viewer.slideH };
+  }
+  if (format === "docx" && viewer.pw && viewer.ph) {
+    return { w: viewer.pw, h: viewer.ph };
+  }
+  const page = viewer.pageEls?.[0];
+  if (page) {
+    const w = page.offsetWidth || parseFloat(page.style.width) || 0;
+    const h = page.offsetHeight || parseFloat(page.style.height) || 0;
+    if (w && h) return { w, h };
+  }
+  const canvas = host.querySelector("canvas");
+  if (canvas?.offsetWidth && canvas.offsetHeight) {
+    return { w: canvas.offsetWidth, h: canvas.offsetHeight };
+  }
+  return null;
+}
+
 function maxDialogBox() {
-  const pad = 32;
+  const gutter = 32;
   return {
-    maxW: Math.min(window.innerWidth * 0.8, window.innerWidth - pad),
-    maxH: Math.min(window.innerHeight * 0.8, window.innerHeight - pad),
+    maxW: Math.min(window.innerWidth * 0.8, window.innerWidth - gutter),
+    maxH: Math.min(window.innerHeight * 0.8, window.innerHeight - gutter),
   };
+}
+
+function applyFit(viewer, host, format) {
+  const stage = viewerStage(host);
+  if (!stage || !viewer) return;
+  const inner = Math.max(1, stage.clientWidth - PREVIEW_PAD * 2);
+  if (format === "image" && viewer.natW) {
+    viewer.setZoom(inner / viewer.natW);
+    return;
+  }
+  if (format === "docx" && viewer.pw) {
+    viewer.setZoom(inner / viewer.pw);
+    return;
+  }
+  viewer.fitWidth?.();
 }
 
 function sizeDialogToContent(dlg, host, format, viewer) {
   if (!dlg || !host) return;
+  const stage = restyleViewer(host, format);
+  if (!stage) return;
+  const size = intrinsicSize(host, format, viewer);
+  if (!size) return;
   const { maxW, maxH } = maxDialogBox();
-  const chromeH = dlg.querySelector(".file-preview-bar")?.offsetHeight || 48;
-
-  if (format === "image") {
-    const img = host.querySelector("img");
-    const scroll = img?.parentElement;
-    if (!img?.naturalWidth || !img.naturalHeight || !scroll) return;
-    const ar = img.naturalWidth / img.naturalHeight;
-    let contentW = maxW;
-    let contentH = contentW / ar;
-    if (contentH + chromeH > maxH) {
-      contentH = Math.max(80, maxH - chromeH);
-      contentW = contentH * ar;
-    }
-    const viewerBar = host.firstElementChild;
-    const viewerBarH =
-      viewerBar && viewerBar !== scroll
-        ? viewerBar.getBoundingClientRect().height + 8
-        : 0;
-    const stageH = Math.round(contentH);
-    const totalH = Math.round(chromeH + viewerBarH + stageH);
-    dlg.style.width = `${Math.round(contentW)}px`;
-    dlg.style.height = `${totalH}px`;
-    scroll.style.height = `${stageH}px`;
-    scroll.style.flex = "none";
-    viewer?.fitWidth?.();
-    return;
+  const titleH = dlg.querySelector(".file-preview-bar")?.offsetHeight || 48;
+  const toolbar = viewerToolbar(host, format);
+  const toolbarH = toolbar ? toolbar.getBoundingClientRect().height : 0;
+  const chromeH = titleH + toolbarH;
+  const pad = PREVIEW_PAD * 2;
+  const maxInnerW = Math.max(80, maxW - pad);
+  const maxInnerH = Math.max(80, maxH - chromeH - pad);
+  const ar = size.w / size.h;
+  let innerW = maxInnerW;
+  let innerH = innerW / ar;
+  if (innerH > maxInnerH) {
+    innerH = maxInnerH;
+    innerW = innerH * ar;
   }
-
-  if (format === "pptx") {
-    const canvas = host.querySelector("canvas");
-    const stage = canvas?.parentElement;
-    if (!canvas || !stage) return;
-    dlg.style.width = `${Math.round(maxW)}px`;
-    dlg.style.height = `${Math.round(maxH)}px`;
-    // ResizeObserver reflows the slide after width changes; wait two frames.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const slideH = canvas.offsetHeight || 0;
-        if (!slideH) return;
-        const stageStyles = getComputedStyle(stage);
-        const stagePad =
-          (parseFloat(stageStyles.paddingTop) || 0) +
-          (parseFloat(stageStyles.paddingBottom) || 0);
-        const stageH = Math.round(slideH + stagePad);
-        dlg.style.height = `${Math.round(chromeH + stageH)}px`;
-        stage.style.height = `${stageH}px`;
-        stage.style.boxSizing = "border-box";
-      });
-    });
-  }
+  dlg.style.width = `${Math.round(innerW + pad)}px`;
+  dlg.style.height = `${Math.round(chromeH + innerH + pad)}px`;
+  stage.style.flex = "none";
+  stage.style.height = `${Math.round(innerH + pad)}px`;
+  applyFit(viewer, host, format);
 }
 
 function waitForImage(host) {
@@ -208,6 +281,7 @@ export default function FilePreviewDialog({
         }
         localizeViewerUi(host);
         hideNativeSlideBar(host, viewer);
+        restyleViewer(host, format);
         const pager = pagerMeta(viewer);
         if (pager) {
           setPaged(true);
@@ -219,9 +293,16 @@ export default function FilePreviewDialog({
         setStatus("ready");
         requestAnimationFrame(() => {
           if (cancelled) return;
-          viewer.fitWidth?.();
-          if (fit) sizeDialogToContent(dlg, host, format, viewer);
           localizeViewerUi(host);
+          if (fit) {
+            sizeDialogToContent(dlg, host, format, viewer);
+            requestAnimationFrame(() => {
+              if (cancelled) return;
+              sizeDialogToContent(dlg, host, format, viewer);
+            });
+          } else {
+            applyFit(viewer, host, format);
+          }
         });
       } catch (err) {
         if (cancelled) return;
@@ -243,7 +324,7 @@ export default function FilePreviewDialog({
     if (!viewer || !paged) return;
     const i = Math.max(0, Math.min(pageCount - 1, nextIndex));
     if (typeof viewer.goTo === "function") viewer.goTo(i);
-    else viewer.pageEls?.[i]?.scrollIntoView({ block: "nearest" });
+    else viewer.pageEls?.[i]?.scrollIntoView({ block: "start" });
     setPage(typeof viewer.slideIndex === "number" ? viewer.slideIndex : i);
   };
 
@@ -301,6 +382,7 @@ export default function FilePreviewDialog({
           >
             <Icon name="close" size={16} />
           </button>
+          <FileTypeIcon name={file.name} mime={file.mime} size={18} />
           <h2 id="file-preview-title" className="file-preview-title" title={file.name}>
             {file.name}
           </h2>

@@ -43,6 +43,7 @@ export const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
 export const SESSION_KEY = `${STORAGE_PREFIX}session`;
 export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
 export const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
+export const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 export const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 export const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
 export const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
@@ -790,6 +791,40 @@ export function saveLastTab(slug, tabSlug) {
   map[slug] = tabSlug;
   try {
     localStorage.setItem(LAST_TAB_KEY, JSON.stringify(map));
+  } catch {}
+}
+
+const FILE_SORT_KEYS = new Set(["name", "type", "size", "added"]);
+const FILE_SORT_DIRS = new Set(["asc", "desc"]);
+export const DEFAULT_FILES_SORT = { key: "added", dir: "desc" };
+
+function parseFilesSort(value) {
+  const key = FILE_SORT_KEYS.has(value?.key) ? value.key : DEFAULT_FILES_SORT.key;
+  const dir = FILE_SORT_DIRS.has(value?.dir) ? value.dir : DEFAULT_FILES_SORT.dir;
+  return { key, dir };
+}
+
+export function loadFilesSorts() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(FILES_SORT_KEY) || "{}") || {};
+    if (!stored || typeof stored !== "object") return {};
+    const map = {};
+    for (const [tabKey, value] of Object.entries(stored)) {
+      if (!tabKey) continue;
+      map[tabKey] = parseFilesSort(value);
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+export function saveFilesSort(tabKey, sort) {
+  if (!tabKey) return;
+  const map = loadFilesSorts();
+  map[tabKey] = parseFilesSort(sort);
+  try {
+    localStorage.setItem(FILES_SORT_KEY, JSON.stringify(map));
   } catch {}
 }
 

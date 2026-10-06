@@ -1717,6 +1717,19 @@ function revealUploadedFile(projectSlug, filesTabSlug, fileSlug) {
   return { ok: true };
 }
 
+function revealFilesTabDir(projectSlug, filesTabSlug) {
+  const project = findProject(projectSlug);
+  const tab = findFilesTab(project, filesTabSlug);
+  if (!tab) return { ok: false, error: "files tab not found" };
+  if (!isSafePathSlug(projectSlug) || !isSafePathSlug(filesTabSlug)) {
+    return { ok: false, error: "invalid path" };
+  }
+  const dir = filesUploadDir(projectSlug, filesTabSlug);
+  fs.mkdirSync(dir, { recursive: true });
+  revealPath(dir);
+  return { ok: true, dir };
+}
+
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
@@ -1942,6 +1955,15 @@ const server = http.createServer(async (req, res) => {
       const result = revealUploadedFile(body.project, body.filesTab, body.file);
       if (!result.ok) {
         const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === "POST" && url.pathname === "/api/files-tab/reveal") {
+      const body = await readBody(req);
+      const result = revealFilesTabDir(body.project, body.filesTab);
+      if (!result.ok) {
+        const status = result.error === "files tab not found" ? 404 : 400;
         return json(res, status, { error: result.error });
       }
       return json(res, 200, { ok: true });

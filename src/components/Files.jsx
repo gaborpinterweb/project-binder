@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { postFile, putFile, deleteFileApi, moveFileApi } from "../api.js";
+import { postFile, putFile, deleteFileApi, moveFileApi, revealFilesTab } from "../api.js";
 import { Icon } from "../icons.jsx";
-import { allFilesTabs } from "../utils.js";
+import {
+  allFilesTabs,
+  DEFAULT_FILES_SORT,
+  loadFilesSorts,
+  saveFilesSort,
+} from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
 import FilePreviewDialog from "./FilePreviewDialog.jsx";
+import FileTypeIcon, { fileKindLabel } from "./FileTypeIcon.jsx";
+
+function folderAppLabel() {
+  const platform = navigator.userAgentData?.platform || navigator.platform || "";
+  if (/mac/i.test(platform)) return "Finder";
+  if (/win/i.test(platform)) return "File Explorer";
+  return "Folder";
+}
 
 function formatFileSize(bytes) {
   const n = Number(bytes) || 0;
@@ -25,6 +38,66 @@ function formatDateAdded(iso) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+const FILE_SORT_DEFAULT_DIR = { name: "asc", type: "asc", size: "asc", added: "desc" };
+
+function filesTabSortKey(folderSlug, tabSlug) {
+  return `${folderSlug || ""}/${tabSlug || ""}`;
+}
+
+function sortFiles(list, sort) {
+  const files = [...(list || [])];
+  const dir = sort?.dir === "asc" ? 1 : -1;
+  const key = sort?.key || "added";
+  files.sort((a, b) => {
+    let cmp = 0;
+    if (key === "name") {
+      cmp = String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    } else if (key === "type") {
+      cmp = fileKindLabel(a.name, a.mime).localeCompare(
+        fileKindLabel(b.name, b.mime),
+        undefined,
+        { sensitivity: "base" },
+      );
+    } else if (key === "size") {
+      cmp = (Number(a.size) || 0) - (Number(b.size) || 0);
+    } else {
+      cmp = String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+    }
+    if (!cmp) cmp = String(a.slug || "").localeCompare(String(b.slug || ""));
+    return cmp * dir;
+  });
+  return files;
+}
+
+function SortHeader({ col, label, sort, onSort }) {
+  const active = sort.key === col;
+  return (
+    <button
+      type="button"
+      className={"files-sort" + (active ? " on" : "")}
+      onClick={() => onSort(col)}
+      aria-label={
+        active
+          ? `${label}, sorted ${sort.dir === "asc" ? "ascending" : "descending"}`
+          : `Sort by ${label}`
+      }
+    >
+      {label}
+      {active ? (
+        <span
+          className={"files-sort-caret" + (sort.dir === "asc" ? " up" : "")}
+          aria-hidden="true"
+        >
+          <Icon name="caret" size={12} />
+        </span>
+      ) : null}
+    </button>
+  );
 }
 
 function readFileAsBase64(file) {
@@ -213,6 +286,10 @@ export default function Files({
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [sorts, setSorts] = useState(() => loadFilesSorts());
+  const tabSortKey = filesTabSortKey(folder?.slug, d.slug);
+  const sort = sorts[tabSortKey] || DEFAULT_FILES_SORT;
+  const sortedFiles = useMemo(() => sortFiles(files, sort), [files, sort]);
   const moveTargets = useMemo(() => {
     const currentKey = `${folder?.slug || ""}/${d.slug || ""}`;
     return allFilesTabs(folders).filter((t) => t.key !== currentKey);
@@ -220,6 +297,23 @@ export default function Files({
 
   const keepNav = {
     keepNav: { project: folder.slug, board: d.slug, g: null },
+  };
+
+  const toggleSort = (col) => {
+    const next =
+      sort.key === col
+        ? { key: col, dir: sort.dir === "asc" ? "desc" : "asc" }
+        : { key: col, dir: FILE_SORT_DEFAULT_DIR[col] || "asc" };
+    setSorts((prev) => ({ ...prev, [tabSortKey]: next }));
+    saveFilesSort(tabSortKey, next);
+  };
+
+  const openFolder = async () => {
+    try {
+      await revealFilesTab({ project: folder.slug, filesTab: d.slug });
+    } catch (err) {
+      window.alert(err.message || "Could not open the folder");
+    }
   };
 
   const addFile = async (ev) => {
@@ -333,6 +427,16 @@ export default function Files({
               <span className="mod-act-lab">Add file</span>
             </button>
           )}
+          <button
+            type="button"
+            className="mod-act"
+            onClick={openFolder}
+            title={folderAppLabel()}
+            aria-label={`Open in ${folderAppLabel()}`}
+          >
+            <Icon name="folder" size={18} />
+            <span className="mod-act-lab">{folderAppLabel()}</span>
+          </button>
           <input
             ref={inputRef}
             type="file"
@@ -347,20 +451,35 @@ export default function Files({
           <div className="files-empty">No files yet.</div>
         ) : (
           <div className="files-table">
-            <div className="files-head" aria-hidden="true">
-              <span className="files-head-name">Name</span>
-              <span className="files-col-size">Size</span>
-              <span className="files-col-added">Date added</span>
+            <div className="files-head">
+              <span className="files-head-icon" />
+              <span className="files-head-name">
+                <SortHeader col="name" label="Name" sort={sort} onSort={toggleSort} />
+              </span>
+              <span className="files-col-type">
+                <SortHeader col="type" label="Type" sort={sort} onSort={toggleSort} />
+              </span>
+              <span className="files-col-size">
+                <SortHeader col="size" label="Size" sort={sort} onSort={toggleSort} />
+              </span>
+              <span className="files-col-added">
+                <SortHeader
+                  col="added"
+                  label="Date added"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+              </span>
               <span className="files-head-more" />
             </div>
             <ul className="files-list">
-              {files.map((file) => (
+              {sortedFiles.map((file) => (
                 <li
                   key={file.slug}
                   className="files-row"
                   onClick={() => setPreview(file)}
                 >
-                  <Icon name="Files" size={22} />
+                  <FileTypeIcon name={file.name} mime={file.mime} size={22} />
                   <button
                     type="button"
                     className="files-name"
@@ -372,6 +491,9 @@ export default function Files({
                   >
                     {file.name}
                   </button>
+                  <span className="files-col-type">
+                    {fileKindLabel(file.name, file.mime)}
+                  </span>
                   <span className="files-col-size">{formatFileSize(file.size)}</span>
                   <span className="files-col-added">
                     {formatDateAdded(file.createdAt)}

@@ -133,18 +133,28 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .files-table{display:flex;flex-direction:column;min-height:100%}
 .files-head{display:flex;align-items:center;gap:12px;padding:0 16px 0 20px;min-height:32px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);background:#fff;color:var(--mute);font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
 .files-head-name{flex:1;min-width:0}
+.files-sort{display:inline-flex;align-items:center;gap:3px;max-width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.files-head-name .files-sort{justify-content:flex-start}
+.files-col-type .files-sort{justify-content:flex-start;width:100%}
+.files-col-size .files-sort,.files-col-added .files-sort{justify-content:flex-end;width:100%}
+.files-sort:hover,.files-sort.on{color:var(--ink)}
+.files-sort-caret{display:inline-flex;flex:none;line-height:0}
+.files-sort-caret svg{display:block}
+.files-sort-caret.up{transform:rotate(180deg)}
 .files-head-more,.files-more-spacer{flex:none;width:28px}
 .files-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .files-row{display:flex;align-items:center;gap:12px;padding:0 16px 0 20px;min-height:52px;border:0;border-radius:0;color:var(--ink);background:#fff;cursor:pointer}
 .files-row:nth-child(even){background:#f3ebe0}
 .files-row:hover{background:color-mix(in srgb,var(--tab,var(--acc)) 12%,#fff)}
 .files-row:nth-child(even):hover{background:color-mix(in srgb,var(--tab,var(--acc)) 14%,#f3ebe0)}
-.files-row > svg{flex:none;color:var(--mute)}
+.files-head-icon{flex:none;width:22px}
+.file-type-icon{flex:none;display:block;line-height:0}
+.file-type-icon svg{display:block;width:100%;height:100%}
 .files-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);text-decoration:none;font-size:15px;font-weight:500;text-align:left}
 .files-name:hover{text-decoration:underline}
 .ov-file-preview{z-index:24;background:rgba(0,0,0,.72);padding:16px}
 .file-preview-dlg{width:80vw;height:80vh;max-width:min(80vw,100%);max-height:min(80vh,100%);overflow:hidden}
-.file-preview-dlg.is-fit{width:80vw;height:80vh}
+.file-preview-dlg.is-fit{width:min(80vw,100%);height:auto;min-height:180px}
 .file-preview-bar{display:flex;align-items:center;gap:10px;flex:none;padding:10px 12px;border-bottom:1px solid var(--line);min-width:0}
 .file-preview-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-preview-icon{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border-radius:calc(var(--radius) - 6px);color:var(--mute)}
@@ -158,13 +168,15 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .file-preview-msg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:#c8c4bc;font-size:14px;text-align:center}
 .file-preview-host{flex:1;min-height:0;height:100%;overflow:hidden;display:flex;flex-direction:column;
   --sdv-fg:#e6e6e6;--sdv-border:#3a3f4b;--sdv-btn-bg:#2a2e37;--sdv-btn-fg:#e6e6e6;--sdv-btn-hover-bg:#363b46;
-  --sdv-surface:#1b1e24;--sdv-stage-bg:#15171c;--sdv-page-bg:#0f1115;--sdv-shadow:0 2px 14px rgba(0,0,0,.7);
-  --sdv-accent:#9a5b2e;--sdv-accent-fg:#fff}
+  --sdv-surface:#1b1e24;--sdv-stage-bg:#15171c;--sdv-page-bg:#fff;--sdv-shadow:none;
+  --sdv-accent:#9a5b2e;--sdv-accent-fg:#fff;--sdv-checker-a:#15171c;--sdv-checker-b:#15171c}
 .file-preview-dlg.is-fit .file-preview-host{flex:none;height:auto}
 .file-preview-host.is-pending{opacity:0;pointer-events:none}
-.files-col-size,.files-col-added{flex:none;color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.files-col-size{width:88px;text-align:right}
-.files-col-added{width:110px;text-align:right}
+.files-col-type,.files-col-size,.files-col-added{flex:none;color:var(--mute);font-size:13px;white-space:nowrap}
+.files-col-type{width:118px;text-align:left}
+.files-col-size,.files-col-added{font-variant-numeric:tabular-nums;text-align:right}
+.files-col-size{width:88px}
+.files-col-added{width:110px}
 .files-more{position:relative;flex:none}
 .files-more-btn{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
 .files-more-btn svg{display:block}

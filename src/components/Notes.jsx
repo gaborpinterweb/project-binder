@@ -276,7 +276,6 @@ export default function Notes({
             align="left"
             caret={false}
             sections={[
-              { label: "Sort", value: sort, onChange: setSort, options: NOTE_SORT_OPTIONS },
               {
                 label: "Card size",
                 value: cardSize,
@@ -287,6 +286,20 @@ export default function Notes({
           >
             <Icon name="eye" size={18} />
             <span className="mod-act-lab">View</span>
+          </Dropdown>
+          <Dropdown
+            className="mod-view-dd"
+            buttonClassName="mod-act"
+            ariaLabel="Sort options"
+            title="Sort options"
+            align="left"
+            caret={false}
+            value={sort}
+            options={NOTE_SORT_OPTIONS}
+            onChange={setSort}
+          >
+            <Icon name="sort" size={18} />
+            <span className="mod-act-lab">Sort</span>
           </Dropdown>
         </div>
         <div className="notes-toolbar-mid">

@@ -27,19 +27,34 @@ function normalizeFilters(filters) {
   };
 }
 
-export function createDefaultCustomView(filters, name = DEFAULT_VIEW_NAME) {
+export function normalizeHiddenCols(hiddenCols) {
+  if (!Array.isArray(hiddenCols)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const id of hiddenCols) {
+    const s = String(id || "");
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+export function createDefaultCustomView(filters, name = DEFAULT_VIEW_NAME, hiddenCols) {
   return {
     id: DEFAULT_VIEW_ID,
     name: String(name || DEFAULT_VIEW_NAME).trim() || DEFAULT_VIEW_NAME,
     filters: normalizeFilters(filters),
+    hiddenCols: normalizeHiddenCols(hiddenCols),
   };
 }
 
-export function createCustomView(name = "Untitled view", filters) {
+export function createCustomView(name = "Untitled view", filters, hiddenCols) {
   return {
     id: "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     name: String(name || "Untitled view").trim() || "Untitled view",
     filters: normalizeFilters(filters ?? createFilterState()),
+    hiddenCols: normalizeHiddenCols(hiddenCols),
   };
 }
 
@@ -51,21 +66,29 @@ export function normalizeCustomViews(views) {
   const extras = [];
   let defaultFilters = createFilterState();
   let defaultName = DEFAULT_VIEW_NAME;
+  let defaultHiddenCols = [];
   for (const v of Array.isArray(views) ? views : []) {
     if (!v || v.id == null) continue;
     const id = String(v.id);
     if (id === DEFAULT_VIEW_ID) {
       defaultFilters = normalizeFilters(v.filters);
       defaultName = String(v.name || DEFAULT_VIEW_NAME).trim() || DEFAULT_VIEW_NAME;
+      defaultHiddenCols = normalizeHiddenCols(v.hiddenCols);
       continue;
     }
     extras.push({
       id,
       name: String(v.name || "Untitled view").trim() || "Untitled view",
       filters: normalizeFilters(v.filters),
+      hiddenCols: normalizeHiddenCols(v.hiddenCols),
     });
   }
-  return [createDefaultCustomView(defaultFilters, defaultName), ...extras];
+  return [createDefaultCustomView(defaultFilters, defaultName, defaultHiddenCols), ...extras];
+}
+
+export function visibleDbCols(cols, hiddenCols) {
+  const hidden = new Set(normalizeHiddenCols(hiddenCols));
+  return (Array.isArray(cols) ? cols : []).filter((c) => c && !hidden.has(c.id));
 }
 
 export function resolveCustomViewId(viewId, views) {

@@ -17,18 +17,18 @@ import {
 } from "../dbFields.js";
 import { filterRows } from "../dbFilters.js";
 import {
-  activeCustomView,
   createCustomView,
   DEFAULT_VIEW_ID,
   isDefaultCustomView,
   normalizeCustomViews,
   resolveCustomViewId,
+  visibleDbCols,
 } from "../dbViews.js";
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
+import DbColumnsDropdown from "./DbColumnsDropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
 import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
-import DbViewMenu from "./DbViewMenu.jsx";
 import FieldEditDialog from "./FieldEditDialog.jsx";
 import { askPrompt } from "../promptDialog.js";
 import { askConfirm } from "../confirmDialog.js";
@@ -1469,11 +1469,21 @@ async function persistDbRow(folder, mod, row, cols) {
   });
 }
 
-function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, displayRows }) {
+function DbTable({
+  d,
+  folder,
+  mod,
+  stages,
+  onOpen,
+  onApplyWorkspace,
+  displayRows,
+  hiddenCols,
+}) {
   const [editCol, setEditCol] = useState(null);
   const [editIsNew, setEditIsNew] = useState(false);
   const [, bump] = useState(0);
   const rows = displayRows || d.rows;
+  const cols = visibleDbCols(d.cols, hiddenCols);
 
   const refresh = async () => {
     onApplyWorkspace(await fetchWorkspace());
@@ -1539,20 +1549,23 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, displayRows
         <thead>
           <tr>
             <th className="db-enlarge-col" aria-hidden="true" />
-            {d.cols.map((c, i) => (
-              <DbColHeader
-                key={c.id}
-                col={c}
-                canLeft={i > 0}
-                canRight={i < d.cols.length - 1}
-                onMoveLeft={() => moveCol(i, -1)}
-                onMoveRight={() => moveCol(i, 1)}
-                onEdit={() => {
-                  setEditIsNew(false);
-                  setEditCol(c);
-                }}
-              />
-            ))}
+            {cols.map((c) => {
+              const i = d.cols.findIndex((col) => col.id === c.id);
+              return (
+                <DbColHeader
+                  key={c.id}
+                  col={c}
+                  canLeft={i > 0}
+                  canRight={i >= 0 && i < d.cols.length - 1}
+                  onMoveLeft={() => moveCol(i, -1)}
+                  onMoveRight={() => moveCol(i, 1)}
+                  onEdit={() => {
+                    setEditIsNew(false);
+                    setEditCol(c);
+                  }}
+                />
+              );
+            })}
             <th
               className="addcol"
               onClick={() => {
@@ -1583,7 +1596,7 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, displayRows
                   <Icon name="enlarge" size={14} />
                 </button>
               </td>
-              {d.cols.map((c) => (
+              {cols.map((c) => (
                 <td key={c.id} className={"db-td db-td-" + (c.type || "text")}>
                   <DbFieldInput
                     col={c}
@@ -1599,7 +1612,7 @@ function DbTable({ d, folder, mod, stages, onOpen, onApplyWorkspace, displayRows
           ))}
           <tr className="new">
             <td
-              colSpan={d.cols.length + 2}
+              colSpan={cols.length + 2}
               onClick={async () => {
                 const fields = {};
                 d.cols.forEach((c) => {
@@ -1775,8 +1788,10 @@ export function DatabaseView({
   d.customViewId = resolveCustomViewId(d.customViewId, d.customViews);
 
   const customViews = d.customViews;
-  const activeView = activeCustomView(customViews, d.customViewId);
+  const activeView =
+    customViews.find((v) => v.id === d.customViewId) || customViews[0];
   const filters = activeView.filters;
+  const hiddenCols = activeView.hiddenCols || [];
 
   useEffect(() => {
     setShowViews(!!loadDbViewsSidebar()[scope]);
@@ -1803,6 +1818,14 @@ export function DatabaseView({
 
   const setFilters = (next) => {
     activeView.filters = next;
+    d.customViews = normalizeCustomViews(customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const setHiddenCols = (next) => {
+    activeView.hiddenCols = next;
+    d.customViews = normalizeCustomViews(customViews);
     bump((n) => n + 1);
     schedulePersistViews();
   };
@@ -1888,6 +1911,7 @@ export function DatabaseView({
       <DbTable
         d={d}
         displayRows={displayRows}
+        hiddenCols={hiddenCols}
         folder={folder}
         mod={mod}
         stages={stages}
@@ -1914,12 +1938,21 @@ export function DatabaseView({
             <Icon name="plus" size={18} />
             <span className="mod-act-lab">Add entry</span>
           </button>
-          <DbViewMenu
-            showViews={showViews}
-            onToggleSidebar={toggleViewsSidebar}
-            customViews={customViews}
-            activeViewId={activeView.id}
-            onSelectView={selectView}
+          <button
+            type="button"
+            className={"mod-act" + (showViews ? " on" : "")}
+            title="Views"
+            aria-label="Views"
+            aria-pressed={showViews}
+            onClick={toggleViewsSidebar}
+          >
+            <Icon name="sidebar" size={18} />
+            <span className="mod-act-lab">Views</span>
+          </button>
+          <DbColumnsDropdown
+            cols={d.cols || []}
+            hiddenCols={hiddenCols}
+            onChange={setHiddenCols}
           />
           <DbFiltersDropdown
             cols={d.cols || []}

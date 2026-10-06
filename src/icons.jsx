@@ -79,6 +79,10 @@ export const IC = {
     '<path d="M1.75 8s2.25-4.25 6.25-4.25S14.25 8 14.25 8s-2.25 4.25-6.25 4.25S1.75 8 1.75 8z"/><circle cx="8" cy="8" r="1.75"/>',
     "",
   ],
+  sidebar: [
+    '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6 3v10"/>',
+    "",
+  ],
   filter: [
     '<path d="M2.5 3.5h11l-4 5v3.5L6.5 14V8.5z"/>',
     "",

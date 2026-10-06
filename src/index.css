@@ -266,27 +266,20 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .modbar .mod-view-dd .dd-caret{display:none}
 .modbar .mod-view-dd .dd-menu{min-width:200px;max-height:none;overflow:visible}
 .modbar .gbar-tools .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
-.modbar .db-view-menu-pop{display:block;min-width:240px;z-index:70;overflow:visible}
-.modbar .db-view-sidebar-item,
-.modbar .db-view-switch-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer}
-.modbar .db-view-sidebar-item:hover,
-.modbar .db-view-switch-btn:hover,
-.modbar .db-view-sidebar-item.on,
-.modbar .db-view-switch.open > .db-view-switch-btn{background:var(--sel)}
 .modbar .db-view-check{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;color:var(--ink)}
-.modbar .db-view-switch{position:relative}
-.modbar .db-view-switch-btn{justify-content:space-between;cursor:default}
-.modbar .db-view-switch-btn svg{flex:none;opacity:.65}
-.modbar .db-view-switch-menu{display:block;left:calc(100% - 2px);right:auto;top:0;min-width:180px;max-width:260px;max-height:min(320px,50vh);overflow:auto;z-index:80}
-.modbar .db-view-switch-menu button{display:block;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.modbar .db-view-switch-menu button:hover,
-.modbar .db-view-switch-menu button.on{background:var(--sel)}
-.modbar .db-filters-dd{position:relative;flex:none;width:72px}
-.modbar .db-filters-dd .mod-act{width:100%}
+.modbar .db-cols-dd,.modbar .db-filters-dd{position:relative;flex:none;width:72px}
+.modbar .db-cols-dd .mod-act,.modbar .db-filters-dd .mod-act{width:100%}
+.modbar .db-cols-menu{display:block;left:0;right:auto;min-width:220px;max-width:min(320px,92vw);max-height:min(360px,50vh);padding:8px;z-index:70;overflow:auto}
+.db-cols-list{display:flex;flex-direction:column;gap:2px}
+.db-cols-item{display:flex;align-items:center;gap:8px;min-width:0;padding:7px 8px;border-radius:calc(var(--radius) - 6px);color:var(--ink);font-size:13px;font-weight:500;cursor:pointer}
+.db-cols-item:hover{background:var(--sel)}
+.db-cols-item input{flex:none;width:14px;height:14px;margin:0;accent-color:var(--acc);cursor:pointer}
+.db-cols-item svg{flex:none;opacity:.7}
+.db-cols-item span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .modbar .db-filters-menu{display:block;left:0;right:auto;min-width:min(640px,92vw);max-width:min(720px,94vw);padding:10px;z-index:70;overflow:visible}
 .modbar .db-filters-menu .db-filter-remove,
 .modbar .db-filters-menu .db-filters-add{width:auto}
-.modbar .db-filters-menu .dd-btn{width:100%}
+.modbar .db-filters-menu .dd-btn{display:inline-flex;align-items:center;gap:6px;width:100%}
 .modbar .db-filters-menu .dd-menu button{width:100%}
 .db-filters-rows{display:flex;flex-direction:column;gap:8px}
 .db-filter-row{display:flex;align-items:center;gap:6px;min-width:0}
@@ -296,7 +289,7 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .db-filter-junction{flex:none;width:72px}
 .db-filter-junction-spacer{display:block;width:100%;height:28px}
 .db-filter-junction-locked{display:flex;align-items:center;height:28px;padding:0 8px;font-size:13px;font-weight:500;color:var(--mute)}
-.db-filter-junction-dd .dd-btn,.db-filter-field-dd .dd-btn,.db-filter-op-dd .dd-btn,.db-filter-value-dd .dd-btn{width:100%;min-height:28px;padding:4px 8px;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px);background:#fff;color:var(--ink);font:inherit;font-size:13px;font-weight:500}
+.db-filter-junction-dd .dd-btn,.db-filter-field-dd .dd-btn,.db-filter-op-dd .dd-btn,.db-filter-value-dd .dd-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;width:100%;min-height:28px;padding:4px 8px;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px);background:#fff;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left}
 .db-filter-junction-dd .dd-btn:hover,.db-filter-field-dd .dd-btn:hover,.db-filter-op-dd .dd-btn:hover,.db-filter-value-dd .dd-btn:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
 .db-filter-junction-dd.open .dd-btn,.db-filter-field-dd.open .dd-btn,.db-filter-op-dd.open .dd-btn,.db-filter-value-dd.open .dd-btn{border-color:var(--acc);box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 35%,transparent)}
 .db-filter-field-dd{flex:0 1 160px;min-width:120px}
@@ -656,6 +649,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dd{position:relative;display:inline-flex;min-width:0;max-width:100%}
 .dd.open{z-index:40}
 .dd-btn{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;font:inherit;cursor:pointer}
+.pop > .dd > .dd-btn,.pop .dd-btn{display:inline-flex;align-items:center;gap:6px}
 .dd-lab{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 .dd-caret{flex:none;display:grid;place-items:center;opacity:.75}
 .dd-right .dd-menu,.dd.dd-right .pop{left:auto;right:0}

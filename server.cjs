@@ -61,31 +61,48 @@ function normalizeFilters(filters) {
   return { junction, rules: rules.length ? rules : emptyFilterState().rules };
 }
 
-function createDefaultCustomView(filters) {
+function normalizeHiddenCols(hiddenCols) {
+  if (!Array.isArray(hiddenCols)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const id of hiddenCols) {
+    const s = String(id || "");
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+function createDefaultCustomView(filters, hiddenCols) {
   return {
     id: DEFAULT_CUSTOM_VIEW_ID,
     name: DEFAULT_CUSTOM_VIEW_NAME,
     filters: normalizeFilters(filters),
+    hiddenCols: normalizeHiddenCols(hiddenCols),
   };
 }
 
 function normalizeCustomViews(views) {
   const extras = [];
   let defaultFilters = emptyFilterState();
+  let defaultHiddenCols = [];
   for (const v of Array.isArray(views) ? views : []) {
     if (!v || v.id == null) continue;
     const id = String(v.id);
     if (id === DEFAULT_CUSTOM_VIEW_ID) {
       defaultFilters = normalizeFilters(v.filters);
+      defaultHiddenCols = normalizeHiddenCols(v.hiddenCols);
       continue;
     }
     extras.push({
       id,
       name: String(v.name || "Untitled view").trim() || "Untitled view",
       filters: normalizeFilters(v.filters),
+      hiddenCols: normalizeHiddenCols(v.hiddenCols),
     });
   }
-  return [createDefaultCustomView(defaultFilters), ...extras];
+  return [createDefaultCustomView(defaultFilters, defaultHiddenCols), ...extras];
 }
 
 function resolveCustomViewId(viewId, views) {

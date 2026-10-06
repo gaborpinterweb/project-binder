@@ -1,4 +1,4 @@
-const { app, BrowserWindow, nativeImage } = require("electron");
+const { app, BrowserWindow } = require("electron");
 const http = require("http");
 const path = require("path");
 
@@ -39,10 +39,6 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   process.env.PROJECT_BINDER_USER_DATA = app.getPath("userData");
-  const icon = nativeImage.createFromPath(ICON_PATH);
-  if (!icon.isEmpty() && process.platform === "darwin" && app.dock) {
-    app.dock.setIcon(icon);
-  }
   require("../server.cjs");
   await waitForServer(APP_URL);
   createWindow();

@@ -128,17 +128,34 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .notes-view{display:flex;flex-direction:column;flex:1;min-height:0}
 .files-view{display:flex;flex-direction:column;flex:1;min-height:0}
 .files-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
-.files-body{flex:1;min-height:0;overflow:auto;padding:16px 20px;background:#fff}
-.files-empty{font-size:13px;color:var(--mute)}
-.files-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
-.files-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:calc(var(--radius) - 4px);background:color-mix(in srgb,var(--ink) 3%,#fff);color:var(--ink)}
-.files-row:hover{background:color-mix(in srgb,var(--ink) 6%,#fff)}
-.files-row svg{flex:none;color:var(--mute)}
-.files-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);text-decoration:none;font-size:14px}
+.files-body{flex:1;min-height:0;overflow:auto;padding:0;background:#fff}
+.files-empty{padding:20px 24px;font-size:13px;color:var(--mute)}
+.files-table{display:flex;flex-direction:column;min-height:100%}
+.files-head{display:flex;align-items:center;gap:12px;padding:0 16px 0 20px;min-height:32px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);background:#fff;color:var(--mute);font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.files-head-name{flex:1;min-width:0}
+.files-head-more,.files-more-spacer{flex:none;width:28px}
+.files-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.files-row{display:flex;align-items:center;gap:12px;padding:0 16px 0 20px;min-height:52px;border:0;border-radius:0;color:var(--ink);background:#fff}
+.files-row:nth-child(even){background:#f3ebe0}
+.files-row:hover{background:color-mix(in srgb,var(--tab,var(--acc)) 12%,#fff)}
+.files-row:nth-child(even):hover{background:color-mix(in srgb,var(--tab,var(--acc)) 14%,#f3ebe0)}
+.files-row > svg{flex:none;color:var(--mute)}
+.files-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);text-decoration:none;font-size:15px;font-weight:500}
 .files-name:hover{text-decoration:underline}
-.files-del{flex:none;display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
-.files-del:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
-.files-del:disabled{opacity:.45;cursor:default}
+.files-col-size,.files-col-added{flex:none;color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.files-col-size{width:88px;text-align:right}
+.files-col-added{width:110px;text-align:right}
+.files-more{position:relative;flex:none}
+.files-more-btn{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
+.files-more-btn svg{display:block}
+.files-more-btn:hover,.files-more.open .files-more-btn{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.files-more-btn:disabled{opacity:.45;cursor:default}
+.files-more .pop{display:block;position:fixed;top:auto;left:auto;min-width:148px;z-index:80;padding:6px}
+.files-more .pop button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
+.files-more .pop button svg{flex:none;opacity:.75}
+.files-more .pop button:hover:not(:disabled){background:var(--sel)}
+.files-more .pop button.danger{color:#b42318}
+.files-more .pop button.danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 10%,transparent)}
 .modbar.notes-chrome{flex:none;display:flex;align-items:center;gap:8px;border-radius:0}
 .notes-layout{display:flex;flex:1;min-height:0}
 .notes-sidebar{width:320px;flex:none;display:flex;flex-direction:column;padding:0;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));color:var(--ink);min-height:0}

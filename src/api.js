@@ -209,6 +209,19 @@ export async function postFile(body) {
   return r.json();
 }
 
+export async function putFile(body) {
+  const r = await fetch("/api/file", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "Could not rename file");
+  }
+  return r.json();
+}
+
 export async function deleteFileApi(body) {
   const r = await fetch("/api/file", {
     method: "DELETE",

@@ -1391,6 +1391,18 @@ function deleteUploadedFile(projectSlug, filesTabSlug, fileSlug) {
   return { ok: true };
 }
 
+function renameUploadedFile(projectSlug, filesTabSlug, fileSlug, name) {
+  const project = findProject(projectSlug);
+  const tab = findFilesTab(project, filesTabSlug);
+  if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
+  const meta = tab.files.find((f) => f.slug === fileSlug);
+  if (!meta) return { ok: false, error: "file not found" };
+  const title = String(name || "").trim();
+  if (!title) return { ok: false, error: "missing fields" };
+  meta.name = title;
+  return { ok: true };
+}
+
 function readUploadedFile(projectSlug, filesTabSlug, fileSlug) {
   const project = findProject(projectSlug);
   const tab = findFilesTab(project, filesTabSlug);
@@ -1863,6 +1875,20 @@ const server = http.createServer(async (req, res) => {
       }
       saveStore();
       return json(res, 201, { slug: result.slug, ...readWorkspace() });
+    }
+    if (req.method === "PUT" && url.pathname === "/api/file") {
+      const body = await readBody(req);
+      if (!body.project || !body.filesTab || !body.file || body.name == null) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
+      const result = renameUploadedFile(body.project, body.filesTab, body.file, body.name);
+      if (!result.ok) {
+        const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 200, readWorkspace());
     }
     if (req.method === "DELETE" && url.pathname === "/api/file") {
       const body = await readBody(req);

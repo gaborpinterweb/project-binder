@@ -40,6 +40,7 @@ import {
   savePomo,
   pomoRemainingSec,
   pomoElapsedSec,
+  isStoptimerSession,
   locateRow,
   findCardBySlugs,
   modToTabType,
@@ -290,7 +291,7 @@ export default function App() {
   // Pomodoro init + ticker
   useEffect(() => {
     const session = loadPomo();
-    if (session && pomoRemainingSec(session) <= 0) {
+    if (session && !isStoptimerSession(session) && pomoRemainingSec(session) <= 0) {
       (async () => {
         setActivePomo(session);
         activePomoRef.current = session;
@@ -309,7 +310,8 @@ export default function App() {
     if (!activePomo) return;
     const id = setInterval(() => {
       bump();
-      if (pomoRemainingSec(activePomoRef.current) <= 0) {
+      const cur = activePomoRef.current;
+      if (!isStoptimerSession(cur) && pomoRemainingSec(cur) <= 0) {
         stopPomodoro();
       }
     }, 1000);
@@ -329,8 +331,10 @@ export default function App() {
     if (!session || pomoFinishing.current) return;
     pomoFinishing.current = true;
     const endedAt = new Date().toISOString();
-    const planned = session.durationSec || POMO_DURATION_SEC;
-    const durationSec = Math.min(planned, Math.max(1, pomoElapsedSec(session)));
+    const elapsed = Math.max(1, pomoElapsedSec(session));
+    const durationSec = isStoptimerSession(session)
+      ? elapsed
+      : Math.min(session.durationSec || POMO_DURATION_SEC, elapsed);
     const note = typeof session.note === "string" ? session.note.trim() : "";
     setActivePomo(null);
     activePomoRef.current = null;
@@ -371,6 +375,7 @@ export default function App() {
   async function startPomodoro(payload) {
     if (!payload.project || !payload.board || !payload.card) return;
     if (activePomoRef.current) await stopPomodoro();
+    const kind = payload.kind === "stoptimer" ? "stoptimer" : "pomodoro";
     const session = {
       project: payload.project,
       board: payload.board,
@@ -379,10 +384,10 @@ export default function App() {
       projectName: payload.projectName || payload.project,
       boardName: payload.boardName || payload.board,
       color: payload.color || GACC,
-      kind: "pomodoro",
+      kind,
       note: "",
       startedAt: new Date().toISOString(),
-      durationSec: POMO_DURATION_SEC,
+      ...(kind === "pomodoro" ? { durationSec: POMO_DURATION_SEC } : {}),
     };
     setActivePomo(session);
     activePomoRef.current = session;

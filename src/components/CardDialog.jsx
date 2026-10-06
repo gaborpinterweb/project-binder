@@ -327,12 +327,15 @@ export default function CardDialog({
                         caret={false}
                         options={[
                           ...(showTimelogs
-                            ? [{ value: "pomo", label: "Start pomodoro" }]
+                            ? [
+                                { value: "pomo", label: "Start pomodoro" },
+                                { value: "stoptimer", label: "Start stoptimer" },
+                              ]
                             : []),
                           { value: "logs", label: "Open timelogs..." },
                         ]}
                         onChange={async (v) => {
-                          if (v === "pomo") {
+                          if (v === "pomo" || v === "stoptimer") {
                             await onStartPomo({
                               project: curLoc.folder.slug,
                               board: curLoc.mod[2].slug,
@@ -341,6 +344,7 @@ export default function CardDialog({
                               projectName: curLoc.folder.name,
                               boardName: curLoc.mod[1],
                               color: curLoc.folder.color || PC[0],
+                              kind: v === "stoptimer" ? "stoptimer" : "pomodoro",
                             });
                             await close(false);
                             return;

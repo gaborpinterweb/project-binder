@@ -915,8 +915,12 @@ export function savePomo(session) {
   } catch {}
 }
 
+export function isStoptimerSession(session) {
+  return session?.kind === "stoptimer";
+}
+
 export function pomoRemainingSec(session) {
-  if (!session) return 0;
+  if (!session || isStoptimerSession(session)) return 0;
   const started = new Date(session.startedAt).getTime();
   if (Number.isNaN(started)) return 0;
   const planned = session.durationSec || POMO_DURATION_SEC;

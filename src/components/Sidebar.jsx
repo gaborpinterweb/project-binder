@@ -4,6 +4,8 @@ import {
   PC,
   formatDuration,
   globalLabel,
+  isStoptimerSession,
+  pomoElapsedSec,
   pomoRemainingSec,
 } from "../utils.js";
 
@@ -162,12 +164,15 @@ export default function Sidebar({
 }
 
 function PomoBlock({ activePomo, onStop, onNoteChange, onOpenCard }) {
-  const rem = pomoRemainingSec(activePomo);
+  const stopwatch = isStoptimerSession(activePomo);
+  const shown = stopwatch
+    ? pomoElapsedSec(activePomo)
+    : pomoRemainingSec(activePomo);
   const color = activePomo.color || GACC;
   return (
     <div className="pomo-block" id="pomo-block">
       <div className="pomo-time" id="pomo-time">
-        {formatDuration(rem)}
+        {formatDuration(shown)}
       </div>
       <button
         type="button"
@@ -199,7 +204,7 @@ function PomoBlock({ activePomo, onStop, onNoteChange, onOpenCard }) {
         }}
       />
       <button type="button" className="pomo-stop" id="pomo-stop" onClick={onStop}>
-        Stop pomodoro
+        {stopwatch ? "Stop stoptimer" : "Stop pomodoro"}
       </button>
     </div>
   );

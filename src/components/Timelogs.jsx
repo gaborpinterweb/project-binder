@@ -356,7 +356,9 @@ export default function Timelogs({
 }) {
   const [entries, setEntries] = useState(null);
   const [viewMode, setViewMode] = useState("list");
-  const [period, setPeriod] = useState("This week");
+  const [period, setPeriod] = useState(() =>
+    timelogFilter ? "All time" : "This week"
+  );
   const [groupBy, setGroupBy] = useState("Day");
   const [boardOff, setBoardOff] = useState(() => new Set());
   const [editingSlug, setEditingSlug] = useState(null);
@@ -374,6 +376,10 @@ export default function Timelogs({
       })),
     [folders]
   );
+
+  useEffect(() => {
+    if (timelogFilter) setPeriod("All time");
+  }, [timelogFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -659,9 +665,13 @@ export default function Timelogs({
             {shown && !shown.length && (
               <div className="empty-log">
                 {filter
-                  ? `No timelogs for this card in ${period.toLowerCase()}.`
+                  ? period === "All time"
+                    ? "No timelogs for this card."
+                    : `No timelogs for this card in ${period.toLowerCase()}.`
                   : entries?.length
-                    ? `No timelogs for ${period.toLowerCase()}.`
+                    ? period === "All time"
+                      ? "No timelogs yet. Start a pomodoro from a card."
+                      : `No timelogs for ${period.toLowerCase()}.`
                     : "No timelogs yet. Start a pomodoro from a card."}
               </div>
             )}

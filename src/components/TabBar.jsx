@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Icon, IC } from "../icons.jsx";
-import { APP_NAME, TYPES } from "../utils.js";
-
-const SUPPORT_URL =
-  "https://github.com/gaborpinterweb/freelance-workbook/issues";
+import { TYPES } from "../utils.js";
 
 function findTabEl(tabsEl, slug) {
   if (!tabsEl || !slug) return null;
@@ -60,67 +57,6 @@ function flipSwapTabs(tabsEl, leftSlug, rightSlug, applyOrder) {
       window.setTimeout(cleanup, 380);
     });
   });
-}
-
-function SupportDialog({ onClose }) {
-  const ctaRef = useRef(null);
-
-  useEffect(() => {
-    const t = requestAnimationFrame(() => ctaRef.current?.focus());
-    return () => cancelAnimationFrame(t);
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="ov ov-prompt"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="dlg prompt-dlg support-dlg"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="support-title"
-        aria-describedby="support-msg"
-      >
-        <div className="dlg-content prompt-body">
-          <h2 id="support-title" className="prompt-title">
-            Need help?
-          </h2>
-          <p id="support-msg" className="prompt-msg">
-            Get support for {APP_NAME}, report a bug, or share a feature idea on
-            GitHub.
-          </p>
-          <div className="actions prompt-actions">
-            <button type="button" className="dlg-delete" onClick={onClose}>
-              Close
-            </button>
-            <a
-              ref={ctaRef}
-              className="dlg-create support-cta"
-              href={SUPPORT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Open support
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function TabMoreMenu({
@@ -342,7 +278,6 @@ export default function TabBar({
 }) {
   const tabsRef = useRef(null);
   const swappingRef = useRef(false);
-  const [supportOpen, setSupportOpen] = useState(false);
 
   const moveAnimated = (index, dir) => {
     if (swappingRef.current || archived || boardEdit) return;
@@ -426,17 +361,6 @@ export default function TabBar({
             </button>
           )}
         </div>
-        <div className="actions">
-          <button
-            type="button"
-            id="support"
-            title="Support"
-            aria-label="Support"
-            onClick={() => setSupportOpen(true)}
-          >
-            <Icon name="Support" size={18} />
-          </button>
-        </div>
       </div>
       <div
         id="menu"
@@ -463,9 +387,6 @@ export default function TabBar({
           </button>
         ))}
       </div>
-      {supportOpen ? (
-        <SupportDialog onClose={() => setSupportOpen(false)} />
-      ) : null}
     </>
   );
 }

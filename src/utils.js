@@ -589,6 +589,7 @@ export const TIMELOG_PERIODS = [
   "Last quarter",
   "This year",
   "Last year",
+  "All time",
 ];
 
 function startOfLocalDay(d) {
@@ -672,7 +673,9 @@ export function timelogPeriodRange(period, now = new Date()) {
 }
 
 export function matchesTimelogPeriod(entry, period) {
-  if (!period || !TIMELOG_PERIODS.includes(period)) return true;
+  if (!period || period === "All time" || !TIMELOG_PERIODS.includes(period)) {
+    return true;
+  }
   const stamp = entry.endedAt || entry.startedAt || "";
   const t = new Date(stamp).getTime();
   if (Number.isNaN(t)) return false;

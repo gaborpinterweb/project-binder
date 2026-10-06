@@ -120,10 +120,6 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .modbar.notes-chrome{flex:none;display:flex;align-items:center;gap:8px;border-radius:0}
 .notes-layout{display:flex;flex:1;min-height:0}
 .notes-sidebar{width:320px;flex:none;display:flex;flex-direction:column;padding:0;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));color:var(--ink);min-height:0}
-.notes-sidebar-tools{flex:none;padding:10px 10px 0;min-width:0}
-.notes-sidebar .notes-search{width:100%;box-sizing:border-box;height:32px;padding:6px 12px;border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);font:inherit;font-size:13px;color:var(--ink);background:#fff;outline:none}
-.notes-sidebar .notes-search::placeholder{color:var(--mute)}
-.notes-sidebar .notes-search:focus{border-color:color-mix(in srgb,var(--tab,var(--acc)) 45%,var(--line))}
 .notes-list{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 .notes-item{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;padding:10px 12px;border:3px solid transparent;border-radius:calc(var(--radius) - 2px);font:inherit;text-align:left;color:var(--ink);background:#fff;box-shadow:0 1px 2px #0001;cursor:pointer;overflow:hidden}
 .notes-item:hover{box-shadow:0 1px 4px #0002}
@@ -260,6 +256,7 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .modbar .mod-view-dd .mod-act{width:100%}
 .modbar .mod-view-dd .dd-caret{display:none}
 .modbar .mod-view-dd .dd-menu{min-width:200px;max-height:none;overflow:visible}
+.modbar .gbar-tools .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
 .modbar .db-view-menu-pop{display:block;min-width:240px;z-index:70;overflow:visible}
 .modbar .db-view-sidebar-item,
 .modbar .db-view-switch-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer}
@@ -400,6 +397,37 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .log-filter .clear:hover{background:color-mix(in srgb,var(--acc) 20%,transparent)}
 .log-note{flex:none;padding:10px 20px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));font-size:13px;line-height:1.4;color:var(--mute)}
 .log.timelogs{gap:22px}
+.log.timelogs.timelogs-cal{flex:1;min-height:0;padding:0;gap:0;overflow:hidden}
+.timelog-view-opt{display:inline-flex;align-items:center;gap:8px}
+.modbar .gbar-tools .mod-view-dd .dd-menu .timelog-view-opt .db-view-check{width:14px}
+.timelog-cal{flex:1;min-height:0;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.timelog-cal-toolbar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg))}
+.timelog-cal-stepper{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.timelog-cal-month{margin:0;min-width:12ch;font-size:15px;font-weight:650;color:var(--ink);text-align:center}
+.timelog-cal-nav{display:inline-grid;place-items:center;width:30px;height:30px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);cursor:pointer}
+.timelog-cal-nav:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.timelog-cal-today{padding:6px 12px;border:0;border-radius:calc(var(--radius) - 6px);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.timelog-cal-today:hover{background:color-mix(in srgb,var(--acc) 22%,transparent)}
+.timelog-cal-board{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.timelog-cal-dows{flex:none;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 2%,var(--bg))}
+.timelog-cal-dow{padding:6px 4px;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);text-align:center;border-right:1px solid var(--line)}
+.timelog-cal-dow:last-child{border-right:0}
+.timelog-cal-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(var(--cal-rows,5),minmax(0,1fr));margin:0;padding:0;gap:0;overflow:hidden}
+.timelog-cal-cell{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0;min-height:0;margin:0;padding:4px;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);overflow:hidden}
+.timelog-cal-cell:nth-child(7n){border-right:0}
+.timelog-cal-cell.empty{background:color-mix(in srgb,var(--ink) 3%,var(--bg))}
+.timelog-cal-cell.today{background:color-mix(in srgb,var(--acc) 7%,var(--card))}
+.timelog-cal-cell.today .timelog-cal-daynum{color:var(--acc)}
+.timelog-cal-daynum{flex:none;align-self:flex-start;padding:1px 4px;font-size:12px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.2}
+.timelog-cal-cards{flex:1;min-height:0;display:flex;flex-direction:column;gap:3px;overflow:auto}
+.timelog-cal-card{display:flex;flex-direction:column;align-items:stretch;gap:1px;width:100%;margin:0;padding:4px 6px;border:1px solid color-mix(in srgb,var(--pc) 28%,transparent);border-radius:4px;color:var(--ink);font:inherit;text-align:left;cursor:pointer;box-sizing:border-box}
+.timelog-cal-card:hover{filter:brightness(1.03);box-shadow:0 0 0 1px color-mix(in srgb,var(--pc) 35%,transparent)}
+.timelog-cal-card.on{box-shadow:0 0 0 2px color-mix(in srgb,var(--pc) 55%,transparent)}
+.timelog-cal-card-title{display:block;font-size:11px;font-weight:650;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.timelog-cal-card-src{display:block;font-size:10px;line-height:1.2;color:color-mix(in srgb,var(--ink) 72%,transparent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.timelog-cal-inspector{flex:none;display:flex;align-items:center;box-sizing:border-box;min-height:92px;padding:10px 12px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--ink) 2%,var(--bg))}
+.timelog-cal-inspector .timelog-row{flex:1;width:100%;margin:0;min-height:68px}
+.timelog-cal-inspector-empty{flex:1;display:flex;align-items:center;align-self:stretch;min-height:68px;padding:0 4px;font-size:13px;color:var(--mute)}
 .log-period{flex:none;display:flex;flex-direction:column;gap:2px;padding:0;border:0;background:transparent}
 .log-period-head{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0;padding:0 2px 8px;background:transparent;border:0}
 .log-period-head h3{margin:0;font-size:13px;font-weight:650;letter-spacing:.01em;color:var(--mute)}

@@ -80,7 +80,6 @@ export default function Notes({
   const [selectedSlug, setSelectedSlug] = useState(notes[0]?.slug || null);
   const [unlocked, setUnlocked] = useState({});
   const [editor, setEditor] = useState(null);
-  const [search, setSearch] = useState("");
   const [toolbarMounted, setToolbarMounted] = useState(false);
   const [toolbarIn, setToolbarIn] = useState(false);
   const [editingView, setEditingView] = useState(false);
@@ -237,16 +236,6 @@ export default function Notes({
     setSelectedSlug(slug);
   };
 
-  const filteredNotes = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter((n) => {
-      const title = noteListTitle(n.body).toLowerCase();
-      const preview = noteListPreview(n.body, 280).toLowerCase();
-      return title.includes(q) || preview.includes(q);
-    });
-  }, [notes, search]);
-
   if (notes.length === 0) {
     return (
       <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>
@@ -346,18 +335,8 @@ export default function Notes({
       </div>
       <div className="notes-layout">
         <aside className="notes-sidebar">
-          <div className="notes-sidebar-tools">
-            <input
-              className="notes-search"
-              type="search"
-              placeholder="Search notes…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search notes"
-            />
-          </div>
           <div className={"notes-list size-" + cardSize}>
-            {filteredNotes.map((n) => {
+            {notes.map((n) => {
               const preview =
                 cardSize === "sm"
                   ? ""

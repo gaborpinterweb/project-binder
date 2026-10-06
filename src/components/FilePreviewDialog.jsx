@@ -229,6 +229,19 @@ function waitForImage(host) {
   });
 }
 
+function nextFrame() {
+  return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+async function waitUntilDialogSized(dlg, host, format, viewer, isCancelled) {
+  for (let i = 0; i < 45; i++) {
+    if (isCancelled()) return;
+    sizeDialogToContent(dlg, host, format, viewer);
+    if (dlg.style.width) return;
+    await nextFrame();
+  }
+}
+
 export default function FilePreviewDialog({
   file,
   project,
@@ -240,6 +253,8 @@ export default function FilePreviewDialog({
   const viewerRef = useRef(null);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
+  const [revealed, setRevealed] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(0);
   const [paged, setPaged] = useState(false);
@@ -253,6 +268,8 @@ export default function FilePreviewDialog({
     const dlg = dlgRef.current;
     setStatus("loading");
     setError("");
+    setRevealed(false);
+    setSlow(false);
     setPaged(false);
     setPage(0);
     setPageCount(0);
@@ -260,6 +277,9 @@ export default function FilePreviewDialog({
       dlg.style.width = "";
       dlg.style.height = "";
     }
+    const slowTimer = setTimeout(() => {
+      if (!cancelled) setSlow(true);
+    }, 2000);
 
     (async () => {
       try {
@@ -291,28 +311,28 @@ export default function FilePreviewDialog({
         if (format === "image") await waitForImage(host);
         if (cancelled) return;
         setStatus("ready");
-        requestAnimationFrame(() => {
-          if (cancelled) return;
-          localizeViewerUi(host);
-          if (fit) {
-            sizeDialogToContent(dlg, host, format, viewer);
-            requestAnimationFrame(() => {
-              if (cancelled) return;
-              sizeDialogToContent(dlg, host, format, viewer);
-            });
-          } else {
-            applyFit(viewer, host, format);
-          }
-        });
+        await nextFrame();
+        await nextFrame();
+        if (cancelled) return;
+        localizeViewerUi(host);
+        if (fit) {
+          await waitUntilDialogSized(dlg, host, format, viewer, () => cancelled);
+        } else {
+          applyFit(viewer, host, format);
+        }
+        if (cancelled) return;
+        setRevealed(true);
       } catch (err) {
         if (cancelled) return;
         setStatus("error");
         setError(err.message || "Could not preview this file");
+        setRevealed(true);
       }
     })();
 
     return () => {
       cancelled = true;
+      clearTimeout(slowTimer);
       viewerRef.current?.destroy();
       viewerRef.current = null;
       if (host) host.replaceChildren();
@@ -359,18 +379,25 @@ export default function FilePreviewDialog({
   return (
     <div
       className="ov ov-file-preview"
+      aria-busy={!revealed}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      {!revealed && slow ? (
+        <div className="file-preview-boot">Loading preview…</div>
+      ) : null}
       <div
         ref={dlgRef}
         className={
-          "dlg file-preview-dlg" + (fit ? " is-fit" : " is-viewport")
+          "dlg file-preview-dlg" +
+          (fit ? " is-fit" : " is-viewport") +
+          (revealed ? "" : " is-unrevealed")
         }
         role="dialog"
         aria-modal="true"
         aria-labelledby="file-preview-title"
+        aria-hidden={!revealed}
       >
         <div className="file-preview-bar">
           <button

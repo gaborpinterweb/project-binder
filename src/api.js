@@ -236,6 +236,32 @@ export function fileDownloadUrl(project, filesTab, file) {
   return `/api/file?${q.toString()}`;
 }
 
+export async function revealFile(body) {
+  const r = await fetch("/api/file/reveal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "Could not show file");
+  }
+  return r.json();
+}
+
+export async function moveFileApi(body) {
+  const r = await fetch("/api/file/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "Could not move file");
+  }
+  return r.json();
+}
+
 export async function putTab(body) {
   const r = await fetch("/api/tab", {
     method: "PUT",

@@ -6,6 +6,7 @@ const path = require("path");
 
 const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
+const SEED_UPLOADS = path.join(__dirname, "seedUploads");
 const LEGACY_SEED = path.join(__dirname, "launchData.json");
 const LEGACY_APP_USER_WORKSPACE = path.join(__dirname, "userWorkspace.json");
 const LEGACY_USER = path.join(__dirname, "userData.json");
@@ -349,13 +350,35 @@ function ensureStore() {
   }
   store = loadSeedWorkspace();
   ensureTrash();
+  installSeedUploads();
   saveStore();
   return { reseeded: true, reason: user.reason, purged: 0 };
+}
+
+function clearUploads() {
+  const dest = path.join(USER_DATA_DIR, "uploads");
+  if (!fs.existsSync(dest)) return;
+  try {
+    fs.rmSync(dest, { recursive: true, force: true });
+  } catch {
+    /* best-effort cleanup */
+  }
+}
+
+function copySeedUploads() {
+  if (!fs.existsSync(SEED_UPLOADS)) return;
+  fs.cpSync(SEED_UPLOADS, path.join(USER_DATA_DIR, "uploads"), { recursive: true });
+}
+
+function installSeedUploads() {
+  clearUploads();
+  copySeedUploads();
 }
 
 function resetToSeedWorkspace() {
   store = loadSeedWorkspace();
   ensureTrash();
+  installSeedUploads();
   saveStore();
 }
 
@@ -371,6 +394,7 @@ function emptyWorkspaceDoc() {
 
 function resetToEmptyWorkspace() {
   store = emptyWorkspaceDoc();
+  clearUploads();
   saveStore();
 }
 
@@ -1403,6 +1427,64 @@ function renameUploadedFile(projectSlug, filesTabSlug, fileSlug, name) {
   return { ok: true };
 }
 
+function moveUploadedFile(fromProjectSlug, fromTabSlug, fileSlug, toProjectSlug, toTabSlug) {
+  if (projectIsArchived(fromProjectSlug) || projectIsArchived(toProjectSlug)) {
+    return { ok: false, error: "project is archived" };
+  }
+  if (fromProjectSlug === toProjectSlug && fromTabSlug === toTabSlug) {
+    return { ok: false, error: "same destination" };
+  }
+  if (
+    !isSafePathSlug(fromProjectSlug) ||
+    !isSafePathSlug(fromTabSlug) ||
+    !isSafePathSlug(fileSlug) ||
+    !isSafePathSlug(toProjectSlug) ||
+    !isSafePathSlug(toTabSlug)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const fromProject = findProject(fromProjectSlug);
+  const fromTab = findFilesTab(fromProject, fromTabSlug);
+  const toProject = findProject(toProjectSlug);
+  const toTab = findFilesTab(toProject, toTabSlug);
+  if (!fromProject || !fromTab || !fromTab.files) return { ok: false, error: "file not found" };
+  if (!toProject || !toTab) return { ok: false, error: "destination not found" };
+  const idx = fromTab.files.findIndex((f) => f.slug === fileSlug);
+  if (idx < 0) return { ok: false, error: "file not found" };
+  const fromPath = storedFilePath(fromProjectSlug, fromTabSlug, fileSlug);
+  if (!fs.existsSync(fromPath)) return { ok: false, error: "file not found" };
+  if (!toTab.files) toTab.files = [];
+  let slug = fileSlug;
+  if (toTab.files.some((f) => f.slug === slug)) {
+    slug = uniqueFileSlug(toTab, fromTab.files[idx].name || slug);
+  }
+  if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
+  const toPath = storedFilePath(toProjectSlug, toTabSlug, slug);
+  fs.mkdirSync(filesUploadDir(toProjectSlug, toTabSlug), { recursive: true });
+  try {
+    fs.renameSync(fromPath, toPath);
+  } catch (err) {
+    if (!err || err.code !== "EXDEV") {
+      return { ok: false, error: "could not move file" };
+    }
+    try {
+      fs.copyFileSync(fromPath, toPath);
+      fs.unlinkSync(fromPath);
+    } catch {
+      return { ok: false, error: "could not move file" };
+    }
+  }
+  const [meta] = fromTab.files.splice(idx, 1);
+  toTab.files.push({
+    slug,
+    name: meta.name || slug,
+    mime: meta.mime || "application/octet-stream",
+    size: Number(meta.size) || 0,
+    createdAt: meta.createdAt || new Date().toISOString(),
+  });
+  return { ok: true, slug, project: toProjectSlug, filesTab: toTabSlug };
+}
+
 function readUploadedFile(projectSlug, filesTabSlug, fileSlug) {
   const project = findProject(projectSlug);
   const tab = findFilesTab(project, filesTabSlug);
@@ -1592,26 +1674,47 @@ function deleteTimelog(slug) {
   return store.timelogs.length < before;
 }
 
-function revealUserDataDir() {
-  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+function revealPath(targetPath, { select = false } = {}) {
   try {
     const electron = require("electron");
     const shell = electron && electron.shell;
-    if (shell && typeof shell.openPath === "function") {
-      return shell.openPath(USER_DATA_DIR);
+    if (select && shell && typeof shell.showItemInFolder === "function") {
+      shell.showItemInFolder(targetPath);
+      return Promise.resolve("");
+    }
+    if (!select && shell && typeof shell.openPath === "function") {
+      return shell.openPath(targetPath);
     }
   } catch {
     /* fall through to OS opener */
   }
   const { spawn } = require("child_process");
-  const cmd =
-    process.platform === "darwin"
-      ? ["open", [USER_DATA_DIR]]
+  const cmd = select
+    ? process.platform === "darwin"
+      ? ["open", ["-R", targetPath]]
       : process.platform === "win32"
-        ? ["explorer", [USER_DATA_DIR]]
-        : ["xdg-open", [USER_DATA_DIR]];
+        ? ["explorer", ["/select,", targetPath]]
+        : ["xdg-open", [path.dirname(targetPath)]]
+    : process.platform === "darwin"
+      ? ["open", [targetPath]]
+      : process.platform === "win32"
+        ? ["explorer", [targetPath]]
+        : ["xdg-open", [targetPath]];
   spawn(cmd[0], cmd[1], { detached: true, stdio: "ignore" }).unref();
   return Promise.resolve("");
+}
+
+function revealUserDataDir() {
+  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+  return revealPath(USER_DATA_DIR);
+}
+
+function revealUploadedFile(projectSlug, filesTabSlug, fileSlug) {
+  const result = readUploadedFile(projectSlug, filesTabSlug, fileSlug);
+  if (!result.ok) return result;
+  const filePath = storedFilePath(projectSlug, filesTabSlug, fileSlug);
+  revealPath(filePath, { select: true });
+  return { ok: true };
 }
 
 function json(res, code, obj) {
@@ -1833,6 +1936,50 @@ const server = http.createServer(async (req, res) => {
       const slug = createFilesTab(body.project, body.name);
       saveStore();
       return json(res, 201, { slug, ...readWorkspace() });
+    }
+    if (req.method === "POST" && url.pathname === "/api/file/reveal") {
+      const body = await readBody(req);
+      const result = revealUploadedFile(body.project, body.filesTab, body.file);
+      if (!result.ok) {
+        const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === "POST" && url.pathname === "/api/file/move") {
+      const body = await readBody(req);
+      if (
+        !body.project ||
+        !body.filesTab ||
+        !body.file ||
+        !body.toProject ||
+        !body.toFilesTab
+      ) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      const result = moveUploadedFile(
+        body.project,
+        body.filesTab,
+        body.file,
+        body.toProject,
+        body.toFilesTab
+      );
+      if (!result.ok) {
+        const status =
+          result.error === "file not found" || result.error === "destination not found"
+            ? 404
+            : result.error === "project is archived"
+              ? 403
+              : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 200, {
+        slug: result.slug,
+        project: result.project,
+        filesTab: result.filesTab,
+        ...readWorkspace(),
+      });
     }
     if (req.method === "GET" && url.pathname === "/api/file") {
       const project = url.searchParams.get("project") || "";

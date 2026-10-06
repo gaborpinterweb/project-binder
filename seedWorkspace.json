@@ -310,6 +310,43 @@
           ],
           "isDemo": true
         }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Press kit.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Launch brief.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 1303,
+              "createdAt": "2026-09-22T10:00:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Launch deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 6714,
+              "createdAt": "2026-09-24T14:15:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Hero mock.png",
+              "mime": "image/png",
+              "size": 99,
+              "createdAt": "2026-09-28T09:40:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
       ]
     },
     {
@@ -617,6 +654,43 @@
           ],
           "isDemo": true
         }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Press kit.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Launch brief.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 1303,
+              "createdAt": "2026-09-22T10:00:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Launch deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 6714,
+              "createdAt": "2026-09-24T14:15:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Hero mock.png",
+              "mime": "image/png",
+              "size": 99,
+              "createdAt": "2026-09-28T09:40:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
       ]
     },
     {
@@ -918,6 +992,43 @@
               "body": "<h1>Accessibility QA</h1><p>Pass before client review.</p><table><tbody><tr><th><p>Check</p></th><th><p>Owner</p></th><th><p>Status</p></th></tr><tr><td><p>Contrast on accent buttons</p></td><td><p>Design</p></td><td><p>Open</p></td></tr><tr><td><p>Focus rings on nav + form</p></td><td><p>Frontend</p></td><td><p>Open</p></td></tr><tr><td><p>Alt text on hero images</p></td><td><p>Content</p></td><td><p>Done</p></td></tr></tbody></table><p>Use axe + keyboard-only pass on Services and Contact.</p>",
               "createdAt": "2026-09-30T09:00:00.000Z",
               "updatedAt": "2026-10-02T10:15:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Press kit.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Launch brief.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 1303,
+              "createdAt": "2026-09-22T10:00:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Launch deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 6714,
+              "createdAt": "2026-09-24T14:15:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Hero mock.png",
+              "mime": "image/png",
+              "size": 99,
+              "createdAt": "2026-09-28T09:40:00.000Z"
             }
           ],
           "isDemo": true
@@ -1228,6 +1339,43 @@
               "body": "<h1>Go-live runbook</h1><p>Saturday cutover checklist for the team.</p><h2>Morning</h2><ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Enable password page off</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Point DNS + clear CDN</p></div></li></ul><h3>Smoke tests</h3><ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Place test order with Shop Pay</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Confirm Klaviyo events</p></div></li></ul><p>Rollback: re-point DNS to Woo, keep Shopify passworded.</p>",
               "createdAt": "2026-09-27T08:20:00.000Z",
               "updatedAt": "2026-10-02T14:00:00.000Z"
+            }
+          ],
+          "isDemo": true
+        }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Press kit.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Launch brief.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 1303,
+              "createdAt": "2026-09-22T10:00:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Launch deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 6714,
+              "createdAt": "2026-09-24T14:15:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Hero mock.png",
+              "mime": "image/png",
+              "size": 99,
+              "createdAt": "2026-09-28T09:40:00.000Z"
             }
           ],
           "isDemo": true

@@ -947,3 +947,22 @@ export function allNotesTabs(folders) {
   });
   return out;
 }
+
+export function allFilesTabs(folders) {
+  const out = [];
+  folders.forEach((folder, fi) => {
+    if (folder.archived) return;
+    folder.mods.forEach((mod) => {
+      if (mod[0] !== "Files") return;
+      out.push({
+        folder,
+        mod,
+        fi,
+        color: folder.color || PC[fi % PC.length],
+        key: `${folder.slug || ""}/${mod[2]?.slug || ""}`,
+        label: `${folder.name} · ${mod[1]}`,
+      });
+    });
+  });
+  return out;
+}

@@ -27,10 +27,10 @@ function normalizeFilters(filters) {
   };
 }
 
-export function createDefaultCustomView(filters) {
+export function createDefaultCustomView(filters, name = DEFAULT_VIEW_NAME) {
   return {
     id: DEFAULT_VIEW_ID,
-    name: DEFAULT_VIEW_NAME,
+    name: String(name || DEFAULT_VIEW_NAME).trim() || DEFAULT_VIEW_NAME,
     filters: normalizeFilters(filters),
   };
 }
@@ -50,11 +50,13 @@ export function isDefaultCustomView(view) {
 export function normalizeCustomViews(views) {
   const extras = [];
   let defaultFilters = createFilterState();
+  let defaultName = DEFAULT_VIEW_NAME;
   for (const v of Array.isArray(views) ? views : []) {
     if (!v || v.id == null) continue;
     const id = String(v.id);
     if (id === DEFAULT_VIEW_ID) {
       defaultFilters = normalizeFilters(v.filters);
+      defaultName = String(v.name || DEFAULT_VIEW_NAME).trim() || DEFAULT_VIEW_NAME;
       continue;
     }
     extras.push({
@@ -63,7 +65,7 @@ export function normalizeCustomViews(views) {
       filters: normalizeFilters(v.filters),
     });
   }
-  return [createDefaultCustomView(defaultFilters), ...extras];
+  return [createDefaultCustomView(defaultFilters, defaultName), ...extras];
 }
 
 export function resolveCustomViewId(viewId, views) {

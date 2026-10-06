@@ -1654,6 +1654,94 @@ function DbGallery({ d, onOpen, displayRows }) {
   );
 }
 
+function DbViewMoreMenu({ canDelete, onRename, onDelete }) {
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const place = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onReposition = () => place();
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  const run = (fn) => {
+    setOpen(false);
+    fn?.();
+  };
+
+  return (
+    <div className={"db-view-more" + (open ? " open" : "")} ref={wrapRef}>
+      <button
+        type="button"
+        ref={btnRef}
+        className="db-view-more-btn"
+        title="View options"
+        aria-label="View options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="more" size={14} />
+      </button>
+      {open && pos ? (
+        <div
+          className="pop"
+          role="menu"
+          style={{ top: pos.top, right: pos.right, left: "auto" }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onRename);
+            }}
+          >
+            <Icon name="pencil" size={14} />
+            Rename
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            disabled={!canDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onDelete);
+            }}
+          >
+            <Icon name="Trash" size={14} />
+            Delete
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function DatabaseView({
   mod,
   folder,
@@ -1730,6 +1818,21 @@ export function DatabaseView({
     const view = createCustomView("Untitled view");
     d.customViews = normalizeCustomViews([...customViews, view]);
     d.customViewId = view.id;
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const renameView = async (view) => {
+    const next = await askPrompt({
+      title: "Rename view",
+      defaultValue: view.name,
+      confirmLabel: "Rename",
+    });
+    if (next == null) return;
+    const name = next.trim() || view.name;
+    if (name === view.name) return;
+    view.name = name;
+    d.customViews = normalizeCustomViews(customViews);
     bump((n) => n + 1);
     schedulePersistViews();
   };
@@ -1847,17 +1950,11 @@ export function DatabaseView({
                       <Icon name="eye" size={14} />
                       <span>{view.name}</span>
                     </button>
-                    {locked ? null : (
-                      <button
-                        type="button"
-                        className="db-view-delete"
-                        title="Delete view"
-                        aria-label={`Delete ${view.name}`}
-                        onClick={() => deleteView(view)}
-                      >
-                        <Icon name="close" size={12} />
-                      </button>
-                    )}
+                    <DbViewMoreMenu
+                      canDelete={!locked}
+                      onRename={() => renameView(view)}
+                      onDelete={() => deleteView(view)}
+                    />
                   </div>
                 );
               })}

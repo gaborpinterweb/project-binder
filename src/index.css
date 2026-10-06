@@ -109,8 +109,17 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .db-view-select span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .db-view-select svg{flex:none;opacity:.7}
 .db-view-item:not(.on) .db-view-select:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
-.db-view-delete{flex:none;display:inline-grid;place-items:center;width:28px;height:28px;margin-right:4px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
-.db-view-delete:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.db-view-more{position:relative;flex:none;margin-right:4px}
+.db-view-more-btn{display:inline-grid;place-items:center;width:28px;height:28px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
+.db-view-more-btn svg{display:block}
+.db-view-more-btn:hover,.db-view-more.open .db-view-more-btn{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.db-view-more .pop{display:block;position:fixed;top:auto;left:auto;min-width:148px;z-index:80;padding:6px}
+.db-view-more .pop button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
+.db-view-more .pop button svg{flex:none;opacity:.75}
+.db-view-more .pop button:hover:not(:disabled){background:var(--sel)}
+.db-view-more .pop button:disabled{opacity:.35;cursor:default}
+.db-view-more .pop button.danger{color:#b42318}
+.db-view-more .pop button.danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 10%,transparent)}
 .db-views-add{flex:none;display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
 .db-views-add:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .db-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
@@ -500,12 +509,15 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .wrap{position:relative}
 .pop{display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);padding:4px;box-shadow:0 4px 16px #0002}
 .pop button{display:block;width:100%;text-align:left;color:var(--ink)}
-.scroll{overflow:auto;padding:12px;flex:1}
+.scroll{overflow-x:auto;overflow-y:auto;padding:12px;flex:1;min-width:0;min-height:0;width:100%}
 table{border-collapse:collapse;width:100%;min-width:480px}
+.scroll table{width:max-content;min-width:100%}
 th{font-weight:500;color:var(--mute);text-align:left;font-size:13px}
 th.addcol{cursor:pointer;white-space:nowrap;color:var(--acc)}
 th.addcol:hover{color:var(--ink)}
 th,td{border-bottom:1px solid var(--line);padding:6px 8px}
+.scroll .db-col-th,.scroll .db-td{min-width:160px;white-space:nowrap}
+.scroll .db-chip-row{flex-wrap:nowrap}
 td+td,th+th{border-left:1px solid var(--line)}
 td:focus{outline:2px solid var(--acc);outline-offset:-2px}
 .new{color:var(--mute);cursor:pointer}.new:hover{background:var(--sel)}
@@ -865,8 +877,8 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .db-col-menu button:disabled{opacity:.35;cursor:default}
 .db-td{vertical-align:middle}
 .db-td-checkbox{width:48px;text-align:center}
-.db-cell-text{min-height:1.2em;outline:none;white-space:pre-wrap;word-break:break-word}
-.db-cell-text.multiline{white-space:pre-wrap}
+.db-cell-text{min-height:1.2em;outline:none;white-space:nowrap}
+.db-cell-text.multiline{white-space:pre-wrap;word-break:break-word}
 .db-check{display:inline-grid;place-items:center;margin:0;cursor:pointer}
 .db-check input{width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
 .db-num,.db-date{font:inherit;color:inherit;background:transparent;border:0;border-radius:4px;padding:2px 4px;width:100%;box-sizing:border-box}

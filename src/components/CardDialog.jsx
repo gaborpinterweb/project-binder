@@ -433,64 +433,56 @@ export default function CardDialog({
 
 function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
   const cols = loc?.mod?.[2]?.cols || [];
-  const regular = cols.filter((c) => c.type !== "longtext");
-  const rich = cols.filter((c) => c.type === "longtext");
-  const firstRegular = regular[0];
+  const firstEditable = cols.find((c) => c.type !== "longtext") || cols[0];
+
+  if (!cols.length) return null;
 
   return (
-    <>
-      {regular.length ? (
-        <div className="dlg-fields">
-          <table className="props">
-            <tbody>
-              {regular.map((c) => (
-                <tr key={c.id}>
-                  <td>
-                    <span className="db-prop-lab">
-                      <Icon name={fieldTypeIcon(c.type)} size={14} />
-                      {c.label}
-                      {c.required ? <span className="db-req">*</span> : null}
-                    </span>
-                  </td>
-                  <td>
-                    <DbFieldInput
-                      col={c}
-                      value={row[c.id]}
-                      stages={stages}
-                      variant="prop"
-                      autoFocus={!readonly && c.id === firstRegular?.id}
-                      placeholder={c.id === "n" ? "New entry" : ""}
-                      onChange={(next) => onPatch({ [c.id]: next })}
-                      onCommit={() => onPersist()}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-      {rich.map((c) => (
-        <div key={c.id} className="dlg-description db-rich-field">
-          <RichTextEditor
-            value={row[c.id] || ""}
-            label={
-              <span className="db-prop-lab">
-                <Icon name={fieldTypeIcon(c.type)} size={14} />
-                {c.label}
-                {c.required ? <span className="db-req">*</span> : null}
-              </span>
-            }
-            placeholder="Write something…"
-            editable={!readonly}
-            showToolbar={!readonly}
-            onChange={(html) => {
-              if (readonly) return;
-              onPatch({ [c.id]: html });
-            }}
-          />
-        </div>
-      ))}
-    </>
+    <div className="dlg-fields">
+      <table className="props">
+        <tbody>
+          {cols.map((c) => (
+            <tr
+              key={c.id}
+              className={c.type === "longtext" ? "db-prop-rich" : undefined}
+            >
+              <td>
+                <span className="db-prop-lab">
+                  <Icon name={fieldTypeIcon(c.type)} size={14} />
+                  {c.label}
+                  {c.required ? <span className="db-req">*</span> : null}
+                </span>
+              </td>
+              <td>
+                {c.type === "longtext" ? (
+                  <RichTextEditor
+                    value={row[c.id] || ""}
+                    showLabel={false}
+                    placeholder="Write something…"
+                    editable={!readonly}
+                    showToolbar={!readonly}
+                    onChange={(html) => {
+                      if (readonly) return;
+                      onPatch({ [c.id]: html });
+                    }}
+                  />
+                ) : (
+                  <DbFieldInput
+                    col={c}
+                    value={row[c.id]}
+                    stages={stages}
+                    variant="prop"
+                    autoFocus={!readonly && c.id === firstEditable?.id}
+                    placeholder={c.id === "n" ? "New entry" : ""}
+                    onChange={(next) => onPatch({ [c.id]: next })}
+                    onCommit={() => onPersist()}
+                  />
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

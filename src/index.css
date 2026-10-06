@@ -860,8 +860,14 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .field-edit-actions{margin-top:4px}
 .dlg .db-prop-lab{display:inline-flex;align-items:center;gap:6px;min-width:0;color:var(--mute)}
 .dlg .db-prop-lab>svg{flex:none;opacity:.7}
-.dlg .db-rich-field .dlg-desc-label{display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:600}
-.dlg .db-rich-field .rte .tiptap{min-height:160px}
+.dlg .props tr.db-prop-rich td{vertical-align:top;padding-top:10px;padding-bottom:10px}
+.dlg .props tr.db-prop-rich td:first-child{padding-top:14px}
+.dlg .props .db-prop-rich .rte{min-width:0;border:1px solid transparent;border-radius:calc(var(--radius) - 4px)}
+.dlg .props .db-prop-rich .rte:hover{background-color:color-mix(in srgb,var(--ink) 5%,transparent)}
+.dlg .props .db-prop-rich .rte:focus-within{background-color:color-mix(in srgb,#fff 55%,transparent);border-color:color-mix(in srgb,var(--ink) 12%,transparent)}
+.dlg .props .db-prop-rich .dlg-desc-head{padding:2px 2px 0}
+.dlg .props .db-prop-rich .rte .tiptap,
+.dlg .props .db-prop-rich .rte .ProseMirror{min-height:88px;padding:4px 6px 8px;font:inherit;color:var(--ink);line-height:1.45;outline:none}
 .db-rich-preview{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
 .dlg .db-longtext.prop,.dlg textarea.db-longtext{font:inherit;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px);padding:6px 8px;width:100%;min-height:4.5em;resize:vertical;box-sizing:border-box}
 .dlg .db-longtext.prop:hover{background-color:color-mix(in srgb,var(--ink) 5%,transparent)}

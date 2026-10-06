@@ -273,10 +273,7 @@ export default function DbFieldInput({
   }
 
   if (col.type === "longtext") {
-    if (variant === "prop") {
-      // Entry dialog renders rich text blocks separately.
-      return null;
-    }
+    if (variant === "prop") return null;
     const preview = plainFromHtml(coerced) || "";
     return (
       <div className="db-cell-text db-rich-preview" title={preview}>

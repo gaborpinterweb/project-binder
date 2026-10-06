@@ -284,7 +284,9 @@ export default function Files({
   const d = mod[2] || { slug: "", files: [] };
   const files = d.files || [];
   const inputRef = useRef(null);
+  const dragDepth = useRef(0);
   const [busy, setBusy] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [preview, setPreview] = useState(null);
   const [sorts, setSorts] = useState(() => loadFilesSorts());
   const tabSortKey = filesTabSortKey(folder?.slug, d.slug);
@@ -297,6 +299,11 @@ export default function Files({
 
   const keepNav = {
     keepNav: { project: folder.slug, board: d.slug, g: null },
+  };
+
+  const clearDragOver = () => {
+    dragDepth.current = 0;
+    setDragOver(false);
   };
 
   const toggleSort = (col) => {
@@ -316,26 +323,68 @@ export default function Files({
     }
   };
 
-  const addFile = async (ev) => {
-    const file = ev.target.files && ev.target.files[0];
-    ev.target.value = "";
-    if (!file || readonly || busy) return;
+  const uploadFiles = async (fileList) => {
+    const list = Array.from(fileList || []).filter(Boolean);
+    if (!list.length || readonly || busy) return;
+    clearDragOver();
     setBusy(true);
     try {
-      const data = await readFileAsBase64(file);
-      const next = await postFile({
-        project: folder.slug,
-        filesTab: d.slug,
-        name: file.name,
-        mime: file.type || "application/octet-stream",
-        data,
-      });
-      onApplyWorkspace(next, keepNav);
+      for (const file of list) {
+        const data = await readFileAsBase64(file);
+        const next = await postFile({
+          project: folder.slug,
+          filesTab: d.slug,
+          name: file.name,
+          mime: file.type || "application/octet-stream",
+          data,
+        });
+        onApplyWorkspace(next, keepNav);
+      }
     } catch (err) {
       window.alert(err.message || "Could not upload file");
     } finally {
       setBusy(false);
     }
+  };
+
+  const addFile = async (ev) => {
+    const list = Array.from(ev.target.files || []);
+    ev.target.value = "";
+    await uploadFiles(list);
+  };
+
+  const isFileDrag = (ev) =>
+    Array.from(ev.dataTransfer?.types || []).includes("Files");
+
+  const onDragEnter = (ev) => {
+    if (readonly || busy || !isFileDrag(ev)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    dragDepth.current += 1;
+    setDragOver(true);
+  };
+
+  const onDragLeave = (ev) => {
+    if (readonly || busy) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) clearDragOver();
+  };
+
+  const onDragOver = (ev) => {
+    if (readonly || busy || !isFileDrag(ev)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.dataTransfer.dropEffect = "copy";
+  };
+
+  const onDrop = async (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    clearDragOver();
+    if (readonly || busy) return;
+    await uploadFiles(ev.dataTransfer?.files);
   };
 
   const renameFile = async (file) => {
@@ -411,7 +460,15 @@ export default function Files({
   };
 
   return (
-    <div id="view" className="mod files-view" style={{ ["--tab"]: tabC }}>
+    <div
+      id="view"
+      className={"mod files-view" + (dragOver ? " is-dragover" : "")}
+      style={{ ["--tab"]: tabC }}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <div className="modbar">
         <div className="modbar-start">
           {!readonly && (
@@ -441,6 +498,7 @@ export default function Files({
             ref={inputRef}
             type="file"
             className="files-input"
+            multiple
             onChange={addFile}
             disabled={readonly || busy}
           />
@@ -515,6 +573,11 @@ export default function Files({
           </div>
         )}
       </div>
+      {dragOver && !readonly ? (
+        <div className="files-drop-overlay" aria-hidden="true">
+          Drop files to add
+        </div>
+      ) : null}
       {preview ? (
         <FilePreviewDialog
           file={preview}

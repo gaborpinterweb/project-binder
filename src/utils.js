@@ -46,7 +46,10 @@ export const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 export const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 export const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 export const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
+export const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
 export const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
+export const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
+export const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 /** Only Archived is hideable; workspace items are always shown. */
 export const SIDEBAR_VIS_ITEMS = ["Archived"];
@@ -709,6 +712,22 @@ export function saveWorkspaceVisibility(map) {
   try {
     localStorage.setItem(WORKSPACE_VIS_KEY, JSON.stringify(map));
   } catch {}
+}
+
+export function loadOpenOnLaunch() {
+  try {
+    const stored = localStorage.getItem(OPEN_ON_LAUNCH_KEY);
+    if (OPEN_ON_LAUNCH_VALUES.includes(stored)) return stored;
+  } catch {}
+  return DEFAULT_OPEN_ON_LAUNCH;
+}
+
+export function saveOpenOnLaunch(value) {
+  const next = OPEN_ON_LAUNCH_VALUES.includes(value) ? value : DEFAULT_OPEN_ON_LAUNCH;
+  try {
+    localStorage.setItem(OPEN_ON_LAUNCH_KEY, next);
+  } catch {}
+  return next;
 }
 
 export function clearClientAppState() {

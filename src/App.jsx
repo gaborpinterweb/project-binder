@@ -48,6 +48,8 @@ import {
   slugifyClient,
   loadWorkspaceVisibility,
   saveWorkspaceVisibility,
+  loadOpenOnLaunch,
+  saveOpenOnLaunch,
   clearClientAppState,
   hasSeenLaunch,
   markLaunchSeen,
@@ -113,6 +115,7 @@ export default function App() {
   const [trashRefresh, setTrashRefresh] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workspaceVis, setWorkspaceVis] = useState(() => loadWorkspaceVisibility());
+  const [openOnLaunch, setOpenOnLaunch] = useState(() => loadOpenOnLaunch());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -166,18 +169,21 @@ export default function App() {
       foldersRef.current = next;
 
       if (opts.initial) {
-        const sess = loadSession();
         let nextG = "Masterboard";
         let nextP = 0;
-        if (sess && "g" in sess) nextG = sess.g || null;
-        if (nextG && !WORKSPACE_ITEMS.includes(nextG)) {
-          nextG = "Masterboard";
+        let nextM = 0;
+        if (loadOpenOnLaunch() === "last-tab") {
+          const sess = loadSession();
+          if (sess && "g" in sess) nextG = sess.g || null;
+          if (nextG && !WORKSPACE_ITEMS.includes(nextG)) {
+            nextG = "Masterboard";
+          }
+          if (sess?.project) {
+            const pi = next.findIndex((f) => f.slug === sess.project);
+            nextP = pi >= 0 ? pi : 0;
+          }
+          nextM = restoreTabIndex(next[nextP]);
         }
-        if (sess?.project) {
-          const pi = next.findIndex((f) => f.slug === sess.project);
-          nextP = pi >= 0 ? pi : 0;
-        }
-        const nextM = restoreTabIndex(next[nextP]);
         setG(nextG);
         setP(nextP);
         setM(nextM);
@@ -276,9 +282,10 @@ export default function App() {
   }, [loaded, loadError]);
 
   useEffect(() => {
+    if (!loaded || loadError) return;
     saveSession(g, folders, p);
     if (!g) rememberCurrentTab(folders, p, m);
-  }, [g, folders, p, m, rememberCurrentTab]);
+  }, [loaded, loadError, g, folders, p, m, rememberCurrentTab]);
 
   // Pomodoro init + ticker
   useEffect(() => {
@@ -1320,6 +1327,8 @@ export default function App() {
         <SettingsDialog
           visibility={workspaceVis}
           onChange={applyWorkspaceVisibility}
+          openOnLaunch={openOnLaunch}
+          onOpenOnLaunchChange={(value) => setOpenOnLaunch(saveOpenOnLaunch(value))}
           onClose={() => setSettingsOpen(false)}
           onResetSeed={async () => {
             const data = await resetWorkspaceToSeed();

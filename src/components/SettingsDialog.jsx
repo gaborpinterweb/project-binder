@@ -8,6 +8,7 @@ import {
   globalLabel,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
+import Dropdown from "./Dropdown.jsx";
 
 const BMC_URL = "https://buymeacoffee.com/gaborpinter";
 const GITHUB_URL = "https://github.com/gaborpinterweb/freelance-workbook";
@@ -19,9 +20,16 @@ const TABS = [
   { id: "developer", label: "Developer", icon: "Developer" },
 ];
 
+const OPEN_ON_LAUNCH_OPTIONS = [
+  { value: "masterboard", label: "Master board" },
+  { value: "last-tab", label: "Last tab" },
+];
+
 export default function SettingsDialog({
   visibility,
   onChange,
+  openOnLaunch,
+  onOpenOnLaunchChange,
   onClose,
   onResetSeed,
   onResetEmpty,
@@ -129,23 +137,42 @@ export default function SettingsDialog({
 
         <div className="dlg-content settings-panel" role="tabpanel">
           {tab === "appearance" && (
-            <section className="settings-section">
-              <h3 className="settings-heading">Sidebar</h3>
-              <ul className="settings-checks">
-                {SIDEBAR_VIS_ITEMS.map((id) => (
-                  <li key={id}>
-                    <label className="settings-check">
-                      <input
-                        type="checkbox"
-                        checked={!!visibility[id]}
-                        onChange={(e) => setVisible(id, e.target.checked)}
-                      />
-                      <span>{globalLabel(id)}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <>
+              <section className="settings-section">
+                <div className="settings-rows">
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Open on launch</b>
+                    </div>
+                    <Dropdown
+                      className="settings-launch-dd"
+                      align="right"
+                      ariaLabel="Open on launch"
+                      value={openOnLaunch}
+                      options={OPEN_ON_LAUNCH_OPTIONS}
+                      onChange={onOpenOnLaunchChange}
+                    />
+                  </div>
+                </div>
+              </section>
+              <section className="settings-section">
+                <h3 className="settings-heading">Sidebar</h3>
+                <ul className="settings-checks">
+                  {SIDEBAR_VIS_ITEMS.map((id) => (
+                    <li key={id}>
+                      <label className="settings-check">
+                        <input
+                          type="checkbox"
+                          checked={!!visibility[id]}
+                          onChange={(e) => setVisible(id, e.target.checked)}
+                        />
+                        <span>{globalLabel(id)}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
           )}
 
           {tab === "data" && (

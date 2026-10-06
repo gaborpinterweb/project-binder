@@ -9,7 +9,7 @@ export const TYPES = [
   { t: "Board", title: "Task board", sub: "Kanban columns and cards" },
   { t: "Notes", title: "Notes", sub: "Notes with rich text editor" },
   { t: "Database", title: "Database", sub: "Tables and structured records" },
-  { t: "Files", title: "Files", sub: "Assets, kits, and uploads", off: true },
+  { t: "Files", title: "Files", sub: "Assets, kits, and uploads" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
   { t: "Chat", title: "Chat", sub: "Communication channels and threads", off: true },
@@ -119,6 +119,23 @@ export function fromApi(data, loadStagesFn) {
         },
       ]);
     });
+    const filesMods = new Map();
+    (pr.filesTabs || []).forEach((ft) => {
+      filesMods.set(ft.slug, [
+        "Files",
+        ft.name,
+        {
+          slug: ft.slug,
+          files: (ft.files || []).map((f) => ({
+            slug: f.slug,
+            name: f.name || f.slug,
+            mime: f.mime || "application/octet-stream",
+            size: Number(f.size) || 0,
+            createdAt: f.createdAt || "",
+          })),
+        },
+      ]);
+    });
     const dbMods = new Map();
     (pr.databases || []).forEach((db) => {
       dbMods.set(db.slug, [
@@ -175,6 +192,7 @@ export function fromApi(data, loadStagesFn) {
     const pick = (type, slug) => {
       if (type === "board") return boardMods.get(slug);
       if (type === "notes") return notesMods.get(slug);
+      if (type === "files") return filesMods.get(slug);
       if (type === "database") return dbMods.get(slug);
       return null;
     };
@@ -203,6 +221,7 @@ export function fromApi(data, loadStagesFn) {
     }
     for (const mod of boardMods.values()) pushMod(mod);
     for (const mod of notesMods.values()) pushMod(mod);
+    for (const mod of filesMods.values()) pushMod(mod);
     for (const mod of dbMods.values()) pushMod(mod);
 
     return {
@@ -220,6 +239,7 @@ export function modToTabType(mod) {
   if (!mod) return null;
   if (mod[0] === "Board") return "board";
   if (mod[0] === "Notes") return "notes";
+  if (mod[0] === "Files") return "files";
   if (mod[0] === "Database") return "database";
   return null;
 }

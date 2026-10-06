@@ -393,6 +393,34 @@ function findNotesTab(project, tabSlug) {
   return (project.notesTabs || []).find((t) => t.slug === tabSlug) || null;
 }
 
+function findFilesTab(project, tabSlug) {
+  if (!project) return null;
+  return (project.filesTabs || []).find((t) => t.slug === tabSlug) || null;
+}
+
+function isSafePathSlug(s) {
+  return typeof s === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
+}
+
+function filesUploadDir(projectSlug, tabSlug) {
+  return path.join(USER_DATA_DIR, "uploads", projectSlug, tabSlug);
+}
+
+function storedFilePath(projectSlug, tabSlug, fileSlug) {
+  return path.join(filesUploadDir(projectSlug, tabSlug), fileSlug);
+}
+
+function removeUploadTree(projectSlug, tabSlug) {
+  if (!isSafePathSlug(projectSlug) || !isSafePathSlug(tabSlug)) return;
+  const dir = filesUploadDir(projectSlug, tabSlug);
+  if (!fs.existsSync(dir)) return;
+  try {
+    fs.rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* best-effort cleanup */
+  }
+}
+
 function tabKey(type, slug) {
   return `${type}:${slug}`;
 }
@@ -401,6 +429,7 @@ function defaultTabOrderEntries(project) {
   return [
     ...(project.boards || []).map((b) => ({ type: "board", slug: b.slug })),
     ...(project.notesTabs || []).map((t) => ({ type: "notes", slug: t.slug })),
+    ...(project.filesTabs || []).map((t) => ({ type: "files", slug: t.slug })),
     ...(project.databases || []).map((d) => ({ type: "database", slug: d.slug })),
   ];
 }
@@ -467,13 +496,19 @@ function renameTab(projectSlug, type, slug, name) {
     db.name = title;
     return { ok: true };
   }
+  if (type === "files") {
+    const tab = findFilesTab(project, slug);
+    if (!tab) return { ok: false, error: "tab not found" };
+    tab.name = title;
+    return { ok: true };
+  }
   return { ok: false, error: "invalid type" };
 }
 
 function deleteTab(projectSlug, type, slug) {
   if (type === "board") return softDeleteBoard(projectSlug, slug);
   if (type === "notes") return softDeleteNotesTab(projectSlug, slug);
-  // databases stay hard-delete for now (not in UI)
+  // databases / files stay hard-delete for now
   const project = findProject(projectSlug);
   if (!project) return { ok: false, error: "project not found" };
   if (type === "database") {
@@ -481,6 +516,14 @@ function deleteTab(projectSlug, type, slug) {
     if (idx < 0) return { ok: false, error: "tab not found" };
     project.databases.splice(idx, 1);
     removeTabOrder(project, type, slug);
+    return { ok: true };
+  }
+  if (type === "files") {
+    const idx = (project.filesTabs || []).findIndex((t) => t.slug === slug);
+    if (idx < 0) return { ok: false, error: "tab not found" };
+    project.filesTabs.splice(idx, 1);
+    removeTabOrder(project, type, slug);
+    removeUploadTree(projectSlug, slug);
     return { ok: true };
   }
   return { ok: false, error: "invalid type" };
@@ -589,6 +632,17 @@ function projectToApi(p) {
         updatedAt: n.updatedAt || "",
       })),
     })),
+    filesTabs: (p.filesTabs || []).map((t) => ({
+      slug: t.slug,
+      name: t.name || t.slug,
+      files: (t.files || []).map((f) => ({
+        slug: f.slug,
+        name: f.name || f.slug,
+        mime: f.mime || "application/octet-stream",
+        size: Number(f.size) || 0,
+        createdAt: f.createdAt || "",
+      })),
+    })),
     tabOrder: normalizeTabOrder(p).map((e) => ({ type: e.type, slug: e.slug })),
   };
   if (isDemoValue(p.isDemo)) out.isDemo = true;
@@ -674,6 +728,7 @@ function createProject({ name, color, cover }) {
     boards: [],
     databases: [],
     notesTabs: [],
+    filesTabs: [],
   };
   store.projects.push(project);
   return slug;
@@ -1252,6 +1307,113 @@ function createNotesTab(projectSlug, name) {
   return tabSlug;
 }
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+function createFilesTab(projectSlug, name) {
+  const project = findProject(projectSlug);
+  if (!project) throw new Error("project not found");
+  if (!project.filesTabs) project.filesTabs = [];
+  const tabSlug = slugify(name);
+  const existing = findFilesTab(project, tabSlug);
+  if (existing) {
+    existing.name = name;
+    if (!existing.files) existing.files = [];
+    appendTabOrder(project, "files", tabSlug);
+    return tabSlug;
+  }
+  project.filesTabs.push({ slug: tabSlug, name, files: [] });
+  appendTabOrder(project, "files", tabSlug);
+  return tabSlug;
+}
+
+function uniqueFileSlug(filesTab, fileName) {
+  const base = slugify(fileName) || "file";
+  const files = filesTab.files || [];
+  if (!files.some((f) => f.slug === base)) return base;
+  let i = 2;
+  while (files.some((f) => f.slug === `${base}-${i}`)) i += 1;
+  return `${base}-${i}`;
+}
+
+function addUploadedFile(projectSlug, filesTabSlug, { name, mime, data }) {
+  const project = findProject(projectSlug);
+  const tab = findFilesTab(project, filesTabSlug);
+  if (!project || !tab) return { ok: false, error: "files tab not found" };
+  if (!isSafePathSlug(projectSlug) || !isSafePathSlug(filesTabSlug)) {
+    return { ok: false, error: "invalid path" };
+  }
+  const fileName = String(name || "").trim();
+  if (!fileName) return { ok: false, error: "missing fields" };
+  if (typeof data !== "string" || !data) return { ok: false, error: "missing fields" };
+  let buf;
+  try {
+    buf = Buffer.from(data, "base64");
+  } catch {
+    return { ok: false, error: "invalid data" };
+  }
+  if (!buf.length) return { ok: false, error: "empty file" };
+  if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: "file too large" };
+  if (!tab.files) tab.files = [];
+  const slug = uniqueFileSlug(tab, fileName);
+  if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
+  const dir = filesUploadDir(projectSlug, filesTabSlug);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(storedFilePath(projectSlug, filesTabSlug, slug), buf);
+  tab.files.push({
+    slug,
+    name: fileName,
+    mime: String(mime || "application/octet-stream").slice(0, 200),
+    size: buf.length,
+    createdAt: new Date().toISOString(),
+  });
+  return { ok: true, slug };
+}
+
+function deleteUploadedFile(projectSlug, filesTabSlug, fileSlug) {
+  const project = findProject(projectSlug);
+  const tab = findFilesTab(project, filesTabSlug);
+  if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
+  if (
+    !isSafePathSlug(projectSlug) ||
+    !isSafePathSlug(filesTabSlug) ||
+    !isSafePathSlug(fileSlug)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const idx = tab.files.findIndex((f) => f.slug === fileSlug);
+  if (idx < 0) return { ok: false, error: "file not found" };
+  tab.files.splice(idx, 1);
+  try {
+    fs.unlinkSync(storedFilePath(projectSlug, filesTabSlug, fileSlug));
+  } catch {
+    /* file may already be gone */
+  }
+  return { ok: true };
+}
+
+function readUploadedFile(projectSlug, filesTabSlug, fileSlug) {
+  const project = findProject(projectSlug);
+  const tab = findFilesTab(project, filesTabSlug);
+  if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
+  if (
+    !isSafePathSlug(projectSlug) ||
+    !isSafePathSlug(filesTabSlug) ||
+    !isSafePathSlug(fileSlug)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const meta = tab.files.find((f) => f.slug === fileSlug);
+  if (!meta) return { ok: false, error: "file not found" };
+  const filePath = storedFilePath(projectSlug, filesTabSlug, fileSlug);
+  if (!fs.existsSync(filePath)) return { ok: false, error: "file not found" };
+  return {
+    ok: true,
+    name: meta.name || fileSlug,
+    mime: meta.mime || "application/octet-stream",
+    body: fs.readFileSync(filePath),
+  };
+}
+
 function writeNote(projectSlug, notesTabSlug, { slug, title, body }) {
   const project = findProject(projectSlug);
   const tab = findNotesTab(project, notesTabSlug);
@@ -1650,6 +1812,71 @@ const server = http.createServer(async (req, res) => {
       const slug = createNotesTab(body.project, body.name);
       saveStore();
       return json(res, 201, { slug, ...readWorkspace() });
+    }
+    if (req.method === "POST" && url.pathname === "/api/files-tab") {
+      const body = await readBody(req);
+      if (!body.project || !body.name) return json(res, 400, { error: "missing fields" });
+      if (!findProject(body.project)) return json(res, 404, { error: "project not found" });
+      if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
+      const slug = createFilesTab(body.project, body.name);
+      saveStore();
+      return json(res, 201, { slug, ...readWorkspace() });
+    }
+    if (req.method === "GET" && url.pathname === "/api/file") {
+      const project = url.searchParams.get("project") || "";
+      const filesTab = url.searchParams.get("filesTab") || "";
+      const file = url.searchParams.get("file") || "";
+      const result = readUploadedFile(project, filesTab, file);
+      if (!result.ok) {
+        const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      const safeName = String(result.name).replace(/[\r\n"]/g, "_");
+      res.writeHead(200, {
+        "Content-Type": result.mime,
+        "Content-Length": result.body.length,
+        "Content-Disposition": `inline; filename="${safeName}"`,
+        "Cache-Control": "no-store",
+      });
+      res.end(result.body);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/file") {
+      const body = await readBody(req);
+      if (!body.project || !body.filesTab || !body.name || body.data == null) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
+      const result = addUploadedFile(body.project, body.filesTab, {
+        name: body.name,
+        mime: body.mime,
+        data: body.data,
+      });
+      if (!result.ok) {
+        const status =
+          result.error === "files tab not found"
+            ? 404
+            : result.error === "file too large"
+              ? 413
+              : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 201, { slug: result.slug, ...readWorkspace() });
+    }
+    if (req.method === "DELETE" && url.pathname === "/api/file") {
+      const body = await readBody(req);
+      if (!body.project || !body.filesTab || !body.file) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
+      const result = deleteUploadedFile(body.project, body.filesTab, body.file);
+      if (!result.ok) {
+        const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 200, readWorkspace());
     }
     if (req.method === "PUT" && url.pathname === "/api/tab") {
       const body = await readBody(req);

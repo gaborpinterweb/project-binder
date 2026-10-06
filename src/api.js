@@ -187,6 +187,42 @@ export async function postNotesTab(body) {
   return r.json();
 }
 
+export async function postFilesTab(body) {
+  const r = await fetch("/api/files-tab", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+export async function postFile(body) {
+  const r = await fetch("/api/file", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || "Could not upload file");
+  }
+  return r.json();
+}
+
+export async function deleteFileApi(body) {
+  const r = await fetch("/api/file", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+export function fileDownloadUrl(project, filesTab, file) {
+  const q = new URLSearchParams({ project, filesTab, file });
+  return `/api/file?${q.toString()}`;
+}
+
 export async function putTab(body) {
   const r = await fetch("/api/tab", {
     method: "PUT",

@@ -10,6 +10,7 @@ import {
   postBoard,
   postDatabase,
   postNotesTab,
+  postFilesTab,
   putTab,
   deleteTabApi,
   putTabOrder,
@@ -61,6 +62,7 @@ import Calendar from "./components/Calendar.jsx";
 import Timelogs from "./components/Timelogs.jsx";
 import Trash, { TrashNotePreview } from "./components/Trash.jsx";
 import Notes from "./components/Notes.jsx";
+import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
@@ -657,6 +659,8 @@ export default function App() {
       data = await postBoard({ project: folder.slug, name });
     } else if (t === "Notes") {
       data = await postNotesTab({ project: folder.slug, name });
+    } else if (t === "Files") {
+      data = await postFilesTab({ project: folder.slug, name });
     } else {
       data = await postDatabase({ project: folder.slug, name });
     }
@@ -739,6 +743,11 @@ export default function App() {
         message = count
           ? `This tab and its ${count} note${count === 1 ? "" : "s"} will move to Trash.`
           : "This tab will move to Trash.";
+      } else if (mod[0] === "Files") {
+        const count = (mod[2].files || []).length;
+        message = count
+          ? `This tab and its ${count} file${count === 1 ? "" : "s"} will be permanently deleted.`
+          : "This tab will be permanently deleted.";
       }
       const ok = await askConfirm({
         title: `Delete "${mod[1]}"?`,
@@ -1141,11 +1150,26 @@ export default function App() {
             !draftProject &&
             !g &&
             folder &&
+            x?.[0] === "Files" && (
+              <Files
+                mod={x}
+                folder={folder}
+                tabC={tabC}
+                readonly={archived}
+                onApplyWorkspace={applyWorkspace}
+              />
+            )}
+          {loaded &&
+            !loadError &&
+            !draftProject &&
+            !g &&
+            folder &&
             x &&
             x[0] !== "Cover" &&
             x[0] !== "Board" &&
             x[0] !== "Database" &&
-            x[0] !== "Notes" && (
+            x[0] !== "Notes" &&
+            x[0] !== "Files" && (
               <div id="view" className="mod" style={{ ["--tab"]: tabC }}>
                 <div className="modbar" />
                 <div

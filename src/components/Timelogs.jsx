@@ -4,8 +4,8 @@ import {
   GACC,
   TIMELOG_GROUP_BYS,
   TIMELOG_PERIODS,
+  allBoardTasks,
   allBoards,
-  findCardBySlugs,
   formatClock,
   formatDuration,
   formatSpent,
@@ -18,57 +18,13 @@ import { Icon } from "../icons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import Dropdown from "./Dropdown.jsx";
 import TimelogCalendar from "./TimelogCalendar.jsx";
+import TimelogDialog, { taskKey } from "./TimelogDialog.jsx";
 import { askConfirm } from "../confirmDialog.js";
-import { askPrompt } from "../promptDialog.js";
 
 const TIMELOG_VIEWS = [
   { value: "list", label: "List view" },
   { value: "calendar", label: "Calendar view" },
 ];
-
-const ADD_LOG_OPTIONS = [
-  { value: "manual", label: "Add manually", icon: "pencil" },
-  { value: "pomo", label: "Start pomodoro", icon: "tomato" },
-  { value: "stopwatch", label: "Start stopwatch", icon: "stopwatch" },
-];
-
-function sessionTarget(folders, filter, titleFallback) {
-  if (filter?.project && filter?.board && filter?.card) {
-    const hit = findCardBySlugs(folders, filter.project, filter.board, filter.card);
-    if (hit) {
-      return {
-        project: hit.folder.slug,
-        board: hit.mod[2].slug,
-        card: hit.row.slug,
-        title: hit.row.n || filter.title || "Untitled",
-        projectName: hit.folder.name,
-        boardName: hit.mod[1],
-        color: hit.folder.color || GACC,
-      };
-    }
-    return {
-      project: filter.project,
-      board: filter.board,
-      card: filter.card,
-      title: filter.title || "Untitled",
-      projectName: filter.projectName || "",
-      boardName: filter.boardName || "",
-      color: filter.color || GACC,
-    };
-  }
-  const boardsList = allBoards(folders);
-  if (!boardsList.length) return null;
-  const { folder, mod, color } = boardsList[0];
-  return {
-    project: folder.slug,
-    board: mod[2]?.slug || "",
-    card: "",
-    title: titleFallback,
-    projectName: folder.name,
-    boardName: mod[1],
-    color: color || folder.color || GACC,
-  };
-}
 
 function entryBoardKey(entry) {
   return `${entry.project || ""}/${entry.board || ""}`;
@@ -298,17 +254,76 @@ function formatFromTo(entry) {
   return start || end || "—";
 }
 
+function TimelogMoreMenu({ disabled, onEdit, onDelete }) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const run = (fn) => {
+    setOpen(false);
+    fn?.();
+  };
+
+  return (
+    <div
+      className={"timelog-more" + (open ? " open" : "")}
+      ref={wrapRef}
+    >
+      <button
+        type="button"
+        className="timelog-more-btn"
+        title="Timelog options"
+        aria-label="Timelog options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (disabled) return;
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="more" size={14} />
+      </button>
+      {open ? (
+        <div className="pop" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onEdit)}
+          >
+            <Icon name="pencil" size={14} />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => run(onDelete)}
+          >
+            <Icon name="Trash" size={14} />
+            Delete
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TimelogRow({
   entry,
-  isEditing,
-  draftNote,
   busySlug,
-  noteRef,
   onOpenCard,
-  onStartEdit,
-  onDraftChange,
-  onSaveNote,
-  onCancelEdit,
+  onEdit,
   onDelete,
 }) {
   const color = entry.color || GACC;
@@ -316,6 +331,7 @@ function TimelogRow({
   const src = [entry.projectName || entry.project, entry.boardName || entry.board]
     .filter(Boolean)
     .join(" · ");
+  const busy = busySlug === entry.slug;
 
   return (
     <div className="timelog-row" style={{ ["--pc"]: color }}>
@@ -333,39 +349,10 @@ function TimelogRow({
         </button>
       </div>
       <div className="timelog-note">
-        {isEditing ? (
-          <textarea
-            ref={noteRef}
-            className="entry-note-input"
-            rows={2}
-            value={draftNote}
-            disabled={busySlug === entry.slug}
-            placeholder="Add a note…"
-            onChange={(e) => onDraftChange(e.target.value)}
-            onBlur={() => onSaveNote(entry)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                onCancelEdit();
-              }
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-          />
+        {note ? (
+          <span className="timelog-note-text">{note}</span>
         ) : (
-          <button
-            type="button"
-            className={"entry-note" + (note ? "" : " entry-note-empty")}
-            onClick={() => onStartEdit(entry)}
-            disabled={!!busySlug}
-          >
-            <span className="entry-note-text">{note || "Add note"}</span>
-            <span className="entry-note-edit" aria-hidden="true">
-              <Icon name="pencil" size={12} />
-            </span>
-          </button>
+          <span className="timelog-note-text empty">-</span>
         )}
       </div>
       <time
@@ -376,16 +363,11 @@ function TimelogRow({
       </time>
       <div className="timelog-time">
         <span className="dur">{formatDuration(entry.durationSec)}</span>
-        <button
-          type="button"
-          className="entry-delete"
-          title="Delete timelog"
-          aria-label="Delete timelog"
-          disabled={busySlug === entry.slug}
-          onClick={() => onDelete(entry)}
-        >
-          <Icon name="Trash" size={14} />
-        </button>
+        <TimelogMoreMenu
+          disabled={busy}
+          onEdit={() => onEdit(entry)}
+          onDelete={() => onDelete(entry)}
+        />
       </div>
     </div>
   );
@@ -397,7 +379,6 @@ export default function Timelogs({
   timelogFilter,
   onClearFilter,
   onOpenCard,
-  onStartPomo,
   refreshKey,
 }) {
   const [entries, setEntries] = useState(null);
@@ -407,11 +388,9 @@ export default function Timelogs({
   );
   const [groupBy, setGroupBy] = useState("Day");
   const [boardOff, setBoardOff] = useState(() => new Set());
-  const [editingSlug, setEditingSlug] = useState(null);
-  const [draftNote, setDraftNote] = useState("");
   const [busySlug, setBusySlug] = useState(null);
   const [calSelectedSlug, setCalSelectedSlug] = useState(null);
-  const noteRef = useRef(null);
+  const [dialog, setDialog] = useState(null); // null | { mode: "add" } | { mode: "edit", entry }
 
   const boards = useMemo(
     () =>
@@ -442,15 +421,16 @@ export default function Timelogs({
     };
   }, [refreshKey, timelogFilter]);
 
-  useEffect(() => {
-    if (editingSlug && noteRef.current) {
-      noteRef.current.focus();
-      const len = noteRef.current.value.length;
-      noteRef.current.setSelectionRange(len, len);
-    }
-  }, [editingSlug]);
-
   const filter = timelogFilter;
+
+  const defaultAddTaskKey = useMemo(() => {
+    if (filter?.project && filter?.board && filter?.card) {
+      return taskKey(filter.project, filter.board, filter.card);
+    }
+    const first = allBoardTasks(folders)[0];
+    if (!first) return "";
+    return taskKey(first.folder.slug, first.mod[2]?.slug, first.row.slug);
+  }, [folders, filter]);
   const baseFiltered = useMemo(() => {
     if (!entries) return null;
     return entries.filter(
@@ -482,91 +462,33 @@ export default function Timelogs({
     });
   };
 
-  const addLog = async () => {
-    const target = sessionTarget(folders, filter, "Manual entry");
-    if (!target) {
-      alert("Create a task board first to add a log.");
+  const openAddDialog = () => {
+    if (!allBoardTasks(folders).length) {
+      alert("Create a task board with a card first to add a log.");
       return;
     }
-    const mins = await askPrompt({
-      title: "Add log",
-      defaultValue: "25",
-      placeholder: "Duration in minutes",
-      confirmLabel: "Add",
-    });
-    if (mins == null) return;
-    const durationSec = Math.max(0, Math.round(parseFloat(String(mins).replace(",", ".")) * 60) || 0);
-    const endedAt = new Date();
-    const startedAt = new Date(endedAt.getTime() - durationSec * 1000);
-    try {
-      await postTimelog({
-        ...target,
-        kind: "manual",
-        note: "",
-        startedAt: startedAt.toISOString(),
-        endedAt: endedAt.toISOString(),
-        durationSec,
-      });
-      const list = await fetchTimelogs();
-      setEntries(list);
-    } catch {
-      alert("Could not add timelog.");
-    }
+    setDialog({ mode: "add" });
   };
 
-  const startTimer = async (kind) => {
-    const title = kind === "stoptimer" ? "Stopwatch" : "Pomodoro";
-    const target = sessionTarget(folders, filter, title);
-    if (!target) {
-      alert("Create a task board first to start a timer.");
-      return;
-    }
-    await onStartPomo?.({ ...target, kind });
-  };
-
-  const onAddLogAction = (value) => {
-    if (value === "manual") addLog();
-    else if (value === "pomo") startTimer("pomodoro");
-    else if (value === "stopwatch") startTimer("stoptimer");
-  };
-
-  const startEdit = (entry) => {
+  const openEditDialog = (entry) => {
     if (busySlug) return;
-    setEditingSlug(entry.slug);
-    setDraftNote(entry.note || "");
+    setDialog({ mode: "edit", entry });
   };
 
-  const cancelEdit = () => {
-    setEditingSlug(null);
-    setDraftNote("");
-  };
+  const closeDialog = () => setDialog(null);
 
-  const saveNote = async (entry) => {
-    if (!editingSlug || busySlug) return;
-    const nextNote = draftNote;
-    const prev = entry.note || "";
-    setEditingSlug(null);
-    setDraftNote("");
-    if (nextNote === prev) return;
-    setBusySlug(entry.slug);
-    setEntries((list) =>
-      (list || []).map((e) =>
-        e.slug === entry.slug ? { ...e, note: nextNote } : e
-      )
-    );
-    try {
-      const data = await putTimelog({ slug: entry.slug, note: nextNote });
+  const saveDialog = async (payload) => {
+    if (dialog?.mode === "edit") {
+      const data = await putTimelog(payload);
       if (data.timelogs) setEntries(data.timelogs);
-    } catch {
-      setEntries((list) =>
-        (list || []).map((e) =>
-          e.slug === entry.slug ? { ...e, note: prev } : e
-        )
-      );
-      alert("Could not save note.");
-    } finally {
-      setBusySlug(null);
+      else setEntries(await fetchTimelogs());
+    } else {
+      const data = await postTimelog(payload);
+      if (data?.error) throw new Error(data.error);
+      if (data?.timelogs) setEntries(data.timelogs);
+      else setEntries(await fetchTimelogs());
     }
+    setDialog(null);
   };
 
   const handleDelete = async (entry) => {
@@ -579,7 +501,9 @@ export default function Timelogs({
     });
     if (!ok) return;
     setBusySlug(entry.slug);
-    if (editingSlug === entry.slug) cancelEdit();
+    if (dialog?.mode === "edit" && dialog.entry?.slug === entry.slug) {
+      closeDialog();
+    }
     try {
       const data = await deleteTimelogApi({ slug: entry.slug });
       setEntries(data.timelogs || []);
@@ -594,15 +518,9 @@ export default function Timelogs({
     <TimelogRow
       key={entry.slug}
       entry={entry}
-      isEditing={editingSlug === entry.slug}
-      draftNote={draftNote}
       busySlug={busySlug}
-      noteRef={noteRef}
       onOpenCard={onOpenCard}
-      onStartEdit={startEdit}
-      onDraftChange={setDraftNote}
-      onSaveNote={saveNote}
-      onCancelEdit={cancelEdit}
+      onEdit={openEditDialog}
       onDelete={handleDelete}
     />
   );
@@ -614,19 +532,16 @@ export default function Timelogs({
   return (
     <div id="view" className="mod" style={{ ["--tab"]: tabC }}>
       <GlobalBar name="Timelogs">
-        <Dropdown
-          className="mod-view-dd"
-          buttonClassName="mod-act"
-          ariaLabel="Add log"
+        <button
+          type="button"
+          className="mod-act"
+          onClick={openAddDialog}
           title="Add log"
-          align="right"
-          caret={false}
-          options={ADD_LOG_OPTIONS}
-          onChange={onAddLogAction}
+          aria-label="Add log"
         >
           <Icon name="plus" size={18} />
           <span className="mod-act-lab">Add log</span>
-        </Dropdown>
+        </button>
         <Dropdown
           className="mod-view-dd"
           buttonClassName={"mod-act" + (viewMode === "calendar" ? " on" : "")}
@@ -750,6 +665,15 @@ export default function Timelogs({
           </>
         ) : null}
       </div>
+      {dialog ? (
+        <TimelogDialog
+          folders={folders}
+          entry={dialog.mode === "edit" ? dialog.entry : null}
+          defaultTaskKey={defaultAddTaskKey}
+          onSave={saveDialog}
+          onClose={closeDialog}
+        />
+      ) : null}
     </div>
   );
 }

@@ -29,6 +29,7 @@ export default function CardDialog({
   onDelete,
   onDuplicate,
   onStartPomo,
+  onAddManualTimelog,
   onOpenTimelogs,
   onMoveCard,
   onSaveItem,
@@ -275,7 +276,8 @@ export default function CardDialog({
                     </PropDropdown>
                   )}
                   {readonly ? (
-                    <span className="prop-chip prop-chip-ro">
+                    <span className="prop-chip prop-chip-ro" title="Board">
+                      <Icon name="Board" size={12} />
                       <span className="lab">{draft.s || ""}</span>
                     </span>
                   ) : (
@@ -290,13 +292,17 @@ export default function CardDialog({
                         persist();
                       }}
                     >
+                      <Icon name="Board" size={12} />
                       <span className="lab">{draft.s || ""}</span>
                     </PropDropdown>
                   )}
                   {showMasterColumn &&
                     (readonly ? (
-                      <span className="prop-chip prop-chip-ro">
-                        <span className="chip-k">Master</span>
+                      <span
+                        className="prop-chip prop-chip-ro"
+                        title="Master board"
+                      >
+                        <Icon name="Masterboard" size={12} />
                         <span className="lab">{draft.ms || stages[0]}</span>
                       </span>
                     ) : (
@@ -311,7 +317,7 @@ export default function CardDialog({
                           persist();
                         }}
                       >
-                        <span className="chip-k">Master</span>
+                        <Icon name="Masterboard" size={12} />
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
@@ -341,6 +347,11 @@ export default function CardDialog({
                               ]
                             : []),
                           {
+                            value: "manual",
+                            label: "Add manually",
+                            icon: "pencil",
+                          },
+                          {
                             value: "logs",
                             label: "Open timelogs...",
                             icon: "list",
@@ -359,6 +370,17 @@ export default function CardDialog({
                               kind: v === "stoptimer" ? "stoptimer" : "pomodoro",
                             });
                             await close(false);
+                            return;
+                          }
+                          if (v === "manual") {
+                            const filter = {
+                              project: curLoc.folder.slug,
+                              board: curLoc.mod[2].slug,
+                              card: draft.slug,
+                              title: draft.n || "Untitled",
+                            };
+                            await close(false);
+                            await onAddManualTimelog?.(filter);
                             return;
                           }
                           if (v === "logs") {

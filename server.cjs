@@ -1660,8 +1660,27 @@ function updateTimelog(slug, patch) {
   const idx = store.timelogs.findIndex((t) => t.slug === slug);
   if (idx < 0) return null;
   const cur = store.timelogs[idx];
-  if (patch && Object.prototype.hasOwnProperty.call(patch, "note")) {
-    cur.note = typeof patch.note === "string" ? patch.note : "";
+  if (!patch || typeof patch !== "object") return { ...cur };
+  const strFields = [
+    "note",
+    "project",
+    "board",
+    "card",
+    "title",
+    "projectName",
+    "boardName",
+    "color",
+    "kind",
+    "startedAt",
+    "endedAt",
+  ];
+  strFields.forEach((k) => {
+    if (Object.prototype.hasOwnProperty.call(patch, k)) {
+      cur[k] = typeof patch[k] === "string" ? patch[k] : "";
+    }
+  });
+  if (Object.prototype.hasOwnProperty.call(patch, "durationSec")) {
+    cur.durationSec = Math.max(0, parseInt(patch.durationSec, 10) || 0);
   }
   store.timelogs[idx] = cur;
   return { ...cur };
@@ -2250,7 +2269,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "PUT" && url.pathname === "/api/timelog") {
       const body = await readBody(req);
       if (!body.slug) return json(res, 400, { error: "missing fields" });
-      const entry = updateTimelog(body.slug, { note: body.note });
+      const { slug, ...patch } = body;
+      const entry = updateTimelog(slug, patch);
       if (!entry) return json(res, 404, { error: "timelog not found" });
       saveStore();
       return json(res, 200, { entry, timelogs: readTimelogs() });

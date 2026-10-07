@@ -67,6 +67,7 @@ import Trash, { TrashNotePreview } from "./components/Trash.jsx";
 import Notes from "./components/Notes.jsx";
 import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
+import TimelogDialog, { taskKey } from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
@@ -109,6 +110,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [uiTick, setUiTick] = useState(0);
   const [dialog, setDialog] = useState(null);
+  const [manualTimelogTaskKey, setManualTimelogTaskKey] = useState("");
   const [trashPreview, setTrashPreview] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ left: 0, top: 0 });
@@ -961,7 +963,6 @@ export default function App() {
                 if (hit) openItem(hit.row);
               }}
               refreshKey={timelogRefresh}
-              onStartPomo={startPomodoro}
             />
           )}
           {loaded && !loadError && !draftProject && g === "Trash" && (
@@ -1284,6 +1285,13 @@ export default function App() {
             if (hit) openItem(hit.row);
           }}
           onStartPomo={startPomodoro}
+          onAddManualTimelog={(filter) => {
+            if (filter?.project && filter?.board && filter?.card) {
+              setManualTimelogTaskKey(
+                taskKey(filter.project, filter.board, filter.card)
+              );
+            }
+          }}
           onOpenTimelogs={(filter) => {
             setTimelogFilter(filter);
             setG("Timelogs");
@@ -1304,6 +1312,20 @@ export default function App() {
           }}
         />
       )}
+
+      {manualTimelogTaskKey ? (
+        <TimelogDialog
+          folders={folders}
+          defaultTaskKey={manualTimelogTaskKey}
+          onSave={async (payload) => {
+            const data = await postTimelog(payload);
+            if (data?.error) throw new Error(data.error);
+            setManualTimelogTaskKey("");
+            if (gRef.current === "Timelogs") setTimelogRefresh((n) => n + 1);
+          }}
+          onClose={() => setManualTimelogTaskKey("")}
+        />
+      ) : null}
 
       {trashPreview?.kind === "note" && (
         <TrashNotePreview

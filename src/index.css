@@ -638,6 +638,10 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .col.collapsed .col-name{order:2;writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.08em;text-transform:uppercase;font-size:12px;padding:14px 0 8px;color:var(--mute)}
 .col.collapsed .col-body{display:none}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:opacity .12s ease,box-shadow .12s ease}
+.card-timelog-menu.pop.dd-menu{position:fixed;top:auto;left:auto;z-index:90;width:max-content;min-width:180px;max-width:min(280px,calc(100vw - 16px));padding:6px}
+.card-timelog-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
+.card-timelog-menu button:hover{background:var(--sel)}
+.card-timelog-menu button svg{flex:none;opacity:.75}
 .timelog-row .timelog-card{margin:0;padding:8px 10px}
 .board .card{cursor:grab;touch-action:none;user-select:none}
 .board .card:active,.board .card.dragging,.is-card-dragging{cursor:grabbing}

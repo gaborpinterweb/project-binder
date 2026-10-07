@@ -285,6 +285,14 @@ export function boardKey(folder, mod) {
   return folder.slug + "/" + (mod[2]?.slug || mod[1]);
 }
 
+/** Project name alone when it has one Board tab; otherwise "Project · Tab". */
+export function boardLabel(folder, mod) {
+  const name = folder?.name || "Project";
+  const boardCount = (folder?.mods || []).filter((m) => m[0] === "Board").length;
+  if (boardCount <= 1) return name;
+  return `${name} · ${mod?.[1] || "Tab"}`;
+}
+
 export function slugifyClient(s) {
   return (
     String(s || "")

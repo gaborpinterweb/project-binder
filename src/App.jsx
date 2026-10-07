@@ -396,6 +396,19 @@ export default function App() {
     savePomo(session);
   }
 
+  function addManualTimelog(filter) {
+    if (filter?.project && filter?.board && filter?.card) {
+      setManualTimelogTaskKey(
+        taskKey(filter.project, filter.board, filter.card)
+      );
+    }
+  }
+
+  function openTimelogs(filter) {
+    setTimelogFilter(filter);
+    setG("Timelogs");
+  }
+
   const saveCard = useCallback(
     async (row, folder, mod) => {
       if (!folder || !mod || mod[0] !== "Board") return;
@@ -947,6 +960,9 @@ export default function App() {
               onStartNewCard={startNewCard}
               onApplyWorkspace={applyWorkspace}
               locateRow={(r) => locateRow(foldersRef.current, r)}
+              onStartPomo={startPomodoro}
+              onAddManualTimelog={addManualTimelog}
+              onOpenTimelogs={openTimelogs}
             />
           )}
           {loaded && !loadError && !draftProject && g === "Calendar" && (
@@ -1127,6 +1143,9 @@ export default function App() {
                 onApplyWorkspace={applyWorkspace}
                 locateRow={(r) => locateRow(foldersRef.current, r)}
                 keepNav={keepNav}
+                onStartPomo={startPomodoro}
+                onAddManualTimelog={addManualTimelog}
+                onOpenTimelogs={openTimelogs}
               />
             )}
           {loaded &&
@@ -1285,17 +1304,8 @@ export default function App() {
             if (hit) openItem(hit.row);
           }}
           onStartPomo={startPomodoro}
-          onAddManualTimelog={(filter) => {
-            if (filter?.project && filter?.board && filter?.card) {
-              setManualTimelogTaskKey(
-                taskKey(filter.project, filter.board, filter.card)
-              );
-            }
-          }}
-          onOpenTimelogs={(filter) => {
-            setTimelogFilter(filter);
-            setG("Timelogs");
-          }}
+          onAddManualTimelog={addManualTimelog}
+          onOpenTimelogs={openTimelogs}
           onMoveCard={moveCard}
           onSaveItem={async (r, folder, mod) => {
             const fields = {};

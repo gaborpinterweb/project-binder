@@ -40,6 +40,7 @@ import {
   allBoardTasks,
   allBoards,
   boardKey,
+  boardLabel,
   byOrd,
   colCollapseKey,
   columnRows,
@@ -53,6 +54,7 @@ import {
   saveDbViewsSidebar,
 } from "../utils.js";
 import GlobalBar from "./GlobalBar.jsx";
+import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
 const DRAG_THRESHOLD_PX = 6;
 
@@ -189,7 +191,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             payload.color || folder?.color || PC[0];
           const src =
             payload.src ||
-            (folder && mod ? `${folder.name} · ${mod[1]}` : "");
+            (folder && mod ? boardLabel(folder, mod) : "");
           setDragKey(key);
           setDragHeight(session.height);
           setDragPreview({
@@ -317,12 +319,19 @@ export function TaskCard({
   consumeDragClick,
   onOpen,
   onToggleDone,
+  onStartPomo,
+  onAddManualTimelog,
+  onOpenTimelogs,
+  readonly = false,
 }) {
   const pc = color || folder?.color || PC[0];
   const done = isDone(row);
   const canDrag = !boardEdit && !noDrag;
   const key = cardKey || cardDragKey(row, folder, mod);
   const dragging = dragKey === key;
+  const canTimelog =
+    !boardEdit && !readonly && folder && mod?.[2]?.slug && row?.slug;
+  const [timelogMenu, setTimelogMenu] = useState(null);
   return (
     <div
       className={"card tint" + (done ? " done" : "") + (dragging ? " dragging" : "")}
@@ -331,6 +340,12 @@ export function TaskCard({
         if (boardEdit) return;
         if (consumeDragClick?.()) return;
         onOpen(row);
+      }}
+      onContextMenu={(e) => {
+        if (!canTimelog) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setTimelogMenu({ left: e.clientX, top: e.clientY });
       }}
       onPointerDown={(e) => {
         if (!canDrag) return;
@@ -353,6 +368,22 @@ export function TaskCard({
         <span className="card-name">{row.n || "Untitled"}</span>
       </b>
       {src ? <span className="src">{src}</span> : null}
+      {timelogMenu
+        ? createPortal(
+            <TimelogContextMenu
+              left={timelogMenu.left}
+              top={timelogMenu.top}
+              folder={folder}
+              mod={mod}
+              row={row}
+              onStartPomo={onStartPomo}
+              onAddManualTimelog={onAddManualTimelog}
+              onOpenTimelogs={onOpenTimelogs}
+              onClose={() => setTimelogMenu(null)}
+            />,
+            document.body
+          )
+        : null}
     </div>
   );
 }
@@ -696,6 +727,10 @@ function ProjectBoard({
   onStartNewCard,
   onApplyWorkspace,
   keepNav,
+  onStartPomo,
+  onAddManualTimelog,
+  onOpenTimelogs,
+  readonly = false,
 }) {
   const scope = boardKey(folder, mod);
   const mode = getCompletedView(scope, completedViewByScope);
@@ -761,6 +796,10 @@ function ProjectBoard({
     consumeDragClick,
     onOpen: onOpenCard,
     onToggleDone,
+    onStartPomo,
+    onAddManualTimelog,
+    onOpenTimelogs,
+    readonly,
   };
 
   const renameBoardColumn = async (from, to) => {
@@ -1015,6 +1054,9 @@ function MasterBoard({
   onApplyWorkspace,
   locateRow,
   currentFolder,
+  onStartPomo,
+  onAddManualTimelog,
+  onOpenTimelogs,
 }) {
   const tasks = allBoardTasks(folders).filter(
     (t) => !masterOff.has(boardKey(t.folder, t.mod))
@@ -1084,6 +1126,9 @@ function MasterBoard({
     consumeDragClick,
     onOpen: onOpenCard,
     onToggleDone,
+    onStartPomo,
+    onAddManualTimelog,
+    onOpenTimelogs,
   };
 
   const renameMasterColumn = async (from, to) => {
@@ -1273,7 +1318,7 @@ function MasterBoard({
                         folder={t.folder}
                         mod={t.mod}
                         color={t.folder.color || PC[t.fi % PC.length]}
-                        src={t.folder.name + " · " + t.mod[1]}
+                        src={boardLabel(t.folder, t.mod)}
                         dragPayload={t}
                         {...cardProps}
                       />
@@ -1289,7 +1334,7 @@ function MasterBoard({
                     folder: t.folder,
                     mod: t.mod,
                     color: t.folder.color || PC[t.fi % PC.length],
-                    src: t.folder.name + " · " + t.mod[1],
+                    src: boardLabel(t.folder, t.mod),
                     dragPayload: t,
                   })),
                   { showEmpty: false },
@@ -1323,7 +1368,7 @@ function MasterBoard({
                     folder: t.folder,
                     mod: t.mod,
                     color: t.folder.color || PC[t.fi % PC.length],
-                    src: t.folder.name + " · " + t.mod[1],
+                    src: boardLabel(t.folder, t.mod),
                     dragPayload: t,
                   })),
                 {},
@@ -1336,7 +1381,7 @@ function MasterBoard({
       {!boardEdit && (
         <div className="mb-foot">
           {allBoards(folders).map(({ folder, mod, color, key }) => {
-            const label = `${folder.name} · ${mod[1]}`;
+            const label = boardLabel(folder, mod);
             return (
               <button
                 key={key}
@@ -2046,6 +2091,9 @@ export default function Board({
   onApplyWorkspace,
   locateRow,
   keepNav,
+  onStartPomo,
+  onAddManualTimelog,
+  onOpenTimelogs,
 }) {
   if (mode === "master") {
     const addMasterTask = () => {
@@ -2104,6 +2152,9 @@ export default function Board({
           onApplyWorkspace={onApplyWorkspace}
           locateRow={locateRow}
           currentFolder={folder}
+          onStartPomo={onStartPomo}
+          onAddManualTimelog={onAddManualTimelog}
+          onOpenTimelogs={onOpenTimelogs}
         />
       </div>
     );
@@ -2164,6 +2215,10 @@ export default function Board({
         onStartNewCard={onStartNewCard}
         onApplyWorkspace={onApplyWorkspace}
         keepNav={keepNav}
+        onStartPomo={onStartPomo}
+        onAddManualTimelog={onAddManualTimelog}
+        onOpenTimelogs={onOpenTimelogs}
+        readonly={readonly}
       />
     </div>
   );

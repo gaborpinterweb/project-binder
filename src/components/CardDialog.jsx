@@ -4,15 +4,16 @@ import { Icon } from "../icons.jsx";
 import {
   PC,
   allBoards,
+  boardLabel,
   formatSpent,
   isDone,
   pastel,
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
-import Dropdown from "./Dropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
 import PropDropdown, { PropAffix, closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
+import TimelogDropdown from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
 
 export default function CardDialog({
@@ -220,9 +221,7 @@ export default function CardDialog({
                         }}
                       />
                       <span className="lab">
-                        {(curLoc?.folder.name || "Project") +
-                          " · " +
-                          (curLoc?.mod[1] || "Tab")}
+                        {boardLabel(curLoc?.folder, curLoc?.mod)}
                       </span>
                     </span>
                   ) : (
@@ -235,7 +234,7 @@ export default function CardDialog({
                       }
                       options={boards.map(({ folder, mod }) => ({
                         value: folder.slug + "/" + mod[2].slug,
-                        label: `${folder.name} · ${mod[1]}`,
+                        label: boardLabel(folder, mod),
                         folder,
                         mod,
                       }))}
@@ -269,9 +268,7 @@ export default function CardDialog({
                         }}
                       />
                       <span className="lab">
-                        {(curLoc?.folder.name || "Project") +
-                          " · " +
-                          (curLoc?.mod[1] || "Tab")}
+                        {boardLabel(curLoc?.folder, curLoc?.mod)}
                       </span>
                     </PropDropdown>
                   )}
@@ -325,79 +322,24 @@ export default function CardDialog({
                     !readonly &&
                     curLoc?.mod[0] === "Board" &&
                     draft.slug && (
-                      <Dropdown
+                      <TimelogDropdown
                         className="prop-dd prop-chip"
                         buttonClassName="prop-dd-btn"
-                        ariaLabel="Timelog"
-                        title="Timelog"
-                        caret={false}
-                        options={[
-                          ...(showTimelogs
-                            ? [
-                                {
-                                  value: "pomo",
-                                  label: "Start pomodoro",
-                                  icon: "tomato",
-                                },
-                                {
-                                  value: "stoptimer",
-                                  label: "Start stopwatch",
-                                  icon: "stopwatch",
-                                },
-                              ]
-                            : []),
-                          {
-                            value: "manual",
-                            label: "Add manually",
-                            icon: "pencil",
-                          },
-                          {
-                            value: "logs",
-                            label: "Open timelogs...",
-                            icon: "list",
-                          },
-                        ]}
-                        onChange={async (v) => {
-                          if (v === "pomo" || v === "stoptimer") {
-                            await onStartPomo({
-                              project: curLoc.folder.slug,
-                              board: curLoc.mod[2].slug,
-                              card: draft.slug,
-                              title: draft.n || "Untitled",
-                              projectName: curLoc.folder.name,
-                              boardName: curLoc.mod[1],
-                              color: curLoc.folder.color || PC[0],
-                              kind: v === "stoptimer" ? "stoptimer" : "pomodoro",
-                            });
-                            await close(false);
-                            return;
-                          }
-                          if (v === "manual") {
-                            const filter = {
-                              project: curLoc.folder.slug,
-                              board: curLoc.mod[2].slug,
-                              card: draft.slug,
-                              title: draft.n || "Untitled",
-                            };
-                            await close(false);
-                            await onAddManualTimelog?.(filter);
-                            return;
-                          }
-                          if (v === "logs") {
-                            await onOpenTimelogs({
-                              project: curLoc.folder.slug,
-                              board: curLoc.mod[2].slug,
-                              card: draft.slug,
-                              title: draft.n || "Untitled",
-                            });
-                            await close(false);
-                          }
+                        folder={curLoc.folder}
+                        mod={curLoc.mod}
+                        row={draft}
+                        showTimers={showTimelogs}
+                        onStartPomo={onStartPomo}
+                        onAddManualTimelog={onAddManualTimelog}
+                        onOpenTimelogs={onOpenTimelogs}
+                        onAfterAction={async () => {
+                          await close(false);
                         }}
                       >
                         <Icon name="Timelogs" size={12} />
                         <span className="lab">{formatSpent(spent)}</span>
                         <PropAffix kind="caret" />
-                      </Dropdown>
+                      </TimelogDropdown>
                     )}
                 </div>
               </div>

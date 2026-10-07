@@ -7,10 +7,6 @@ export const IC = {
     '<rect x="2" y="3" width="3.5" height="10" rx="1"/><rect x="6.5" y="3" width="3.5" height="6" rx="1"/><rect x="11" y="3" width="3" height="8" rx="1"/>',
     "#b45a3c",
   ],
-  gallery: [
-    '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
-    "#6b4f8c",
-  ],
   Database: [
     '<ellipse cx="8" cy="4" rx="5" ry="2"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>',
     "#3d6b7a",
@@ -56,10 +52,6 @@ export const IC = {
   Trash: [
     '<path d="M3.5 5.5h9M6 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M5 5.5l.6 7h4.8l.6-7M6.5 8v3M9.5 8v3"/>',
     "#9a5b2e",
-  ],
-  project: [
-    '<rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M6 6h4M6 9h2.5"/>',
-    "",
   ],
   folder: [
     '<path fill="currentColor" stroke="none" d="M2 4.25c0-.69.56-1.25 1.25-1.25h3.05c.28 0 .55.1.76.27L8.4 4.4h4.35c.69 0 1.25.56 1.25 1.25v6.6c0 .69-.56 1.25-1.25 1.25H3.25C2.56 13.5 2 12.94 2 12.25V4.25z"/>',
@@ -141,20 +133,8 @@ export const IC = {
     '<path d="M4.5 3.5h4.2a2.6 2.6 0 0 1 0 5.2H4.5zM4.5 8.7h4.8a2.7 2.7 0 0 1 0 5.4H4.5z"/>',
     "",
   ],
-  italic: [
-    '<path d="M7 3.5h5M4 12.5h5M9.5 3.5L6.5 12.5"/>',
-    "",
-  ],
-  heading: [
-    '<path d="M3.5 3.5v9M11.5 3.5v9M3.5 8h8"/>',
-    "",
-  ],
   list: [
     '<path d="M6.5 4.5h6.5M6.5 8h6.5M6.5 11.5h6.5"/><circle cx="3.5" cy="4.5" r=".9" fill="currentColor" stroke="none"/><circle cx="3.5" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="3.5" cy="11.5" r=".9" fill="currentColor" stroke="none"/>',
-    "",
-  ],
-  listOrdered: [
-    '<path d="M6.5 4.5h6.5M6.5 8h6.5M6.5 11.5h6.5M3 3.2v3M3 3.2H4.2M2.5 10.2c.5-.7 1.5-.7 1.5.2 0 .7-.7 1-1.2 1.4H4.3"/>',
     "",
   ],
   checklist: [

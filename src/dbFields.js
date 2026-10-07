@@ -51,7 +51,7 @@ export function nextSelectColor(options = []) {
   return palette[used % palette.length].id;
 }
 
-export function normalizeSelectOption(o, index = 0) {
+function normalizeSelectOption(o, index = 0) {
   if (o == null) return null;
   const palette = SELECT_COLORS.filter((c) => c.id !== "default" && c.id !== "gray");
   const fallback = palette[index % palette.length].id;

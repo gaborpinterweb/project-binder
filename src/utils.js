@@ -39,17 +39,17 @@ function migrateStorageKeys() {
 }
 migrateStorageKeys();
 
-export const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
-export const SESSION_KEY = `${STORAGE_PREFIX}session`;
+const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
+const SESSION_KEY = `${STORAGE_PREFIX}session`;
 export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
-export const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
-export const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
-export const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
-export const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
-export const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
-export const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
-export const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
-export const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
+const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
+const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
+const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
+const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
+const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
+const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
+const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
+const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 /** Only Archived is hideable; workspace items are always shown. */
 export const SIDEBAR_VIS_ITEMS = ["Archived"];
@@ -357,7 +357,7 @@ export function pastel(c) {
   return `color-mix(in srgb,${c} 32%,#fff)`;
 }
 
-export function dayKey(iso) {
+function dayKey(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "unknown";
   return (
@@ -369,7 +369,7 @@ export function dayKey(iso) {
   );
 }
 
-export function dayTitle(iso) {
+function dayTitle(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown date";
   return d.toLocaleDateString(undefined, {
@@ -465,7 +465,7 @@ function timelogWeekStart(iso) {
   return x;
 }
 
-export function timelogWeekKey(iso) {
+function timelogWeekKey(iso) {
   const start = timelogWeekStart(iso);
   if (!start) return "";
   const y = start.getFullYear();
@@ -474,7 +474,7 @@ export function timelogWeekKey(iso) {
   return `${y}-${m}-${day}`;
 }
 
-export function timelogMonthKey(iso) {
+function timelogMonthKey(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const y = d.getFullYear();
@@ -482,7 +482,7 @@ export function timelogMonthKey(iso) {
   return `${y}-${m}`;
 }
 
-export function formatTimelogDay(iso) {
+function formatTimelogDay(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown day";
   return d.toLocaleDateString(undefined, {
@@ -492,7 +492,7 @@ export function formatTimelogDay(iso) {
   });
 }
 
-export function formatTimelogWeek(iso) {
+function formatTimelogWeek(iso) {
   const start = timelogWeekStart(iso);
   if (!start) return "Unknown week";
   const end = new Date(start);
@@ -512,7 +512,7 @@ export function formatTimelogWeek(iso) {
   return `${startLabel} – ${endLabel}`;
 }
 
-export function formatTimelogMonth(iso) {
+function formatTimelogMonth(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown month";
   return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -569,10 +569,6 @@ export function groupTimelogsByPeriodAndProject(entries, groupBy = "Day") {
         )
       ),
     }));
-}
-
-export function groupTimelogsByDayAndProject(entries) {
-  return groupTimelogsByPeriodAndProject(entries, "Day");
 }
 
 export function formatTrashDate(iso) {
@@ -634,7 +630,7 @@ function startOfLocalYear(d) {
 }
 
 /** Inclusive start, exclusive end (local time). */
-export function timelogPeriodRange(period, now = new Date()) {
+function timelogPeriodRange(period, now = new Date()) {
   const today = startOfLocalDay(now);
   switch (period) {
     case "Today":

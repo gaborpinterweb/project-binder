@@ -304,7 +304,7 @@ function renderOpenCards(items, column, dropHint, dragHeight, dragKey, renderCar
   );
 }
 
-export function TaskCard({
+function TaskCard({
   row,
   folder,
   mod,

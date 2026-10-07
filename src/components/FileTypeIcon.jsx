@@ -68,7 +68,7 @@ const KIND_BY_EXT = {
   woff2: "Font",
 };
 
-export function fileExtension(name) {
+function fileExtension(name) {
   const base = String(name || "").split(/[/\\]/).pop() || "";
   const i = base.lastIndexOf(".");
   if (i <= 0 || i === base.length - 1) return "";

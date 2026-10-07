@@ -36,7 +36,7 @@ export function normalizeSorts(sorts) {
   return { rules: rules.length ? rules : [createSortRule()] };
 }
 
-export function isSortRuleActive(rule, cols) {
+function isSortRuleActive(rule, cols) {
   if (!rule?.fieldId) return false;
   return (cols || []).some((c) => c && c.id === rule.fieldId);
 }

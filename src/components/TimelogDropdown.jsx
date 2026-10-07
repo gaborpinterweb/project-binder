@@ -3,7 +3,7 @@ import { Icon } from "../icons.jsx";
 import { PC } from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 
-export function timelogOptions({ showTimers = true } = {}) {
+function timelogOptions({ showTimers = true } = {}) {
   return [
     ...(showTimers
       ? [
@@ -16,7 +16,7 @@ export function timelogOptions({ showTimers = true } = {}) {
   ];
 }
 
-export function taskTimelogFilter(folder, mod, row) {
+function taskTimelogFilter(folder, mod, row) {
   return {
     project: folder.slug,
     board: mod[2].slug,
@@ -25,7 +25,7 @@ export function taskTimelogFilter(folder, mod, row) {
   };
 }
 
-export async function runTimelogAction(
+async function runTimelogAction(
   value,
   { folder, mod, row, onStartPomo, onAddManualTimelog, onOpenTimelogs }
 ) {

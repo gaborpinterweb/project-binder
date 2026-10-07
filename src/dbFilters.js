@@ -80,7 +80,7 @@ export function opNeedsValue(op) {
   );
 }
 
-export function isRuleActive(rule, cols) {
+function isRuleActive(rule, cols) {
   if (!rule?.fieldId || !rule?.op) return false;
   const col = cols.find((c) => c.id === rule.fieldId);
   if (!col) return false;

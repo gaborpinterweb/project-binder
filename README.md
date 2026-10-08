@@ -65,56 +65,44 @@ Master board stages:
 
 | Project slug | Name | Color | Tab (slug) | Tab columns |
 |---|---|---|---|---|
-| `aurora-app-launch` | Aurora app launch | `#b45a3c` | Launch (`launch`) | Design, Frontend dev, Backend dev, Content |
-| `cove-brand-redesign` | Cove brand redesign | `#6b4f8c` | Brand (`brand`) | Design, Webflow, Content |
-| `meridian-site-redesign` | Meridian site redesign | `#2f7a6e` | Website (`website`) | Design, Content |
-| `shopify-store-migration` | Shopify store migration | `#8a5c2e` | Migration (`migration`) | Theme, Data & apps, SEO |
+| `internal-business` | Internal business | `#2f7a6e` | Ops (`ops`) | Admin, Marketing, Finance |
+| `client-project-a` | Client project A | `#b45a3c` | Delivery (`delivery`) | Design, Frontend, Content |
+| `client-project-b` | Client project B | `#6b4f8c` | Launch (`launch`) | Design, Development, Content |
 
-### Aurora app launch — Launch
+### Internal business — Ops
 
 | Card slug | Title | Task board column | Master board column | Done |
 |---|---|---|---|---|
-| `landing-hero-copy` | Landing hero copy | Content | Today | |
-| `waitlist-flow` | Waitlist signup flow | Backend dev | Today | |
+| `invoice-template` | Update invoice template | Finance | Today | |
+| `quarterly-taxes` | Quarterly tax checklist | Finance | This week | |
+| `linkedin-cadence` | LinkedIn post cadence | Marketing | Today | |
+| `portfolio-site` | Portfolio site refresh | Marketing | Next week | |
+| `crm-cleanup` | CRM cleanup | Admin | Backlog | |
+| `contract-template` | Client contract template | Admin | This week | yes |
+
+### Client project A — Delivery
+
+| Card slug | Title | Task board column | Master board column | Done |
+|---|---|---|---|---|
+| `homepage-wireframes` | Homepage wireframes | Design | Today | |
+| `design-system` | Type & color system | Design | This week | |
+| `services-page` | Services page draft | Content | Today | |
+| `component-library` | Frontend component kit | Frontend | Next week | |
+| `case-study-template` | Case study template | Content | This week | yes |
+| `accessibility-pass` | Accessibility pass | Frontend | Backlog | |
+
+### Client project B — Launch
+
+| Card slug | Title | Task board column | Master board column | Done |
+|---|---|---|---|---|
+| `landing-hero` | Landing hero copy | Content | Today | |
+| `waitlist-flow` | Waitlist signup flow | Development | Today | |
+| `pricing-section` | Pricing section | Development | Backlog | yes |
 | `press-kit` | Press kit PDF | Content | This week | yes |
-| `launch-day-checklist` | Launch day checklist | Backend dev | This week | |
-| `pricing-section` | Pricing section | Frontend dev | Backlog | yes |
+| `launch-checklist` | Launch day checklist | Development | This week | |
 | `onboarding-email` | Onboarding email sequence | Content | Next week | |
 
-### Cove brand redesign — Brand
-
-| Card slug | Title | Task board column | Master board column | Done |
-|---|---|---|---|---|
-| `moodboard-signoff` | Moodboard sign-off | Design | Today | yes |
-| `homepage-wireframes` | Homepage wireframes | Design | Today | |
-| `type-color-system` | Type & color system | Design | This week | |
-| `case-study-template` | Case study template | Content | This week | |
-| `component-library` | Webflow component library | Webflow | Next week | |
-| `asset-handoff` | Asset handoff pack | Content | Backlog | |
-
-### Meridian site redesign — Website
-
-| Card slug | Title | Task board column | Master board column | Done |
-|---|---|---|---|---|
-| `discovery-workshop` | Discovery workshop notes | Content | Today | yes |
-| `ia-sitemap` | IA & sitemap | Design | Today | |
-| `services-page` | Services page draft | Content | This week | |
-| `lead-form` | Lead form + CRM hook | Content | This week | |
-| `blog-templates` | Insights blog templates | Design | Next week | |
-| `accessibility-pass` | Accessibility pass | Design | Backlog | |
-
-### Shopify store migration — Migration
-
-| Card slug | Title | Task board column | Master board column | Done |
-|---|---|---|---|---|
-| `catalog-export` | Catalog export & clean-up | Data & apps | Today | |
-| `url-redirect-map` | URL redirect map | SEO | Today | yes |
-| `dawn-theme-setup` | Dawn theme customization | Theme | This week | |
-| `checkout-apps` | Checkout & apps install | Data & apps | This week | |
-| `customer-accounts` | Customer account migration | Data & apps | Next week | yes |
-| `go-live-rehearsal` | Go-live rehearsal | Theme | Backlog | |
-
-Project descriptions live in each project’s `description` field in the JSON.
+Each project also has matching Notes, Files, and Database demo tabs. Descriptions live in each project’s `description` field in the JSON.
 
 ### Notes
 

@@ -9,46 +9,593 @@
   ],
   "projects": [
     {
-      "slug": "aurora-app-launch",
-      "name": "Aurora app launch",
+      "slug": "internal-business",
+      "name": "Internal business",
+      "color": "#2f7a6e",
+      "description": "Studio ops: marketing, admin, and finance work that keeps the freelance business running.",
+      "isDemo": true,
+      "boards": [
+        {
+          "slug": "ops",
+          "name": "Ops",
+          "columns": [
+            "Admin",
+            "Marketing",
+            "Finance"
+          ],
+          "isDemo": true,
+          "cards": [
+            {
+              "slug": "invoice-template",
+              "title": "Update invoice template",
+              "status": "Finance",
+              "master": "Today",
+              "doneAt": "",
+              "body": "Refresh PDF invoice layout with new bank details and late-fee note.",
+              "isDemo": true
+            },
+            {
+              "slug": "quarterly-taxes",
+              "title": "Quarterly tax checklist",
+              "status": "Finance",
+              "master": "This week",
+              "doneAt": "",
+              "body": "Gather receipts, export Stripe payouts, and send packet to accountant.",
+              "isDemo": true
+            },
+            {
+              "slug": "linkedin-cadence",
+              "title": "LinkedIn post cadence",
+              "status": "Marketing",
+              "master": "Today",
+              "doneAt": "",
+              "body": "Draft 4 posts for this month: case study, tip, behind-the-scenes, offer.",
+              "isDemo": true
+            },
+            {
+              "slug": "portfolio-site",
+              "title": "Portfolio site refresh",
+              "status": "Marketing",
+              "master": "Next week",
+              "doneAt": "",
+              "body": "Swap two case studies and tighten the services page CTA.",
+              "isDemo": true
+            },
+            {
+              "slug": "crm-cleanup",
+              "title": "CRM cleanup",
+              "status": "Admin",
+              "master": "Backlog",
+              "doneAt": "",
+              "body": "Archive stale leads and fix missing project tags in the CRM.",
+              "isDemo": true
+            },
+            {
+              "slug": "contract-template",
+              "title": "Client contract template",
+              "status": "Admin",
+              "master": "This week",
+              "doneAt": "2026-09-28T11:20:00.000Z",
+              "body": "Done: standard MSA + SOW appendix ready to reuse.",
+              "isDemo": true
+            }
+          ]
+        }
+      ],
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "studio-goals",
+              "title": "Q4 studio goals",
+              "body": "<h1>Q4 studio goals</h1><p>Grow retainer revenue and keep utilization healthy without weekend work.</p><h2>Targets</h2><ul><li><p>2 active client retainers</p></li><li><p>1 published case study per month</p></li><li><p>Invoices sent within 48h of milestone</p></li></ul><p><strong>Owner:</strong> Gábor</p>",
+              "createdAt": "2026-09-20T10:00:00.000Z",
+              "updatedAt": "2026-09-30T12:00:00.000Z"
+            },
+            {
+              "slug": "pricing-notes",
+              "title": "Pricing notes",
+              "body": "<h1>Pricing notes</h1><p>Day rate and package options for discovery, design systems, and build sprints.</p><ul><li><p>Discovery workshop: fixed</p></li><li><p>Retainer: 2 days / week</p></li><li><p>Rush fee: +25%</p></li></ul>",
+              "createdAt": "2026-09-22T14:00:00.000Z",
+              "updatedAt": "2026-09-29T09:10:00.000Z"
+            },
+            {
+              "slug": "tooling",
+              "title": "Tooling stack",
+              "body": "<h1>Tooling stack</h1><p>Notion for CRM, Stripe for invoices, Loom for async updates, Figma for design.</p><p><mark>Rotate API keys every quarter.</mark></p>",
+              "createdAt": "2026-09-18T08:30:00.000Z",
+              "updatedAt": "2026-09-25T16:45:00.000Z"
+            }
+          ]
+        }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Rate card.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Studio brief.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 4820,
+              "createdAt": "2026-09-28T10:12:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Capabilities deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 9120,
+              "createdAt": "2026-09-27T15:40:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Logo lockup.png",
+              "mime": "image/png",
+              "size": 6400,
+              "createdAt": "2026-09-26T09:05:00.000Z"
+            }
+          ]
+        }
+      ],
+      "databases": [
+        {
+          "slug": "ops-tracker",
+          "name": "Ops tracker",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "type": "longtext"
+            },
+            {
+              "id": "priority",
+              "label": "Priority",
+              "type": "select",
+              "options": [
+                {
+                  "label": "High",
+                  "color": "red"
+                },
+                {
+                  "label": "Medium",
+                  "color": "orange"
+                },
+                {
+                  "label": "Low",
+                  "color": "green"
+                }
+              ]
+            },
+            {
+              "id": "tags",
+              "label": "Tags",
+              "type": "multiselect",
+              "options": [
+                {
+                  "label": "Client",
+                  "color": "blue"
+                },
+                {
+                  "label": "Internal",
+                  "color": "purple"
+                },
+                {
+                  "label": "Blocked",
+                  "color": "pink"
+                },
+                {
+                  "label": "Launch",
+                  "color": "yellow"
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "type": "checkbox"
+            },
+            {
+              "id": "estimate",
+              "label": "Estimate (h)",
+              "type": "number",
+              "decimal": true
+            },
+            {
+              "id": "due",
+              "label": "Due",
+              "type": "date"
+            },
+            {
+              "id": "s",
+              "label": "Stage",
+              "type": "stage"
+            }
+          ],
+          "items": [
+            {
+              "slug": "invoice-template-row",
+              "fields": {
+                "n": "Invoice template",
+                "notes": "<p>New PDF layout with bank details and late-fee note.</p>",
+                "priority": "High",
+                "tags": [
+                  "Internal"
+                ],
+                "done": false,
+                "estimate": 3,
+                "due": "2026-10-08",
+                "s": "Today"
+              },
+              "body": ""
+            },
+            {
+              "slug": "linkedin-batch",
+              "fields": {
+                "n": "LinkedIn batch",
+                "notes": "<p>Four posts scheduled for October.</p>",
+                "priority": "Medium",
+                "tags": [
+                  "Internal",
+                  "Launch"
+                ],
+                "done": false,
+                "estimate": 4,
+                "due": "2026-10-10",
+                "s": "This week"
+              },
+              "body": ""
+            },
+            {
+              "slug": "contract-pack",
+              "fields": {
+                "n": "Contract pack",
+                "notes": "<p>MSA + SOW appendix archived for reuse.</p>",
+                "priority": "Low",
+                "tags": [
+                  "Internal"
+                ],
+                "done": true,
+                "estimate": 2.5,
+                "due": "2026-09-28",
+                "s": "This week"
+              },
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "client-project-a",
+      "name": "Client project A",
       "color": "#b45a3c",
-      "description": "Freelance engagement to ship the Aurora mobile app landing, waitlist, and launch assets for a Series A client.",
+      "description": "Client A website redesign: positioning, design system, and marketing pages.",
+      "isDemo": true,
+      "boards": [
+        {
+          "slug": "delivery",
+          "name": "Delivery",
+          "columns": [
+            "Design",
+            "Frontend",
+            "Content"
+          ],
+          "isDemo": true,
+          "cards": [
+            {
+              "slug": "homepage-wireframes",
+              "title": "Homepage wireframes",
+              "status": "Design",
+              "master": "Today",
+              "doneAt": "",
+              "body": "Desktop + mobile frames for hero, services, and proof sections.",
+              "isDemo": true
+            },
+            {
+              "slug": "design-system",
+              "title": "Type & color system",
+              "status": "Design",
+              "master": "This week",
+              "doneAt": "",
+              "body": "Define tokens, type scale, and component states in Figma.",
+              "isDemo": true
+            },
+            {
+              "slug": "services-page",
+              "title": "Services page draft",
+              "status": "Content",
+              "master": "Today",
+              "doneAt": "",
+              "body": "Outline packages, process, and FAQ for Client A.",
+              "isDemo": true
+            },
+            {
+              "slug": "component-library",
+              "title": "Frontend component kit",
+              "status": "Frontend",
+              "master": "Next week",
+              "doneAt": "",
+              "body": "Build buttons, cards, and form fields from the approved kit.",
+              "isDemo": true
+            },
+            {
+              "slug": "case-study-template",
+              "title": "Case study template",
+              "status": "Content",
+              "master": "This week",
+              "doneAt": "2026-09-29T10:00:00.000Z",
+              "body": "Done: reusable layout for project write-ups.",
+              "isDemo": true
+            },
+            {
+              "slug": "accessibility-pass",
+              "title": "Accessibility pass",
+              "status": "Frontend",
+              "master": "Backlog",
+              "doneAt": "",
+              "body": "Keyboard nav, focus rings, and alt text audit before handoff.",
+              "isDemo": true
+            }
+          ]
+        }
+      ],
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "kickoff-notes",
+              "title": "Kickoff notes",
+              "body": "<h1>Kickoff notes</h1><p>Client A wants a calmer brand and clearer services narrative.</p><h2>Success</h2><ul><li><p>New homepage live</p></li><li><p>Lead form to HubSpot</p></li><li><p>Design system documented</p></li></ul>",
+              "createdAt": "2026-09-21T11:00:00.000Z",
+              "updatedAt": "2026-09-30T15:00:00.000Z"
+            },
+            {
+              "slug": "brand-principles",
+              "title": "Brand principles",
+              "body": "<h1>Brand principles</h1><p>Quiet confidence, generous whitespace, and concrete proof over slogans.</p>",
+              "createdAt": "2026-09-23T09:00:00.000Z",
+              "updatedAt": "2026-09-28T18:20:00.000Z"
+            },
+            {
+              "slug": "handoff",
+              "title": "Handoff checklist",
+              "body": "<h1>Handoff checklist</h1><ul><li><p>Figma pages named</p></li><li><p>Tokens exported</p></li><li><p>CMS fields mapped</p></li></ul>",
+              "createdAt": "2026-09-24T13:30:00.000Z",
+              "updatedAt": "2026-09-29T11:05:00.000Z"
+            }
+          ]
+        }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Brand guidelines.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Discovery notes.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 4820,
+              "createdAt": "2026-09-28T10:12:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Kickoff deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 9120,
+              "createdAt": "2026-09-27T15:40:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Homepage mock.png",
+              "mime": "image/png",
+              "size": 6400,
+              "createdAt": "2026-09-26T09:05:00.000Z"
+            }
+          ]
+        }
+      ],
+      "databases": [
+        {
+          "slug": "delivery-tracker",
+          "name": "Delivery tracker",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Name",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "notes",
+              "label": "Notes",
+              "type": "longtext"
+            },
+            {
+              "id": "priority",
+              "label": "Priority",
+              "type": "select",
+              "options": [
+                {
+                  "label": "High",
+                  "color": "red"
+                },
+                {
+                  "label": "Medium",
+                  "color": "orange"
+                },
+                {
+                  "label": "Low",
+                  "color": "green"
+                }
+              ]
+            },
+            {
+              "id": "tags",
+              "label": "Tags",
+              "type": "multiselect",
+              "options": [
+                {
+                  "label": "Client",
+                  "color": "blue"
+                },
+                {
+                  "label": "Internal",
+                  "color": "purple"
+                },
+                {
+                  "label": "Blocked",
+                  "color": "pink"
+                },
+                {
+                  "label": "Launch",
+                  "color": "yellow"
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "label": "Done",
+              "type": "checkbox"
+            },
+            {
+              "id": "estimate",
+              "label": "Estimate (h)",
+              "type": "number",
+              "decimal": true
+            },
+            {
+              "id": "due",
+              "label": "Due",
+              "type": "date"
+            },
+            {
+              "id": "s",
+              "label": "Stage",
+              "type": "stage"
+            }
+          ],
+          "items": [
+            {
+              "slug": "homepage",
+              "fields": {
+                "n": "Homepage",
+                "notes": "<p>Wireframes and copy for hero, services, and proof.</p>",
+                "priority": "High",
+                "tags": [
+                  "Client"
+                ],
+                "done": false,
+                "estimate": 14,
+                "due": "2026-10-09",
+                "s": "Today"
+              },
+              "body": ""
+            },
+            {
+              "slug": "design-tokens",
+              "fields": {
+                "n": "Design tokens",
+                "notes": "<p>Color, type, and spacing tokens in Figma.</p>",
+                "priority": "Medium",
+                "tags": [
+                  "Client"
+                ],
+                "done": false,
+                "estimate": 6,
+                "due": "2026-10-12",
+                "s": "This week"
+              },
+              "body": ""
+            },
+            {
+              "slug": "case-study-tpl",
+              "fields": {
+                "n": "Case study template",
+                "notes": "<p>Reusable write-up layout approved by client.</p>",
+                "priority": "Low",
+                "tags": [
+                  "Client",
+                  "Launch"
+                ],
+                "done": true,
+                "estimate": 4,
+                "due": "2026-09-29",
+                "s": "This week"
+              },
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "client-project-b",
+      "name": "Client project B",
+      "color": "#6b4f8c",
+      "description": "Client B product launch: landing page, waitlist, and go-live checklist.",
+      "isDemo": true,
       "boards": [
         {
           "slug": "launch",
           "name": "Launch",
           "columns": [
             "Design",
-            "Frontend dev",
-            "Backend dev",
+            "Development",
             "Content"
           ],
+          "isDemo": true,
           "cards": [
             {
-              "slug": "landing-hero-copy",
+              "slug": "landing-hero",
               "title": "Landing hero copy",
               "status": "Content",
               "master": "Today",
               "doneAt": "",
-              "body": "Finalize headline, subcopy, and CTA for the Aurora waitlist page.",
+              "body": "Finalize headline, subcopy, and primary CTA for the waitlist page.",
               "isDemo": true
             },
             {
-              "slug": "launch-day-checklist",
-              "title": "Launch day checklist",
-              "status": "Backend dev",
-              "master": "This week",
+              "slug": "waitlist-flow",
+              "title": "Waitlist signup flow",
+              "status": "Development",
+              "master": "Today",
               "doneAt": "",
-              "body": "DNS cutover, Product Hunt draft, social posts, and rollback notes.",
+              "body": "Form → CRM, confirmation email, and success state.",
               "isDemo": true
             },
             {
-              "slug": "onboarding-email",
-              "title": "Onboarding email sequence",
-              "status": "Content",
-              "master": "Next week",
-              "doneAt": "",
-              "body": "Day 0 / 2 / 5 welcome emails in Loops for early access users.",
+              "slug": "pricing-section",
+              "title": "Pricing section",
+              "status": "Development",
+              "master": "Backlog",
+              "doneAt": "2026-09-29T13:36:35.222Z",
+              "body": "Done: three tiers with annual toggle.",
               "isDemo": true
             },
             {
@@ -57,29 +604,93 @@
               "status": "Content",
               "master": "This week",
               "doneAt": "2026-09-29T13:36:08.339Z",
-              "body": "Logo pack, screenshots, founder bios, and one-pager for journalists.",
+              "body": "Done: logo pack, screenshots, and one-pager.",
               "isDemo": true
             },
             {
-              "slug": "pricing-section",
-              "title": "Pricing section",
-              "status": "Frontend dev",
-              "master": "Backlog",
-              "doneAt": "2026-09-29T13:36:35.222Z",
-              "body": "Three-tier layout with annual toggle; sync numbers with founder.",
-              "isDemo": true
-            },
-            {
-              "slug": "waitlist-flow",
-              "title": "Waitlist signup flow",
-              "status": "Backend dev",
-              "master": "Today",
+              "slug": "launch-checklist",
+              "title": "Launch day checklist",
+              "status": "Development",
+              "master": "This week",
               "doneAt": "",
-              "body": "Wire Formspark \u2192 Notion, confirmation email, and success state.",
+              "body": "DNS cutover, analytics, social posts, and rollback notes.",
+              "isDemo": true
+            },
+            {
+              "slug": "onboarding-email",
+              "title": "Onboarding email sequence",
+              "status": "Content",
+              "master": "Next week",
+              "doneAt": "",
+              "body": "Day 0 / 2 / 5 welcome emails for early access users.",
               "isDemo": true
             }
-          ],
-          "isDemo": true
+          ]
+        }
+      ],
+      "notesTabs": [
+        {
+          "slug": "notes",
+          "name": "Notes",
+          "notes": [
+            {
+              "slug": "launch-brief",
+              "title": "Launch brief",
+              "body": "<h1>Launch brief</h1><p>Ship Client B waitlist landing and press kit before launch day.</p><h2>Must ship</h2><ul><li><p>Hero copy + CTA</p></li><li><p>Waitlist → CRM</p></li><li><p>Press kit PDF</p></li></ul><p><mark>DNS cutover needs the client online Saturday morning.</mark></p>",
+              "createdAt": "2026-09-22T10:00:00.000Z",
+              "updatedAt": "2026-09-30T16:20:00.000Z"
+            },
+            {
+              "slug": "stakeholder-map",
+              "title": "Stakeholder map",
+              "body": "<h1>Stakeholder map</h1><p>Founder (decider), marketing lead (copy), engineer (DNS). Weekly Loom updates.</p>",
+              "createdAt": "2026-09-23T12:00:00.000Z",
+              "updatedAt": "2026-09-27T17:00:00.000Z"
+            },
+            {
+              "slug": "go-live-runbook",
+              "title": "Go-live runbook",
+              "body": "<h1>Go-live runbook</h1><ol><li><p>Freeze content</p></li><li><p>Flip DNS</p></li><li><p>Verify forms</p></li><li><p>Post socials</p></li></ol>",
+              "createdAt": "2026-09-25T08:00:00.000Z",
+              "updatedAt": "2026-09-30T09:40:00.000Z"
+            }
+          ]
+        }
+      ],
+      "filesTabs": [
+        {
+          "slug": "files",
+          "name": "Files",
+          "files": [
+            {
+              "slug": "press-kit-pdf",
+              "name": "Press kit.pdf",
+              "mime": "application/pdf",
+              "size": 1594,
+              "createdAt": "2026-09-29T13:36:08.339Z"
+            },
+            {
+              "slug": "launch-brief-docx",
+              "name": "Launch brief.docx",
+              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "size": 4820,
+              "createdAt": "2026-09-28T10:12:00.000Z"
+            },
+            {
+              "slug": "launch-deck-pptx",
+              "name": "Launch deck.pptx",
+              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              "size": 9120,
+              "createdAt": "2026-09-27T15:40:00.000Z"
+            },
+            {
+              "slug": "hero-mock-png",
+              "name": "Hero mock.png",
+              "mime": "image/png",
+              "size": 6400,
+              "createdAt": "2026-09-26T09:05:00.000Z"
+            }
+          ]
         }
       ],
       "databases": [
@@ -184,7 +795,7 @@
               "slug": "press-kit-assets",
               "fields": {
                 "n": "Press kit assets",
-                "notes": "<p>Logo pack, screenshots, and founder bios for journalists.</p>",
+                "notes": "<p>Logo pack, screenshots, and founder bios.</p>",
                 "priority": "Medium",
                 "tags": [
                   "Client"
@@ -197,13 +808,13 @@
               "body": ""
             },
             {
-              "slug": "product-hunt-draft",
+              "slug": "launch-comms",
               "fields": {
-                "n": "Product Hunt draft",
-                "notes": "<p>Tagline, gallery, and maker comment ready before launch day.</p>",
+                "n": "Launch communications",
+                "notes": "<p>Social drafts and Product Hunt maker comment.</p>",
                 "priority": "Low",
                 "tags": [
-                  "Internal",
+                  "Client",
                   "Launch"
                 ],
                 "done": false,
@@ -213,1521 +824,146 @@
               },
               "body": ""
             }
-          ],
-          "isDemo": true,
-          "customViews": [
-            {
-              "id": "default",
-              "name": "Default view",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "f0",
-                    "fieldId": "",
-                    "op": "",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "high-priority",
-              "name": "High priority",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "priority",
-                    "op": "is",
-                    "value": "High"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "open-items",
-              "name": "Open items",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "done",
-                    "op": "is_not_checked",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "launch-tag",
-              "name": "Launch tagged",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "tags",
-                    "op": "contains",
-                    "value": "Launch"
-                  }
-                ]
-              }
-            }
-          ],
-          "customViewId": "default"
-        }
-      ],
-      "isDemo": true,
-      "notesTabs": [
-        {
-          "slug": "notes",
-          "name": "Notes",
-          "notes": [
-            {
-              "slug": "launch-brief",
-              "title": "Launch brief",
-              "body": "<h1>Launch brief</h1><p>Ship the Aurora waitlist landing and press kit before Product Hunt day.</p><h2>Must ship</h2><ul><li><p>Hero copy + CTA</p></li><li><p>Formspark \u2192 Notion waitlist</p></li><li><p>Press kit PDF</p></li></ul><h3>Risks</h3><p><mark>DNS cutover needs Luis online Saturday morning.</mark></p><p>Tracking pixel ID lives in <code>NEXT_PUBLIC_PH_PIXEL</code>.</p><p><strong>Owner:</strong> G\u00e1bor \u00b7 <em>Target: Oct 14</em></p>",
-              "createdAt": "2026-09-22T10:00:00.000Z",
-              "updatedAt": "2026-09-30T16:20:00.000Z"
-            },
-            {
-              "slug": "stakeholder-map",
-              "title": "Stakeholder map",
-              "body": "<h1>Stakeholder map</h1><p>Who needs to approve what before launch day.</p><table><tbody><tr><th><p>Person</p></th><th><p>Role</p></th><th><p>Sign-off</p></th></tr><tr><td><p>Maya</p></td><td><p>Founder</p></td><td><p>Copy + brand</p></td></tr><tr><td><p>Luis</p></td><td><p>Eng</p></td><td><p>DNS + Formspark</p></td></tr><tr><td><p>Priya</p></td><td><p>Design</p></td><td><p>Hero review</p></td></tr></tbody></table><blockquote><p>Keep the waitlist page under 3 scrolls on mobile.</p></blockquote>",
-              "createdAt": "2026-09-24T14:15:00.000Z",
-              "updatedAt": "2026-09-28T09:40:00.000Z"
-            },
-            {
-              "slug": "ph-checklist",
-              "title": "Product Hunt checklist",
-              "body": "<h1>Product Hunt checklist</h1><p>Draft assets so launch day is mostly scheduling.</p><ol><li><p>Tagline (\u226460 chars)</p></li><li><p>Gallery: 4 screenshots + 1 GIF</p></li><li><p>Maker comment ready the night before</p></li></ol><h2>Snippet for first comment</h2><pre><code>Thanks for hunting Aurora!\nWaitlist \u2192 https://aurora.app/waitlist\nQuestions? Drop them below \u2014 we'll reply in the first hour.</code></pre><p>Link the waitlist URL in the first comment, not only the website field.</p>",
-              "createdAt": "2026-09-29T11:00:00.000Z",
-              "updatedAt": "2026-10-01T08:05:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "filesTabs": [
-        {
-          "slug": "files",
-          "name": "Files",
-          "files": [
-            {
-              "slug": "press-kit-pdf",
-              "name": "Press kit.pdf",
-              "mime": "application/pdf",
-              "size": 1594,
-              "createdAt": "2026-09-29T13:36:08.339Z"
-            },
-            {
-              "slug": "launch-brief-docx",
-              "name": "Launch brief.docx",
-              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              "size": 1303,
-              "createdAt": "2026-09-22T10:00:00.000Z"
-            },
-            {
-              "slug": "launch-deck-pptx",
-              "name": "Launch deck.pptx",
-              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-              "size": 6714,
-              "createdAt": "2026-09-24T14:15:00.000Z"
-            },
-            {
-              "slug": "hero-mock-png",
-              "name": "Hero mock.png",
-              "mime": "image/png",
-              "size": 99,
-              "createdAt": "2026-09-28T09:40:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ]
-    },
-    {
-      "slug": "cove-brand-redesign",
-      "name": "Cove brand redesign",
-      "color": "#6b4f8c",
-      "description": "Brand and marketing site redesign for Cove, a boutique hospitality studio. New visual system, homepage, and case study templates.",
-      "boards": [
-        {
-          "slug": "brand",
-          "name": "Brand",
-          "columns": [
-            "Design",
-            "Webflow",
-            "Content"
-          ],
-          "cards": [
-            {
-              "slug": "asset-handoff",
-              "title": "Asset handoff pack",
-              "status": "Content",
-              "master": "Backlog",
-              "doneAt": "",
-              "body": "Logo SVG/PNG, brand PDF, and usage guidelines for their team.",
-              "isDemo": true
-            },
-            {
-              "slug": "case-study-template",
-              "title": "Case study template",
-              "status": "Content",
-              "master": "This week",
-              "doneAt": "",
-              "body": "Reusable layout for property stories; first pass on Casa Verde.",
-              "isDemo": true
-            },
-            {
-              "slug": "component-library",
-              "title": "Webflow component library",
-              "status": "Webflow",
-              "master": "Next week",
-              "doneAt": "",
-              "body": "Buttons, cards, nav, and footer as Webflow components.",
-              "isDemo": true
-            },
-            {
-              "slug": "homepage-wireframes",
-              "title": "Homepage wireframes",
-              "status": "Design",
-              "master": "Today",
-              "doneAt": "",
-              "body": "Desktop + mobile wires for hero, stays grid, and booking CTA.",
-              "isDemo": true
-            },
-            {
-              "slug": "moodboard-signoff",
-              "title": "Moodboard sign-off",
-              "status": "Design",
-              "master": "Today",
-              "doneAt": "2026-09-29T14:10:00.000Z",
-              "body": "Present 3 directions; lock type, color, and photography style with the client.",
-              "isDemo": true
-            },
-            {
-              "slug": "type-color-system",
-              "title": "Type & color system",
-              "status": "Design",
-              "master": "This week",
-              "doneAt": "",
-              "body": "Document scales, tokens, and Figma styles for the new brand."
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "databases": [
-        {
-          "slug": "brand-inventory",
-          "name": "Brand inventory",
-          "columns": [
-            {
-              "id": "n",
-              "label": "Name",
-              "type": "text",
-              "required": true
-            },
-            {
-              "id": "notes",
-              "label": "Notes",
-              "type": "longtext"
-            },
-            {
-              "id": "priority",
-              "label": "Priority",
-              "type": "select",
-              "options": [
-                {
-                  "label": "High",
-                  "color": "red"
-                },
-                {
-                  "label": "Medium",
-                  "color": "orange"
-                },
-                {
-                  "label": "Low",
-                  "color": "green"
-                }
-              ]
-            },
-            {
-              "id": "tags",
-              "label": "Tags",
-              "type": "multiselect",
-              "options": [
-                {
-                  "label": "Client",
-                  "color": "blue"
-                },
-                {
-                  "label": "Internal",
-                  "color": "purple"
-                },
-                {
-                  "label": "Blocked",
-                  "color": "pink"
-                },
-                {
-                  "label": "Launch",
-                  "color": "yellow"
-                }
-              ]
-            },
-            {
-              "id": "done",
-              "label": "Done",
-              "type": "checkbox"
-            },
-            {
-              "id": "estimate",
-              "label": "Estimate (h)",
-              "type": "number",
-              "decimal": true
-            },
-            {
-              "id": "due",
-              "label": "Due",
-              "type": "date"
-            },
-            {
-              "id": "s",
-              "label": "Stage",
-              "type": "stage"
-            }
-          ],
-          "items": [
-            {
-              "slug": "logo-system",
-              "fields": {
-                "n": "Logo system",
-                "notes": "<p>Primary mark, wordmark, and mono variants for print and web.</p>",
-                "priority": "High",
-                "tags": [
-                  "Client"
-                ],
-                "done": false,
-                "estimate": 8,
-                "due": "2026-10-06",
-                "s": "Today"
-              },
-              "body": ""
-            },
-            {
-              "slug": "case-study-template",
-              "fields": {
-                "n": "Case study template",
-                "notes": "<p>Reusable layout for property stories; first pass on Casa Verde.</p>",
-                "priority": "Medium",
-                "tags": [
-                  "Client",
-                  "Internal"
-                ],
-                "done": false,
-                "estimate": 6,
-                "due": "2026-10-10",
-                "s": "This week"
-              },
-              "body": ""
-            },
-            {
-              "slug": "moodboard-directions",
-              "fields": {
-                "n": "Moodboard directions",
-                "notes": "<p>Three directions locked with client \u2014 type, color, photography.</p>",
-                "priority": "Low",
-                "tags": [
-                  "Client"
-                ],
-                "done": true,
-                "estimate": 5,
-                "due": "2026-09-28",
-                "s": "Backlog"
-              },
-              "body": ""
-            }
-          ],
-          "isDemo": true,
-          "customViews": [
-            {
-              "id": "default",
-              "name": "Default view",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "f0",
-                    "fieldId": "",
-                    "op": "",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "high-priority",
-              "name": "High priority",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "priority",
-                    "op": "is",
-                    "value": "High"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "client-work",
-              "name": "Client work",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "tags",
-                    "op": "contains",
-                    "value": "Client"
-                  },
-                  {
-                    "id": "r2",
-                    "fieldId": "done",
-                    "op": "is_not_checked",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "done",
-              "name": "Completed",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "done",
-                    "op": "is_checked",
-                    "value": ""
-                  }
-                ]
-              }
-            }
-          ],
-          "customViewId": "default"
-        }
-      ],
-      "isDemo": true,
-      "notesTabs": [
-        {
-          "slug": "notes",
-          "name": "Notes",
-          "notes": [
-            {
-              "slug": "brand-principles",
-              "title": "Brand principles",
-              "body": "<h1>Brand principles</h1><p>Cove should feel warm, editorial, and quietly luxurious \u2014 never corporate.</p><h2>Do</h2><ul><li><p>Soft neutrals with one terracotta accent</p></li><li><p>Generous whitespace in hero layouts</p></li></ul><h3>Type pairing</h3><p>Display: Fraunces \u00b7 UI: Source Sans. Token file is <code>cove-tokens.json</code>.</p><h2>Don't</h2><ul><li><p>Harsh black type on pure white</p></li><li><p>Generic stock \u201chandshake\u201d imagery</p></li></ul>",
-              "createdAt": "2026-09-20T09:30:00.000Z",
-              "updatedAt": "2026-09-27T15:10:00.000Z"
-            },
-            {
-              "slug": "kickoff-notes",
-              "title": "Kickoff notes",
-              "body": "<h1>Kickoff notes</h1><p>Workshop with Cove on Sept 18 \u2014 decisions to lock.</p><p><mark>Direction B is approved</mark> for moodboard, type, and photography style.</p><ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>Moodboard direction B chosen</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Confirm photography license pack</p></div></li></ul><pre><code>/* accent swatch */\n--cove-terracotta: #b45a3c;\n--cove-ink: #2c2a26;</code></pre><p>Next review: homepage wires + first case study.</p>",
-              "createdAt": "2026-09-18T16:00:00.000Z",
-              "updatedAt": "2026-09-25T12:45:00.000Z"
-            },
-            {
-              "slug": "webflow-handoff",
-              "title": "Webflow handoff",
-              "body": "<h1>Webflow handoff</h1><p>Component library notes for the build phase.</p><table><tbody><tr><th><p>Component</p></th><th><p>Symbol?</p></th><th><p>Notes</p></th></tr><tr><td><p>Button</p></td><td><p>Yes</p></td><td><p>primary / ghost / text</p></td></tr><tr><td><p>Nav</p></td><td><p>Yes</p></td><td><p>desktop + mobile</p></td></tr><tr><td><p>Case card</p></td><td><p>CMS</p></td><td><p>fields in Figma</p></td></tr></tbody></table><p>Export logo SVG set from the brand PDF before build week.</p>",
-              "createdAt": "2026-09-26T10:20:00.000Z",
-              "updatedAt": "2026-09-30T18:00:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "filesTabs": [
-        {
-          "slug": "files",
-          "name": "Files",
-          "files": [
-            {
-              "slug": "press-kit-pdf",
-              "name": "Press kit.pdf",
-              "mime": "application/pdf",
-              "size": 1594,
-              "createdAt": "2026-09-29T13:36:08.339Z"
-            },
-            {
-              "slug": "launch-brief-docx",
-              "name": "Launch brief.docx",
-              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              "size": 1303,
-              "createdAt": "2026-09-22T10:00:00.000Z"
-            },
-            {
-              "slug": "launch-deck-pptx",
-              "name": "Launch deck.pptx",
-              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-              "size": 6714,
-              "createdAt": "2026-09-24T14:15:00.000Z"
-            },
-            {
-              "slug": "hero-mock-png",
-              "name": "Hero mock.png",
-              "mime": "image/png",
-              "size": 99,
-              "createdAt": "2026-09-28T09:40:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ]
-    },
-    {
-      "slug": "meridian-site-redesign",
-      "name": "Meridian site redesign",
-      "color": "#2f7a6e",
-      "description": "Marketing site redesign for Meridian Advisory \u2014 clearer positioning, service pages, and lead capture.",
-      "boards": [
-        {
-          "slug": "website",
-          "name": "Website",
-          "columns": [
-            "Design",
-            "Content"
-          ],
-          "cards": [
-            {
-              "slug": "accessibility-pass",
-              "title": "Accessibility pass",
-              "status": "Design",
-              "master": "Backlog",
-              "doneAt": "",
-              "body": "Contrast, focus states, and alt text before client QA.",
-              "isDemo": true
-            },
-            {
-              "slug": "blog-templates",
-              "title": "Insights blog templates",
-              "status": "Design",
-              "master": "Next week",
-              "doneAt": "",
-              "body": "Article and author layouts in the new design system.",
-              "isDemo": true
-            },
-            {
-              "slug": "discovery-workshop",
-              "title": "Discovery workshop notes",
-              "status": "Content",
-              "master": "Today",
-              "doneAt": "2026-09-29T14:28:16.951Z",
-              "body": "Synthesize goals, audiences, and must-have pages from the kickoff call.",
-              "isDemo": true
-            },
-            {
-              "slug": "ia-sitemap",
-              "title": "IA & sitemap",
-              "status": "Design",
-              "master": "Today",
-              "doneAt": "",
-              "body": "Propose nav structure: Services, Industries, Insights, About, Contact."
-            },
-            {
-              "slug": "lead-form",
-              "title": "Lead form + CRM hook",
-              "status": "Content",
-              "master": "This week",
-              "doneAt": "",
-              "body": "HubSpot form embed, thank-you page, and UTM capture.",
-              "isDemo": true
-            },
-            {
-              "slug": "services-page",
-              "title": "Services page draft",
-              "status": "Content",
-              "master": "This week",
-              "doneAt": "",
-              "body": "Four service blocks with outcomes; pull quotes from past proposals."
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "databases": [
-        {
-          "slug": "content-inventory",
-          "name": "Content inventory",
-          "columns": [
-            {
-              "id": "n",
-              "label": "Name",
-              "type": "text",
-              "required": true
-            },
-            {
-              "id": "notes",
-              "label": "Notes",
-              "type": "longtext"
-            },
-            {
-              "id": "priority",
-              "label": "Priority",
-              "type": "select",
-              "options": [
-                {
-                  "label": "High",
-                  "color": "red"
-                },
-                {
-                  "label": "Medium",
-                  "color": "orange"
-                },
-                {
-                  "label": "Low",
-                  "color": "green"
-                }
-              ]
-            },
-            {
-              "id": "tags",
-              "label": "Tags",
-              "type": "multiselect",
-              "options": [
-                {
-                  "label": "Client",
-                  "color": "blue"
-                },
-                {
-                  "label": "Internal",
-                  "color": "purple"
-                },
-                {
-                  "label": "Blocked",
-                  "color": "pink"
-                },
-                {
-                  "label": "Launch",
-                  "color": "yellow"
-                }
-              ]
-            },
-            {
-              "id": "done",
-              "label": "Done",
-              "type": "checkbox"
-            },
-            {
-              "id": "estimate",
-              "label": "Estimate (h)",
-              "type": "number",
-              "decimal": true
-            },
-            {
-              "id": "due",
-              "label": "Due",
-              "type": "date"
-            },
-            {
-              "id": "s",
-              "label": "Stage",
-              "type": "stage"
-            }
-          ],
-          "items": [
-            {
-              "slug": "services-page",
-              "fields": {
-                "n": "Services page",
-                "notes": "<p>Four service blocks with outcomes; pull quotes from past proposals.</p>",
-                "priority": "High",
-                "tags": [
-                  "Client"
-                ],
-                "done": false,
-                "estimate": 7,
-                "due": "2026-10-09",
-                "s": "This week"
-              },
-              "body": ""
-            },
-            {
-              "slug": "lead-form",
-              "fields": {
-                "n": "Lead form + CRM",
-                "notes": "<p>HubSpot embed, thank-you page, and UTM capture.</p>",
-                "priority": "Medium",
-                "tags": [
-                  "Client",
-                  "Blocked"
-                ],
-                "done": false,
-                "estimate": 4.5,
-                "due": "2026-10-12",
-                "s": "Tomorrow"
-              },
-              "body": ""
-            },
-            {
-              "slug": "discovery-notes",
-              "fields": {
-                "n": "Discovery workshop notes",
-                "notes": "<p>Goals, audiences, and must-have pages from the kickoff call.</p>",
-                "priority": "Low",
-                "tags": [
-                  "Internal"
-                ],
-                "done": true,
-                "estimate": 2,
-                "due": "2026-09-29",
-                "s": "Today"
-              },
-              "body": ""
-            }
-          ],
-          "isDemo": true,
-          "customViews": [
-            {
-              "id": "default",
-              "name": "Default view",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "f0",
-                    "fieldId": "",
-                    "op": "",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "this-week",
-              "name": "This week",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "s",
-                    "op": "is",
-                    "value": "This week"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "blocked",
-              "name": "Blocked",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "tags",
-                    "op": "contains",
-                    "value": "Blocked"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "active-or-today",
-              "name": "Today or open",
-              "filters": {
-                "junction": "or",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "s",
-                    "op": "is",
-                    "value": "Today"
-                  },
-                  {
-                    "id": "r2",
-                    "fieldId": "done",
-                    "op": "is_not_checked",
-                    "value": ""
-                  }
-                ]
-              }
-            }
-          ],
-          "customViewId": "default"
-        }
-      ],
-      "isDemo": true,
-      "notesTabs": [
-        {
-          "slug": "notes",
-          "name": "Notes",
-          "notes": [
-            {
-              "slug": "positioning",
-              "title": "Positioning draft",
-              "body": "<h1>Positioning draft</h1><p>Meridian Advisory helps mid-market firms clarify strategy and act on it.</p><h2>Audience</h2><ul><li><p>Ops leaders evaluating a transformation partner</p></li><li><p>Founders preparing for a board narrative</p></li></ul><h3>Promise</h3><p>Clearer positioning, sharper service pages, and a lead path that feeds HubSpot.</p><p>Working tagline option: <mark>Strategy you can operationalize.</mark></p>",
-              "createdAt": "2026-09-21T08:45:00.000Z",
-              "updatedAt": "2026-09-29T13:20:00.000Z"
-            },
-            {
-              "slug": "ia-notes",
-              "title": "IA notes",
-              "body": "<h1>IA notes</h1><p>Proposed nav after discovery workshop.</p><ol><li><p>Services</p></li><li><p>Industries</p></li><li><p>Insights</p></li><li><p>About</p></li><li><p>Contact</p></li></ol><h2>UTM convention</h2><p>Campaign codes use <code>utm_source=site&amp;utm_medium=cta</code> on Contact.</p><pre><code>Services\n  \u251c\u2500 Strategy\n  \u251c\u2500 Operating model\n  \u2514\u2500 Interim leadership\nInsights (de-emphasized)</code></pre><blockquote><p>Keep Insights lightly featured \u2014 they care more about service outcomes than a blog.</p></blockquote>",
-              "createdAt": "2026-09-23T11:30:00.000Z",
-              "updatedAt": "2026-09-28T17:05:00.000Z"
-            },
-            {
-              "slug": "accessibility-qa",
-              "title": "Accessibility QA",
-              "body": "<h1>Accessibility QA</h1><p>Pass before client review.</p><table><tbody><tr><th><p>Check</p></th><th><p>Owner</p></th><th><p>Status</p></th></tr><tr><td><p>Contrast on accent buttons</p></td><td><p>Design</p></td><td><p>Open</p></td></tr><tr><td><p>Focus rings on nav + form</p></td><td><p>Frontend</p></td><td><p>Open</p></td></tr><tr><td><p>Alt text on hero images</p></td><td><p>Content</p></td><td><p>Done</p></td></tr></tbody></table><p>Use axe + keyboard-only pass on Services and Contact.</p>",
-              "createdAt": "2026-09-30T09:00:00.000Z",
-              "updatedAt": "2026-10-02T10:15:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "filesTabs": [
-        {
-          "slug": "files",
-          "name": "Files",
-          "files": [
-            {
-              "slug": "press-kit-pdf",
-              "name": "Press kit.pdf",
-              "mime": "application/pdf",
-              "size": 1594,
-              "createdAt": "2026-09-29T13:36:08.339Z"
-            },
-            {
-              "slug": "launch-brief-docx",
-              "name": "Launch brief.docx",
-              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              "size": 1303,
-              "createdAt": "2026-09-22T10:00:00.000Z"
-            },
-            {
-              "slug": "launch-deck-pptx",
-              "name": "Launch deck.pptx",
-              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-              "size": 6714,
-              "createdAt": "2026-09-24T14:15:00.000Z"
-            },
-            {
-              "slug": "hero-mock-png",
-              "name": "Hero mock.png",
-              "mime": "image/png",
-              "size": 99,
-              "createdAt": "2026-09-28T09:40:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ]
-    },
-    {
-      "slug": "shopify-store-migration",
-      "name": "Shopify store migration",
-      "color": "#8a5c2e",
-      "description": "Migrate North & Co. from WooCommerce to Shopify Plus \u2014 catalog, redirects, theme, and checkout apps.",
-      "boards": [
-        {
-          "slug": "migration",
-          "name": "Migration",
-          "columns": [
-            "Theme",
-            "Data & apps",
-            "SEO"
-          ],
-          "cards": [
-            {
-              "slug": "catalog-export",
-              "title": "Catalog export & clean-up",
-              "status": "Data & apps",
-              "master": "Today",
-              "doneAt": "",
-              "body": "Export products/variants, fix missing SKUs, map metafields for Shopify.",
-              "isDemo": true
-            },
-            {
-              "slug": "checkout-apps",
-              "title": "Checkout & apps install",
-              "status": "Data & apps",
-              "master": "This week",
-              "doneAt": "",
-              "body": "Klaviyo, Judge.me, and Shop Pay; smoke-test gift cards and discounts.",
-              "isDemo": true
-            },
-            {
-              "slug": "customer-accounts",
-              "title": "Customer account migration",
-              "status": "Data & apps",
-              "master": "Next week",
-              "doneAt": "2026-09-29T13:36:09.622Z",
-              "body": "Import customers without passwords; send reset email after cutover.",
-              "isDemo": true
-            },
-            {
-              "slug": "dawn-theme-setup",
-              "title": "Dawn theme customization",
-              "status": "Theme",
-              "master": "This week",
-              "doneAt": "",
-              "body": "Brand colors, PDP layout, and mega-menu to match their lookbook.",
-              "isDemo": true
-            },
-            {
-              "slug": "go-live-rehearsal",
-              "title": "Go-live rehearsal",
-              "status": "Theme",
-              "master": "Backlog",
-              "doneAt": "",
-              "body": "Dry run on staging: DNS, payment, and order notifications.",
-              "isDemo": true
-            },
-            {
-              "slug": "url-redirect-map",
-              "title": "URL redirect map",
-              "status": "SEO",
-              "master": "Today",
-              "doneAt": "2026-09-29T13:36:11.006Z",
-              "body": "CSV of old Woo paths \u2192 new Shopify handles; keep top 200 SEO pages.",
-              "isDemo": true
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "databases": [
-        {
-          "slug": "migration-checklist",
-          "name": "Migration checklist",
-          "columns": [
-            {
-              "id": "n",
-              "label": "Name",
-              "type": "text",
-              "required": true
-            },
-            {
-              "id": "notes",
-              "label": "Notes",
-              "type": "longtext"
-            },
-            {
-              "id": "priority",
-              "label": "Priority",
-              "type": "select",
-              "options": [
-                {
-                  "label": "High",
-                  "color": "red"
-                },
-                {
-                  "label": "Medium",
-                  "color": "orange"
-                },
-                {
-                  "label": "Low",
-                  "color": "green"
-                }
-              ]
-            },
-            {
-              "id": "tags",
-              "label": "Tags",
-              "type": "multiselect",
-              "options": [
-                {
-                  "label": "Client",
-                  "color": "blue"
-                },
-                {
-                  "label": "Internal",
-                  "color": "purple"
-                },
-                {
-                  "label": "Blocked",
-                  "color": "pink"
-                },
-                {
-                  "label": "Launch",
-                  "color": "yellow"
-                }
-              ]
-            },
-            {
-              "id": "done",
-              "label": "Done",
-              "type": "checkbox"
-            },
-            {
-              "id": "estimate",
-              "label": "Estimate (h)",
-              "type": "number",
-              "decimal": true
-            },
-            {
-              "id": "due",
-              "label": "Due",
-              "type": "date"
-            },
-            {
-              "id": "s",
-              "label": "Stage",
-              "type": "stage"
-            }
-          ],
-          "items": [
-            {
-              "slug": "catalog-import",
-              "fields": {
-                "n": "Catalog import",
-                "notes": "<p>Products, variants, and images from WooCommerce into Shopify Plus.</p>",
-                "priority": "High",
-                "tags": [
-                  "Client",
-                  "Launch"
-                ],
-                "done": false,
-                "estimate": 16,
-                "due": "2026-10-07",
-                "s": "Today"
-              },
-              "body": ""
-            },
-            {
-              "slug": "url-redirects",
-              "fields": {
-                "n": "URL redirects",
-                "notes": "<p>CSV of legacy paths mapped to new collection and product URLs.</p>",
-                "priority": "High",
-                "tags": [
-                  "Client",
-                  "Internal"
-                ],
-                "done": false,
-                "estimate": 5,
-                "due": "2026-10-11",
-                "s": "This week"
-              },
-              "body": ""
-            },
-            {
-              "slug": "checkout-apps",
-              "fields": {
-                "n": "Checkout apps",
-                "notes": "<p>Shop Pay and Klaviyo installed; gift-card app credentials pending.</p>",
-                "priority": "Medium",
-                "tags": [
-                  "Blocked",
-                  "Launch"
-                ],
-                "done": false,
-                "estimate": 3,
-                "due": "2026-10-15",
-                "s": "Next week"
-              },
-              "body": ""
-            }
-          ],
-          "isDemo": true,
-          "customViews": [
-            {
-              "id": "default",
-              "name": "Default view",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "f0",
-                    "fieldId": "",
-                    "op": "",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "high-priority",
-              "name": "High priority",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "priority",
-                    "op": "is",
-                    "value": "High"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "launch-open",
-              "name": "Launch & open",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "tags",
-                    "op": "contains",
-                    "value": "Launch"
-                  },
-                  {
-                    "id": "r2",
-                    "fieldId": "done",
-                    "op": "is_not_checked",
-                    "value": ""
-                  }
-                ]
-              }
-            },
-            {
-              "id": "heavy",
-              "name": "8h+ estimates",
-              "filters": {
-                "junction": "and",
-                "rules": [
-                  {
-                    "id": "r1",
-                    "fieldId": "estimate",
-                    "op": "gte",
-                    "value": "8"
-                  }
-                ]
-              }
-            }
-          ],
-          "customViewId": "default"
-        }
-      ],
-      "isDemo": true,
-      "notesTabs": [
-        {
-          "slug": "notes",
-          "name": "Notes",
-          "notes": [
-            {
-              "slug": "migration-plan",
-              "title": "Migration plan",
-              "body": "<h1>Migration plan</h1><p>North &amp; Co. WooCommerce \u2192 Shopify Plus cutover outline.</p><h2>Phases</h2><ol><li><p>Catalog + redirects dry run</p></li><li><p>Theme polish + apps</p></li><li><p>DNS cutover weekend</p></li></ol><h3>Freeze window</h3><p><mark>No catalog edits 48h before go-live.</mark> Store theme repo branch is <code>cutover/shopify-plus</code>.</p>",
-              "createdAt": "2026-09-19T13:00:00.000Z",
-              "updatedAt": "2026-09-28T11:30:00.000Z"
-            },
-            {
-              "slug": "redirect-rules",
-              "title": "Redirect rules",
-              "body": "<h1>Redirect rules</h1><p>How we map legacy URLs into Shopify.</p><table><tbody><tr><th><p>From</p></th><th><p>To</p></th><th><p>Notes</p></th></tr><tr><td><p>/product/*</p></td><td><p>/products/*</p></td><td><p>slug preserved</p></td></tr><tr><td><p>/shop/*</p></td><td><p>/collections/*</p></td><td><p>CSV reviewed</p></td></tr><tr><td><p>/blog/*</p></td><td><p>\u2014</p></td><td><p>stays on Webflow</p></td></tr></tbody></table><pre><code># sample Liquid redirect check\n{% if request.path contains '/product/' %}\n  assign dest = request.path | replace: '/product/', '/products/'\n{% endif %}</code></pre><p>Validate top 200 URLs in Screaming Frog after import.</p>",
-              "createdAt": "2026-09-25T15:40:00.000Z",
-              "updatedAt": "2026-10-01T09:50:00.000Z"
-            },
-            {
-              "slug": "go-live-runbook",
-              "title": "Go-live runbook",
-              "body": "<h1>Go-live runbook</h1><p>Saturday cutover checklist for the team.</p><h2>Morning</h2><ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Enable password page off</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Point DNS + clear CDN</p></div></li></ul><h3>Smoke tests</h3><ul data-type=\"taskList\"><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Place test order with Shop Pay</p></div></li><li data-checked=\"false\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Confirm Klaviyo events</p></div></li></ul><p>Rollback: re-point DNS to Woo, keep Shopify passworded.</p>",
-              "createdAt": "2026-09-27T08:20:00.000Z",
-              "updatedAt": "2026-10-02T14:00:00.000Z"
-            }
-          ],
-          "isDemo": true
-        }
-      ],
-      "filesTabs": [
-        {
-          "slug": "files",
-          "name": "Files",
-          "files": [
-            {
-              "slug": "press-kit-pdf",
-              "name": "Press kit.pdf",
-              "mime": "application/pdf",
-              "size": 1594,
-              "createdAt": "2026-09-29T13:36:08.339Z"
-            },
-            {
-              "slug": "launch-brief-docx",
-              "name": "Launch brief.docx",
-              "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              "size": 1303,
-              "createdAt": "2026-09-22T10:00:00.000Z"
-            },
-            {
-              "slug": "launch-deck-pptx",
-              "name": "Launch deck.pptx",
-              "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-              "size": 6714,
-              "createdAt": "2026-09-24T14:15:00.000Z"
-            },
-            {
-              "slug": "hero-mock-png",
-              "name": "Hero mock.png",
-              "mime": "image/png",
-              "size": 99,
-              "createdAt": "2026-09-28T09:40:00.000Z"
-            }
-          ],
-          "isDemo": true
+          ]
         }
       ]
     }
   ],
   "timelogs": [
     {
-      "slug": "2026-09-30-shopify-store-migration-checkout-apps",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "checkout-apps",
-      "title": "Checkout & apps install",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
+      "slug": "2026-09-30-internal-invoice-template",
+      "project": "internal-business",
+      "board": "ops",
+      "card": "invoice-template",
+      "title": "Update invoice template",
+      "projectName": "Internal business",
+      "boardName": "Ops",
+      "color": "#2f7a6e",
       "kind": "pomodoro",
-      "note": "Installed Shop Pay and Klaviyo; still waiting on gift-card app credentials.",
+      "note": "Adjusted margins and added late-fee paragraph.",
       "startedAt": "2026-09-30T08:05:00.000Z",
       "endedAt": "2026-09-30T08:30:00.000Z",
       "durationSec": 1500
     },
     {
-      "slug": "2026-09-30-aurora-app-launch-landing-hero-copy",
-      "project": "aurora-app-launch",
-      "board": "launch",
-      "card": "landing-hero-copy",
-      "title": "Landing hero copy",
-      "projectName": "Aurora app launch",
-      "boardName": "Launch",
-      "color": "#b45a3c",
-      "kind": "pomodoro",
-      "note": "Drafted three headline options; client prefers the shorter one.",
-      "startedAt": "2026-09-30T06:15:00.000Z",
-      "endedAt": "2026-09-30T06:40:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-29-meridian-site-redesign-ia-sitemap",
-      "project": "meridian-site-redesign",
-      "board": "website",
-      "card": "ia-sitemap",
-      "title": "IA & sitemap",
-      "projectName": "Meridian site redesign",
-      "boardName": "Website",
+      "slug": "2026-09-30-internal-linkedin",
+      "project": "internal-business",
+      "board": "ops",
+      "card": "linkedin-cadence",
+      "title": "LinkedIn post cadence",
+      "projectName": "Internal business",
+      "boardName": "Ops",
       "color": "#2f7a6e",
-      "kind": "pomodoro",
-      "note": "Merged Insights into Resources; flagged careers page as phase 2.",
-      "startedAt": "2026-09-29T14:00:00.000Z",
-      "endedAt": "2026-09-29T14:25:00.000Z",
-      "durationSec": 1500
+      "kind": "stoptimer",
+      "note": "Drafted two posts; still need images.",
+      "startedAt": "2026-09-30T09:00:00.000Z",
+      "endedAt": "2026-09-30T09:45:00.000Z",
+      "durationSec": 2700
     },
     {
-      "slug": "2026-09-29-cove-brand-redesign-type-color-system",
-      "project": "cove-brand-redesign",
-      "board": "brand",
-      "card": "type-color-system",
-      "title": "Type & color system",
-      "projectName": "Cove brand redesign",
-      "boardName": "Brand",
-      "color": "#6b4f8c",
-      "kind": "pomodoro",
-      "note": "",
-      "startedAt": "2026-09-29T10:30:00.000Z",
-      "endedAt": "2026-09-29T10:55:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-29-shopify-store-migration-dawn-theme-setup",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "dawn-theme-setup",
-      "title": "Dawn theme customization",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
-      "kind": "pomodoro",
-      "note": "Homepage sections done; product template needs variant swatches.",
-      "startedAt": "2026-09-29T07:40:00.000Z",
-      "endedAt": "2026-09-29T08:05:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-28-aurora-app-launch-onboarding-email",
-      "project": "aurora-app-launch",
-      "board": "launch",
-      "card": "onboarding-email",
-      "title": "Onboarding email sequence",
-      "projectName": "Aurora app launch",
-      "boardName": "Launch",
+      "slug": "2026-09-29-client-a-wireframes",
+      "project": "client-project-a",
+      "board": "delivery",
+      "card": "homepage-wireframes",
+      "title": "Homepage wireframes",
+      "projectName": "Client project A",
+      "boardName": "Delivery",
       "color": "#b45a3c",
       "kind": "pomodoro",
-      "note": "Mapped day-0 / day-2 / day-7 emails in Customer.io.",
-      "startedAt": "2026-09-28T15:10:00.000Z",
-      "endedAt": "2026-09-28T15:35:00.000Z",
+      "note": "Hero and services blocks locked; proof section next.",
+      "startedAt": "2026-09-29T13:00:00.000Z",
+      "endedAt": "2026-09-29T13:25:00.000Z",
       "durationSec": 1500
     },
     {
-      "slug": "2026-09-28-meridian-site-redesign-services-page",
-      "project": "meridian-site-redesign",
-      "board": "website",
+      "slug": "2026-09-29-client-a-services",
+      "project": "client-project-a",
+      "board": "delivery",
       "card": "services-page",
       "title": "Services page draft",
-      "projectName": "Meridian site redesign",
-      "boardName": "Website",
-      "color": "#2f7a6e",
+      "projectName": "Client project A",
+      "boardName": "Delivery",
+      "color": "#b45a3c",
       "kind": "pomodoro",
-      "note": "Outline only \u2014 need case-study pull quotes from client.",
-      "startedAt": "2026-09-28T11:00:00.000Z",
-      "endedAt": "2026-09-28T11:20:00.000Z",
-      "durationSec": 1200
+      "note": "Package names approved; FAQ still open.",
+      "startedAt": "2026-09-29T14:10:00.000Z",
+      "endedAt": "2026-09-29T14:35:00.000Z",
+      "durationSec": 1500
     },
     {
-      "slug": "2026-09-28-cove-brand-redesign-moodboard-signoff",
-      "project": "cove-brand-redesign",
-      "board": "brand",
-      "card": "moodboard-signoff",
-      "title": "Moodboard sign-off",
-      "projectName": "Cove brand redesign",
-      "boardName": "Brand",
+      "slug": "2026-09-28-client-a-system",
+      "project": "client-project-a",
+      "board": "delivery",
+      "card": "design-system",
+      "title": "Type & color system",
+      "projectName": "Client project A",
+      "boardName": "Delivery",
+      "color": "#b45a3c",
+      "kind": "stoptimer",
+      "note": "Mapped tokens to Figma variables.",
+      "startedAt": "2026-09-28T10:00:00.000Z",
+      "endedAt": "2026-09-28T11:20:00.000Z",
+      "durationSec": 4800
+    },
+    {
+      "slug": "2026-09-30-client-b-hero",
+      "project": "client-project-b",
+      "board": "launch",
+      "card": "landing-hero",
+      "title": "Landing hero copy",
+      "projectName": "Client project B",
+      "boardName": "Launch",
       "color": "#6b4f8c",
       "kind": "pomodoro",
-      "note": "Client approved direction B with warmer neutrals.",
-      "startedAt": "2026-09-28T08:00:00.000Z",
-      "endedAt": "2026-09-28T08:25:00.000Z",
+      "note": "Two headline options ready for founder review.",
+      "startedAt": "2026-09-30T15:00:00.000Z",
+      "endedAt": "2026-09-30T15:25:00.000Z",
       "durationSec": 1500
     },
     {
-      "slug": "2026-09-27-shopify-store-migration-catalog-export",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "catalog-export",
-      "title": "Catalog export & clean-up",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
-      "kind": "pomodoro",
-      "note": "Deduped 40 SKUs; tagged discontinued products for archive.",
-      "startedAt": "2026-09-27T13:20:00.000Z",
-      "endedAt": "2026-09-27T13:45:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-27-shopify-store-migration-catalog-export-2",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "catalog-export",
-      "title": "Catalog export & clean-up",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
-      "kind": "pomodoro",
-      "note": "Second pass on image alt text and vendor fields.",
-      "startedAt": "2026-09-27T14:00:00.000Z",
-      "endedAt": "2026-09-27T14:25:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-27-aurora-app-launch-waitlist-flow",
-      "project": "aurora-app-launch",
+      "slug": "2026-09-30-client-b-waitlist",
+      "project": "client-project-b",
       "board": "launch",
       "card": "waitlist-flow",
       "title": "Waitlist signup flow",
-      "projectName": "Aurora app launch",
+      "projectName": "Client project B",
       "boardName": "Launch",
-      "color": "#b45a3c",
-      "kind": "pomodoro",
-      "note": "",
-      "startedAt": "2026-09-27T09:05:00.000Z",
-      "endedAt": "2026-09-27T09:30:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-26-cove-brand-redesign-homepage-wireframes",
-      "project": "cove-brand-redesign",
-      "board": "brand",
-      "card": "homepage-wireframes",
-      "title": "Homepage wireframes",
-      "projectName": "Cove brand redesign",
-      "boardName": "Brand",
       "color": "#6b4f8c",
       "kind": "pomodoro",
-      "note": "Desktop frames in Figma; mobile still rough.",
-      "startedAt": "2026-09-26T16:00:00.000Z",
-      "endedAt": "2026-09-26T16:25:00.000Z",
+      "note": "CRM webhook tested; confirmation email pending.",
+      "startedAt": "2026-09-30T16:00:00.000Z",
+      "endedAt": "2026-09-30T16:25:00.000Z",
       "durationSec": 1500
     },
     {
-      "slug": "2026-09-26-meridian-site-redesign-discovery-workshop",
-      "project": "meridian-site-redesign",
-      "board": "website",
-      "card": "discovery-workshop",
-      "title": "Discovery workshop notes",
-      "projectName": "Meridian site redesign",
-      "boardName": "Website",
-      "color": "#2f7a6e",
-      "kind": "pomodoro",
-      "note": "Wrote up stakeholder goals from Tuesday call.",
-      "startedAt": "2026-09-26T10:15:00.000Z",
-      "endedAt": "2026-09-26T10:45:00.000Z",
-      "durationSec": 1800
-    },
-    {
-      "slug": "2026-09-26-aurora-app-launch-pricing-section",
-      "project": "aurora-app-launch",
+      "slug": "2026-09-29-client-b-checklist",
+      "project": "client-project-b",
       "board": "launch",
-      "card": "pricing-section",
-      "title": "Pricing section",
-      "projectName": "Aurora app launch",
-      "boardName": "Launch",
-      "color": "#b45a3c",
-      "kind": "pomodoro",
-      "note": "Compared competitor tiers; need final Pro seat count.",
-      "startedAt": "2026-09-26T07:30:00.000Z",
-      "endedAt": "2026-09-26T07:55:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-25-shopify-store-migration-url-redirect-map",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "url-redirect-map",
-      "title": "URL redirect map",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
-      "kind": "pomodoro",
-      "note": "Top 200 SEO paths mapped; remaining long-tail next week.",
-      "startedAt": "2026-09-25T13:45:00.000Z",
-      "endedAt": "2026-09-25T14:10:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-25-cove-brand-redesign-component-library",
-      "project": "cove-brand-redesign",
-      "board": "brand",
-      "card": "component-library",
-      "title": "Webflow component library",
-      "projectName": "Cove brand redesign",
-      "boardName": "Brand",
-      "color": "#6b4f8c",
-      "kind": "pomodoro",
-      "note": "Buttons + cards symbols; nav still WIP.",
-      "startedAt": "2026-09-25T09:20:00.000Z",
-      "endedAt": "2026-09-25T09:45:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-24-meridian-site-redesign-lead-form",
-      "project": "meridian-site-redesign",
-      "board": "website",
-      "card": "lead-form",
-      "title": "Lead form + CRM hook",
-      "projectName": "Meridian site redesign",
-      "boardName": "Website",
-      "color": "#2f7a6e",
-      "kind": "pomodoro",
-      "note": "HubSpot form embed tested on staging.",
-      "startedAt": "2026-09-24T15:30:00.000Z",
-      "endedAt": "2026-09-24T15:55:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-24-aurora-app-launch-press-kit",
-      "project": "aurora-app-launch",
-      "board": "launch",
-      "card": "press-kit",
-      "title": "Press kit PDF",
-      "projectName": "Aurora app launch",
-      "boardName": "Launch",
-      "color": "#b45a3c",
-      "kind": "pomodoro",
-      "note": "Gathered logos and founder bio; layout tomorrow.",
-      "startedAt": "2026-09-24T11:00:00.000Z",
-      "endedAt": "2026-09-24T11:15:00.000Z",
-      "durationSec": 900
-    },
-    {
-      "slug": "2026-09-24-shopify-store-migration-customer-accounts",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "customer-accounts",
-      "title": "Customer account migration",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
-      "kind": "pomodoro",
-      "note": "",
-      "startedAt": "2026-09-24T08:10:00.000Z",
-      "endedAt": "2026-09-24T08:35:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-23-cove-brand-redesign-case-study-template",
-      "project": "cove-brand-redesign",
-      "board": "brand",
-      "card": "case-study-template",
-      "title": "Case study template",
-      "projectName": "Cove brand redesign",
-      "boardName": "Brand",
-      "color": "#6b4f8c",
-      "kind": "pomodoro",
-      "note": "Structure: challenge \u2192 approach \u2192 results; needs photo slots.",
-      "startedAt": "2026-09-23T14:40:00.000Z",
-      "endedAt": "2026-09-23T15:05:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-23-meridian-site-redesign-accessibility-pass",
-      "project": "meridian-site-redesign",
-      "board": "website",
-      "card": "accessibility-pass",
-      "title": "Accessibility pass",
-      "projectName": "Meridian site redesign",
-      "boardName": "Website",
-      "color": "#2f7a6e",
-      "kind": "pomodoro",
-      "note": "Fixed contrast on CTA; keyboard nav on mega-menu next.",
-      "startedAt": "2026-09-23T09:00:00.000Z",
-      "endedAt": "2026-09-23T09:25:00.000Z",
-      "durationSec": 1500
-    },
-    {
-      "slug": "2026-09-22-aurora-app-launch-launch-day-checklist",
-      "project": "aurora-app-launch",
-      "board": "launch",
-      "card": "launch-day-checklist",
+      "card": "launch-checklist",
       "title": "Launch day checklist",
-      "projectName": "Aurora app launch",
+      "projectName": "Client project B",
       "boardName": "Launch",
-      "color": "#b45a3c",
-      "kind": "pomodoro",
-      "note": "DNS, Product Hunt, and support rota drafted.",
-      "startedAt": "2026-09-22T16:20:00.000Z",
-      "endedAt": "2026-09-22T16:45:00.000Z",
-      "durationSec": 1500
+      "color": "#6b4f8c",
+      "kind": "stoptimer",
+      "note": "Added rollback DNS steps.",
+      "startedAt": "2026-09-29T11:00:00.000Z",
+      "endedAt": "2026-09-29T11:40:00.000Z",
+      "durationSec": 2400
     },
     {
-      "slug": "2026-09-22-shopify-store-migration-go-live-rehearsal",
-      "project": "shopify-store-migration",
-      "board": "migration",
-      "card": "go-live-rehearsal",
-      "title": "Go-live rehearsal",
-      "projectName": "Shopify store migration",
-      "boardName": "Migration",
-      "color": "#8a5c2e",
+      "slug": "2026-09-27-internal-taxes",
+      "project": "internal-business",
+      "board": "ops",
+      "card": "quarterly-taxes",
+      "title": "Quarterly tax checklist",
+      "projectName": "Internal business",
+      "boardName": "Ops",
+      "color": "#2f7a6e",
       "kind": "pomodoro",
-      "note": "Dry-run cutover on staging; payment test orders green.",
-      "startedAt": "2026-09-22T12:00:00.000Z",
-      "endedAt": "2026-09-22T12:30:00.000Z",
-      "durationSec": 1800
+      "note": "Exported Stripe CSV; waiting on accountant.",
+      "startedAt": "2026-09-27T09:15:00.000Z",
+      "endedAt": "2026-09-27T09:40:00.000Z",
+      "durationSec": 1500
     }
   ]
 }

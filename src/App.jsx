@@ -56,6 +56,7 @@ import {
   markLaunchSeen,
   defaultWorkspaceVisibility,
   nextUnusedProjectColor,
+  taskKey,
 } from "./utils.js";
 import Sidebar from "./components/Sidebar.jsx";
 import TabBar from "./components/TabBar.jsx";
@@ -67,7 +68,7 @@ import Trash, { TrashNotePreview } from "./components/Trash.jsx";
 import Notes from "./components/Notes.jsx";
 import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
-import TimelogDialog, { taskKey } from "./components/TimelogDialog.jsx";
+import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";

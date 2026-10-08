@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { PC } from "../utils.js";
+import { timelogTaskFromCard } from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 
 function timelogOptions({ showTimers = true } = {}) {
@@ -16,38 +16,26 @@ function timelogOptions({ showTimers = true } = {}) {
   ];
 }
 
-function taskTimelogFilter(folder, mod, row) {
-  return {
-    project: folder.slug,
-    board: mod[2].slug,
-    card: row.slug,
-    title: row.n || "Untitled",
-  };
-}
-
 async function runTimelogAction(
   value,
   { folder, mod, row, onStartPomo, onAddManualTimelog, onOpenTimelogs }
 ) {
   if (!folder || !mod?.[2]?.slug || !row?.slug) return;
-  const filter = taskTimelogFilter(folder, mod, row);
+  const task = timelogTaskFromCard(folder, mod, row);
 
   if (value === "pomo" || value === "stoptimer") {
     await onStartPomo?.({
-      ...filter,
-      projectName: folder.name,
-      boardName: mod[1],
-      color: folder.color || PC[0],
+      ...task,
       kind: value === "stoptimer" ? "stoptimer" : "pomodoro",
     });
     return;
   }
   if (value === "manual") {
-    await onAddManualTimelog?.(filter);
+    await onAddManualTimelog?.(task);
     return;
   }
   if (value === "logs") {
-    await onOpenTimelogs?.(filter);
+    await onOpenTimelogs?.(task);
   }
 }
 

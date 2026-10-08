@@ -13,12 +13,13 @@ import {
   matchesTimelogFilter,
   matchesTimelogPeriod,
   pastel,
+  taskKey,
 } from "../utils.js";
 import { Icon } from "../icons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import Dropdown from "./Dropdown.jsx";
 import TimelogCalendar from "./TimelogCalendar.jsx";
-import TimelogDialog, { taskKey } from "./TimelogDialog.jsx";
+import TimelogDialog from "./TimelogDialog.jsx";
 import { askConfirm } from "../confirmDialog.js";
 
 const TIMELOG_VIEWS = [

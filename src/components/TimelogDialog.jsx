@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { GACC, PC, allBoardTasks } from "../utils.js";
+import { GACC, allBoardTasks, taskKey, timelogTaskFromCard } from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 
 function pad2(n) {
@@ -28,28 +28,10 @@ function parseDurationMinutes(raw) {
   return Math.max(0, Math.round(n * 60));
 }
 
-function taskKey(project, board, card) {
-  return `${project || ""}/${board || ""}/${card || ""}`;
-}
-
-function taskFromHit(hit, fi = 0) {
-  const color = hit.folder.color || PC[fi % PC.length] || GACC;
-  return {
-    key: taskKey(hit.folder.slug, hit.mod[2]?.slug, hit.row.slug),
-    project: hit.folder.slug,
-    board: hit.mod[2]?.slug || "",
-    card: hit.row.slug,
-    title: hit.row.n || "Untitled",
-    projectName: hit.folder.name || "",
-    boardName: hit.mod[1] || "",
-    color,
-  };
-}
-
 function buildTaskOptions(folders, entry) {
   const seen = new Set();
   const options = allBoardTasks(folders).map((hit, i) => {
-    const t = taskFromHit(hit, hit.fi ?? i);
+    const t = timelogTaskFromCard(hit.folder, hit.mod, hit.row, hit.fi ?? i);
     seen.add(t.key);
     return {
       value: t.key,
@@ -327,5 +309,3 @@ export default function TimelogDialog({
     document.body
   );
 }
-
-export { taskKey };

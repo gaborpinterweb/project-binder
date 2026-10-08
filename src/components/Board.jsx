@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { createPortal } from "react-dom";
 import {
   putItem,
   postItem,
@@ -9,6 +9,7 @@ import {
   putCardOrder,
   fetchWorkspace,
 } from "../api.js";
+import { flipSwapHorizontal } from "../flipSwap.js";
 import {
   emptyFieldValue,
   fieldTypeIcon,
@@ -304,7 +305,7 @@ function renderOpenCards(items, column, dropHint, dragHeight, dragKey, renderCar
   );
 }
 
-export function TaskCard({
+function TaskCard({
   row,
   folder,
   mod,
@@ -484,51 +485,13 @@ function findBoardColEl(boardEl, name) {
 
 /** FLIP-animate two columns after applyOrder reorders the DOM. */
 function flipSwapColumns(boardEl, leftName, rightName, applyOrder) {
-  const leftEl = findBoardColEl(boardEl, leftName);
-  const rightEl = findBoardColEl(boardEl, rightName);
-  if (!leftEl || !rightEl) {
-    applyOrder();
-    return;
-  }
-
-  const firstLeft = leftEl.getBoundingClientRect();
-  const firstRight = rightEl.getBoundingClientRect();
-
-  flushSync(() => {
-    applyOrder();
-  });
-
-  const leftAfter = findBoardColEl(boardEl, leftName);
-  const rightAfter = findBoardColEl(boardEl, rightName);
-  if (!leftAfter || !rightAfter) return;
-
-  const lastLeft = leftAfter.getBoundingClientRect();
-  const lastRight = rightAfter.getBoundingClientRect();
-  const dxLeft = firstLeft.left - lastLeft.left;
-  const dxRight = firstRight.left - lastRight.left;
-  if (dxLeft === 0 && dxRight === 0) return;
-
-  leftAfter.classList.add("col-swapping");
-  rightAfter.classList.add("col-swapping");
-  leftAfter.style.transition = "none";
-  rightAfter.style.transition = "none";
-  leftAfter.style.transform = `translateX(${dxLeft}px)`;
-  rightAfter.style.transform = `translateX(${dxRight}px)`;
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      leftAfter.style.transition = "";
-      rightAfter.style.transition = "";
-      leftAfter.style.transform = "";
-      rightAfter.style.transform = "";
-      const cleanup = () => {
-        leftAfter.classList.remove("col-swapping");
-        rightAfter.classList.remove("col-swapping");
-      };
-      leftAfter.addEventListener("transitionend", cleanup, { once: true });
-      window.setTimeout(cleanup, 380);
-    });
-  });
+  flipSwapHorizontal(
+    (name) => findBoardColEl(boardEl, name),
+    leftName,
+    rightName,
+    applyOrder,
+    "col-swapping"
+  );
 }
 
 function ColMoreMenu({

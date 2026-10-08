@@ -1,0 +1,35 @@
+---
+description: Client UI patterns — mods, shared primitives, menus, timelogs
+globs: src/**/*.{js,jsx}
+alwaysApply: false
+---
+
+# Client UI
+
+## Mods and types
+
+- Project tabs are `mods` tuples: `[type, name, data]`.
+- `mod[0]` is the tab type: `Board` | `Notes` | `Files` | `Database` | …
+- `TYPES` in `utils.js` with `off: true` are roadmap stubs — don’t delete casually; don’t build full UI unless asked.
+
+## Where logic lives
+
+- Components own UI and local interaction state.
+- Shared pure logic → `utils.js` / `db*.js` / `flipSwap.js`.
+- All HTTP → `src/api.js` only (use existing `apiJson` helpers).
+
+## Reuse these primitives
+
+- Menus / selects: `Dropdown.jsx`
+- Icons: `Icon` / `IC` from `icons.jsx`
+- Confirm / prompt: `askConfirm` / `askPrompt`
+- Neighbor FLIP reorder: `flipSwapHorizontal` from `flipSwap.js`
+- Timelog card identity: `taskKey` / `timelogTaskFromCard` from `utils.js`
+
+## Menus
+
+When adding a “⋮ more” menu, copy an existing more-menu (TabBar / Board / Timelogs / Files) or extract a shared shell — do not invent a new popover pattern.
+
+## Styles
+
+- Put styles in `src/index.css`. Match existing class naming; no new CSS framework or CSS modules unless asked.

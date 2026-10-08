@@ -1,4 +1,5 @@
 import { askConfirm } from "./confirmDialog.js";
+import { normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
@@ -39,17 +40,17 @@ function migrateStorageKeys() {
 }
 migrateStorageKeys();
 
-export const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
-export const SESSION_KEY = `${STORAGE_PREFIX}session`;
+const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
+const SESSION_KEY = `${STORAGE_PREFIX}session`;
 export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
-export const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
-export const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
-export const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
-export const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
-export const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
-export const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
-export const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
-export const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
+const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
+const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
+const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
+const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
+const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
+const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
+const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
+const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 /** Only Archived is hideable; workspace items are always shown. */
 export const SIDEBAR_VIS_ITEMS = ["Archived"];
@@ -147,36 +148,7 @@ export function fromApi(data, loadStagesFn) {
         db.name,
         {
           slug: db.slug,
-          cols: (db.columns || []).map((c) => {
-            const col = {
-              id: c.id,
-              label: c.label || c.id,
-              type: c.type || "text",
-              required: !!c.required,
-            };
-            if (c.type === "number") col.decimal = !!c.decimal;
-            if (c.type === "select" || c.type === "multiselect") {
-              col.options = Array.isArray(c.options)
-                ? c.options
-                    .map((o, i) => {
-                      if (typeof o === "string") {
-                        const label = o.trim();
-                        if (!label) return null;
-                        return { label, color: "default" };
-                      }
-                      if (!o || typeof o !== "object") return null;
-                      const label = String(o.label || o.value || "").trim();
-                      if (!label) return null;
-                      return {
-                        label,
-                        color: o.color || "default",
-                      };
-                    })
-                    .filter(Boolean)
-                : [];
-            }
-            return col;
-          }),
+          cols: (db.columns || []).map(normalizeDbCol).filter(Boolean),
           rows: (db.items || []).map((item) => ({
             slug: item.slug,
             body: item.body || "",
@@ -357,19 +329,7 @@ export function pastel(c) {
   return `color-mix(in srgb,${c} 32%,#fff)`;
 }
 
-export function dayKey(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "unknown";
-  return (
-    d.getFullYear() +
-    "-" +
-    String(d.getMonth() + 1).padStart(2, "0") +
-    "-" +
-    String(d.getDate()).padStart(2, "0")
-  );
-}
-
-export function dayTitle(iso) {
+function dayTitle(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown date";
   return d.toLocaleDateString(undefined, {
@@ -386,7 +346,7 @@ export function groupByDoneDay(rows) {
     .slice()
     .sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)))
     .forEach((r) => {
-      const key = dayKey(r.doneAt);
+      const key = timelogDayKey(r.doneAt) || "unknown";
       if (!map.has(key)) map.set(key, { key, title: dayTitle(r.doneAt), rows: [] });
       map.get(key).rows.push(r);
     });
@@ -445,36 +405,29 @@ export function formatClock(iso) {
   return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-export function timelogDayKey(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+function formatLocalYmd(d) {
+  if (!d || Number.isNaN(d.getTime())) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
+export function timelogDayKey(iso) {
+  return formatLocalYmd(new Date(iso));
+}
+
 function timelogWeekStart(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  const day = x.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  x.setDate(x.getDate() + diff);
-  return x;
+  return startOfLocalWeek(d);
 }
 
-export function timelogWeekKey(iso) {
-  const start = timelogWeekStart(iso);
-  if (!start) return "";
-  const y = start.getFullYear();
-  const m = String(start.getMonth() + 1).padStart(2, "0");
-  const day = String(start.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function timelogWeekKey(iso) {
+  return formatLocalYmd(timelogWeekStart(iso));
 }
 
-export function timelogMonthKey(iso) {
+function timelogMonthKey(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const y = d.getFullYear();
@@ -482,7 +435,7 @@ export function timelogMonthKey(iso) {
   return `${y}-${m}`;
 }
 
-export function formatTimelogDay(iso) {
+function formatTimelogDay(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown day";
   return d.toLocaleDateString(undefined, {
@@ -492,7 +445,7 @@ export function formatTimelogDay(iso) {
   });
 }
 
-export function formatTimelogWeek(iso) {
+function formatTimelogWeek(iso) {
   const start = timelogWeekStart(iso);
   if (!start) return "Unknown week";
   const end = new Date(start);
@@ -512,7 +465,7 @@ export function formatTimelogWeek(iso) {
   return `${startLabel} – ${endLabel}`;
 }
 
-export function formatTimelogMonth(iso) {
+function formatTimelogMonth(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Unknown month";
   return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -569,10 +522,6 @@ export function groupTimelogsByPeriodAndProject(entries, groupBy = "Day") {
         )
       ),
     }));
-}
-
-export function groupTimelogsByDayAndProject(entries) {
-  return groupTimelogsByPeriodAndProject(entries, "Day");
 }
 
 export function formatTrashDate(iso) {
@@ -634,7 +583,7 @@ function startOfLocalYear(d) {
 }
 
 /** Inclusive start, exclusive end (local time). */
-export function timelogPeriodRange(period, now = new Date()) {
+function timelogPeriodRange(period, now = new Date()) {
   const today = startOfLocalDay(now);
   switch (period) {
     case "Today":
@@ -704,25 +653,35 @@ export function defaultWorkspaceVisibility() {
   return Object.fromEntries(SIDEBAR_VIS_ITEMS.map((id) => [id, false]));
 }
 
-export function loadWorkspaceVisibility() {
-  const defaults = defaultWorkspaceVisibility();
+function readStorageJson(key, fallback) {
   try {
-    const stored = JSON.parse(localStorage.getItem(WORKSPACE_VIS_KEY) || "null");
-    if (!stored || typeof stored !== "object") return defaults;
-    const next = { ...defaults };
-    SIDEBAR_VIS_ITEMS.forEach((id) => {
-      if (typeof stored[id] === "boolean") next[id] = stored[id];
-    });
-    return next;
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw);
   } catch {
-    return defaults;
+    return fallback;
   }
 }
 
-export function saveWorkspaceVisibility(map) {
+function writeStorageJson(key, value) {
   try {
-    localStorage.setItem(WORKSPACE_VIS_KEY, JSON.stringify(map));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {}
+}
+
+export function loadWorkspaceVisibility() {
+  const defaults = defaultWorkspaceVisibility();
+  const stored = readStorageJson(WORKSPACE_VIS_KEY, null);
+  if (!stored || typeof stored !== "object") return defaults;
+  const next = { ...defaults };
+  SIDEBAR_VIS_ITEMS.forEach((id) => {
+    if (typeof stored[id] === "boolean") next[id] = stored[id];
+  });
+  return next;
+}
+
+export function saveWorkspaceVisibility(map) {
+  writeStorageJson(WORKSPACE_VIS_KEY, map);
 }
 
 export function loadOpenOnLaunch() {
@@ -808,20 +767,15 @@ export function nextUnusedProjectColor(folders) {
 }
 
 export function loadLastTabs() {
-  try {
-    return JSON.parse(localStorage.getItem(LAST_TAB_KEY) || "{}") || {};
-  } catch {
-    return {};
-  }
+  const stored = readStorageJson(LAST_TAB_KEY, {});
+  return stored && typeof stored === "object" ? stored : {};
 }
 
 export function saveLastTab(slug, tabSlug) {
   if (!slug || !tabSlug) return;
   const map = loadLastTabs();
   map[slug] = tabSlug;
-  try {
-    localStorage.setItem(LAST_TAB_KEY, JSON.stringify(map));
-  } catch {}
+  writeStorageJson(LAST_TAB_KEY, map);
 }
 
 const FILE_SORT_KEYS = new Set(["name", "type", "size", "added"]);
@@ -835,72 +789,49 @@ function parseFilesSort(value) {
 }
 
 export function loadFilesSorts() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(FILES_SORT_KEY) || "{}") || {};
-    if (!stored || typeof stored !== "object") return {};
-    const map = {};
-    for (const [tabKey, value] of Object.entries(stored)) {
-      if (!tabKey) continue;
-      map[tabKey] = parseFilesSort(value);
-    }
-    return map;
-  } catch {
-    return {};
+  const stored = readStorageJson(FILES_SORT_KEY, {});
+  if (!stored || typeof stored !== "object") return {};
+  const map = {};
+  for (const [tabKey, value] of Object.entries(stored)) {
+    if (!tabKey) continue;
+    map[tabKey] = parseFilesSort(value);
   }
+  return map;
 }
 
 export function saveFilesSort(tabKey, sort) {
   if (!tabKey) return;
   const map = loadFilesSorts();
   map[tabKey] = parseFilesSort(sort);
-  try {
-    localStorage.setItem(FILES_SORT_KEY, JSON.stringify(map));
-  } catch {}
+  writeStorageJson(FILES_SORT_KEY, map);
 }
 
 export function loadCompletedViews() {
-  try {
-    return JSON.parse(localStorage.getItem(COMPLETED_VIEW_KEY) || "{}") || {};
-  } catch {
-    return {};
-  }
+  const stored = readStorageJson(COMPLETED_VIEW_KEY, {});
+  return stored && typeof stored === "object" ? stored : {};
 }
 
 export function loadDbViewsSidebar() {
-  try {
-    return JSON.parse(localStorage.getItem(DB_VIEWS_SIDEBAR_KEY) || "{}") || {};
-  } catch {
-    return {};
-  }
+  const stored = readStorageJson(DB_VIEWS_SIDEBAR_KEY, {});
+  return stored && typeof stored === "object" ? stored : {};
 }
 
 export function saveDbViewsSidebar(scope, open) {
   if (!scope) return;
   const map = loadDbViewsSidebar();
   map[scope] = !!open;
-  try {
-    localStorage.setItem(DB_VIEWS_SIDEBAR_KEY, JSON.stringify(map));
-  } catch {}
+  writeStorageJson(DB_VIEWS_SIDEBAR_KEY, map);
 }
 
 export function loadSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-  } catch {
-    return null;
-  }
+  return readStorageJson(SESSION_KEY, null);
 }
 
 export function saveSession(g, folders, p) {
-  try {
-    localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({
-        g: g || null,
-        project: folders[p]?.slug || null,
-      })
-    );
-  } catch {}
+  writeStorageJson(SESSION_KEY, {
+    g: g || null,
+    project: folders[p]?.slug || null,
+  });
 }
 
 export function restoreTabIndex(pr) {
@@ -912,16 +843,12 @@ export function restoreTabIndex(pr) {
 }
 
 export function loadPomo() {
-  try {
-    return JSON.parse(localStorage.getItem(POMO_KEY) || "null");
-  } catch {
-    return null;
-  }
+  return readStorageJson(POMO_KEY, null);
 }
 
 export function savePomo(session) {
   try {
-    if (session) localStorage.setItem(POMO_KEY, JSON.stringify(session));
+    if (session) writeStorageJson(POMO_KEY, session);
     else localStorage.removeItem(POMO_KEY);
   } catch {}
 }
@@ -998,12 +925,12 @@ export function allBoards(folders) {
   return out;
 }
 
-export function allNotesTabs(folders) {
+export function allModTabs(folders, modType) {
   const out = [];
   folders.forEach((folder, fi) => {
     if (folder.archived) return;
     folder.mods.forEach((mod) => {
-      if (mod[0] !== "Notes") return;
+      if (mod[0] !== modType) return;
       out.push({
         folder,
         mod,
@@ -1017,21 +944,28 @@ export function allNotesTabs(folders) {
   return out;
 }
 
+export function allNotesTabs(folders) {
+  return allModTabs(folders, "Notes");
+}
+
 export function allFilesTabs(folders) {
-  const out = [];
-  folders.forEach((folder, fi) => {
-    if (folder.archived) return;
-    folder.mods.forEach((mod) => {
-      if (mod[0] !== "Files") return;
-      out.push({
-        folder,
-        mod,
-        fi,
-        color: folder.color || PC[fi % PC.length],
-        key: `${folder.slug || ""}/${mod[2]?.slug || ""}`,
-        label: `${folder.name} · ${mod[1]}`,
-      });
-    });
-  });
-  return out;
+  return allModTabs(folders, "Files");
+}
+
+export function taskKey(project, board, card) {
+  return `${project || ""}/${board || ""}/${card || ""}`;
+}
+
+/** Timelog target from a board card (folder + mod + row). */
+export function timelogTaskFromCard(folder, mod, row, fi = 0) {
+  return {
+    key: taskKey(folder.slug, mod[2]?.slug, row.slug),
+    project: folder.slug,
+    board: mod[2]?.slug || "",
+    card: row.slug,
+    title: row.n || "Untitled",
+    projectName: folder.name || "",
+    boardName: mod[1] || "",
+    color: folder.color || PC[fi % PC.length] || GACC,
+  };
 }

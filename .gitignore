@@ -6,3 +6,4 @@ release/
 *.log
 npm-debug.log*
 _legacy_script.js
+userWorkspace.json

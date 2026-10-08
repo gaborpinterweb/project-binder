@@ -1,234 +1,147 @@
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
+async function apiJson(path, { method = "GET", body } = {}) {
+  const opts = { method };
+  if (body !== undefined) {
+    opts.headers = JSON_HEADERS;
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({}));
+  return { r, data };
+}
+
+async function apiData(path, opts) {
+  const { data } = await apiJson(path, opts);
+  return data;
+}
+
+async function apiOkData(path, opts, fallbackMsg) {
+  const { r, data } = await apiJson(path, opts);
+  if (!r.ok) throw new Error(data?.error || fallbackMsg);
+  return data;
+}
+
 export async function fetchWorkspace() {
-  const r = await fetch("/api/workspace");
-  return r.json();
+  return apiData("/api/workspace");
 }
 
 export async function putCard(body) {
-  const r = await fetch("/api/card", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/card", { method: "PUT", body });
 }
 
 export async function putCardOrder(body) {
-  const r = await fetch("/api/card-order", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/card-order", { method: "PUT", body });
 }
 
 export async function deleteCardApi(body) {
-  const r = await fetch("/api/card", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/card", { method: "DELETE", body });
 }
 
 export async function fetchTrash() {
-  const data = await fetch("/api/trash").then((r) => r.json());
+  const data = await apiData("/api/trash");
   return data.trash || [];
 }
 
 export async function restoreTrashApi(body) {
-  const r = await fetch("/api/trash/restore", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await r.json();
+  const { r, data } = await apiJson("/api/trash/restore", { method: "POST", body });
   if (data.needsParent) return data;
   if (!r.ok) throw new Error(data.error || "restore failed");
   return data;
 }
 
 export async function postCard(body) {
-  const r = await fetch("/api/card", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/card", { method: "POST", body });
 }
 
 export async function putProject(body) {
-  const r = await fetch("/api/project", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/project", { method: "PUT", body });
 }
 
 export async function postProject(body) {
-  const r = await fetch("/api/project", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return { ok: r.ok, data: await r.json() };
+  const { r, data } = await apiJson("/api/project", { method: "POST", body });
+  return { ok: r.ok, data };
 }
 
 export async function deleteProjectApi(body) {
-  const r = await fetch("/api/project", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/project", { method: "DELETE", body });
 }
 
 export async function putBoard(body) {
-  const r = await fetch("/api/board", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/board", { method: "PUT", body });
 }
 
 export async function postBoard(body) {
-  const r = await fetch("/api/board", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/board", { method: "POST", body });
 }
 
 export async function putMasterboard(body) {
-  const r = await fetch("/api/masterboard", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/masterboard", { method: "PUT", body });
 }
 
 export async function fetchTimelogs() {
-  const data = await fetch("/api/timelogs").then((r) => r.json());
+  const data = await apiData("/api/timelogs");
   return data.timelogs || [];
 }
 
 export async function postTimelog(body) {
-  const r = await fetch("/api/timelog", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/timelog", { method: "POST", body });
 }
 
 export async function putTimelog(body) {
-  const r = await fetch("/api/timelog", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const { r, data } = await apiJson("/api/timelog", { method: "PUT", body });
   if (!r.ok) throw new Error("Could not update timelog");
-  return r.json();
+  return data;
 }
 
 export async function deleteTimelogApi(body) {
-  const r = await fetch("/api/timelog", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const { r, data } = await apiJson("/api/timelog", { method: "DELETE", body });
   if (!r.ok) throw new Error("Could not delete timelog");
-  return r.json();
+  return data;
 }
 
 export async function putItem(body) {
   await fetch("/api/item", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: JSON_HEADERS,
     body: JSON.stringify(body),
   });
 }
 
 export async function postItem(body) {
-  const r = await fetch("/api/item", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/item", { method: "POST", body });
 }
 
 export async function putDatabase(body) {
   await fetch("/api/database", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: JSON_HEADERS,
     body: JSON.stringify(body),
   });
 }
 
 export async function postDatabase(body) {
-  const r = await fetch("/api/database", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/database", { method: "POST", body });
 }
 
 export async function postNotesTab(body) {
-  const r = await fetch("/api/notes-tab", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/notes-tab", { method: "POST", body });
 }
 
 export async function postFilesTab(body) {
-  const r = await fetch("/api/files-tab", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/files-tab", { method: "POST", body });
 }
 
 export async function postFile(body) {
-  const r = await fetch("/api/file", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || "Could not upload file");
-  }
-  return r.json();
+  return apiOkData("/api/file", { method: "POST", body }, "Could not upload file");
 }
 
 export async function putFile(body) {
-  const r = await fetch("/api/file", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || "Could not rename file");
-  }
-  return r.json();
+  return apiOkData("/api/file", { method: "PUT", body }, "Could not rename file");
 }
 
 export async function deleteFileApi(body) {
-  const r = await fetch("/api/file", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/file", { method: "DELETE", body });
 }
 
 export function fileDownloadUrl(project, filesTab, file) {
@@ -237,109 +150,47 @@ export function fileDownloadUrl(project, filesTab, file) {
 }
 
 export async function revealFile(body) {
-  const r = await fetch("/api/file/reveal", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || "Could not show file");
-  }
-  return r.json();
+  return apiOkData("/api/file/reveal", { method: "POST", body }, "Could not show file");
 }
 
 export async function revealFilesTab(body) {
-  const r = await fetch("/api/files-tab/reveal", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || "Could not open folder");
-  }
-  return r.json();
+  return apiOkData(
+    "/api/files-tab/reveal",
+    { method: "POST", body },
+    "Could not open folder"
+  );
 }
 
 export async function moveFileApi(body) {
-  const r = await fetch("/api/file/move", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || "Could not move file");
-  }
-  return r.json();
+  return apiOkData("/api/file/move", { method: "POST", body }, "Could not move file");
 }
 
 export async function putTab(body) {
-  const r = await fetch("/api/tab", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/tab", { method: "PUT", body });
 }
 
 export async function deleteTabApi(body) {
-  const r = await fetch("/api/tab", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/tab", { method: "DELETE", body });
 }
 
 export async function putTabOrder(body) {
-  const r = await fetch("/api/tab-order", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/tab-order", { method: "PUT", body });
 }
 
 export async function postNote(body) {
-  const r = await fetch("/api/note", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/note", { method: "POST", body });
 }
 
 export async function putNote(body) {
-  const r = await fetch("/api/note", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/note", { method: "PUT", body });
 }
 
 export async function deleteNoteApi(body) {
-  const r = await fetch("/api/note", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+  return apiData("/api/note", { method: "DELETE", body });
 }
 
 export async function moveNoteApi(body) {
-  const r = await fetch("/api/note/move", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || "Could not move note");
-  }
-  return r.json();
+  return apiOkData("/api/note/move", { method: "POST", body }, "Could not move note");
 }
 
 export async function cardTimeSpentSec(project, board, card) {

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { exportWorkspace, revealUserData, resetWorkspaceToSeed } from "../api.js";
+import { exportWorkspace, revealUserData } from "../api.js";
 import {
   APP_NAME,
   APP_VERSION,
@@ -11,14 +11,8 @@ import { askConfirm } from "../confirmDialog.js";
 import Dropdown from "./Dropdown.jsx";
 
 const BMC_URL = "https://buymeacoffee.com/gaborpinter";
-const GITHUB_URL = "https://github.com/gaborpinterweb/freelance-workbook";
+const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL = "https://gaborpinter.com";
-const TABS = [
-  { id: "appearance", label: "Appearance", icon: "Appearance" },
-  { id: "data", label: "Data", icon: "Workspace" },
-  { id: "about", label: "About", icon: "About" },
-  { id: "developer", label: "Developer", icon: "Developer" },
-];
 
 const OPEN_ON_LAUNCH_OPTIONS = [
   { value: "masterboard", label: "Master board" },
@@ -35,8 +29,24 @@ export default function SettingsDialog({
   onResetEmpty,
   onResetFirstLaunch,
 }) {
+  const tabs = useMemo(() => {
+    const list = [
+      { id: "appearance", label: "Appearance", icon: "Appearance" },
+      { id: "data", label: "Data", icon: "Workspace" },
+      { id: "about", label: "About", icon: "About" },
+    ];
+    if (import.meta.env.DEV) {
+      list.push({ id: "developer", label: "Developer", icon: "Developer" });
+    }
+    return list;
+  }, []);
+
   const [tab, setTab] = useState("appearance");
   const [resetting, setResetting] = useState(null);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV && tab === "developer") setTab("appearance");
+  }, [tab]);
 
   useEffect(() => {
     const esc = (e) => {
@@ -118,7 +128,7 @@ export default function SettingsDialog({
     >
       <div className="dlg settings-dlg" role="dialog" aria-label="Settings">
         <div className="settings-tabs" role="tablist" aria-label="Settings sections">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -197,15 +207,6 @@ export default function SettingsDialog({
                     Export
                   </button>
                 </div>
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Import data</b>
-                    <span>Restore from a userWorkspace.json file</span>
-                  </div>
-                  <button type="button" className="settings-row-btn" disabled>
-                    Import
-                  </button>
-                </div>
               </div>
             </section>
           )}
@@ -233,8 +234,20 @@ export default function SettingsDialog({
             </section>
           )}
 
-          {tab === "developer" && (
+          {import.meta.env.DEV && tab === "developer" && (
             <section className="settings-section">
+              <h3 className="settings-heading">Import</h3>
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Import data</b>
+                    <span>Restore from a userWorkspace.json file (not implemented)</span>
+                  </div>
+                  <button type="button" className="settings-row-btn" disabled>
+                    Import
+                  </button>
+                </div>
+              </div>
               <h3 className="settings-heading">Workspace resets</h3>
               <div className="settings-rows">
                 <div className="settings-row">

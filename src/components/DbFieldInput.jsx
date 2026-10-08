@@ -11,7 +11,7 @@ import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
 import PropDropdown from "./PropDropdown.jsx";
 
-export function SelectChip({ label, color, className = "" }) {
+function SelectChip({ label, color, className = "" }) {
   const c = selectColor(color);
   return (
     <span

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { flipSwapHorizontal } from "../flipSwap.js";
 import { Icon, IC } from "../icons.jsx";
 import { TYPES } from "../utils.js";
 
@@ -12,51 +12,13 @@ function findTabEl(tabsEl, slug) {
 
 /** FLIP-animate two tabs after applyOrder reorders the DOM. */
 function flipSwapTabs(tabsEl, leftSlug, rightSlug, applyOrder) {
-  const leftEl = findTabEl(tabsEl, leftSlug);
-  const rightEl = findTabEl(tabsEl, rightSlug);
-  if (!leftEl || !rightEl) {
-    applyOrder();
-    return;
-  }
-
-  const firstLeft = leftEl.getBoundingClientRect();
-  const firstRight = rightEl.getBoundingClientRect();
-
-  flushSync(() => {
-    applyOrder();
-  });
-
-  const leftAfter = findTabEl(tabsEl, leftSlug);
-  const rightAfter = findTabEl(tabsEl, rightSlug);
-  if (!leftAfter || !rightAfter) return;
-
-  const lastLeft = leftAfter.getBoundingClientRect();
-  const lastRight = rightAfter.getBoundingClientRect();
-  const dxLeft = firstLeft.left - lastLeft.left;
-  const dxRight = firstRight.left - lastRight.left;
-  if (dxLeft === 0 && dxRight === 0) return;
-
-  leftAfter.classList.add("tab-swapping");
-  rightAfter.classList.add("tab-swapping");
-  leftAfter.style.transition = "none";
-  rightAfter.style.transition = "none";
-  leftAfter.style.transform = `translateX(${dxLeft}px)`;
-  rightAfter.style.transform = `translateX(${dxRight}px)`;
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      leftAfter.style.transition = "";
-      rightAfter.style.transition = "";
-      leftAfter.style.transform = "";
-      rightAfter.style.transform = "";
-      const cleanup = () => {
-        leftAfter.classList.remove("tab-swapping");
-        rightAfter.classList.remove("tab-swapping");
-      };
-      leftAfter.addEventListener("transitionend", cleanup, { once: true });
-      window.setTimeout(cleanup, 380);
-    });
-  });
+  flipSwapHorizontal(
+    (slug) => findTabEl(tabsEl, slug),
+    leftSlug,
+    rightSlug,
+    applyOrder,
+    "tab-swapping"
+  );
 }
 
 function TabMoreMenu({

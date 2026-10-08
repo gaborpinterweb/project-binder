@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
 
-export function optionValue(o) {
+function optionValue(o) {
   return typeof o === "object" && o != null && "value" in o ? o.value : o;
 }
 
-export function optionLabel(o) {
+function optionLabel(o) {
   if (typeof o === "object" && o != null && "label" in o) return o.label;
   return o;
 }
 
-export function optionKey(o) {
+function optionKey(o) {
   if (typeof o === "object" && o != null) {
     return o.key ?? o.value ?? String(optionValue(o));
   }

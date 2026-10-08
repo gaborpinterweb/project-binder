@@ -4,7 +4,7 @@ import { createFilterRule, createFilterState } from "./dbFilters.js";
 import { createSortState, normalizeSorts } from "./dbSorts.js";
 
 export const DEFAULT_VIEW_ID = "default";
-export const DEFAULT_VIEW_NAME = "Default view";
+const DEFAULT_VIEW_NAME = "Default view";
 
 function normalizeFilters(filters) {
   if (!filters || typeof filters !== "object") return createFilterState();
@@ -41,7 +41,7 @@ export function normalizeHiddenCols(hiddenCols) {
   return out;
 }
 
-export function createDefaultCustomView(filters, name = DEFAULT_VIEW_NAME, hiddenCols, sorts) {
+function createDefaultCustomView(filters, name = DEFAULT_VIEW_NAME, hiddenCols, sorts) {
   return {
     id: DEFAULT_VIEW_ID,
     name: String(name || DEFAULT_VIEW_NAME).trim() || DEFAULT_VIEW_NAME,
@@ -104,10 +104,4 @@ export function resolveCustomViewId(viewId, views) {
   const list = normalizeCustomViews(views);
   if (viewId && list.some((v) => v.id === viewId)) return viewId;
   return DEFAULT_VIEW_ID;
-}
-
-export function activeCustomView(views, viewId) {
-  const list = normalizeCustomViews(views);
-  const id = resolveCustomViewId(viewId, list);
-  return list.find((v) => v.id === id) || list[0];
 }

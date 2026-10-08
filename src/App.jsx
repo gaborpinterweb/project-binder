@@ -56,18 +56,18 @@ import {
   markLaunchSeen,
   defaultWorkspaceVisibility,
   nextUnusedProjectColor,
+  taskKey,
 } from "./utils.js";
 import Sidebar from "./components/Sidebar.jsx";
 import TabBar from "./components/TabBar.jsx";
 import Board, { DatabaseView } from "./components/Board.jsx";
 import Cover from "./components/Cover.jsx";
-import Calendar from "./components/Calendar.jsx";
 import Timelogs from "./components/Timelogs.jsx";
 import Trash, { TrashNotePreview } from "./components/Trash.jsx";
 import Notes from "./components/Notes.jsx";
 import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
-import TimelogDialog, { taskKey } from "./components/TimelogDialog.jsx";
+import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
@@ -158,6 +158,10 @@ export default function App() {
     if (pr && mod?.[2]?.slug) saveLastTab(pr.slug, mod[2].slug);
   }, []);
 
+  // Apply API workspace payload into folders/stages. Navigation opts (mutually used):
+  // - initial: restore session / open-on-launch
+  // - project (+ optional board, g): jump to a specific place
+  // - keepNav: { project, board, g } — keep selection after a mutation reload
   const applyWorkspace = useCallback(
     (data, opts = {}) => {
       let nextStages = stagesRef.current;
@@ -216,6 +220,7 @@ export default function App() {
           gRef.current = opts.g;
         }
       } else if (opts.keepNav) {
+        // If keepNav.g is omitted, preserve current global view; pass g: null to clear it.
         const keepP = opts.keepNav.project ?? foldersRef.current[pRef.current]?.slug;
         const keepM = opts.keepNav.board;
         const keepG = opts.keepNav.g !== undefined ? opts.keepNav.g : gRef.current;
@@ -239,6 +244,7 @@ export default function App() {
     [bump]
   );
 
+  // Helper for mutation callers: keep project tab + current global view (`g`).
   const keepNav = useCallback(
     (project, board) => ({
       keepNav: { project, board, g: gRef.current },
@@ -965,9 +971,6 @@ export default function App() {
               onOpenTimelogs={openTimelogs}
             />
           )}
-          {loaded && !loadError && !draftProject && g === "Calendar" && (
-            <Calendar tabC={GACC} />
-          )}
           {loaded && !loadError && !draftProject && g === "Timelogs" && (
             <Timelogs
               tabC={GACC}
@@ -1058,7 +1061,6 @@ export default function App() {
             !draftProject &&
             g &&
             g !== "Masterboard" &&
-            g !== "Calendar" &&
             g !== "Timelogs" &&
             g !== "Trash" && (
               <div id="view" className="mod" style={{ ["--tab"]: GACC }}>

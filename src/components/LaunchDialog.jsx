@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { APP_NAME } from "../utils.js";
 
-const GITHUB_URL = "https://github.com/gaborpinterweb/freelance-workbook";
+const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 
 const STEPS = [
   {
@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: "Everything is offline",
-    text: "Set up autobackup to your local cloud provider folder, like Google Drive or iCloud folder.",
+    text: "Your data stays on this device. Export a backup anytime from Settings → Data.",
   },
   {
     title: "... and there's much more!",
@@ -74,9 +74,6 @@ export default function LaunchDialog({ onStart }) {
                 {current.link.label}
               </a>
             )}
-          </div>
-          <div className="launch-shot" aria-hidden="true">
-            <span>Screenshot</span>
           </div>
           <div className="launch-dots" aria-hidden="true">
             {STEPS.map((_, i) => (

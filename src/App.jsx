@@ -62,7 +62,6 @@ import Sidebar from "./components/Sidebar.jsx";
 import TabBar from "./components/TabBar.jsx";
 import Board, { DatabaseView } from "./components/Board.jsx";
 import Cover from "./components/Cover.jsx";
-import Calendar from "./components/Calendar.jsx";
 import Timelogs from "./components/Timelogs.jsx";
 import Trash, { TrashNotePreview } from "./components/Trash.jsx";
 import Notes from "./components/Notes.jsx";
@@ -972,9 +971,6 @@ export default function App() {
               onOpenTimelogs={openTimelogs}
             />
           )}
-          {loaded && !loadError && !draftProject && g === "Calendar" && (
-            <Calendar tabC={GACC} />
-          )}
           {loaded && !loadError && !draftProject && g === "Timelogs" && (
             <Timelogs
               tabC={GACC}
@@ -1065,7 +1061,6 @@ export default function App() {
             !draftProject &&
             g &&
             g !== "Masterboard" &&
-            g !== "Calendar" &&
             g !== "Timelogs" &&
             g !== "Trash" && (
               <div id="view" className="mod" style={{ ["--tab"]: GACC }}>

@@ -16,6 +16,7 @@ import {
   putTabOrder,
   putItem,
   postTimelog,
+  putTimelog,
   resetWorkspaceToSeed,
   resetWorkspaceToEmpty,
   restoreTrashApi,
@@ -57,6 +58,7 @@ import {
   defaultWorkspaceVisibility,
   nextUnusedProjectColor,
   taskKey,
+  formatDuration,
 } from "./utils.js";
 import Sidebar from "./components/Sidebar.jsx";
 import TabBar from "./components/TabBar.jsx";
@@ -80,6 +82,13 @@ import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
 
 const MIN_TIMELOG_SEC = 60;
+
+function playSound(src) {
+  try {
+    const audio = new Audio(src);
+    audio.play().catch(() => {});
+  } catch {}
+}
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -114,7 +123,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [uiTick, setUiTick] = useState(0);
   const [dialog, setDialog] = useState(null);
-  const [manualTimelogTaskKey, setManualTimelogTaskKey] = useState("");
+  const [timelogDialog, setTimelogDialog] = useState(null);
   const [trashPreview, setTrashPreview] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ left: 0, top: 0 });
@@ -339,10 +348,14 @@ export default function App() {
     return () => document.removeEventListener("click", closeMenus);
   }, []);
 
-  async function stopPomodoroInner(session) {
+  async function stopPomodoroInner(session, { quiet } = {}) {
     if (!session || pomoFinishing.current) return;
     pomoFinishing.current = true;
     const elapsed = pomoElapsedSec(session);
+    const pomoDone =
+      !isStoptimerSession(session) && pomoRemainingSec(session) <= 0;
+    const stoptimerRecorded =
+      isStoptimerSession(session) && elapsed >= MIN_TIMELOG_SEC;
     setActivePomo(null);
     activePomoRef.current = null;
     savePomo(null);
@@ -353,17 +366,21 @@ export default function App() {
       pomoFinishing.current = false;
       return;
     }
+    if (!quiet && (pomoDone || stoptimerRecorded)) {
+      playSound("/sounds/timer-end.mp3");
+    }
     const endedAt = new Date().toISOString();
     const durationSec = isStoptimerSession(session)
       ? elapsed
       : Math.min(session.durationSec || POMO_DURATION_SEC, elapsed);
     const note = typeof session.note === "string" ? session.note.trim() : "";
+    const title = session.title || "Untitled";
     try {
-      await postTimelog({
+      const data = await postTimelog({
         project: session.project,
         board: session.board,
         card: session.card,
-        title: session.title,
+        title,
         projectName: session.projectName,
         boardName: session.boardName,
         color: session.color,
@@ -373,6 +390,17 @@ export default function App() {
         endedAt,
         durationSec,
       });
+      const entry = data?.entry;
+      if (entry?.slug) {
+        showSnackbar({
+          message: `${title} · ${formatDuration(durationSec)}`,
+          durationMs: 7000,
+          action: {
+            label: "Edit",
+            onClick: () => setTimelogDialog({ mode: "edit", entry }),
+          },
+        });
+      }
     } catch {}
     pomoFinishing.current = false;
     if (gRef.current === "Timelogs") setTimelogRefresh((n) => n + 1);
@@ -393,7 +421,9 @@ export default function App() {
 
   async function startPomodoro(payload) {
     if (!payload.project || !payload.board) return;
-    if (activePomoRef.current) await stopPomodoro();
+    if (activePomoRef.current) {
+      await stopPomodoroInner(activePomoRef.current, { quiet: true });
+    }
     const kind = payload.kind === "stoptimer" ? "stoptimer" : "pomodoro";
     const session = {
       project: payload.project,
@@ -411,13 +441,15 @@ export default function App() {
     setActivePomo(session);
     activePomoRef.current = session;
     savePomo(session);
+    playSound("/sounds/timer-start.mp3");
   }
 
   function addManualTimelog(filter) {
     if (filter?.project && filter?.board && filter?.card) {
-      setManualTimelogTaskKey(
-        taskKey(filter.project, filter.board, filter.card)
-      );
+      setTimelogDialog({
+        mode: "add",
+        defaultTaskKey: taskKey(filter.project, filter.board, filter.card),
+      });
     }
   }
 
@@ -1336,17 +1368,25 @@ export default function App() {
         />
       )}
 
-      {manualTimelogTaskKey ? (
+      {timelogDialog ? (
         <TimelogDialog
           folders={folders}
-          defaultTaskKey={manualTimelogTaskKey}
+          entry={timelogDialog.mode === "edit" ? timelogDialog.entry : null}
+          defaultTaskKey={
+            timelogDialog.mode === "add" ? timelogDialog.defaultTaskKey : ""
+          }
           onSave={async (payload) => {
-            const data = await postTimelog(payload);
-            if (data?.error) throw new Error(data.error);
-            setManualTimelogTaskKey("");
+            if (timelogDialog.mode === "edit") {
+              const data = await putTimelog(payload);
+              if (data?.error) throw new Error(data.error);
+            } else {
+              const data = await postTimelog(payload);
+              if (data?.error) throw new Error(data.error);
+            }
+            setTimelogDialog(null);
             if (gRef.current === "Timelogs") setTimelogRefresh((n) => n + 1);
           }}
-          onClose={() => setManualTimelogTaskKey("")}
+          onClose={() => setTimelogDialog(null)}
         />
       ) : null}
 

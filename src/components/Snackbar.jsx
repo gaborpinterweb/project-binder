@@ -15,6 +15,19 @@ export default function Snackbar() {
     <div className="snackbar-host" aria-live="polite" aria-atomic="true">
       <div className="snackbar" role="status" key={req.id}>
         <p className="snackbar-msg">{req.message}</p>
+        {req.actionLabel && req.onAction ? (
+          <button
+            type="button"
+            className="snackbar-action"
+            onClick={() => {
+              const fn = req.onAction;
+              dismissSnackbar();
+              fn();
+            }}
+          >
+            {req.actionLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           className="snackbar-dismiss"

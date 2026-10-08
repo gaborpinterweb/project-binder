@@ -1024,9 +1024,12 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .dlg .prop-dd .lab.db-chip-row{display:inline-flex;flex-wrap:wrap;gap:4px}
 .gcard{cursor:pointer}
 .snackbar-host{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:50;width:min(420px,calc(100% - 24px));pointer-events:none}
-.snackbar{display:flex;align-items:flex-start;gap:10px;padding:12px 12px 12px 14px;border-radius:calc(var(--radius) - 2px);background:var(--ink);color:var(--bar);box-shadow:0 10px 28px #0005;pointer-events:auto;animation:snackbar-in .22s ease}
+.snackbar{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;border-radius:calc(var(--radius) - 2px);background:var(--ink);color:var(--bar);box-shadow:0 10px 28px #0005;pointer-events:auto;animation:snackbar-in .22s ease}
 .snackbar-msg{flex:1;min-width:0;margin:0;font-size:13px;line-height:1.4;font-weight:500}
-.snackbar-dismiss{flex:none;width:28px;height:28px;margin:-2px -4px 0 0;display:grid;place-items:center;border-radius:calc(var(--radius) - 6px);font-size:18px;line-height:1;color:color-mix(in srgb,var(--bar) 72%,transparent)}
+.snackbar-action{flex:none;margin:0;padding:6px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:color-mix(in srgb,#fff 14%,transparent);color:var(--bar);font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.snackbar-action:hover{background:color-mix(in srgb,#fff 22%,transparent)}
+.snackbar-action:focus-visible{outline:2px solid color-mix(in srgb,var(--bar) 70%,transparent);outline-offset:1px}
+.snackbar-dismiss{flex:none;width:28px;height:28px;margin:0 -4px 0 0;display:grid;place-items:center;border-radius:calc(var(--radius) - 6px);font-size:18px;line-height:1;color:color-mix(in srgb,var(--bar) 72%,transparent)}
 .snackbar-dismiss:hover{color:var(--bar);background:color-mix(in srgb,#fff 12%,transparent)}
 .snackbar-dismiss:focus-visible{outline:2px solid color-mix(in srgb,var(--bar) 70%,transparent);outline-offset:1px}
 @keyframes snackbar-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}

@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { exportWorkspace, revealUserData } from "../api.js";
+import {
+  exportWorkspace,
+  revealUserData,
+  fetchAppInfo,
+  saveBackupSettings,
+  runBackupNow,
+  pickBackupFolder,
+  restoreBackup,
+} from "../api.js";
 import {
   APP_NAME,
   APP_VERSION,
@@ -19,6 +27,19 @@ const OPEN_ON_LAUNCH_OPTIONS = [
   { value: "last-tab", label: "Last tab" },
 ];
 
+function formatBackupTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function SettingsDialog({
   visibility,
   onChange,
@@ -28,6 +49,7 @@ export default function SettingsDialog({
   onResetSeed,
   onResetEmpty,
   onResetFirstLaunch,
+  onRestoreBackup,
 }) {
   const tabs = useMemo(() => {
     const list = [
@@ -43,6 +65,38 @@ export default function SettingsDialog({
 
   const [tab, setTab] = useState("appearance");
   const [resetting, setResetting] = useState(null);
+  const [desktop, setDesktop] = useState(false);
+  const [backup, setBackup] = useState({
+    enabled: false,
+    folderPath: "",
+    lastBackupAt: null,
+    lastError: null,
+    filename: "project-binder-backup.zip",
+  });
+  const [backupBusy, setBackupBusy] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const info = await fetchAppInfo();
+        if (cancelled) return;
+        setDesktop(!!info.desktop);
+        if (info.backup) {
+          setBackup((prev) => ({
+            ...prev,
+            ...info.backup,
+            filename: info.autoBackupFilename || prev.filename,
+          }));
+        }
+      } catch {
+        if (!cancelled) setDesktop(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!import.meta.env.DEV && tab === "developer") setTab("appearance");
@@ -60,6 +114,30 @@ export default function SettingsDialog({
     onChange?.({ ...visibility, [id]: checked });
   };
 
+  const applyBackupState = (data) => {
+    if (!data || typeof data !== "object") return;
+    setBackup((prev) => ({
+      ...prev,
+      enabled: !!data.enabled,
+      folderPath: data.folderPath != null ? String(data.folderPath) : prev.folderPath,
+      lastBackupAt: data.lastBackupAt !== undefined ? data.lastBackupAt : prev.lastBackupAt,
+      lastError: data.lastError !== undefined ? data.lastError : prev.lastError,
+      filename: data.filename || prev.filename,
+    }));
+  };
+
+  const persistBackup = async (patch) => {
+    setBackupBusy("save");
+    try {
+      const data = await saveBackupSettings(patch);
+      applyBackupState(data);
+    } catch (e) {
+      alert(e.message || "Could not save backup settings.");
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
   const handleExport = async () => {
     try {
       await exportWorkspace();
@@ -73,6 +151,62 @@ export default function SettingsDialog({
       await revealUserData();
     } catch {
       alert("Could not open the user data folder.");
+    }
+  };
+
+  const handleBrowseFolder = async () => {
+    setBackupBusy("folder");
+    try {
+      const picked = await pickBackupFolder();
+      if (picked.cancelled || !picked.path) return;
+      const data = await saveBackupSettings({ enabled: true, folderPath: picked.path });
+      applyBackupState(data);
+    } catch (e) {
+      alert(e.message || "Could not choose folder.");
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
+  const handleToggleAutoBackup = async (checked) => {
+    if (checked && !backup.folderPath) {
+      await handleBrowseFolder();
+      return;
+    }
+    await persistBackup({ enabled: checked, folderPath: backup.folderPath });
+  };
+
+  const handleBackupNow = async () => {
+    setBackupBusy("now");
+    try {
+      const data = await runBackupNow();
+      applyBackupState(data);
+    } catch (e) {
+      alert(e.message || "Backup failed.");
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
+  const handleRestore = async () => {
+    const ok = await askConfirm({
+      title: "Restore from backup?",
+      message:
+        "This replaces your current workspace and uploaded files with the selected backup. This cannot be undone.",
+      confirmLabel: "Restore",
+      danger: true,
+    });
+    if (!ok) return;
+    setBackupBusy("restore");
+    try {
+      const data = await restoreBackup();
+      if (data?.cancelled) return;
+      await onRestoreBackup?.(data);
+      onClose();
+    } catch (e) {
+      alert(e.message || "Could not restore backup.");
+    } finally {
+      setBackupBusy(null);
     }
   };
 
@@ -118,6 +252,9 @@ export default function SettingsDialog({
       "This restores seed data, clears saved views and settings, and reloads the app. Your changes will be lost.",
       onResetFirstLaunch
     );
+
+  const lastBackupLabel = formatBackupTime(backup.lastBackupAt);
+  const backupDisabled = !!backupBusy;
 
   return (
     <div
@@ -186,29 +323,109 @@ export default function SettingsDialog({
           )}
 
           {tab === "data" && (
-            <section className="settings-section">
-              <h3 className="settings-heading">Backup</h3>
-              <div className="settings-rows">
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Show user data</b>
-                    <span>Open the folder where your workspace is stored</span>
+            <>
+              <section className="settings-section">
+                <h3 className="settings-heading">Backup</h3>
+                <div className="settings-rows">
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Show user data</b>
+                      <span>Open the folder where your workspace is stored</span>
+                    </div>
+                    <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
+                      Show
+                    </button>
                   </div>
-                  <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
-                    Show
-                  </button>
-                </div>
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Export data</b>
-                    <span>Download your userWorkspace.json backup</span>
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Export data</b>
+                      <span>Download your userWorkspace.json backup</span>
+                    </div>
+                    <button type="button" className="settings-row-btn" onClick={handleExport}>
+                      Export
+                    </button>
                   </div>
-                  <button type="button" className="settings-row-btn" onClick={handleExport}>
-                    Export
-                  </button>
                 </div>
-              </div>
-            </section>
+              </section>
+
+              {desktop && (
+                <section className="settings-section">
+                  <h3 className="settings-heading">Auto backup</h3>
+                  <ul className="settings-checks">
+                    <li>
+                      <label className="settings-check">
+                        <input
+                          type="checkbox"
+                          checked={!!backup.enabled}
+                          disabled={backupDisabled}
+                          onChange={(e) => handleToggleAutoBackup(e.target.checked)}
+                        />
+                        <span>Back up automatically every 5 minutes and on launch</span>
+                      </label>
+                    </li>
+                  </ul>
+                  <div className="settings-rows">
+                    <div className="settings-row settings-row-stack">
+                      <div className="settings-row-copy">
+                        <b>Backup folder</b>
+                        <span>
+                          Writes a single file: {backup.filename || "project-binder-backup.zip"}{" "}
+                          (workspace + files)
+                        </span>
+                        {backup.folderPath ? (
+                          <span className="settings-path" title={backup.folderPath}>
+                            {backup.folderPath}
+                          </span>
+                        ) : (
+                          <span>No folder selected</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="settings-row-btn"
+                        disabled={backupDisabled}
+                        onClick={handleBrowseFolder}
+                      >
+                        {backupBusy === "folder" ? "…" : "Browse"}
+                      </button>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-row-copy">
+                        <b>Last backup</b>
+                        <span>
+                          {lastBackupLabel || "Not yet backed up"}
+                          {backup.lastError ? ` · Error: ${backup.lastError}` : ""}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="settings-row-btn"
+                        disabled={
+                          backupDisabled || !backup.enabled || !backup.folderPath
+                        }
+                        onClick={handleBackupNow}
+                      >
+                        {backupBusy === "now" ? "…" : "Backup now"}
+                      </button>
+                    </div>
+                    <div className="settings-row">
+                      <div className="settings-row-copy">
+                        <b>Restore from backup</b>
+                        <span>Replace this workspace from a project-binder-backup.zip</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="settings-row-btn settings-row-btn-danger"
+                        disabled={backupDisabled}
+                        onClick={handleRestore}
+                      >
+                        {backupBusy === "restore" ? "…" : "Restore"}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+            </>
           )}
 
           {tab === "about" && (
@@ -241,18 +458,6 @@ export default function SettingsDialog({
 
           {import.meta.env.DEV && tab === "developer" && (
             <section className="settings-section">
-              <h3 className="settings-heading">Import</h3>
-              <div className="settings-rows">
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Import data</b>
-                    <span>Restore from a userWorkspace.json file (not implemented)</span>
-                  </div>
-                  <button type="button" className="settings-row-btn" disabled>
-                    Import
-                  </button>
-                </div>
-              </div>
               <h3 className="settings-heading">Workspace resets</h3>
               <div className="settings-rows">
                 <div className="settings-row">

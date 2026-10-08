@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "start": "node server.cjs",
-    "build:desktop": "npm run build && electron-packager . \"Project Binder\" --out=release --overwrite --no-asar --icon=assets/icon --ignore=\"node_modules|src|release|\\.npm-cache|\\.git|\\.cursor|userWorkspace\\.json|vite\\.config\\.js|README\\.md\""
+    "build:desktop": "npm run build && electron-packager . \"Project Binder\" --out=release --overwrite --no-asar --icon=assets/icon --ignore=\"src|release|\\.npm-cache|\\.git|\\.cursor|userWorkspace\\.json|vite\\.config\\.js|README\\.md\" --ignore=\"node_modules/(?!adm-zip(/|$))\""
   },
   "dependencies": {
     "@tiptap/extension-highlight": "^3.31.4",
@@ -25,6 +25,7 @@
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
+    "adm-zip": "^0.6.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-file-icon": "^1.6.0",

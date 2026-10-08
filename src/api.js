@@ -235,6 +235,30 @@ export async function exportWorkspace() {
   URL.revokeObjectURL(url);
 }
 
+export async function fetchAppInfo() {
+  return apiData("/api/app");
+}
+
+export async function fetchBackupSettings() {
+  return apiOkData("/api/backup", {}, "backup settings failed");
+}
+
+export async function saveBackupSettings(body) {
+  return apiOkData("/api/backup", { method: "PUT", body }, "could not save backup settings");
+}
+
+export async function runBackupNow() {
+  return apiOkData("/api/backup/now", { method: "POST" }, "backup failed");
+}
+
+export async function pickBackupFolder() {
+  return apiOkData("/api/backup/pick-folder", { method: "POST" }, "could not pick folder");
+}
+
+export async function restoreBackup(body) {
+  return apiOkData("/api/backup/restore", { method: "POST", body: body || {} }, "restore failed");
+}
+
 export async function resetWorkspaceToSeed() {
   const r = await fetch("/api/workspace/reset-seed", { method: "POST" });
   if (!r.ok) throw new Error("reset failed");

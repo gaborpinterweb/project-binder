@@ -911,6 +911,8 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-row-btn:disabled{opacity:.45;cursor:default}
 .settings-row-btn-danger{color:#b42318;background:color-mix(in srgb,#b42318 10%,transparent)}
 .settings-row-btn-danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 18%,transparent)}
+.settings-row-stack{align-items:flex-start}
+.settings-path{display:block;margin-top:4px;font-size:12px;color:var(--ink);word-break:break-all}
 .settings-launch-dd{flex:none;width:168px}
 .settings-launch-dd .dd-btn{width:100%;justify-content:space-between;padding:7px 10px;border-radius:calc(var(--radius) - 6px);background:var(--sel);font:inherit;font-size:13px;font-weight:500;color:var(--ink)}
 .settings-launch-dd .dd-btn:hover{background:color-mix(in srgb,var(--ink) 12%,var(--sel))}

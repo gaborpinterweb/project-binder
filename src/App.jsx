@@ -1394,6 +1394,17 @@ export default function App() {
             setTrashRefresh((n) => n + 1);
             setTimelogRefresh((n) => n + 1);
           }}
+          onRestoreBackup={async (data) => {
+            applyWorkspace(data, { initial: true });
+            setBoardEdit(false);
+            setDraftProject(null);
+            setCoverEdit(false);
+            setCoverDraft(null);
+            setDialog(null);
+            setTimelogFilter(null);
+            setTrashRefresh((n) => n + 1);
+            setTimelogRefresh((n) => n + 1);
+          }}
           onResetFirstLaunch={async () => {
             await resetWorkspaceToSeed();
             clearClientAppState();

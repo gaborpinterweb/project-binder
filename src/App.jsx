@@ -52,6 +52,8 @@ import {
   saveWorkspaceVisibility,
   loadOpenOnLaunch,
   saveOpenOnLaunch,
+  loadUiSounds,
+  saveUiSounds,
   clearClientAppState,
   hasSeenLaunch,
   markLaunchSeen,
@@ -84,6 +86,7 @@ import { checkForUpdate } from "./checkUpdate.js";
 const MIN_TIMELOG_SEC = 60;
 
 function playSound(src) {
+  if (!loadUiSounds()) return;
   try {
     const audio = new Audio(src);
     audio.play().catch(() => {});
@@ -132,6 +135,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workspaceVis, setWorkspaceVis] = useState(() => loadWorkspaceVisibility());
   const [openOnLaunch, setOpenOnLaunch] = useState(() => loadOpenOnLaunch());
+  const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -354,8 +358,6 @@ export default function App() {
     const elapsed = pomoElapsedSec(session);
     const pomoDone =
       !isStoptimerSession(session) && pomoRemainingSec(session) <= 0;
-    const stoptimerRecorded =
-      isStoptimerSession(session) && elapsed >= MIN_TIMELOG_SEC;
     setActivePomo(null);
     activePomoRef.current = null;
     savePomo(null);
@@ -366,9 +368,7 @@ export default function App() {
       pomoFinishing.current = false;
       return;
     }
-    if (!quiet && (pomoDone || stoptimerRecorded)) {
-      playSound("/sounds/timer-end.mp3");
-    }
+    if (!quiet) playSound("/sounds/timer-end.mp3");
     const endedAt = new Date().toISOString();
     const durationSec = isStoptimerSession(session)
       ? elapsed
@@ -422,10 +422,19 @@ export default function App() {
 
   async function startPomodoro(payload) {
     if (!payload.project || !payload.board) return;
-    if (activePomoRef.current) {
-      await stopPomodoroInner(activePomoRef.current, { quiet: true });
-    }
     const kind = payload.kind === "stoptimer" ? "stoptimer" : "pomodoro";
+    const cur = activePomoRef.current;
+    if (cur) {
+      const curTitle = cur.title || "Untitled";
+      const ok = await askConfirm({
+        title: "Active timer is in progress",
+        message: `You can have one timer in progress at a time. Starting a new one will stop your current timer for "${curTitle}".`,
+        confirmLabel: "Stop current and start new",
+        danger: true,
+      });
+      if (!ok) return;
+      await stopPomodoroInner(cur, { quiet: true });
+    }
     const session = {
       project: payload.project,
       board: payload.board,
@@ -1421,6 +1430,8 @@ export default function App() {
           onChange={applyWorkspaceVisibility}
           openOnLaunch={openOnLaunch}
           onOpenOnLaunchChange={(value) => setOpenOnLaunch(saveOpenOnLaunch(value))}
+          uiSounds={uiSounds}
+          onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
           onClose={() => setSettingsOpen(false)}
           onResetSeed={async () => {
             const data = await resetWorkspaceToSeed();

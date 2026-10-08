@@ -45,6 +45,8 @@ export default function SettingsDialog({
   onChange,
   openOnLaunch,
   onOpenOnLaunchChange,
+  uiSounds,
+  onUiSoundsChange,
   onClose,
   onResetSeed,
   onResetEmpty,
@@ -301,6 +303,21 @@ export default function SettingsDialog({
                     />
                   </div>
                 </div>
+              </section>
+              <section className="settings-section">
+                <h3 className="settings-heading">Sound</h3>
+                <ul className="settings-checks">
+                  <li>
+                    <label className="settings-check">
+                      <input
+                        type="checkbox"
+                        checked={!!uiSounds}
+                        onChange={(e) => onUiSoundsChange?.(e.target.checked)}
+                      />
+                      <span>UI sounds</span>
+                    </label>
+                  </li>
+                </ul>
               </section>
               <section className="settings-section">
                 <h3 className="settings-heading">Sidebar</h3>

@@ -29,9 +29,11 @@ const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
 const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
+const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
 const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
 const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
+const DEFAULT_UI_SOUNDS = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 /** Only Archived is hideable; workspace items are always shown. */
 export const SIDEBAR_VIS_ITEMS = ["Archived"];
@@ -684,6 +686,23 @@ export function saveOpenOnLaunch(value) {
   const next = OPEN_ON_LAUNCH_VALUES.includes(value) ? value : DEFAULT_OPEN_ON_LAUNCH;
   try {
     localStorage.setItem(OPEN_ON_LAUNCH_KEY, next);
+  } catch {}
+  return next;
+}
+
+export function loadUiSounds() {
+  try {
+    const stored = localStorage.getItem(UI_SOUNDS_KEY);
+    if (stored === "0") return false;
+    if (stored === "1") return true;
+  } catch {}
+  return DEFAULT_UI_SOUNDS;
+}
+
+export function saveUiSounds(enabled) {
+  const next = !!enabled;
+  try {
+    localStorage.setItem(UI_SOUNDS_KEY, next ? "1" : "0");
   } catch {}
   return next;
 }

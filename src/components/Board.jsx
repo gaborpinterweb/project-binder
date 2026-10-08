@@ -49,6 +49,7 @@ import {
   groupByDoneDay,
   isDone,
   pastel,
+  playTaskCompleteSound,
   COMPLETED_VIEWS,
   loadCompletedViews,
   loadDbViewsSidebar,
@@ -707,6 +708,7 @@ function ProjectBoard({
       if (hint.done) {
         if (isDone(row)) return;
         row.doneAt = new Date().toISOString();
+        playTaskCompleteSound();
         onBumpCollapse();
         await onSaveCard(row, folder, mod);
         return;
@@ -1038,6 +1040,7 @@ function MasterBoard({
       if (hint.done) {
         if (isDone(row)) return;
         row.doneAt = new Date().toISOString();
+        playTaskCompleteSound();
         onBump();
         await onSaveCard(row, loc.folder, loc.mod);
         return;

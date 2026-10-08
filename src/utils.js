@@ -27,7 +27,6 @@ export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
 const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
-const WORKSPACE_VIS_KEY = `${STORAGE_PREFIX}workspaceVisibility`;
 const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
@@ -35,8 +34,6 @@ const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
 const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
 const DEFAULT_UI_SOUNDS = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
-/** Only Archived is hideable; workspace items are always shown. */
-export const SIDEBAR_VIS_ITEMS = ["Archived"];
 export const POMO_DURATION_SEC = 25 * 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const GACC = "#9a5b2e";
@@ -634,13 +631,8 @@ export function globalLabel(name) {
   return (
     {
       Masterboard: "Master board",
-      Archived: "Archived projects",
     }[name] || name
   );
-}
-
-export function defaultWorkspaceVisibility() {
-  return Object.fromEntries(SIDEBAR_VIS_ITEMS.map((id) => [id, false]));
 }
 
 function readStorageJson(key, fallback) {
@@ -657,21 +649,6 @@ function writeStorageJson(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
-}
-
-export function loadWorkspaceVisibility() {
-  const defaults = defaultWorkspaceVisibility();
-  const stored = readStorageJson(WORKSPACE_VIS_KEY, null);
-  if (!stored || typeof stored !== "object") return defaults;
-  const next = { ...defaults };
-  SIDEBAR_VIS_ITEMS.forEach((id) => {
-    if (typeof stored[id] === "boolean") next[id] = stored[id];
-  });
-  return next;
-}
-
-export function saveWorkspaceVisibility(map) {
-  writeStorageJson(WORKSPACE_VIS_KEY, map);
 }
 
 export function loadOpenOnLaunch() {
@@ -705,6 +682,18 @@ export function saveUiSounds(enabled) {
     localStorage.setItem(UI_SOUNDS_KEY, next ? "1" : "0");
   } catch {}
   return next;
+}
+
+export function playSound(src) {
+  if (!loadUiSounds()) return;
+  try {
+    const audio = new Audio(src);
+    audio.play().catch(() => {});
+  } catch {}
+}
+
+export function playTaskCompleteSound() {
+  playSound("/sounds/task-complete.mp3");
 }
 
 export function clearClientAppState() {

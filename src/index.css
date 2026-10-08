@@ -78,8 +78,6 @@ main.global-view #view{margin:0;border-radius:0;overflow:hidden;background:var(-
 .archive-ribbon span{flex:1;min-width:0;line-height:1.35}
 .archive-ribbon button{flex:none;font:inherit;font-size:13px;font-weight:600;color:#160e08;background:#f0e6d6;border:0;border-radius:calc(var(--radius) - 6px);padding:7px 12px;cursor:pointer}
 .archive-ribbon button:hover{background:#fff}
-aside .archived-list .bm{opacity:.72}
-aside .side-muted{margin-top:20px}
 aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;color:var(--side-mute);opacity:.55}
 #bar .tab.add{--c:#5a4a3c;color:var(--side-mute);padding-left:14px;padding-right:14px;font-weight:600}
 #bar .tab.add:hover{color:var(--side-ink)}
@@ -912,6 +910,9 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-row-btn-danger{color:#b42318;background:color-mix(in srgb,#b42318 10%,transparent)}
 .settings-row-btn-danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 18%,transparent)}
 .settings-row-stack{align-items:flex-start}
+.settings-empty{margin:0;padding:8px 2px;font-size:14px;color:var(--mute)}
+.settings-archive-item{flex-direction:row;align-items:center;gap:10px}
+.settings-archive-icon{flex:none;display:inline-flex;line-height:0}
 .settings-path{display:block;margin-top:4px;font-size:12px;color:var(--ink);word-break:break-all}
 .settings-launch-dd{flex:none;width:168px}
 .settings-launch-dd .dd-btn{width:100%;justify-content:space-between;padding:7px 10px;border-radius:calc(var(--radius) - 6px);background:var(--sel);font:inherit;font-size:13px;font-weight:500;color:var(--ink)}

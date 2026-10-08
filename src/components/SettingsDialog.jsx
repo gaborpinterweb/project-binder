@@ -9,12 +9,7 @@ import {
   pickBackupFolder,
   restoreBackup,
 } from "../api.js";
-import {
-  APP_NAME,
-  APP_VERSION,
-  SIDEBAR_VIS_ITEMS,
-  globalLabel,
-} from "../utils.js";
+import { APP_NAME, APP_VERSION, PC } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import Dropdown from "./Dropdown.jsx";
 
@@ -41,12 +36,12 @@ function formatBackupTime(iso) {
 }
 
 export default function SettingsDialog({
-  visibility,
-  onChange,
+  folders = [],
   openOnLaunch,
   onOpenOnLaunchChange,
   uiSounds,
   onUiSoundsChange,
+  onReactivate,
   onClose,
   onResetSeed,
   onResetEmpty,
@@ -56,6 +51,7 @@ export default function SettingsDialog({
   const tabs = useMemo(() => {
     const list = [
       { id: "appearance", label: "Appearance", icon: "Appearance" },
+      { id: "archive", label: "Archive", icon: "Archive" },
       { id: "data", label: "Data", icon: "Workspace" },
       { id: "about", label: "About", icon: "About" },
     ];
@@ -64,6 +60,11 @@ export default function SettingsDialog({
     }
     return list;
   }, []);
+
+  const archivedProjects = useMemo(
+    () => folders.filter((pr) => pr.archived),
+    [folders]
+  );
 
   const [tab, setTab] = useState("appearance");
   const [resetting, setResetting] = useState(null);
@@ -111,10 +112,6 @@ export default function SettingsDialog({
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
-
-  const setVisible = (id, checked) => {
-    onChange?.({ ...visibility, [id]: checked });
-  };
 
   const applyBackupState = (data) => {
     if (!data || typeof data !== "object") return;
@@ -319,24 +316,39 @@ export default function SettingsDialog({
                   </li>
                 </ul>
               </section>
-              <section className="settings-section">
-                <h3 className="settings-heading">Sidebar</h3>
-                <ul className="settings-checks">
-                  {SIDEBAR_VIS_ITEMS.map((id) => (
-                    <li key={id}>
-                      <label className="settings-check">
-                        <input
-                          type="checkbox"
-                          checked={!!visibility[id]}
-                          onChange={(e) => setVisible(id, e.target.checked)}
-                        />
-                        <span>{globalLabel(id)}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </section>
             </>
+          )}
+
+          {tab === "archive" && (
+            <section className="settings-section">
+              {archivedProjects.length === 0 ? (
+                <p className="settings-empty">No archived projects.</p>
+              ) : (
+                <div className="settings-rows">
+                  {archivedProjects.map((pr, i) => (
+                    <div key={pr.slug} className="settings-row">
+                      <div className="settings-row-copy settings-archive-item">
+                        <span
+                          className="settings-archive-icon"
+                          style={{ color: pr.color || PC[i % PC.length] }}
+                          aria-hidden="true"
+                        >
+                          <Icon name="folder" size={18} />
+                        </span>
+                        <b>{pr.name}</b>
+                      </div>
+                      <button
+                        type="button"
+                        className="settings-row-btn"
+                        onClick={() => onReactivate?.(pr)}
+                      >
+                        Reactivate
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           )}
 
           {tab === "data" && (

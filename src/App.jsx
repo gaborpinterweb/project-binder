@@ -48,16 +48,15 @@ import {
   tabsOrderPayload,
   isProjectArchived,
   slugifyClient,
-  loadWorkspaceVisibility,
-  saveWorkspaceVisibility,
   loadOpenOnLaunch,
   saveOpenOnLaunch,
   loadUiSounds,
   saveUiSounds,
+  playSound,
+  playTaskCompleteSound,
   clearClientAppState,
   hasSeenLaunch,
   markLaunchSeen,
-  defaultWorkspaceVisibility,
   nextUnusedProjectColor,
   taskKey,
   formatDuration,
@@ -84,14 +83,6 @@ import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
 
 const MIN_TIMELOG_SEC = 60;
-
-function playSound(src) {
-  if (!loadUiSounds()) return;
-  try {
-    const audio = new Audio(src);
-    audio.play().catch(() => {});
-  } catch {}
-}
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -133,7 +124,6 @@ export default function App() {
   const [timelogRefresh, setTimelogRefresh] = useState(0);
   const [trashRefresh, setTrashRefresh] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [workspaceVis, setWorkspaceVis] = useState(() => loadWorkspaceVisibility());
   const [openOnLaunch, setOpenOnLaunch] = useState(() => loadOpenOnLaunch());
   const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
   const [launchOpen, setLaunchOpen] = useState(false);
@@ -352,7 +342,7 @@ export default function App() {
     return () => document.removeEventListener("click", closeMenus);
   }, []);
 
-  async function stopPomodoroInner(session, { quiet } = {}) {
+  async function stopPomodoroInner(session) {
     if (!session || pomoFinishing.current) return;
     pomoFinishing.current = true;
     const elapsed = pomoElapsedSec(session);
@@ -368,7 +358,6 @@ export default function App() {
       pomoFinishing.current = false;
       return;
     }
-    if (!quiet) playSound("/sounds/timer-end.mp3");
     const endedAt = new Date().toISOString();
     const durationSec = isStoptimerSession(session)
       ? elapsed
@@ -433,7 +422,7 @@ export default function App() {
         danger: true,
       });
       if (!ok) return;
-      await stopPomodoroInner(cur, { quiet: true });
+      await stopPomodoroInner(cur);
     }
     const session = {
       project: payload.project,
@@ -615,6 +604,7 @@ export default function App() {
   const onToggleDone = useCallback(
     async (row, folder, mod, checked) => {
       row.doneAt = checked ? new Date().toISOString() : "";
+      if (checked) playTaskCompleteSound();
       await saveCard(row, folder, mod);
     },
     [saveCard]
@@ -690,9 +680,9 @@ export default function App() {
   const confirmUnarchiveProject = async (folder) => {
     if (!folder) return;
     const ok = await askConfirm({
-      title: `Unarchive "${folder.name}"?`,
+      title: `Reactivate "${folder.name}"?`,
       message: "The project will become editable again.",
-      confirmLabel: "Unarchive",
+      confirmLabel: "Reactivate",
     });
     if (!ok) return;
     setProjectArchived(folder, false);
@@ -864,25 +854,6 @@ export default function App() {
     (coverEdit && coverDraft && coverDraft.color) ||
     folder?.color ||
     PC[p % PC.length];
-  const applyWorkspaceVisibility = useCallback((nextVis) => {
-    saveWorkspaceVisibility(nextVis);
-    setWorkspaceVis(nextVis);
-    if (!nextVis.Archived) {
-      const list = foldersRef.current;
-      const pi = pRef.current;
-      if (list[pi]?.archived) {
-        const firstActive = list.findIndex((f) => !f.archived);
-        if (firstActive >= 0) {
-          setG(null);
-          gRef.current = null;
-          setP(firstActive);
-          setM(restoreTabIndex(list[firstActive]));
-          setBoardEdit(false);
-        }
-      }
-    }
-  }, []);
-
   const tabC = projC;
   const isGlobal = !!g && !draftProject;
 
@@ -899,7 +870,6 @@ export default function App() {
         coverDraft={coverDraft}
         activePomo={activePomo}
         workspaceItems={WORKSPACE_ITEMS}
-        showArchived={!!workspaceVis.Archived}
         onSelectGlobal={(n) => {
           discardDraft();
           discardCoverEdit();
@@ -1292,7 +1262,7 @@ export default function App() {
             <div className="archive-ribbon">
               <span>This project is archived and cannot be modified.</span>
               <button type="button" onClick={() => confirmUnarchiveProject(folder)}>
-                Unarchive
+                Reactivate
               </button>
             </div>
           )}
@@ -1426,12 +1396,12 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsDialog
-          visibility={workspaceVis}
-          onChange={applyWorkspaceVisibility}
+          folders={folders}
           openOnLaunch={openOnLaunch}
           onOpenOnLaunchChange={(value) => setOpenOnLaunch(saveOpenOnLaunch(value))}
           uiSounds={uiSounds}
           onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
+          onReactivate={confirmUnarchiveProject}
           onClose={() => setSettingsOpen(false)}
           onResetSeed={async () => {
             const data = await resetWorkspaceToSeed();
@@ -1471,7 +1441,6 @@ export default function App() {
           onResetFirstLaunch={async () => {
             await resetWorkspaceToSeed();
             clearClientAppState();
-            saveWorkspaceVisibility(defaultWorkspaceVisibility());
             window.location.reload();
             await new Promise(() => {});
           }}

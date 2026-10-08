@@ -18,7 +18,6 @@ export default function Sidebar({
   coverDraft,
   activePomo,
   workspaceItems,
-  showArchived = false,
   onSelectGlobal,
   onSelectProject,
   onAddProject,
@@ -30,7 +29,6 @@ export default function Sidebar({
   onOpenUpdate,
 }) {
   const active = folders.map((pr, i) => ({ pr, i })).filter((x) => !x.pr.archived);
-  const archived = folders.map((pr, i) => ({ pr, i })).filter((x) => x.pr.archived);
   const globals = workspaceItems || [];
 
   return (
@@ -125,29 +123,6 @@ export default function Sidebar({
             );
           })}
         </div>
-        {showArchived && (
-          <div id="archived-wrap">
-            <h2 className="side-muted">Archived projects</h2>
-            <div id="archived" className="archived-list">
-              {archived.length === 0 && (
-                <p className="side-empty">No archived projects yet.</p>
-              )}
-              {archived.map(({ pr, i }) => (
-                <button
-                  key={pr.slug}
-                  type="button"
-                  className={"bm" + (i === p && !g && !draftProject ? " on" : "")}
-                  onClick={() => onSelectProject(i)}
-                >
-                  <span style={{ color: pr.color || PC[i % PC.length] }}>
-                    <Icon name="folder" />
-                  </span>
-                  <span>{pr.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
       {activePomo ? (
         <div className="side-foot">

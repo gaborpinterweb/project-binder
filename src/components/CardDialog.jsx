@@ -10,6 +10,7 @@ import {
   formatSpent,
   isDone,
   pastel,
+  playTaskCompleteSound,
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
 import DbFieldInput from "./DbFieldInput.jsx";
@@ -259,6 +260,7 @@ export default function CardDialog({
                   const doneAt = e.target.checked
                     ? new Date().toISOString()
                     : "";
+                  if (e.target.checked) playTaskCompleteSound();
                   patch({ doneAt });
                   clearTimeout(persistTimer.current);
                   draftRef.current = { ...draftRef.current, doneAt };

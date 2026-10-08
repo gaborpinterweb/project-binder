@@ -41,7 +41,7 @@ export const IC = {
     "#9a5b2e",
   ],
   Masterboard: [
-    '<rect x="1.5" y="2" width="13" height="12" rx="1.5"/><rect x="3.25" y="4.25" width="2.5" height="7.5" rx=".7"/><rect x="6.75" y="4.25" width="2.5" height="4.5" rx=".7"/><rect x="10.25" y="4.25" width="2.5" height="6" rx=".7"/>',
+    '<path d="M8 2.5v11M3.35 5.25l9.3 5.5M3.35 10.75l9.3-5.5"/>',
     "#9a5b2e",
   ],
   Timelogs: ['<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/>', "#9a5b2e"],

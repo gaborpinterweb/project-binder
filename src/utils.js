@@ -7,10 +7,10 @@ export const APP_NAME = "Project Binder";
 export const APP_VERSION = "0.1.0";
 
 export const TYPES = [
-  { t: "Board", title: "Tasks", sub: "Kanban columns and cards" },
-  { t: "Notes", title: "Notes", sub: "Notes with rich text editor" },
-  { t: "Files", title: "Files", sub: "Assets, kits, and uploads" },
-  { t: "Database", title: "Database", sub: "Tables and structured records" },
+  { t: "Board", title: "Tasks", sub: "Kanban columns with cards" },
+  { t: "Notes", title: "Notes", sub: "Rich text editor with notes list" },
+  { t: "Files", title: "Files", sub: "Documents, assets, and other uploads" },
+  { t: "Database", title: "Records", sub: "Databse with custom schema" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
   { t: "Chat", title: "Chat", sub: "Communication channels and threads", off: true },
@@ -263,6 +263,13 @@ export function boardLabel(folder, mod) {
   const boardCount = (folder?.mods || []).filter((m) => m[0] === "Board").length;
   if (boardCount <= 1) return name;
   return `${name} · ${mod?.[1] || "Tab"}`;
+}
+
+/** Card chip: "Project / Column" or "Project · Board / Column". */
+export function boardColumnLabel(folder, mod, column) {
+  const board = boardLabel(folder, mod);
+  const col = String(column || "").trim();
+  return col ? `${board} / ${col}` : board;
 }
 
 export function slugifyClient(s) {

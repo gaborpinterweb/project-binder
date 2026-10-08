@@ -4,6 +4,7 @@ import { Icon } from "../icons.jsx";
 import {
   PC,
   allBoards,
+  boardColumnLabel,
   boardLabel,
   formatSpent,
   isDone,
@@ -303,45 +304,58 @@ export default function CardDialog({
                         }}
                       />
                       <span className="lab">
-                        {boardLabel(curLoc?.folder, curLoc?.mod)}
+                        {boardColumnLabel(
+                          curLoc?.folder,
+                          curLoc?.mod,
+                          draft.s
+                        )}
                       </span>
                     </span>
                   ) : (
                     <PropDropdown
                       className="prop-chip"
-                      value={
-                        curLoc
-                          ? curLoc.folder.slug + "/" + curLoc.mod[2].slug
-                          : ""
-                      }
-                      options={boards.map(({ folder, mod }) => ({
-                        value: folder.slug + "/" + mod[2].slug,
-                        label: boardLabel(folder, mod),
-                        folder,
-                        mod,
-                      }))}
-                      onChange={(_v, o) => {
-                        const next = { folder: o.folder, mod: o.mod };
-                        setCurLoc(next);
-                        curLocRef.current = next;
-                        const cols = next.mod[2]?.columns || stages;
-                        if (!cols.includes(draftRef.current.s)) {
-                          patch({ s: cols[0] || stages[0] });
-                        }
-                        clearTimeout(persistTimer.current);
-                        persist();
-                      }}
-                      renderOption={(o) => (
-                        <>
-                          <span
-                            className="dot"
-                            style={{
-                              background: o.folder.color || PC[0],
-                            }}
-                          />
-                          {o.label}
-                        </>
-                      )}
+                      sections={boards.map(({ folder, mod, key }) => {
+                        const cols = mod[2]?.columns || stages;
+                        const isCurrent =
+                          curLoc &&
+                          curLoc.folder.slug === folder.slug &&
+                          curLoc.mod[2].slug === mod[2].slug;
+                        return {
+                          key,
+                          label: boardLabel(folder, mod),
+                          value: isCurrent ? draft.s || "" : "",
+                          options: cols.map((col) => ({
+                            value: col,
+                            label: col,
+                            folder,
+                            mod,
+                            column: col,
+                          })),
+                          onChange: (_v, o) => {
+                            const next = { folder: o.folder, mod: o.mod };
+                            setCurLoc(next);
+                            curLocRef.current = next;
+                            setDraft((d) => {
+                              const nextDraft = { ...d, s: o.column };
+                              draftRef.current = nextDraft;
+                              return nextDraft;
+                            });
+                            clearTimeout(persistTimer.current);
+                            persist();
+                          },
+                          renderOption: (o) => (
+                            <>
+                              <span
+                                className="dot"
+                                style={{
+                                  background: o.folder.color || PC[0],
+                                }}
+                              />
+                              {o.label}
+                            </>
+                          ),
+                        };
+                      })}
                     >
                       <span
                         className="dot"
@@ -350,29 +364,12 @@ export default function CardDialog({
                         }}
                       />
                       <span className="lab">
-                        {boardLabel(curLoc?.folder, curLoc?.mod)}
+                        {boardColumnLabel(
+                          curLoc?.folder,
+                          curLoc?.mod,
+                          draft.s
+                        )}
                       </span>
-                    </PropDropdown>
-                  )}
-                  {readonly ? (
-                    <span className="prop-chip prop-chip-ro" title="Board">
-                      <Icon name="Board" size={12} />
-                      <span className="lab">{draft.s || ""}</span>
-                    </span>
-                  ) : (
-                    <PropDropdown
-                      className="prop-chip"
-                      value={draft.s || ""}
-                      options={curLoc?.mod[2]?.columns || stages}
-                      onChange={(o) => {
-                        patch({ s: o });
-                        clearTimeout(persistTimer.current);
-                        draftRef.current = { ...draftRef.current, s: o };
-                        persist();
-                      }}
-                    >
-                      <Icon name="Board" size={12} />
-                      <span className="lab">{draft.s || ""}</span>
                     </PropDropdown>
                   )}
                   {showMasterColumn &&

@@ -22,6 +22,7 @@ function flipSwapTabs(tabsEl, leftSlug, rightSlug, applyOrder) {
 }
 
 function TabMoreMenu({
+  visible,
   canLeft,
   canRight,
   onMoveLeft,
@@ -39,6 +40,10 @@ function TabMoreMenu({
     if (!r) return;
     setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
   };
+
+  useEffect(() => {
+    if (!visible) setOpen(false);
+  }, [visible]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +68,13 @@ function TabMoreMenu({
   };
 
   return (
-    <div className={"tab-more" + (open ? " open" : "")} ref={wrapRef}>
+    <div
+      className={
+        "tab-more" + (open ? " open" : "") + (visible ? "" : " is-hidden")
+      }
+      ref={wrapRef}
+      aria-hidden={visible ? undefined : true}
+    >
       <button
         type="button"
         ref={btnRef}
@@ -72,15 +83,18 @@ function TabMoreMenu({
         aria-label="Tab options"
         aria-haspopup="menu"
         aria-expanded={open}
+        tabIndex={visible ? 0 : -1}
+        disabled={!visible}
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => {
           e.stopPropagation();
+          if (!visible) return;
           setOpen((o) => !o);
         }}
       >
         <Icon name="more" size={14} />
       </button>
-      {open && pos && (
+      {open && pos && visible && (
         <div
           className="pop"
           role="menu"
@@ -148,6 +162,7 @@ function TabBtn({
   onClick,
   disabled,
   showMenu,
+  menuVisible,
   canLeft,
   canRight,
   onMoveLeft,
@@ -168,6 +183,7 @@ function TabBtn({
       <span className="tab-label">{label}</span>
       {showMenu ? (
         <TabMoreMenu
+          visible={!!menuVisible}
           canLeft={canLeft}
           canRight={canRight}
           onMoveLeft={onMoveLeft}
@@ -291,7 +307,8 @@ export default function TabBar({
                 type={mod[0]}
                 slug={slug}
                 disabled={locked}
-                showMenu={active && mod[0] !== "Cover" && !archived}
+                showMenu={mod[0] !== "Cover" && !archived}
+                menuVisible={active}
                 canLeft={i > 1}
                 canRight={i < mods.length - 1}
                 onClick={() => {

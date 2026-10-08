@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { postNote, putNote, deleteNoteApi, moveNoteApi } from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
@@ -34,6 +35,155 @@ const NOTE_PREVIEW_LEN = { sm: 0, md: 140, lg: 280 };
 function previewHtml(body) {
   if (!body) return "<p></p>";
   return body;
+}
+
+function clampMenuPos(left, top, menuEl) {
+  const pad = 8;
+  const w = menuEl?.offsetWidth || 180;
+  const h = menuEl?.offsetHeight || 160;
+  return {
+    left: Math.max(pad, Math.min(left, window.innerWidth - w - pad)),
+    top: Math.max(pad, Math.min(top, window.innerHeight - h - pad)),
+  };
+}
+
+/** Fixed-position menu for note list right-click. */
+function NoteContextMenu({
+  left,
+  top,
+  moveOptions = [],
+  onMove,
+  onDuplicate,
+  onDelete,
+  onClose,
+}) {
+  const wrapRef = useRef(null);
+  const leaveTimer = useRef(0);
+  const [pos, setPos] = useState({ left, top });
+  const [moveOpen, setMoveOpen] = useState(false);
+  const canMove = moveOptions.length > 0;
+
+  useEffect(() => {
+    setPos(clampMenuPos(left, top, wrapRef.current));
+  }, [left, top]);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) onClose?.();
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+
+  const run = (fn) => {
+    onClose?.();
+    fn?.();
+  };
+
+  const showMove = () => {
+    if (!canMove) return;
+    window.clearTimeout(leaveTimer.current);
+    setMoveOpen(true);
+  };
+
+  const hideMove = () => {
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => setMoveOpen(false), 120);
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      className="pop dd-menu notes-ctx-menu"
+      role="menu"
+      aria-label="Note options"
+      style={{ display: "block", left: pos.left, top: pos.top }}
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <div
+        className={"notes-ctx-move" + (moveOpen ? " open" : "")}
+        onMouseEnter={showMove}
+        onMouseLeave={hideMove}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          className="notes-ctx-move-btn"
+          disabled={!canMove}
+          aria-haspopup="menu"
+          aria-expanded={moveOpen && canMove}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!canMove) return;
+            window.clearTimeout(leaveTimer.current);
+            setMoveOpen((o) => !o);
+          }}
+        >
+          <Icon name="move" size={14} />
+          <span className="notes-ctx-move-lab">Move</span>
+          <span className="notes-ctx-move-caret" aria-hidden="true">
+            <Icon name="arrow" size={12} />
+          </span>
+        </button>
+        {moveOpen && canMove ? (
+          <div className="pop notes-ctx-move-pop" role="menu" aria-label="Move to tab">
+            {moveOptions.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  run(() => onMove?.(t));
+                }}
+              >
+                <span
+                  className="notes-ctx-move-dot"
+                  style={{ background: t.color || "var(--acc)" }}
+                />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={(e) => {
+          e.stopPropagation();
+          run(onDuplicate);
+        }}
+      >
+        Duplicate
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="danger"
+        onClick={(e) => {
+          e.stopPropagation();
+          run(onDelete);
+        }}
+      >
+        <Icon name="Trash" size={14} />
+        Delete
+      </button>
+    </div>
+  );
 }
 
 function sortNotes(list, sort) {
@@ -83,6 +233,7 @@ export default function Notes({
   const [toolbarMounted, setToolbarMounted] = useState(false);
   const [toolbarIn, setToolbarIn] = useState(false);
   const [editingView, setEditingView] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const moveOptions = useMemo(() => {
     const currentKey = `${folder?.slug || ""}/${d.slug || ""}`;
     return allNotesTabs(folders)
@@ -176,9 +327,19 @@ export default function Notes({
     }
   };
 
-  const deleteNote = async () => {
-    if (!selected || readonly) return;
-    const title = noteListTitle(selected.body) || "this note";
+  const clearNoteUnlock = (noteSlug) => {
+    const key = unlockKey(noteSlug);
+    setUnlocked((prev) => {
+      if (!prev[key]) return prev;
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
+
+  const deleteNote = async (note = selected) => {
+    if (!note || readonly) return;
+    const title = noteListTitle(note.body) || "this note";
     const ok = await askConfirm({
       title: `Delete "${title}"?`,
       message: "It will move to Trash and can be restored within 30 days.",
@@ -189,21 +350,15 @@ export default function Notes({
     const data = await deleteNoteApi({
       project: folder.slug,
       notesTab: d.slug,
-      note: selected.slug,
+      note: note.slug,
     });
-    const key = unlockKey(selected.slug);
-    setUnlocked((prev) => {
-      if (!prev[key]) return prev;
-      const copy = { ...prev };
-      delete copy[key];
-      return copy;
-    });
-    setSelectedSlug(null);
+    clearNoteUnlock(note.slug);
+    if (selectedSlug === note.slug) setSelectedSlug(null);
     onApplyWorkspace(data);
   };
 
-  const moveNote = async (dest) => {
-    if (!selected || readonly || !dest?.folder || !dest?.mod) return;
+  const moveNote = async (dest, note = selected) => {
+    if (!note || readonly || !dest?.folder || !dest?.mod) return;
     const toProject = dest.folder.slug;
     const toNotesTab = dest.mod[2]?.slug;
     if (!toProject || !toNotesTab) return;
@@ -211,18 +366,12 @@ export default function Notes({
       const data = await moveNoteApi({
         project: folder.slug,
         notesTab: d.slug,
-        note: selected.slug,
+        note: note.slug,
         toProject,
         toNotesTab,
       });
-      const key = unlockKey(selected.slug);
-      setUnlocked((prev) => {
-        if (!prev[key]) return prev;
-        const copy = { ...prev };
-        delete copy[key];
-        return copy;
-      });
-      setSelectedSlug(null);
+      clearNoteUnlock(note.slug);
+      if (selectedSlug === note.slug) setSelectedSlug(null);
       onApplyWorkspace(data, {
         keepNav: { project: toProject, board: toNotesTab, g: null },
       });
@@ -231,26 +380,34 @@ export default function Notes({
     }
   };
 
+  const duplicateNote = async (note) => {
+    if (!note || readonly) return;
+    const title = noteListTitle(note.body) || "Untitled";
+    const data = await postNote({
+      project: folder.slug,
+      notesTab: d.slug,
+      title,
+      body: note.body || EMPTY_NOTE_BODY,
+    });
+    onApplyWorkspace(data);
+    if (data.slug) {
+      setSelectedSlug(data.slug);
+      setUnlocked((prev) => ({ ...prev, [unlockKey(data.slug)]: true }));
+    }
+  };
+
   const selectNote = (slug) => {
     if (slug === selectedSlug) return;
     setSelectedSlug(slug);
   };
 
-  if (notes.length === 0) {
-    return (
-      <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>
-        <div className="empty">
-          <h2>No notes yet</h2>
-          <p>Create your first note to start writing.</p>
-          {!readonly && (
-            <button type="button" className="cta" onClick={addNote}>
-              New note
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const openNoteCtx = (e, note) => {
+    if (readonly || !note) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedSlug(note.slug);
+    setCtxMenu({ left: e.clientX, top: e.clientY, note });
+  };
 
   return (
     <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>
@@ -312,8 +469,8 @@ export default function Notes({
                 editor={editor}
                 forNotes
                 moveOptions={readonly ? [] : moveOptions}
-                onMove={readonly ? undefined : moveNote}
-                onDelete={readonly ? undefined : deleteNote}
+                onMove={readonly ? undefined : (dest) => moveNote(dest)}
+                onDelete={readonly ? undefined : () => deleteNote()}
               />
             </div>
           )}
@@ -348,31 +505,36 @@ export default function Notes({
       </div>
       <div className="notes-layout">
         <aside className="notes-sidebar">
-          <div className={"notes-list size-" + cardSize}>
-            {notes.map((n) => {
-              const preview =
-                cardSize === "sm"
-                  ? ""
-                  : noteListPreview(n.body, NOTE_PREVIEW_LEN[cardSize] || 140);
-              return (
-                <button
-                  key={n.slug}
-                  type="button"
-                  className={"notes-item" + (n.slug === selectedSlug ? " on" : "")}
-                  onClick={() => selectNote(n.slug)}
-                >
-                  <span className="notes-item-title">{noteListTitle(n.body)}</span>
-                  {preview ? (
-                    <span className="notes-item-preview">{preview}</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+          {notes.length === 0 ? (
+            <p className="notes-empty">No notes yet</p>
+          ) : (
+            <div className={"notes-list size-" + cardSize}>
+              {notes.map((n) => {
+                const preview =
+                  cardSize === "sm"
+                    ? ""
+                    : noteListPreview(n.body, NOTE_PREVIEW_LEN[cardSize] || 140);
+                return (
+                  <button
+                    key={n.slug}
+                    type="button"
+                    className={"notes-item" + (n.slug === selectedSlug ? " on" : "")}
+                    onClick={() => selectNote(n.slug)}
+                    onContextMenu={(e) => openNoteCtx(e, n)}
+                  >
+                    <span className="notes-item-title">{noteListTitle(n.body)}</span>
+                    {preview ? (
+                      <span className="notes-item-preview">{preview}</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </aside>
         <div className="notes-main">
           {!selected ? (
-            <p className="notes-placeholder">Select or create a note</p>
+            <p className="notes-placeholder">Nothing is selected</p>
           ) : editingView ? (
             <div className="notes-rte-wrap">
               <RichTextEditor
@@ -406,6 +568,20 @@ export default function Notes({
           )}
         </div>
       </div>
+      {ctxMenu
+        ? createPortal(
+            <NoteContextMenu
+              left={ctxMenu.left}
+              top={ctxMenu.top}
+              moveOptions={moveOptions}
+              onMove={(dest) => moveNote(dest, ctxMenu.note)}
+              onDuplicate={() => duplicateNote(ctxMenu.note)}
+              onDelete={() => deleteNote(ctxMenu.note)}
+              onClose={() => setCtxMenu(null)}
+            />,
+            document.body
+          )
+        : null}
     </div>
   );
 }

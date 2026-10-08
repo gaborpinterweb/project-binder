@@ -11,9 +11,11 @@ export function showSnackbar({
   message = "",
   durationMs = 4000,
   action = null,
+  persist = false,
 } = {}) {
   if (!message || !setSnackbarState) return;
   window.clearTimeout(hideTimer);
+  hideTimer = 0;
   const id = ++snackbarSeq;
   const actionLabel = action?.label ? String(action.label) : "";
   const onAction = typeof action?.onClick === "function" ? action.onClick : null;
@@ -23,6 +25,7 @@ export function showSnackbar({
     actionLabel,
     onAction,
   });
+  if (persist) return;
   const ms = Math.max(1000, Number(durationMs) || 4000);
   hideTimer = window.setTimeout(() => {
     if (snackbarSeq === id) dismissSnackbar();

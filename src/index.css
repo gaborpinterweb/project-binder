@@ -33,8 +33,8 @@ aside .side-scroll{flex:1;min-height:0;overflow:auto}
 .pomo-block .pomo-note{display:block;width:100%;margin:0 0 8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--side-ink) 16%,transparent);border-radius:calc(var(--radius) - 6px);background:color-mix(in srgb,var(--side-ink) 6%,transparent);color:var(--side-ink);font:inherit;font-size:12px;line-height:1.35;resize:none;min-height:calc(2 * 1.35em + 16px)}
 .pomo-block .pomo-note::placeholder{color:var(--side-mute)}
 .pomo-block .pomo-note:focus{outline:none;border-color:color-mix(in srgb,var(--side-ink) 32%,transparent);background:color-mix(in srgb,var(--side-ink) 10%,transparent)}
-.pomo-block .pomo-stop{display:block;width:100%;text-align:center;padding:7px 8px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:600;color:var(--side-ink);background:color-mix(in srgb,var(--side-ink) 12%,transparent)}
-.pomo-block .pomo-stop:hover{background:color-mix(in srgb,var(--side-ink) 18%,transparent);color:var(--side-ink)}
+.pomo-block .pomo-stop{display:block;width:100%;text-align:center;padding:7px 8px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:600;color:#fff;background:#d92d20}
+.pomo-block .pomo-stop:hover{background:#f04438;color:#fff}
 main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--side);min-height:0}
 main.global-view{background:var(--side)}
 .stage{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;margin:0 8px 8px 0;border-radius:0 var(--radius) var(--radius) var(--radius);overflow:hidden;transition:margin-left .35s cubic-bezier(.22,.61,.36,1),border-radius .35s cubic-bezier(.22,.61,.36,1)}

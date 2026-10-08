@@ -395,6 +395,7 @@ export default function App() {
         showSnackbar({
           message: `${title} · ${formatDuration(durationSec)}`,
           durationMs: 7000,
+          persist: pomoDone,
           action: {
             label: "Edit",
             onClick: () => setTimelogDialog({ mode: "edit", entry }),

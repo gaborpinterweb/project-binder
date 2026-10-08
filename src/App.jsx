@@ -159,6 +159,10 @@ export default function App() {
     if (pr && mod?.[2]?.slug) saveLastTab(pr.slug, mod[2].slug);
   }, []);
 
+  // Apply API workspace payload into folders/stages. Navigation opts (mutually used):
+  // - initial: restore session / open-on-launch
+  // - project (+ optional board, g): jump to a specific place
+  // - keepNav: { project, board, g } — keep selection after a mutation reload
   const applyWorkspace = useCallback(
     (data, opts = {}) => {
       let nextStages = stagesRef.current;
@@ -217,6 +221,7 @@ export default function App() {
           gRef.current = opts.g;
         }
       } else if (opts.keepNav) {
+        // If keepNav.g is omitted, preserve current global view; pass g: null to clear it.
         const keepP = opts.keepNav.project ?? foldersRef.current[pRef.current]?.slug;
         const keepM = opts.keepNav.board;
         const keepG = opts.keepNav.g !== undefined ? opts.keepNav.g : gRef.current;
@@ -240,6 +245,7 @@ export default function App() {
     [bump]
   );
 
+  // Helper for mutation callers: keep project tab + current global view (`g`).
   const keepNav = useCallback(
     (project, board) => ({
       keepNav: { project, board, g: gRef.current },

@@ -1,0 +1,27 @@
+---
+description: Server workspace persistence and isDemo rules
+globs: server.cjs
+alwaysApply: false
+---
+
+# Server workspace (`server.cjs`)
+
+## Storage
+
+- **Write** `userWorkspace.json` only.
+- **Never write** `seedWorkspace.json` (read-only seed / demo).
+- If `userWorkspace.json` is missing/empty/corrupt, clone from seed (existing startup path).
+
+## Demo flag
+
+- Preserve `isDemo: true` on edit when the entity already has it.
+- User-created entities omit `isDemo`. Do not strip the flag on save of demo data.
+
+## Alignment with client
+
+- Slugify, DB column normalize, and custom-view normalize exist on both server and client (`src/db*` / `utils`).
+- Changing behavior on one side requires checking the other so API and UI stay consistent.
+
+## Routes
+
+- Prefer extending existing `/api/*` handlers and write helpers over adding parallel write paths for the same resource.

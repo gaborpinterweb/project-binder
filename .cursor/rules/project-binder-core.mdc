@@ -1,0 +1,32 @@
+---
+description: Core Project Binder standards — reuse, workspace flow, agent defaults
+alwaysApply: true
+---
+
+# Project Binder — core
+
+Read [AGENTS.md](AGENTS.md) for the module map. Do not invent parallel architecture.
+
+## Code shape
+
+- **Reuse first**: check `src/utils.js`, `src/db*.js`, `src/api.js`, and existing components before adding helpers or UI shells.
+- **Extract on the second copy** — especially in `App.jsx` and `Board.jsx`. Prefer a small shared file over growing megacomponents with paste.
+- Match existing React style (function components, no new state library, no new CSS framework).
+- Don’t add dependencies unless clearly needed for the task.
+- Don’t “clean up” unrelated code while implementing a feature.
+- Prefer file-private helpers; avoid exporting symbols only used in one file.
+- Comments: invariants / non-obvious why only — never narrate the next line.
+
+## Workspace mutations
+
+```text
+API call (src/api.js) → applyWorkspace(data, opts) in App
+```
+
+- Prefer `keepNav(projectSlug, boardSlug)` from App so project/tab/`g` survive reload.
+- Do not introduce a second client store for workspace data.
+
+## Agent defaults
+
+- Commit / push / amend / browser QA only when the user asks.
+- Verify with `npm run build` (or existing checks) after substantive edits.

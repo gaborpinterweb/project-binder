@@ -18,14 +18,8 @@ import {
 import { Icon } from "../icons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import Dropdown from "./Dropdown.jsx";
-import TimelogCalendar from "./TimelogCalendar.jsx";
 import TimelogDialog from "./TimelogDialog.jsx";
 import { askConfirm } from "../confirmDialog.js";
-
-const TIMELOG_VIEWS = [
-  { value: "list", label: "List view" },
-  { value: "calendar", label: "Calendar view" },
-];
 
 function entryBoardKey(entry) {
   return `${entry.project || ""}/${entry.board || ""}`;
@@ -329,10 +323,8 @@ function TimelogRow({
 }) {
   const color = entry.color || GACC;
   const note = entry.note || "";
-  const src = [entry.projectName || entry.project, entry.boardName || entry.board]
-    .filter(Boolean)
-    .join(" · ");
   const busy = busySlug === entry.slug;
+  const stamp = entry.endedAt || entry.startedAt || "";
 
   return (
     <div className="timelog-row" style={{ ["--pc"]: color }}>
@@ -346,7 +338,6 @@ function TimelogRow({
           <b>
             <span className="card-name">{entry.title || "Untitled"}</span>
           </b>
-          {src ? <span className="src">{src}</span> : null}
         </button>
       </div>
       <div className="timelog-note">
@@ -356,10 +347,10 @@ function TimelogRow({
           <span className="timelog-note-text empty">-</span>
         )}
       </div>
-      <time
-        className="timelog-range"
-        dateTime={entry.endedAt || entry.startedAt || ""}
-      >
+      <time className="timelog-date" dateTime={stamp}>
+        {formatExportDate(stamp) || "—"}
+      </time>
+      <time className="timelog-range" dateTime={stamp}>
         {formatFromTo(entry)}
       </time>
       <div className="timelog-time">
@@ -383,14 +374,12 @@ export default function Timelogs({
   refreshKey,
 }) {
   const [entries, setEntries] = useState(null);
-  const [viewMode, setViewMode] = useState("list");
   const [period, setPeriod] = useState(() =>
     timelogFilter ? "All time" : "This week"
   );
   const [groupBy, setGroupBy] = useState("Day");
   const [boardOff, setBoardOff] = useState(() => new Set());
   const [busySlug, setBusySlug] = useState(null);
-  const [calSelectedSlug, setCalSelectedSlug] = useState(null);
   const [dialog, setDialog] = useState(null); // null | { mode: "add" } | { mode: "edit", entry }
 
   const boards = useMemo(
@@ -442,16 +431,13 @@ export default function Timelogs({
 
   const shown = useMemo(() => {
     if (!baseFiltered) return null;
-    if (viewMode === "calendar") return baseFiltered;
     return baseFiltered.filter((e) => matchesTimelogPeriod(e, period));
-  }, [baseFiltered, viewMode, period]);
+  }, [baseFiltered, period]);
 
   const groups = useMemo(
     () =>
-      shown && viewMode === "list"
-        ? groupTimelogsByPeriodAndProject(shown, groupBy)
-        : null,
-    [shown, groupBy, viewMode]
+      shown ? groupTimelogsByPeriodAndProject(shown, groupBy) : null,
+    [shown, groupBy]
   );
 
   const toggleBoard = (key) => {
@@ -543,68 +529,42 @@ export default function Timelogs({
           <Icon name="plus" size={18} />
           <span className="mod-act-lab">Add log</span>
         </button>
-        <Dropdown
-          className="mod-view-dd"
-          buttonClassName={"mod-act" + (viewMode === "calendar" ? " on" : "")}
-          ariaLabel="View options"
-          title="View options"
-          align="right"
-          caret={false}
-          value={viewMode}
-          options={TIMELOG_VIEWS}
-          onChange={setViewMode}
-          renderOption={(o) => (
-            <span className="timelog-view-opt">
-              <span className="db-view-check" aria-hidden="true">
-                {o.value === viewMode ? <Icon name="check" size={14} /> : null}
-              </span>
-              <span>{o.label}</span>
-            </span>
-          )}
-        >
-          <Icon name="eye" size={18} />
-          <span className="mod-act-lab">View</span>
-        </Dropdown>
         <BoardFilterDropdown
           boards={boards}
           boardOff={boardOff}
           onToggle={toggleBoard}
         />
-        {viewMode === "list" ? (
-          <>
-            <Dropdown
-              className="mod-view-dd"
-              buttonClassName="mod-act"
-              ariaLabel="Group by"
-              title="Group by"
-              align="right"
-              caret={false}
-              value={groupBy}
-              options={TIMELOG_GROUP_BYS}
-              onChange={setGroupBy}
-            >
-              <Icon name="list" size={18} />
-              <span className="mod-act-lab">Group</span>
-            </Dropdown>
-            <Dropdown
-              className="mod-view-dd"
-              buttonClassName="mod-act"
-              ariaLabel="Timelog period"
-              title="Timelog period"
-              align="right"
-              caret={false}
-              value={period}
-              options={TIMELOG_PERIODS}
-              onChange={setPeriod}
-            >
-              <Icon name="Calendar" size={18} />
-              <span className="mod-act-lab">Period</span>
-            </Dropdown>
-          </>
-        ) : null}
+        <Dropdown
+          className="mod-view-dd"
+          buttonClassName="mod-act"
+          ariaLabel="Group by"
+          title="Group by"
+          align="right"
+          caret={false}
+          value={groupBy}
+          options={TIMELOG_GROUP_BYS}
+          onChange={setGroupBy}
+        >
+          <Icon name="list" size={18} />
+          <span className="mod-act-lab">Group</span>
+        </Dropdown>
+        <Dropdown
+          className="mod-view-dd"
+          buttonClassName="mod-act"
+          ariaLabel="Timelog period"
+          title="Timelog period"
+          align="right"
+          caret={false}
+          value={period}
+          options={TIMELOG_PERIODS}
+          onChange={setPeriod}
+        >
+          <Icon name="Calendar" size={18} />
+          <span className="mod-act-lab">Period</span>
+        </Dropdown>
         <ExportDropdown
           entries={shown || []}
-          period={viewMode === "calendar" ? "calendar" : period}
+          period={period}
           disabled={!shown?.length}
         />
       </GlobalBar>
@@ -616,55 +576,35 @@ export default function Timelogs({
           </button>
         </div>
       )}
-      <div className={"log timelogs" + (viewMode === "calendar" ? " timelogs-cal" : "")}>
+      <div className="log timelogs">
         {shown == null && <div className="empty-log">Loading…</div>}
-        {viewMode === "calendar" && shown ? (
-          shown.length === 0 && !entries?.length ? (
-            <div className="empty-log">
-              No timelogs yet. Start a pomodoro from a card.
-            </div>
-          ) : (
-            <TimelogCalendar
-              entries={shown}
-              selectedSlug={calSelectedSlug}
-              onSelectEntry={(entry) =>
-                setCalSelectedSlug(entry?.slug || null)
-              }
-              renderInspector={renderTimelogRow}
-            />
-          )
-        ) : null}
-        {viewMode === "list" ? (
-          <>
-            {shown && !shown.length && (
-              <div className="empty-log">
-                {filter
-                  ? period === "All time"
-                    ? "No timelogs for this card."
-                    : `No timelogs for this card in ${period.toLowerCase()}.`
-                  : entries?.length
-                    ? period === "All time"
-                      ? "No timelogs yet. Start a pomodoro from a card."
-                      : `No timelogs for ${period.toLowerCase()}.`
-                    : "No timelogs yet. Start a pomodoro from a card."}
-              </div>
-            )}
-            {groups &&
-              groups.map((periodGroup) => (
-                <section className="log-period" key={periodGroup.key}>
-                  {periodGroup.label != null && (
-                    <header className="log-period-head">
-                      <h3>{periodGroup.label}</h3>
-                      <span className="log-agg">
-                        {formatSpent(periodGroup.totalSec)}
-                      </span>
-                    </header>
-                  )}
-                  {renderTimelogRows(periodGroup.entries)}
-                </section>
-              ))}
-          </>
-        ) : null}
+        {shown && !shown.length && (
+          <div className="empty-log">
+            {filter
+              ? period === "All time"
+                ? "No timelogs for this card."
+                : `No timelogs for this card in ${period.toLowerCase()}.`
+              : entries?.length
+                ? period === "All time"
+                  ? "No timelogs yet. Start a pomodoro from a card."
+                  : `No timelogs for ${period.toLowerCase()}.`
+                : "No timelogs yet. Start a pomodoro from a card."}
+          </div>
+        )}
+        {groups &&
+          groups.map((periodGroup) => (
+            <section className="log-period" key={periodGroup.key}>
+              {periodGroup.label != null && (
+                <header className="log-period-head">
+                  <h3>{periodGroup.label}</h3>
+                  <span className="log-agg">
+                    {formatSpent(periodGroup.totalSec)}
+                  </span>
+                </header>
+              )}
+              {renderTimelogRows(periodGroup.entries)}
+            </section>
+          ))}
       </div>
       {dialog ? (
         <TimelogDialog

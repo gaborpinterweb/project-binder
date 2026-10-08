@@ -16,6 +16,64 @@ import RichTextEditor from "./RichTextEditor.jsx";
 import TimelogDropdown from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
 
+function CardMoreMenu({ onDuplicate, onDelete }) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const run = (fn) => {
+    setOpen(false);
+    fn?.();
+  };
+
+  return (
+    <div className={"card-dlg-more" + (open ? " open" : "")} ref={wrapRef}>
+      <button
+        type="button"
+        className="card-dlg-more-btn"
+        title="Card options"
+        aria-label="Card options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="more" size={16} />
+      </button>
+      {open ? (
+        <div className="pop" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onDuplicate)}
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => run(onDelete)}
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function CardDialog({
   row,
   isDraft,
@@ -197,6 +255,30 @@ export default function CardDialog({
                   patch({ n: e.target.value });
                 }}
               />
+              {!readonly &&
+                !isDraft &&
+                curLoc?.mod[0] === "Board" &&
+                draft.slug && (
+                  <CardMoreMenu
+                    onDuplicate={async () => {
+                      clearTimeout(persistTimer.current);
+                      await persist();
+                      await onDuplicate(draft, curLoc);
+                    }}
+                    onDelete={async () => {
+                      const label = (draft.n || "").trim() || "Untitled";
+                      const ok = await askConfirm({
+                        title: `Delete "${label}"?`,
+                        confirmLabel: "Delete",
+                        danger: true,
+                      });
+                      if (!ok) return;
+                      clearTimeout(persistTimer.current);
+                      await onDelete(curLoc.folder, curLoc.mod, draft.slug);
+                      onClose({ deleted: true });
+                    }}
+                  />
+                )}
             </div>
           )}
           {isDb ? (
@@ -358,51 +440,16 @@ export default function CardDialog({
             </>
           )}
         </div>
-        {!readonly &&
-        ((!isDraft && curLoc?.mod[0] === "Board" && draft.slug) || isDraft) ? (
+        {!readonly && isDraft ? (
           <div className="dlg-controls">
             <div className="actions">
-              {!isDraft && curLoc?.mod[0] === "Board" && draft.slug ? (
-                <>
-                  <button
-                    type="button"
-                    className="dlg-delete"
-                    onClick={async () => {
-                      const label = (draft.n || "").trim() || "Untitled";
-                      const ok = await askConfirm({
-                        title: `Delete "${label}"?`,
-                        confirmLabel: "Delete",
-                        danger: true,
-                      });
-                      if (!ok) return;
-                      clearTimeout(persistTimer.current);
-                      await onDelete(curLoc.folder, curLoc.mod, draft.slug);
-                      onClose({ deleted: true });
-                    }}
-                  >
-                    Delete
-                  </button>
-                  <button
-                    type="button"
-                    className="dlg-duplicate"
-                    onClick={async () => {
-                      clearTimeout(persistTimer.current);
-                      await persist();
-                      await onDuplicate(draft, curLoc);
-                    }}
-                  >
-                    Duplicate
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="dlg-create"
-                  onClick={() => close(true)}
-                >
-                  Create
-                </button>
-              )}
+              <button
+                type="button"
+                className="dlg-create"
+                onClick={() => close(true)}
+              >
+                Create
+              </button>
             </div>
           </div>
         ) : null}

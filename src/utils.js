@@ -7,10 +7,10 @@ export const APP_NAME = "Project Binder";
 export const APP_VERSION = "0.1.0";
 
 export const TYPES = [
-  { t: "Board", title: "Task board", sub: "Kanban columns and cards" },
+  { t: "Board", title: "Tasks", sub: "Kanban columns and cards" },
   { t: "Notes", title: "Notes", sub: "Notes with rich text editor" },
-  { t: "Database", title: "Database", sub: "Tables and structured records" },
   { t: "Files", title: "Files", sub: "Assets, kits, and uploads" },
+  { t: "Database", title: "Database", sub: "Tables and structured records" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
   { t: "Chat", title: "Chat", sub: "Communication channels and threads", off: true },

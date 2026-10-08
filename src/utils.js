@@ -19,26 +19,7 @@ export const TYPES = [
   { t: "Workflows", title: "Workflows", sub: "Trigger remote workers", off: true },
 ];
 
-const STORAGE_PREFIX = "projectory:";
-const LEGACY_STORAGE_PREFIX = "freelance-workbook:";
-
-function migrateStorageKeys() {
-  try {
-    const legacy = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(LEGACY_STORAGE_PREFIX)) legacy.push(key);
-    }
-    for (const oldKey of legacy) {
-      const newKey = STORAGE_PREFIX + oldKey.slice(LEGACY_STORAGE_PREFIX.length);
-      if (localStorage.getItem(newKey) == null) {
-        localStorage.setItem(newKey, localStorage.getItem(oldKey));
-      }
-      localStorage.removeItem(oldKey);
-    }
-  } catch {}
-}
-migrateStorageKeys();
+const STORAGE_PREFIX = "project-binder:";
 
 const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
 const SESSION_KEY = `${STORAGE_PREFIX}session`;
@@ -72,7 +53,7 @@ export const PC = [
 
 export function loadStages(list, setStages) {
   if (!list || !list.length) return;
-  const next = list.map((s) => (typeof s === "string" ? s : s.name)).filter(Boolean);
+  const next = list.filter((s) => typeof s === "string" && s);
   if (setStages) setStages(next);
   return next;
 }

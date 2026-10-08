@@ -119,7 +119,6 @@ Tracked polish items — not blockers for a honest 0.1.0, but worth doing soon:
 - **Electron UX:** clearer load/error copy for packaged app users (avoid `npm start` / localhost-only messaging)
 - **Onboarding visuals:** real screenshots or product images in the launch flow (placeholders removed)
 - **Error UX:** replace widespread `alert()` with in-app confirm/prompt dialogs where it matters
-- **localStorage prefix:** rename `projectory:` client keys (legacy migrate from `freelance-workbook:` already exists) before wider adoption, or document the name
 - **Demo cleanup:** “Remove demo data” button that deletes `isDemo: true` entities only (see Demo data above)
 - **Import:** implement Settings → Developer → Import (currently stubbed / disabled)
 - **Auto-update:** current flow (check GitHub Releases → sidebar “Update available” → open releases page) is enough for MVP; full `electron-updater` + signing/notarization is later

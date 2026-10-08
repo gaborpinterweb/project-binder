@@ -7,9 +7,6 @@ const path = require("path");
 const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
 const SEED_UPLOADS = path.join(__dirname, "seedUploads");
-const LEGACY_SEED = path.join(__dirname, "launchData.json");
-const LEGACY_APP_USER_WORKSPACE = path.join(__dirname, "userWorkspace.json");
-const LEGACY_USER = path.join(__dirname, "userData.json");
 const { USER_DATA_DIR, USER_WORKSPACE } = resolveUserPaths();
 const PORT = 3456;
 const DIST = path.join(__dirname, "dist");
@@ -298,19 +295,6 @@ function atomicWrite(file, doc) {
   fs.renameSync(tmp, file);
 }
 
-function migrateLegacyWorkspaceFiles() {
-  if (!fs.existsSync(SEED_WORKSPACE) && fs.existsSync(LEGACY_SEED)) {
-    fs.renameSync(LEGACY_SEED, SEED_WORKSPACE);
-  }
-  if (fs.existsSync(USER_WORKSPACE)) return;
-  const candidates = [LEGACY_APP_USER_WORKSPACE, LEGACY_USER];
-  for (const src of candidates) {
-    if (!src || src === USER_WORKSPACE || !fs.existsSync(src)) continue;
-    fs.copyFileSync(src, USER_WORKSPACE);
-    return;
-  }
-}
-
 function loadSeedWorkspace() {
   const result = readJsonFile(SEED_WORKSPACE);
   if (!result.ok) {
@@ -320,32 +304,18 @@ function loadSeedWorkspace() {
   return deepClone(result.doc);
 }
 
-function stripProjectIcons(doc) {
-  let changed = false;
-  for (const p of doc.projects || []) {
-    if (p && Object.prototype.hasOwnProperty.call(p, "icon")) {
-      delete p.icon;
-      changed = true;
-    }
-  }
-  return changed;
-}
-
 function saveStore() {
   if (!store) throw new Error("store not initialized");
-  stripProjectIcons(store);
   atomicWrite(USER_WORKSPACE, store);
 }
 
 function ensureStore() {
-  migrateLegacyWorkspaceFiles();
   const user = readJsonFile(USER_WORKSPACE);
   if (user.ok) {
     store = deepClone(user.doc);
-    const stripped = stripProjectIcons(store);
     ensureTrash();
     const purged = purgeExpiredTrash();
-    if (purged || stripped) saveStore();
+    if (purged) saveStore();
     return { reseeded: false, purged };
   }
   store = loadSeedWorkspace();

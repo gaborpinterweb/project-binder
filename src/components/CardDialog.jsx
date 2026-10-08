@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { cardTimeSpentSec } from "../api.js";
+import { fetchCardTimelogs } from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
   PC,
   allBoards,
   boardColumnLabel,
   boardLabel,
+  formatDuration,
   formatSpent,
   isDone,
   pastel,
@@ -16,6 +17,16 @@ import PropDropdown, { PropAffix, closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 import TimelogDropdown from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
+
+function formatCardTimelogDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function CardMoreMenu({ onDuplicate, onDelete }) {
   const wrapRef = useRef(null);
@@ -106,6 +117,7 @@ export default function CardDialog({
   const [originLoc, setOriginLoc] = useState(loc);
   const [draft, setDraft] = useState(() => ({ ...row }));
   const [spent, setSpent] = useState(0);
+  const [cardLogs, setCardLogs] = useState([]);
   const persistTimer = useRef(null);
   const draftRef = useRef(draft);
   const curLocRef = useRef(curLoc);
@@ -117,17 +129,25 @@ export default function CardDialog({
   const isDb = !isDraft && originLoc?.mod?.[0] === "Database";
 
   useEffect(() => {
-    if (readonly || isDraft || !curLoc || curLoc.mod[0] !== "Board" || !draft.slug) return;
+    if (isDraft || !curLoc || curLoc.mod[0] !== "Board" || !draft.slug) {
+      setCardLogs([]);
+      setSpent(0);
+      return;
+    }
     let cancelled = false;
-    cardTimeSpentSec(curLoc.folder.slug, curLoc.mod[2].slug, draft.slug).then(
-      (total) => {
-        if (!cancelled) setSpent(total);
+    fetchCardTimelogs(curLoc.folder.slug, curLoc.mod[2].slug, draft.slug).then(
+      (entries) => {
+        if (cancelled) return;
+        setCardLogs(entries);
+        setSpent(
+          entries.reduce((sum, e) => sum + (e.durationSec || 0), 0)
+        );
       }
     );
     return () => {
       cancelled = true;
     };
-  }, [readonly, isDraft, curLoc, draft.slug]);
+  }, [isDraft, curLoc, draft.slug]);
 
   useEffect(() => {
     const esc = (e) => {
@@ -384,14 +404,24 @@ export default function CardDialog({
                     ) : (
                       <PropDropdown
                         className="prop-chip"
-                        value={draft.ms || stages[0]}
-                        options={stages}
-                        onChange={(o) => {
-                          patch({ ms: o });
-                          clearTimeout(persistTimer.current);
-                          draftRef.current = { ...draftRef.current, ms: o };
-                          persist();
-                        }}
+                        title="Master board"
+                        sections={[
+                          {
+                            key: "master",
+                            label: "Master board",
+                            value: draft.ms || stages[0],
+                            options: stages,
+                            onChange: (o) => {
+                              patch({ ms: o });
+                              clearTimeout(persistTimer.current);
+                              draftRef.current = {
+                                ...draftRef.current,
+                                ms: o,
+                              };
+                              persist();
+                            },
+                          },
+                        ]}
                       >
                         <Icon name="Masterboard" size={12} />
                         <span className="lab">{draft.ms || ""}</span>
@@ -434,6 +464,34 @@ export default function CardDialog({
                   }}
                 />
               </div>
+              {cardLogs.length > 0 ? (
+                <section className="dlg-timelogs">
+                  <h2>Timelogs</h2>
+                  <ul className="dlg-timelog-list">
+                    {cardLogs.map((entry) => {
+                      const stamp = entry.endedAt || entry.startedAt || "";
+                      return (
+                        <li key={entry.slug} className="dlg-timelog-item">
+                          <span
+                            className={
+                              "dlg-timelog-note" +
+                              (entry.note ? "" : " empty")
+                            }
+                          >
+                            {entry.note || "—"}
+                          </span>
+                          <time className="dlg-timelog-date" dateTime={stamp}>
+                            {formatCardTimelogDate(stamp)}
+                          </time>
+                          <span className="dlg-timelog-dur">
+                            {formatDuration(entry.durationSec)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ) : null}
             </>
           )}
         </div>

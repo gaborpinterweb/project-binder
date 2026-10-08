@@ -193,16 +193,26 @@ export async function moveNoteApi(body) {
   return apiOkData("/api/note/move", { method: "POST", body }, "Could not move note");
 }
 
-export async function cardTimeSpentSec(project, board, card) {
-  if (!project || !board || !card) return 0;
+/** Timelog entries for one board card, newest first. */
+export async function fetchCardTimelogs(project, board, card) {
+  if (!project || !board || !card) return [];
   try {
     const entries = await fetchTimelogs();
     return entries
       .filter((e) => e.project === project && e.board === board && e.card === card)
-      .reduce((sum, e) => sum + (e.durationSec || 0), 0);
+      .sort((a, b) =>
+        String(b.endedAt || b.startedAt || "").localeCompare(
+          String(a.endedAt || a.startedAt || "")
+        )
+      );
   } catch {
-    return 0;
+    return [];
   }
+}
+
+export async function cardTimeSpentSec(project, board, card) {
+  const entries = await fetchCardTimelogs(project, board, card);
+  return entries.reduce((sum, e) => sum + (e.durationSec || 0), 0);
 }
 
 export async function revealUserData() {

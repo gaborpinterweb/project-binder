@@ -18,6 +18,10 @@ TACTILE = ROOT / "assets" / "logo-tactile.png"
 OUT_PNG = ROOT / "assets" / "icon.png"
 OUT_ICO = ROOT / "assets" / "icon.ico"
 OUT_ICNS = ROOT / "assets" / "icon.icns"
+PUBLIC = ROOT / "public"
+OUT_FAVICON = PUBLIC / "favicon.ico"
+OUT_APP_ICON = PUBLIC / "app-icon.png"
+OUT_APPLE_TOUCH = PUBLIC / "apple-touch-icon.png"
 
 ICON_SIZE = 1024
 # Folder scale vs canvas; remaining margin is clipped by the system squircle.
@@ -86,6 +90,11 @@ def main():
     icon.save(OUT_PNG, "PNG")
     icon.convert("RGB").save(OUT_ICO, sizes=ICO_SIZES)
 
+    PUBLIC.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(OUT_ICO, OUT_FAVICON)
+    icon.resize((256, 256), Image.Resampling.LANCZOS).save(OUT_APP_ICON, "PNG", optimize=True)
+    icon.resize((180, 180), Image.Resampling.LANCZOS).save(OUT_APPLE_TOUCH, "PNG", optimize=True)
+
     if shutil.which("iconutil"):
         with tempfile.TemporaryDirectory() as tmp:
             iconset = Path(tmp) / "icon.iconset"
@@ -99,6 +108,9 @@ def main():
     print("bg", bg_rgb)
     print("wrote", OUT_PNG.relative_to(ROOT))
     print("wrote", OUT_ICO.relative_to(ROOT))
+    print("wrote", OUT_FAVICON.relative_to(ROOT))
+    print("wrote", OUT_APP_ICON.relative_to(ROOT))
+    print("wrote", OUT_APPLE_TOUCH.relative_to(ROOT))
     if OUT_ICNS.exists():
         print("wrote", OUT_ICNS.relative_to(ROOT))
 

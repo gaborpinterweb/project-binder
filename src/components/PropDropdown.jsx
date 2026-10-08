@@ -26,6 +26,7 @@ export default function PropDropdown({
   renderOption,
   className,
   sections,
+  title,
 }) {
   return (
     <Dropdown
@@ -36,6 +37,7 @@ export default function PropDropdown({
       onChange={onChange}
       renderOption={renderOption}
       sections={sections}
+      title={title}
       caret={false}
     >
       {children}

@@ -214,9 +214,14 @@ export default function SettingsDialog({
           {tab === "about" && (
             <section className="settings-about">
               <div className="settings-about-brand">
-                <span className="settings-about-mark" aria-hidden="true">
-                  <Icon name="brand" size={28} />
-                </span>
+                <img
+                  className="settings-about-icon"
+                  src="/app-icon.png"
+                  alt=""
+                  width={72}
+                  height={72}
+                  draggable={false}
+                />
                 <b>{APP_NAME}</b>
                 <span>v{APP_VERSION}</span>
               </div>

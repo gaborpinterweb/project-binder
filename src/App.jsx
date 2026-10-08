@@ -71,11 +71,15 @@ import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import Snackbar from "./components/Snackbar.jsx";
 import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
+import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
+
+const MIN_TIMELOG_SEC = 60;
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -338,15 +342,22 @@ export default function App() {
   async function stopPomodoroInner(session) {
     if (!session || pomoFinishing.current) return;
     pomoFinishing.current = true;
+    const elapsed = pomoElapsedSec(session);
+    setActivePomo(null);
+    activePomoRef.current = null;
+    savePomo(null);
+    if (elapsed < MIN_TIMELOG_SEC) {
+      showSnackbar({
+        message: "Timers under 1 minute aren't saved to timelogs.",
+      });
+      pomoFinishing.current = false;
+      return;
+    }
     const endedAt = new Date().toISOString();
-    const elapsed = Math.max(1, pomoElapsedSec(session));
     const durationSec = isStoptimerSession(session)
       ? elapsed
       : Math.min(session.durationSec || POMO_DURATION_SEC, elapsed);
     const note = typeof session.note === "string" ? session.note.trim() : "";
-    setActivePomo(null);
-    activePomoRef.current = null;
-    savePomo(null);
     try {
       await postTimelog({
         project: session.project,
@@ -1416,6 +1427,7 @@ export default function App() {
       )}
       <PromptDialog />
       <ConfirmDialog />
+      <Snackbar />
     </>
   );
 }

@@ -7,11 +7,14 @@ import {
   saveBackupSettings,
   runBackupNow,
   pickBackupFolder,
-  restoreBackup,
+  importBackup,
 } from "../api.js";
 import { APP_NAME, APP_VERSION, PC } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import Dropdown from "./Dropdown.jsx";
+
+const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
+const AUTO_BACKUP_KEEP_DAYS = 3;
 
 const BMC_URL = "https://buymeacoffee.com/gaborpinter";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
@@ -46,7 +49,7 @@ export default function SettingsDialog({
   onResetSeed,
   onResetEmpty,
   onResetFirstLaunch,
-  onRestoreBackup,
+  onImportBackup,
 }) {
   const tabs = useMemo(() => {
     const list = [
@@ -74,7 +77,8 @@ export default function SettingsDialog({
     folderPath: "",
     lastBackupAt: null,
     lastError: null,
-    filename: "project-binder-backup.zip",
+    filename: AUTO_BACKUP_FILENAME_PATTERN,
+    keepDays: AUTO_BACKUP_KEEP_DAYS,
   });
   const [backupBusy, setBackupBusy] = useState(null);
 
@@ -90,6 +94,10 @@ export default function SettingsDialog({
             ...prev,
             ...info.backup,
             filename: info.autoBackupFilename || prev.filename,
+            keepDays:
+              info.autoBackupKeepDays != null
+                ? Number(info.autoBackupKeepDays) || prev.keepDays
+                : prev.keepDays,
           }));
         }
       } catch {
@@ -122,6 +130,8 @@ export default function SettingsDialog({
       lastBackupAt: data.lastBackupAt !== undefined ? data.lastBackupAt : prev.lastBackupAt,
       lastError: data.lastError !== undefined ? data.lastError : prev.lastError,
       filename: data.filename || prev.filename,
+      keepDays:
+        data.keepDays != null ? Number(data.keepDays) || prev.keepDays : prev.keepDays,
     }));
   };
 
@@ -187,26 +197,42 @@ export default function SettingsDialog({
     }
   };
 
-  const handleRestore = async () => {
-    const ok = await askConfirm({
-      title: "Restore from backup?",
-      message:
-        "This replaces your current workspace and uploaded files with the selected backup. This cannot be undone.",
-      confirmLabel: "Restore",
-      danger: true,
-    });
-    if (!ok) return;
-    setBackupBusy("restore");
+  const runImportZip = async () => {
+    setBackupBusy("import");
     try {
-      const data = await restoreBackup();
+      const data = await importBackup();
       if (data?.cancelled) return;
-      await onRestoreBackup?.(data);
+      await onImportBackup?.(data);
       onClose();
     } catch (e) {
-      alert(e.message || "Could not restore backup.");
+      alert(e.message || "Could not import workspace.");
     } finally {
       setBackupBusy(null);
     }
+  };
+
+  const handleImport = async () => {
+    const choice = await askConfirm({
+      title: "Import workspace?",
+      message:
+        "Importing a zip replaces your current workspace and uploaded files. Export your current data first if you might need it.",
+      confirmLabel: "Import new without exporting current",
+      altLabel: "Export current",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!choice) return;
+    if (choice === "alt") {
+      try {
+        await exportWorkspace();
+      } catch {
+        alert("Could not export workspace.");
+        return;
+      }
+      await runImportZip();
+      return;
+    }
+    await runImportZip();
   };
 
   const runReset = async (kind, title, message, action) => {
@@ -398,8 +424,9 @@ export default function SettingsDialog({
                       <div className="settings-row-copy">
                         <b>Backup folder</b>
                         <span>
-                          Writes a single file: {backup.filename || "project-binder-backup.zip"}{" "}
-                          (workspace + files)
+                          Day copies: {backup.filename || AUTO_BACKUP_FILENAME_PATTERN}{" "}
+                          (keeps {backup.keepDays || AUTO_BACKUP_KEEP_DAYS} days · workspace +
+                          files)
                         </span>
                         {backup.folderPath ? (
                           <span className="settings-path" title={backup.folderPath}>
@@ -439,16 +466,16 @@ export default function SettingsDialog({
                     </div>
                     <div className="settings-row">
                       <div className="settings-row-copy">
-                        <b>Restore from backup</b>
-                        <span>Replace this workspace from a project-binder-backup.zip</span>
+                        <b>Import workspace</b>
+                        <span>Replace this workspace from a backup .zip</span>
                       </div>
                       <button
                         type="button"
                         className="settings-row-btn settings-row-btn-danger"
                         disabled={backupDisabled}
-                        onClick={handleRestore}
+                        onClick={handleImport}
                       >
-                        {backupBusy === "restore" ? "…" : "Restore"}
+                        {backupBusy === "import" ? "…" : "Import"}
                       </button>
                     </div>
                   </div>

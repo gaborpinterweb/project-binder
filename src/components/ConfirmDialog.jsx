@@ -56,10 +56,19 @@ export default function ConfirmDialog() {
               {req.message}
             </p>
           ) : null}
-          <div className="actions prompt-actions">
+          <div
+            className={
+              "actions prompt-actions" + (req.stackActions ? " prompt-actions-stack" : "")
+            }
+          >
             <button type="button" className="dlg-delete" onClick={cancel}>
               {req.cancelLabel}
             </button>
+            {req.altLabel ? (
+              <button type="button" className="dlg-create" onClick={() => settleConfirm("alt")}>
+                {req.altLabel}
+              </button>
+            ) : null}
             <button
               ref={confirmRef}
               type="button"

@@ -255,8 +255,8 @@ export async function pickBackupFolder() {
   return apiOkData("/api/backup/pick-folder", { method: "POST" }, "could not pick folder");
 }
 
-export async function restoreBackup(body) {
-  return apiOkData("/api/backup/restore", { method: "POST", body: body || {} }, "restore failed");
+export async function importBackup(body) {
+  return apiOkData("/api/backup/import", { method: "POST", body: body || {} }, "import failed");
 }
 
 export async function resetWorkspaceToSeed() {

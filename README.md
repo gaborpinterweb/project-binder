@@ -4,8 +4,8 @@
 
 - Free, open-source (MIT), offline
 - Local workspace for freelance projects (macOS / Windows desktop via Electron; also runs in the browser)
-- **0.1.0 includes:** task boards, master board, notes, files, databases, timelogs, trash, export
-- **Not in 0.1.0 yet:** Google Calendar, Docs/Links/Chat/etc. tab types, workspace import, auto-update download
+- **0.1.0 includes:** task boards, master board, notes, files, databases, timelogs, trash, export / import (desktop), auto backup (desktop)
+- **Not in 0.1.0 yet:** Google Calendar, Docs/Links/Chat/etc. tab types, auto-update download
 
 ## Description
 
@@ -125,5 +125,4 @@ Tracked polish items — not blockers for a honest 0.1.0, but worth doing soon:
 - **Onboarding visuals:** real screenshots or product images in the launch flow (placeholders removed)
 - **Error UX:** replace widespread `alert()` with in-app confirm/prompt dialogs where it matters
 - **Demo cleanup:** “Remove demo data” button that deletes `isDemo: true` entities only (see Demo data above)
-- **Import:** implement Settings → Developer → Import (currently stubbed / disabled)
 - **Auto-update:** current flow (check GitHub Releases → sidebar “Update available” → open releases page) is enough for MVP; full `electron-updater` + signing/notarization is later

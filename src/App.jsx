@@ -1427,7 +1427,7 @@ export default function App() {
             setTrashRefresh((n) => n + 1);
             setTimelogRefresh((n) => n + 1);
           }}
-          onRestoreBackup={async (data) => {
+          onImportBackup={async (data) => {
             applyWorkspace(data, { initial: true });
             setBoardEdit(false);
             setDraftProject(null);

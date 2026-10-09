@@ -686,6 +686,10 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .prompt-input{font:inherit;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);padding:10px 12px;width:100%;box-sizing:border-box}
 .prompt-input:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 45%,var(--line));background:#fff}
 .prompt-actions{margin:0}
+.prompt-actions-stack{flex-direction:column;align-items:stretch;gap:8px}
+.prompt-actions-stack .dlg-delete,
+.prompt-actions-stack .dlg-create{width:100%;justify-content:center}
+.prompt-dlg:has(.prompt-actions-stack){width:min(440px,100%)}
 .prompt-danger{background:color-mix(in srgb,#b42318 88%,#000)!important;color:#fff!important}
 .prompt-danger:hover{background:#b42318!important}
 .dd{position:relative;display:inline-flex;min-width:0;max-width:100%}

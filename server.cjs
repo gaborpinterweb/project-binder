@@ -15,7 +15,11 @@ const userData = createUserDataStore({
 });
 const USER_DATA_DIR = userData.dir;
 const USER_WORKSPACE = userData.workspacePath;
-const AUTO_BACKUP_FILENAME = "project-binder-backup.zip";
+const AUTO_BACKUP_PREFIX = "project-binder-backup-";
+const AUTO_BACKUP_SUFFIX = ".zip";
+const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
+const AUTO_BACKUP_KEEP_DAYS = 3;
+const AUTO_BACKUP_DAY_RE = /^project-binder-backup-(\d{4}-\d{2}-\d{2})\.zip$/i;
 const AUTO_BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const PORT = 3456;
 const DIST = path.join(__dirname, "dist");
@@ -1695,8 +1699,57 @@ function saveAppSettings(settings) {
   return next;
 }
 
-function backupZipPath(folderPath) {
-  return path.join(folderPath, AUTO_BACKUP_FILENAME);
+function localDayStamp(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function backupZipFilenameForDay(stamp = localDayStamp()) {
+  return `${AUTO_BACKUP_PREFIX}${stamp}${AUTO_BACKUP_SUFFIX}`;
+}
+
+function backupZipPathForDay(folderPath, stamp = localDayStamp()) {
+  return path.join(folderPath, backupZipFilenameForDay(stamp));
+}
+
+function listDayBackupZips(folderPath) {
+  let names;
+  try {
+    names = fs.readdirSync(folderPath);
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const name of names) {
+    const m = AUTO_BACKUP_DAY_RE.exec(name);
+    if (!m) continue;
+    const full = path.join(folderPath, name);
+    try {
+      if (!fs.statSync(full).isFile()) continue;
+    } catch {
+      continue;
+    }
+    out.push({ stamp: m[1], name, path: full });
+  }
+  out.sort((a, b) => (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : 0));
+  return out;
+}
+
+function pruneDayBackups(folderPath, keep = AUTO_BACKUP_KEEP_DAYS) {
+  const files = listDayBackupZips(folderPath);
+  const removed = [];
+  while (files.length > keep) {
+    const oldest = files.shift();
+    try {
+      fs.rmSync(oldest.path, { force: true });
+      removed.push(oldest.name);
+    } catch {
+      /* ignore */
+    }
+  }
+  return removed;
 }
 
 function validateBackupFolder(folderPath) {
@@ -1753,8 +1806,10 @@ function runAutoBackup() {
   }
   backupInFlight = true;
   try {
-    const dest = backupZipPath(folder.dir);
+    const stamp = localDayStamp();
+    const dest = backupZipPathForDay(folder.dir, stamp);
     writeWorkspaceZip(dest);
+    pruneDayBackups(folder.dir, AUTO_BACKUP_KEEP_DAYS);
     const next = saveAppSettings({
       ...settings,
       autoBackup: {
@@ -1764,7 +1819,7 @@ function runAutoBackup() {
         lastError: null,
       },
     });
-    return { ok: true, file: dest, settings: next };
+    return { ok: true, file: dest, filename: path.basename(dest), settings: next };
   } catch (e) {
     const msg = String(e.message || e);
     const next = saveAppSettings({
@@ -1812,8 +1867,8 @@ function extractBackupZip(zipPath, destDir) {
   }
 }
 
-function restoreFromBackupZip(zipPath) {
-  if (!isDesktopApp()) return { ok: false, error: "restore is desktop only" };
+function importFromBackupZip(zipPath) {
+  if (!isDesktopApp()) return { ok: false, error: "import is desktop only" };
   const file = String(zipPath || "").trim();
   if (!file) return { ok: false, error: "missing backup file" };
   if (!path.isAbsolute(file)) return { ok: false, error: "backup path must be absolute" };
@@ -1877,10 +1932,19 @@ function pickBackupFolder() {
 
 function pickBackupZip() {
   return electronOpenDialog({
-    title: "Restore from backup",
+    title: "Import workspace",
     properties: ["openFile"],
     filters: [{ name: "Project Binder backup", extensions: ["zip"] }],
   });
+}
+
+function backupApiMeta(ab) {
+  return {
+    filename: AUTO_BACKUP_FILENAME_PATTERN,
+    keepDays: AUTO_BACKUP_KEEP_DAYS,
+    intervalMs: AUTO_BACKUP_INTERVAL_MS,
+    ...ab,
+  };
 }
 
 function startAutoBackupScheduler() {
@@ -1951,7 +2015,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         desktop: isDesktopApp(),
         persistentUserData: userData.persistent,
-        autoBackupFilename: AUTO_BACKUP_FILENAME,
+        autoBackupFilename: AUTO_BACKUP_FILENAME_PATTERN,
+        autoBackupKeepDays: AUTO_BACKUP_KEEP_DAYS,
         autoBackupIntervalMs: AUTO_BACKUP_INTERVAL_MS,
         backup: loadAppSettings().autoBackup,
       });
@@ -1960,9 +2025,7 @@ const server = http.createServer(async (req, res) => {
       if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
       return json(res, 200, {
         desktop: true,
-        filename: AUTO_BACKUP_FILENAME,
-        intervalMs: AUTO_BACKUP_INTERVAL_MS,
-        ...loadAppSettings().autoBackup,
+        ...backupApiMeta(loadAppSettings().autoBackup),
       });
     }
     if (req.method === "PUT" && url.pathname === "/api/backup") {
@@ -1992,9 +2055,7 @@ const server = http.createServer(async (req, res) => {
         : loadAppSettings()
       ).autoBackup;
       return json(res, 200, {
-        ...ab,
-        filename: AUTO_BACKUP_FILENAME,
-        intervalMs: AUTO_BACKUP_INTERVAL_MS,
+        ...backupApiMeta(ab),
         backupOk: !!(backupResult && backupResult.ok),
         backupError: backupResult && !backupResult.ok ? backupResult.error : null,
       });
@@ -2009,7 +2070,9 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         ok: true,
         file: result.file,
-        ...(result.settings ? result.settings.autoBackup : loadAppSettings().autoBackup),
+        ...backupApiMeta(
+          result.settings ? result.settings.autoBackup : loadAppSettings().autoBackup
+        ),
       });
     }
     if (req.method === "POST" && url.pathname === "/api/backup/pick-folder") {
@@ -2019,7 +2082,10 @@ const server = http.createServer(async (req, res) => {
       if (!picked.ok) return json(res, 400, picked);
       return json(res, 200, picked);
     }
-    if (req.method === "POST" && url.pathname === "/api/backup/restore") {
+    if (
+      req.method === "POST" &&
+      (url.pathname === "/api/backup/import" || url.pathname === "/api/backup/restore")
+    ) {
       if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
       const body = await readBody(req);
       let zipPath = String(body.path || "").trim();
@@ -2029,7 +2095,7 @@ const server = http.createServer(async (req, res) => {
         if (!picked.ok) return json(res, 400, picked);
         zipPath = picked.path;
       }
-      const result = restoreFromBackupZip(zipPath);
+      const result = importFromBackupZip(zipPath);
       if (!result.ok) return json(res, 400, result);
       return json(res, 200, result.workspace);
     }

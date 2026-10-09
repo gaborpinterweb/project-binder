@@ -67,6 +67,10 @@ export async function deleteProjectApi(body) {
   return apiData("/api/project", { method: "DELETE", body });
 }
 
+export async function putProjectOrder(body) {
+  return apiData("/api/project-order", { method: "PUT", body });
+}
+
 export async function putBoard(body) {
   return apiData("/api/board", { method: "PUT", body });
 }

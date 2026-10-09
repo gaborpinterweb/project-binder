@@ -492,6 +492,25 @@ function writeTabOrder(projectSlug, order) {
   return { ok: true };
 }
 
+function writeProjectOrder(order) {
+  if (!Array.isArray(order)) return { ok: false, error: "missing fields" };
+  const bySlug = new Map((store.projects || []).map((p) => [p.slug, p]));
+  const next = [];
+  const seen = new Set();
+  for (const raw of order) {
+    const slug = String(raw || "");
+    if (!slug || !bySlug.has(slug) || seen.has(slug)) continue;
+    next.push(bySlug.get(slug));
+    seen.add(slug);
+  }
+  for (const p of store.projects || []) {
+    if (seen.has(p.slug)) continue;
+    next.push(p);
+  }
+  store.projects = next;
+  return { ok: true };
+}
+
 function projectIsArchived(slug) {
   const p = findProject(slug);
   return p ? isArchivedValue(p.archived) : false;
@@ -2146,6 +2165,14 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (!body.project) return json(res, 400, { error: "missing fields" });
       if (!deleteProject(body.project)) return json(res, 404, { error: "project not found" });
+      saveStore();
+      return json(res, 200, readWorkspace());
+    }
+    if (req.method === "PUT" && url.pathname === "/api/project-order") {
+      const body = await readBody(req);
+      if (!Array.isArray(body.order)) return json(res, 400, { error: "missing fields" });
+      const result = writeProjectOrder(body.order);
+      if (!result.ok) return json(res, 400, { error: result.error });
       saveStore();
       return json(res, 200, readWorkspace());
     }

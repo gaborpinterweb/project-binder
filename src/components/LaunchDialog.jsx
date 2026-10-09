@@ -1,40 +1,76 @@
 import { useEffect, useState } from "react";
+import { pickBackupFolder, saveBackupSettings } from "../api.js";
+import { Icon } from "../icons.jsx";
 import { APP_NAME } from "../utils.js";
 
-const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
+const FEEDBACK_URL = "https://projectbinder.app/feedback";
 
 const STEPS = [
   {
+    logo: true,
     title: `Welcome to ${APP_NAME}`,
-    text: `${APP_NAME} is an inventory for your projects with task boards, timelogs, notes and more. To get started, let's go through the main features of the app.`,
+    points: [
+      { icon: "plus", text: "Create projects, tasks, notes and more" },
+      { icon: "stopwatch", text: "Track time spent on tasks and projects" },
+      { icon: "asterisk", text: "Master board shows all tasks from all projects" },
+    ],
   },
   {
-    title: "Create projects with unique colors",
-    text: "All projects have their own unique colors. All project items - like Tasks - inherit the project's color.",
+    icon: "folder",
+    title: "Select a backup folder",
+    points: [
+      { icon: "lock", text: "Your data stays offline on your machine." },
+      { icon: "folder", text: "Pick a folder to back up your workspace." },
+      { icon: "cloud", text: "Tip: use Google Drive, iCloud, or Dropbox." },
+    ],
   },
   {
-    title: "See all tasks on your Master board",
-    text: "Master board shows all your tasks across all your projects and task boards in a single view.",
-  },
-  {
-    title: "Everything is offline",
-    text: "Your data stays on this device. Export a backup anytime from Settings → Data.",
-  },
-  {
-    title: "... and there's much more!",
-    text: "We've created some demo projects so you can look around. Feel free to delete them when you're ready.",
-    link: { href: GITHUB_URL, label: "Visit GitHub" },
+    icon: "check",
+    title: "Your binder is ready",
+    points: [
+      { icon: "Workspace", text: "Demo projects are ready to explore." },
+      { icon: "Trash", text: "Delete them whenever you like." },
+      {
+        icon: "external",
+        text: (
+          <>
+            Feedback at{" "}
+            <a
+              className="launch-link"
+              href={FEEDBACK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              projectbinder.app/feedback
+            </a>
+          </>
+        ),
+      },
+    ],
   },
 ];
 
 export default function LaunchDialog({ onStart }) {
   const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
   const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
 
-  const goNext = () => {
-    if (isLast) onStart();
-    else setStep((s) => s + 1);
+  const finish = () => onStart();
+  const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+
+  const handleSelectFolder = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const picked = await pickBackupFolder();
+      if (picked.cancelled || !picked.path) return;
+      await saveBackupSettings({ enabled: true, folderPath: picked.path });
+      goNext();
+    } catch (e) {
+      alert(e.message || "Could not choose folder.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -44,13 +80,50 @@ export default function LaunchDialog({ onStart }) {
         e.stopPropagation();
         return;
       }
-      if (e.key !== "Enter") return;
-      if (step === STEPS.length - 1) onStart();
-      else setStep((s) => s + 1);
+      if (e.key !== "Enter" || busy) return;
+      if (step === 0) goNext();
+      else if (step === 1) goNext();
+      else finish();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [step, onStart]);
+  }, [step, busy, onStart]);
+
+  let primary = null;
+  if (step === 0) {
+    primary = (
+      <button type="button" className="launch-cta" onClick={goNext}>
+        Next
+      </button>
+    );
+  } else if (step === 1) {
+    primary = (
+      <div className="launch-cta-row">
+        <button
+          type="button"
+          className="launch-cta-secondary"
+          disabled={busy}
+          onClick={goNext}
+        >
+          Skip for now
+        </button>
+        <button
+          type="button"
+          className="launch-cta"
+          disabled={busy}
+          onClick={handleSelectFolder}
+        >
+          {busy ? "…" : "Select folder"}
+        </button>
+      </div>
+    );
+  } else {
+    primary = (
+      <button type="button" className="launch-cta" onClick={finish}>
+        Let&apos;s go
+      </button>
+    );
+  }
 
   return (
     <div className="ov" role="presentation">
@@ -62,32 +135,46 @@ export default function LaunchDialog({ onStart }) {
       >
         <div className="dlg-content launch-body">
           <div className="launch-copy">
+            <span className={"launch-hero" + (current.logo ? " is-logo" : "")}>
+              {current.logo ? (
+                <img
+                  className="launch-logo"
+                  src="/app-icon.png"
+                  alt=""
+                  width={56}
+                  height={56}
+                  draggable={false}
+                />
+              ) : (
+                <Icon name={current.icon} size={28} />
+              )}
+            </span>
             <h2 className="launch-title">{current.title}</h2>
-            {current.text && <p className="launch-text">{current.text}</p>}
-            {current.link && (
-              <a
-                className="launch-link"
-                href={current.link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {current.link.label}
-              </a>
-            )}
+            {current.points ? (
+              <ul className="launch-points">
+                {current.points.map((item, i) => (
+                  <li key={item.icon + i}>
+                    <span className="launch-point-icon" aria-hidden="true">
+                      <Icon name={item.icon} size={16} />
+                    </span>
+                    <span>{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
-          <div className="launch-dots" aria-hidden="true">
-            {STEPS.map((_, i) => (
-              <span
-                key={i}
-                className={`launch-dot${i === step ? " is-active" : ""}`}
-              />
-            ))}
+
+          <div className="launch-footer">
+            <div className="launch-dots" aria-hidden="true">
+              {STEPS.map((_, i) => (
+                <span
+                  key={i}
+                  className={`launch-dot${i === step ? " is-active" : ""}`}
+                />
+              ))}
+            </div>
+            <div className="launch-actions">{primary}</div>
           </div>
-        </div>
-        <div className="dlg-controls launch-controls">
-          <button type="button" className="launch-cta" onClick={goNext}>
-            {isLast ? "Let's get started" : "Next"}
-          </button>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   putProject,
   postProject,
   deleteProjectApi,
+  putProjectOrder,
   postBoard,
   postDatabase,
   postNotesTab,
@@ -651,6 +652,40 @@ export default function App() {
     setG(null);
   };
 
+  const onReorderProjects = useCallback(
+    (fromSlug, toIndex) => {
+      const current = foldersRef.current;
+      const active = current.filter((f) => !isProjectArchived(f));
+      const from = active.findIndex((f) => f.slug === fromSlug);
+      if (from < 0 || toIndex == null) return;
+      const without = active.slice();
+      const [moved] = without.splice(from, 1);
+      const clamped = Math.max(0, Math.min(toIndex, without.length));
+      // No-op when drop lands in the gap the item already occupies.
+      if (clamped === from) return;
+      without.splice(clamped, 0, moved);
+      let ai = 0;
+      const next = current.map((f) =>
+        isProjectArchived(f) ? f : without[ai++]
+      );
+      const keepSlug = current[pRef.current]?.slug;
+      const keepBoard = current[pRef.current]?.mods?.[mRef.current]?.[2]?.slug;
+      foldersRef.current = next;
+      setFolders(next);
+      if (keepSlug) {
+        const ni = next.findIndex((f) => f.slug === keepSlug);
+        if (ni >= 0) {
+          setP(ni);
+          pRef.current = ni;
+        }
+      }
+      putProjectOrder({ order: next.map((f) => f.slug) }).then((data) => {
+        applyWorkspace(data, keepNav(keepSlug, keepBoard));
+      });
+    },
+    [applyWorkspace, keepNav]
+  );
+
   const deleteProjectPermanently = async (folder) => {
     if (!folder) return;
     const data = await deleteProjectApi({ project: folder.slug });
@@ -885,6 +920,7 @@ export default function App() {
           setBoardEdit(false);
         }}
         onAddProject={startNewProject}
+        onReorderProjects={onReorderProjects}
         onStopPomo={stopPomodoro}
         onPomoNoteChange={updatePomoNote}
         onOpenPomoCard={() => {

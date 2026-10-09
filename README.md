@@ -9,7 +9,7 @@
 
 ## Description
 
-`server.cjs` serves the React UI and JSON API. Seed data ships in the repo; the live workspace is written locally (gitignored at the repo root for web/dev; Electron uses the OS user-data folder).
+`server.cjs` serves the React UI and JSON API. Seed data ships in the repo. Packaged Electron persists to the OS user-data folder; CLI/browser (`npm start` / `npm run dev`) keep changes in memory only.
 
 ```bash
 npm install
@@ -27,14 +27,19 @@ npm run dev        # Vite on :5173, proxies /api → :3456
 
 ## Storage
 
+| Mode | Role |
+|------|------|
+| **Packaged Electron** (app in Applications / Program Files) | Live data under the OS user-data folder (`Application Support` / `%APPDATA%` / `~/.config`): `userWorkspace.json`, `uploads/`, `appSettings.json`. |
+| **CLI / browser** (`npm start`, `npm run dev`, unpackaged Electron) | Boots from [`seedWorkspace.json`](seedWorkspace.json) + [`seedUploads/`](seedUploads); workspace and uploads stay **in memory** for that process. Never writes OS Application Support. Restart → back to seed. |
+
 | File | Role |
 |------|------|
 | [`seedWorkspace.json`](seedWorkspace.json) | Read-only seed for a fresh start. The app never writes this file. |
-| `userWorkspace.json` | Live workspace (gitignored). All edits are saved here. |
+| `userWorkspace.json` | Packaged app only: live workspace under OS user data. |
 
-On startup, if `userWorkspace.json` is missing, empty, or corrupt/invalid, the server deep-clones `seedWorkspace.json` into a new `userWorkspace.json`.
+Packaged app: if `userWorkspace.json` is missing, empty, or corrupt/invalid, the server deep-clones `seedWorkspace.json` into a new file on disk.
 
-Restore the demo (dev builds): Settings → Developer → **Reset to seed workspace**, or delete `userWorkspace.json` and restart `npm start`.
+Restore the demo (dev / CLI): Settings → Developer → **Reset to seed workspace**, or restart the server (memory mode always reseeds on boot).
 
 ## Demo data (`isDemo`)
 

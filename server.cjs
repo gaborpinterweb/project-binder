@@ -4,12 +4,17 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const AdmZip = require("adm-zip");
+const { createUserDataStore, isValidStore } = require("./userDataStore.cjs");
 
 const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
 const SEED_UPLOADS = path.join(__dirname, "seedUploads");
-const { USER_DATA_DIR, USER_WORKSPACE } = resolveUserPaths();
-const APP_SETTINGS_FILE = path.join(USER_DATA_DIR, "appSettings.json");
+const userData = createUserDataStore({
+  appName: APP_USER_DATA_NAME,
+  seedUploadsDir: SEED_UPLOADS,
+});
+const USER_DATA_DIR = userData.dir;
+const USER_WORKSPACE = userData.workspacePath;
 const AUTO_BACKUP_FILENAME = "project-binder-backup.zip";
 const AUTO_BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const PORT = 3456;
@@ -213,42 +218,6 @@ function normalizeDbColumns(columns) {
 /** @type {object|null} */
 let store = null;
 
-/** Same location Electron uses for app.getPath('userData') with this app name. */
-function defaultUserDataDir() {
-  if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", APP_USER_DATA_NAME);
-  }
-  if (process.platform === "win32") {
-    return path.join(
-      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
-      APP_USER_DATA_NAME
-    );
-  }
-  return path.join(
-    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"),
-    APP_USER_DATA_NAME
-  );
-}
-
-function resolveUserPaths() {
-  const envDir = String(process.env.PROJECT_BINDER_USER_DATA || "").trim();
-  let dir = envDir;
-  if (!dir) {
-    try {
-      const electron = require("electron");
-      const app = electron && electron.app;
-      if (app && typeof app.getPath === "function") {
-        dir = app.getPath("userData");
-      }
-    } catch {
-      /* not running inside Electron */
-    }
-  }
-  if (!dir) dir = defaultUserDataDir();
-  fs.mkdirSync(dir, { recursive: true });
-  return { USER_DATA_DIR: dir, USER_WORKSPACE: path.join(dir, "userWorkspace.json") };
-}
-
 function slugify(s) {
   return String(s || "")
     .toLowerCase()
@@ -269,17 +238,6 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function isValidStore(doc) {
-  return (
-    doc &&
-    typeof doc === "object" &&
-    doc.version != null &&
-    Array.isArray(doc.stages) &&
-    Array.isArray(doc.projects) &&
-    Array.isArray(doc.timelogs)
-  );
-}
-
 function readJsonFile(file) {
   if (!fs.existsSync(file)) return { ok: false, reason: "missing" };
   const raw = fs.readFileSync(file, "utf8");
@@ -293,12 +251,6 @@ function readJsonFile(file) {
   }
 }
 
-function atomicWrite(file, doc) {
-  const tmp = file + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(doc, null, 2) + "\n", "utf8");
-  fs.renameSync(tmp, file);
-}
-
 function loadSeedWorkspace() {
   const result = readJsonFile(SEED_WORKSPACE);
   if (!result.ok) {
@@ -310,43 +262,37 @@ function loadSeedWorkspace() {
 
 function saveStore() {
   if (!store) throw new Error("store not initialized");
-  atomicWrite(USER_WORKSPACE, store);
+  userData.writeWorkspaceFile(store);
 }
 
 function ensureStore() {
-  const user = readJsonFile(USER_WORKSPACE);
-  if (user.ok) {
-    store = deepClone(user.doc);
+  if (userData.persistent) {
+    const user = userData.readWorkspaceFile();
+    if (user.ok) {
+      store = deepClone(user.doc);
+      ensureTrash();
+      const purged = purgeExpiredTrash();
+      if (purged) saveStore();
+      return { reseeded: false, purged };
+    }
+    store = loadSeedWorkspace();
     ensureTrash();
-    const purged = purgeExpiredTrash();
-    if (purged) saveStore();
-    return { reseeded: false, purged };
+    installSeedUploads();
+    saveStore();
+    return { reseeded: true, reason: user.reason, purged: 0 };
   }
   store = loadSeedWorkspace();
   ensureTrash();
   installSeedUploads();
-  saveStore();
-  return { reseeded: true, reason: user.reason, purged: 0 };
+  return { reseeded: true, reason: "memory", purged: 0 };
 }
 
 function clearUploads() {
-  const dest = path.join(USER_DATA_DIR, "uploads");
-  if (!fs.existsSync(dest)) return;
-  try {
-    fs.rmSync(dest, { recursive: true, force: true });
-  } catch {
-    /* best-effort cleanup */
-  }
-}
-
-function copySeedUploads() {
-  if (!fs.existsSync(SEED_UPLOADS)) return;
-  fs.cpSync(SEED_UPLOADS, path.join(USER_DATA_DIR, "uploads"), { recursive: true });
+  userData.clearUploads();
 }
 
 function installSeedUploads() {
-  clearUploads();
-  copySeedUploads();
+  userData.installSeedUploads();
 }
 
 function resetToSeedWorkspace() {
@@ -400,23 +346,9 @@ function isSafePathSlug(s) {
   return typeof s === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
 }
 
-function filesUploadDir(projectSlug, tabSlug) {
-  return path.join(USER_DATA_DIR, "uploads", projectSlug, tabSlug);
-}
-
-function storedFilePath(projectSlug, tabSlug, fileSlug) {
-  return path.join(filesUploadDir(projectSlug, tabSlug), fileSlug);
-}
-
 function removeUploadTree(projectSlug, tabSlug) {
   if (!isSafePathSlug(projectSlug) || !isSafePathSlug(tabSlug)) return;
-  const dir = filesUploadDir(projectSlug, tabSlug);
-  if (!fs.existsSync(dir)) return;
-  try {
-    fs.rmSync(dir, { recursive: true, force: true });
-  } catch {
-    /* best-effort cleanup */
-  }
+  userData.removeUploadTree(projectSlug, tabSlug);
 }
 
 function tabKey(type, slug) {
@@ -1354,9 +1286,7 @@ function addUploadedFile(projectSlug, filesTabSlug, { name, mime, data }) {
   if (!tab.files) tab.files = [];
   const slug = uniqueFileSlug(tab, fileName);
   if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
-  const dir = filesUploadDir(projectSlug, filesTabSlug);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(storedFilePath(projectSlug, filesTabSlug, slug), buf);
+  userData.writeUpload(projectSlug, filesTabSlug, slug, buf);
   tab.files.push({
     slug,
     name: fileName,
@@ -1381,11 +1311,7 @@ function deleteUploadedFile(projectSlug, filesTabSlug, fileSlug) {
   const idx = tab.files.findIndex((f) => f.slug === fileSlug);
   if (idx < 0) return { ok: false, error: "file not found" };
   tab.files.splice(idx, 1);
-  try {
-    fs.unlinkSync(storedFilePath(projectSlug, filesTabSlug, fileSlug));
-  } catch {
-    /* file may already be gone */
-  }
+  userData.unlinkUpload(projectSlug, filesTabSlug, fileSlug);
   return { ok: true };
 }
 
@@ -1425,29 +1351,24 @@ function moveUploadedFile(fromProjectSlug, fromTabSlug, fileSlug, toProjectSlug,
   if (!toProject || !toTab) return { ok: false, error: "destination not found" };
   const idx = fromTab.files.findIndex((f) => f.slug === fileSlug);
   if (idx < 0) return { ok: false, error: "file not found" };
-  const fromPath = storedFilePath(fromProjectSlug, fromTabSlug, fileSlug);
-  if (!fs.existsSync(fromPath)) return { ok: false, error: "file not found" };
+  if (!userData.uploadExists(fromProjectSlug, fromTabSlug, fileSlug)) {
+    return { ok: false, error: "file not found" };
+  }
   if (!toTab.files) toTab.files = [];
   let slug = fileSlug;
   if (toTab.files.some((f) => f.slug === slug)) {
     slug = uniqueFileSlug(toTab, fromTab.files[idx].name || slug);
   }
   if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
-  const toPath = storedFilePath(toProjectSlug, toTabSlug, slug);
-  fs.mkdirSync(filesUploadDir(toProjectSlug, toTabSlug), { recursive: true });
-  try {
-    fs.renameSync(fromPath, toPath);
-  } catch (err) {
-    if (!err || err.code !== "EXDEV") {
-      return { ok: false, error: "could not move file" };
-    }
-    try {
-      fs.copyFileSync(fromPath, toPath);
-      fs.unlinkSync(fromPath);
-    } catch {
-      return { ok: false, error: "could not move file" };
-    }
-  }
+  const moved = userData.moveUpload(
+    fromProjectSlug,
+    fromTabSlug,
+    fileSlug,
+    toProjectSlug,
+    toTabSlug,
+    slug
+  );
+  if (!moved.ok) return moved;
   const [meta] = fromTab.files.splice(idx, 1);
   toTab.files.push({
     slug,
@@ -1472,13 +1393,13 @@ function readUploadedFile(projectSlug, filesTabSlug, fileSlug) {
   }
   const meta = tab.files.find((f) => f.slug === fileSlug);
   if (!meta) return { ok: false, error: "file not found" };
-  const filePath = storedFilePath(projectSlug, filesTabSlug, fileSlug);
-  if (!fs.existsSync(filePath)) return { ok: false, error: "file not found" };
+  const body = userData.readUpload(projectSlug, filesTabSlug, fileSlug);
+  if (!body) return { ok: false, error: "file not found" };
   return {
     ok: true,
     name: meta.name || fileSlug,
     mime: meta.mime || "application/octet-stream",
-    body: fs.readFileSync(filePath),
+    body,
   };
 }
 
@@ -1698,27 +1619,33 @@ function revealPath(targetPath, { select = false } = {}) {
 }
 
 function revealUserDataDir() {
-  fs.mkdirSync(USER_DATA_DIR, { recursive: true });
-  return revealPath(USER_DATA_DIR);
+  if (!userData.persistent) {
+    return Promise.reject(new Error("no on-disk user data in this mode"));
+  }
+  const dir = userData.ensureUserDataDir();
+  return revealPath(dir);
 }
 
 function revealUploadedFile(projectSlug, filesTabSlug, fileSlug) {
+  if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
   const result = readUploadedFile(projectSlug, filesTabSlug, fileSlug);
   if (!result.ok) return result;
-  const filePath = storedFilePath(projectSlug, filesTabSlug, fileSlug);
+  const filePath = userData.uploadPath(projectSlug, filesTabSlug, fileSlug);
+  if (!filePath) return { ok: false, error: "file not found" };
   revealPath(filePath, { select: true });
   return { ok: true };
 }
 
 function revealFilesTabDir(projectSlug, filesTabSlug) {
+  if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
   const project = findProject(projectSlug);
   const tab = findFilesTab(project, filesTabSlug);
   if (!tab) return { ok: false, error: "files tab not found" };
   if (!isSafePathSlug(projectSlug) || !isSafePathSlug(filesTabSlug)) {
     return { ok: false, error: "invalid path" };
   }
-  const dir = filesUploadDir(projectSlug, filesTabSlug);
-  fs.mkdirSync(dir, { recursive: true });
+  userData.ensureUploadDir(projectSlug, filesTabSlug);
+  const dir = userData.uploadDir(projectSlug, filesTabSlug);
   revealPath(dir);
   return { ok: true, dir };
 }
@@ -1754,8 +1681,8 @@ function normalizeAppSettings(raw) {
 
 function loadAppSettings() {
   try {
-    if (!fs.existsSync(APP_SETTINGS_FILE)) return defaultAppSettings();
-    const raw = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, "utf8"));
+    const raw = userData.readAppSettingsFile();
+    if (!raw) return defaultAppSettings();
     return normalizeAppSettings(raw);
   } catch {
     return defaultAppSettings();
@@ -1764,7 +1691,7 @@ function loadAppSettings() {
 
 function saveAppSettings(settings) {
   const next = normalizeAppSettings(settings);
-  atomicWrite(APP_SETTINGS_FILE, next);
+  userData.writeAppSettingsFile(next);
   return next;
 }
 
@@ -1797,10 +1724,7 @@ function writeWorkspaceZip(destZip) {
   const zip = new AdmZip();
   const wsBody = JSON.stringify(store, null, 2) + "\n";
   zip.addFile("userWorkspace.json", Buffer.from(wsBody, "utf8"));
-  const uploadsDir = path.join(USER_DATA_DIR, "uploads");
-  if (fs.existsSync(uploadsDir)) {
-    zip.addLocalFolder(uploadsDir, "uploads");
-  }
+  userData.appendUploadsToZip(zip);
   const tmp = destZip + ".tmp";
   if (fs.existsSync(tmp)) fs.rmSync(tmp, { force: true });
   zip.writeZip(tmp);
@@ -1902,10 +1826,7 @@ function restoreFromBackupZip(zipPath) {
     const result = readJsonFile(wsFile);
     if (!result.ok) return { ok: false, error: `invalid workspace in backup (${result.reason})` };
     clearUploads();
-    const uploadsSrc = path.join(tmp, "uploads");
-    if (fs.existsSync(uploadsSrc)) {
-      fs.cpSync(uploadsSrc, path.join(USER_DATA_DIR, "uploads"), { recursive: true });
-    }
+    userData.replaceUploadsFromDirectory(path.join(tmp, "uploads"));
     store = deepClone(result.doc);
     ensureTrash();
     saveStore();
@@ -2003,9 +1924,16 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, readWorkspace());
     }
     if (req.method === "GET" && url.pathname === "/api/user-data") {
-      return json(res, 200, { dir: USER_DATA_DIR, file: USER_WORKSPACE });
+      return json(res, 200, {
+        persistent: userData.persistent,
+        dir: USER_DATA_DIR,
+        file: USER_WORKSPACE,
+      });
     }
     if (req.method === "POST" && url.pathname === "/api/user-data/reveal") {
+      if (!userData.persistent) {
+        return json(res, 400, { error: "no on-disk user data in this mode" });
+      }
       await revealUserDataDir();
       return json(res, 200, { ok: true, dir: USER_DATA_DIR });
     }
@@ -2022,6 +1950,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/app") {
       return json(res, 200, {
         desktop: isDesktopApp(),
+        persistentUserData: userData.persistent,
         autoBackupFilename: AUTO_BACKUP_FILENAME,
         autoBackupIntervalMs: AUTO_BACKUP_INTERVAL_MS,
         backup: loadAppSettings().autoBackup,
@@ -2623,12 +2552,16 @@ const server = http.createServer(async (req, res) => {
 const boot = ensureStore();
 server.listen(PORT, () => {
   console.log(`Project Binder v0.1.0 at http://localhost:${PORT}`);
-  console.log(`User data: ${USER_DATA_DIR}`);
-  console.log(`User workspace: ${USER_WORKSPACE}`);
+  if (userData.persistent) {
+    console.log(`User data: ${USER_DATA_DIR}`);
+    console.log(`User workspace: ${USER_WORKSPACE}`);
+  } else {
+    console.log(`User data: in-memory (seed on boot; not writing OS Application Support)`);
+  }
   console.log(`Seed workspace (read-only): ${SEED_WORKSPACE}`);
-  if (boot.reseeded) console.log(`Seeded userWorkspace.json from seedWorkspace.json (${boot.reason})`);
+  if (boot.reseeded) console.log(`Seeded workspace from seedWorkspace.json (${boot.reason})`);
   if (boot.purged) console.log(`Purged ${boot.purged} trash item(s) older than 30 days`);
-  if (isDesktopApp()) {
+  if (isDesktopApp() && userData.persistent) {
     console.log(`Auto backup: desktop enabled (every ${AUTO_BACKUP_INTERVAL_MS / 60000} min)`);
     startAutoBackupScheduler();
   }

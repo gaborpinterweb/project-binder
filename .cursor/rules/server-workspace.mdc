@@ -1,16 +1,17 @@
 ---
 description: Server workspace persistence and isDemo rules
-globs: server.cjs
+globs: server.cjs,userDataStore.cjs
 alwaysApply: false
 ---
 
-# Server workspace (`server.cjs`)
+# Server workspace (`server.cjs` / `userDataStore.cjs`)
 
 ## Storage
 
-- **Write** `userWorkspace.json` only.
+- Packaged Electron → OS user data (`userWorkspace.json`, uploads, settings).
+- CLI / browser / unpackaged → in-memory store seeded from `seedWorkspace.json` (never OS Application Support).
 - **Never write** `seedWorkspace.json` (read-only seed / demo).
-- If `userWorkspace.json` is missing/empty/corrupt, clone from seed (existing startup path).
+- Packaged: if `userWorkspace.json` is missing/empty/corrupt, clone from seed onto disk.
 
 ## Demo flag
 

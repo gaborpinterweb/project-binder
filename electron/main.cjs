@@ -38,7 +38,10 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  process.env.PROJECT_BINDER_USER_DATA = app.getPath("userData");
+  // Only the packaged app may use real OS Application Support / userData.
+  if (app.isPackaged) {
+    process.env.PROJECT_BINDER_USER_DATA = app.getPath("userData");
+  }
   require("../server.cjs");
   await waitForServer(APP_URL);
   createWindow();

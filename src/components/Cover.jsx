@@ -22,7 +22,8 @@ function CoverDescription({ value, onChange, editable }) {
         placeholder={DESC_PLACEHOLDER}
         editable={editable}
         showToolbar={editable}
-        showLabel={false}
+        headingLevels={[1, 2]}
+        showTable
         onChange={(html) => {
           if (!editable) return;
           onChange(html);

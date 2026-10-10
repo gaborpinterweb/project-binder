@@ -91,6 +91,8 @@ function ToolbarBtn({ onClick, active, title, disabled, className, children }) {
 export function RteToolbar({
   editor,
   forNotes = false,
+  headingLevels = [],
+  showTable = false,
   onDelete,
   moveOptions = [],
   onMove,
@@ -108,47 +110,35 @@ export function RteToolbar({
   }, [editor]);
 
   if (!editor) return null;
-  const inTable = forNotes && editor.isActive("table");
+  const levels = forNotes ? [1, 2, 3, 4] : headingLevels;
+  const tables = forNotes || showTable;
+  const inTable = tables && editor.isActive("table");
   const canMove = typeof onMove === "function" && moveOptions.length > 0;
   return (
     <div className={"rte-toolbar" + (forNotes ? " notes-rte-toolbar" : "")}>
-      {forNotes && (
+      {levels.length > 0 && (
         <div className="rte-group" role="group" aria-label="Blocks">
-          <ToolbarBtn
-            title="Heading 1"
-            active={editor.isActive("heading", { level: 1 })}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          >
-            <span className="rte-block-lab">H1</span>
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Heading 2"
-            active={editor.isActive("heading", { level: 2 })}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          >
-            <span className="rte-block-lab">H2</span>
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Heading 3"
-            active={editor.isActive("heading", { level: 3 })}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          >
-            <span className="rte-block-lab">H3</span>
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Heading 4"
-            active={editor.isActive("heading", { level: 4 })}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
-          >
-            <span className="rte-block-lab">H4</span>
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Paragraph"
-            active={editor.isActive("paragraph")}
-            onClick={() => editor.chain().focus().setParagraph().run()}
-          >
-            <span className="rte-block-lab">P</span>
-          </ToolbarBtn>
+          {levels.map((level) => (
+            <ToolbarBtn
+              key={level}
+              title={`Heading ${level}`}
+              active={editor.isActive("heading", { level })}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level }).run()
+              }
+            >
+              <span className="rte-block-lab">{`H${level}`}</span>
+            </ToolbarBtn>
+          ))}
+          {forNotes && (
+            <ToolbarBtn
+              title="Paragraph"
+              active={editor.isActive("paragraph")}
+              onClick={() => editor.chain().focus().setParagraph().run()}
+            >
+              <span className="rte-block-lab">P</span>
+            </ToolbarBtn>
+          )}
         </div>
       )}
       <div className="rte-group" role="group" aria-label="Text">
@@ -206,7 +196,7 @@ export function RteToolbar({
           </>
         )}
       </div>
-      {forNotes && (
+      {tables && (
         <div className="rte-group" role="group" aria-label="Table">
           <ToolbarBtn
             title="Insert table"
@@ -352,8 +342,17 @@ export default function RichTextEditor({
   autofocus = false,
   startInHeading = false,
   forNotes = false,
+  headingLevels = [],
+  showTable = false,
   onEditor,
 }) {
+  const levels = forNotes
+    ? [1, 2, 3, 4]
+    : headingLevels.length
+      ? headingLevels
+      : [1];
+  const tables = forNotes || showTable;
+
   const initialContent = (() => {
     const html = toEditorContent(value);
     if (startInHeading || autofocus) {
@@ -367,7 +366,7 @@ export default function RichTextEditor({
     autofocus: false,
     extensions: [
       StarterKit.configure({
-        heading: { levels: forNotes ? [1, 2, 3, 4] : [1] },
+        heading: { levels },
         codeBlock: forNotes ? undefined : false,
         blockquote: forNotes ? undefined : false,
         horizontalRule: false,
@@ -388,9 +387,9 @@ export default function RichTextEditor({
           target: "_blank",
         },
       }),
-      ...(forNotes
+      ...(forNotes ? [Highlight] : []),
+      ...(tables
         ? [
-            Highlight,
             Table.configure({ resizable: true }),
             TableRow,
             TableHeader,
@@ -447,11 +446,21 @@ export default function RichTextEditor({
         (showLabel ? (
           <div className="dlg-desc-head">
             <span className="dlg-desc-label">{label}</span>
-            <RteToolbar editor={editor} forNotes={forNotes} />
+            <RteToolbar
+              editor={editor}
+              forNotes={forNotes}
+              headingLevels={headingLevels}
+              showTable={showTable}
+            />
           </div>
         ) : (
           <div className="dlg-desc-head notes-rte-head">
-            <RteToolbar editor={editor} forNotes={forNotes} />
+            <RteToolbar
+              editor={editor}
+              forNotes={forNotes}
+              headingLevels={headingLevels}
+              showTable={showTable}
+            />
           </div>
         ))}
       <EditorContent editor={editor} />

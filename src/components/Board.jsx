@@ -319,6 +319,7 @@ function TaskCard({
   src,
   spentSec,
   showTimeSpent = false,
+  activeTimerKey = null,
   boardEdit,
   noDrag,
   dragPayload,
@@ -340,6 +341,12 @@ function TaskCard({
   const dragging = dragKey === key;
   const canTimelog =
     !boardEdit && !readonly && folder && mod?.[2]?.slug && row?.slug;
+  const timerActive =
+    !!activeTimerKey &&
+    !!folder?.slug &&
+    !!mod?.[2]?.slug &&
+    !!row?.slug &&
+    taskKey(folder.slug, mod[2].slug, row.slug) === activeTimerKey;
   const [timelogMenu, setTimelogMenu] = useState(null);
   return (
     <div
@@ -374,6 +381,9 @@ function TaskCard({
             await onToggleDone(row, folder, mod, e.target.checked);
           }}
         />
+        {timerActive ? (
+          <span className="card-timer-dot" title="Timer active" aria-label="Timer active" />
+        ) : null}
         <span className="card-name">{row.n || "Untitled"}</span>
       </b>
       {src ? <span className="src">{src}</span> : null}
@@ -763,6 +773,7 @@ function ProjectBoard({
   completedViewByScope,
   boardShowByScope,
   uiTick,
+  activeTimerKey = null,
   onBumpCollapse,
   onSetCompletedView,
   onSaveCard,
@@ -848,6 +859,7 @@ function ProjectBoard({
     onOpenTimelogs,
     readonly,
     showTimeSpent: show.timeSpent,
+    activeTimerKey,
   };
 
   const cardSrc = (row) =>
@@ -1104,6 +1116,7 @@ function MasterBoard({
   completedViewByScope,
   boardShowByScope,
   uiTick,
+  activeTimerKey = null,
   onBump,
   onSetCompletedView,
   onSaveCard,
@@ -1194,6 +1207,7 @@ function MasterBoard({
     onAddManualTimelog,
     onOpenTimelogs,
     showTimeSpent: show.timeSpent,
+    activeTimerKey,
   };
 
   const renameMasterColumn = async (from, to) => {
@@ -2161,6 +2175,7 @@ export default function Board({
   onApplyWorkspace,
   locateRow,
   keepNav,
+  activeTimerKey = null,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -2226,6 +2241,7 @@ export default function Board({
           onApplyWorkspace={onApplyWorkspace}
           locateRow={locateRow}
           currentFolder={folder}
+          activeTimerKey={activeTimerKey}
           onStartPomo={onStartPomo}
           onAddManualTimelog={onAddManualTimelog}
           onOpenTimelogs={onOpenTimelogs}
@@ -2293,6 +2309,7 @@ export default function Board({
         onStartNewCard={onStartNewCard}
         onApplyWorkspace={onApplyWorkspace}
         keepNav={keepNav}
+        activeTimerKey={activeTimerKey}
         onStartPomo={onStartPomo}
         onAddManualTimelog={onAddManualTimelog}
         onOpenTimelogs={onOpenTimelogs}

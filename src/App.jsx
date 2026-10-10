@@ -1116,6 +1116,11 @@ export default function App() {
               onStartNewCard={startNewCard}
               onApplyWorkspace={applyWorkspace}
               locateRow={(r) => locateRow(foldersRef.current, r)}
+              activeTimerKey={
+                activePomo
+                  ? taskKey(activePomo.project, activePomo.board, activePomo.card)
+                  : null
+              }
               onStartPomo={startPomodoro}
               onAddManualTimelog={addManualTimelog}
               onOpenTimelogs={openTimelogs}
@@ -1301,6 +1306,11 @@ export default function App() {
                 onApplyWorkspace={applyWorkspace}
                 locateRow={(r) => locateRow(foldersRef.current, r)}
                 keepNav={keepNav}
+                activeTimerKey={
+                  activePomo
+                    ? taskKey(activePomo.project, activePomo.board, activePomo.card)
+                    : null
+                }
                 onStartPomo={startPomodoro}
                 onAddManualTimelog={addManualTimelog}
                 onOpenTimelogs={openTimelogs}

@@ -49,6 +49,8 @@ export const PC = [
   "#b08a2a",
   "#4f4d8c",
   "#a63d3d",
+  "#2d5f7a",
+  "#7a5230",
 ];
 
 export function loadStages(list, setStages) {

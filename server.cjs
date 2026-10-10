@@ -687,13 +687,26 @@ function createProject({ name, color, cover }) {
   return slug;
 }
 
-function deleteProject(projectSlug) {
+function softDeleteProject(projectSlug) {
   if (!projectSlug || projectSlug.includes("..") || projectSlug.includes("/") || projectSlug.includes("\\")) {
     return false;
   }
   const idx = store.projects.findIndex((p) => p.slug === projectSlug);
   if (idx < 0) return false;
-  store.projects.splice(idx, 1);
+  const [project] = store.projects.splice(idx, 1);
+  ensureTrash();
+  const entry = {
+    kind: "project",
+    slug: uniqueTrashSlug(project.slug || project.name || "project"),
+    deletedAt: new Date().toISOString(),
+    project: project.slug,
+    projectName: project.name || project.slug,
+    color: project.color || "#9a5b2e",
+    title: project.name || project.slug,
+    snapshot: deepClone(project),
+  };
+  if (isDemoValue(project.isDemo)) entry.isDemo = true;
+  store.trash.push(entry);
   return true;
 }
 
@@ -896,6 +909,11 @@ function deleteCard(projectSlug, boardSlug, cardSlug, { permanent = false } = {}
 
 function findTrashParent(kind, projectSlug, containerSlug) {
   ensureTrash();
+  if (kind === "project") {
+    return (
+      store.trash.find((t) => t.kind === "project" && t.project === projectSlug) || null
+    );
+  }
   if (kind === "board") {
     return (
       store.trash.find(
@@ -914,15 +932,51 @@ function findTrashParent(kind, projectSlug, containerSlug) {
   return null;
 }
 
-function restoreBoardFromTrash(item) {
-  const project = findProject(item.project);
+function restoreProjectFromTrash(item) {
+  if (!item || !item.snapshot || typeof item.snapshot !== "object") {
+    return { ok: false, error: "invalid project snapshot" };
+  }
+  let project = deepClone(item.snapshot);
+  let slug = project.slug || item.project || slugify(item.projectName || item.title) || "project";
+  if (findProject(slug)) {
+    slug = uniqueProjectSlug(project.name || item.projectName || item.title || slug);
+  }
+  project.slug = slug;
+  if (!project.name) project.name = item.projectName || item.title || slug;
+  if (!store.projects) store.projects = [];
+  store.projects.push(project);
+  ensureTrash();
+  const trashIdx = store.trash.findIndex((t) => t.slug === item.slug);
+  if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
+  return { ok: true, project: slug, slug };
+}
+
+function restoreBoardFromTrash(item, { restoreParent = false } = {}) {
+  let project = findProject(item.project);
+  if (!project) {
+    const parent = findTrashParent("project", item.project);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "project",
+        parentName: parent.projectName || parent.title || item.project,
+        parentTrashSlug: parent.slug,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreProjectFromTrash(parent);
+      if (!restored.ok) return restored;
+      project = findProject(restored.project);
+    }
+  }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(item.project)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
   if (!project.boards) project.boards = [];
   let slug = item.board || slugify(item.boardName || item.title) || "board";
   if (findBoard(project, slug)) {
     // already restored
-    return { ok: true, project: item.project, board: slug, slug };
+    return { ok: true, project: project.slug, board: slug, slug };
   }
   const cols = Array.isArray(item.columns) && item.columns.length
     ? item.columns.slice()
@@ -937,17 +991,34 @@ function restoreBoardFromTrash(item) {
   appendTabOrder(project, "board", slug);
   const trashIdx = store.trash.findIndex((t) => t.slug === item.slug);
   if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
-  return { ok: true, project: item.project, board: slug, slug };
+  return { ok: true, project: project.slug, board: slug, slug };
 }
 
-function restoreNotesTabFromTrash(item) {
-  const project = findProject(item.project);
+function restoreNotesTabFromTrash(item, { restoreParent = false } = {}) {
+  let project = findProject(item.project);
+  if (!project) {
+    const parent = findTrashParent("project", item.project);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "project",
+        parentName: parent.projectName || parent.title || item.project,
+        parentTrashSlug: parent.slug,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreProjectFromTrash(parent);
+      if (!restored.ok) return restored;
+      project = findProject(restored.project);
+    }
+  }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(item.project)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
   if (!project.notesTabs) project.notesTabs = [];
   let slug = item.notesTab || slugify(item.notesTabName || item.title) || "notes";
   if (findNotesTab(project, slug)) {
-    return { ok: true, project: item.project, notesTab: slug, slug };
+    return { ok: true, project: project.slug, notesTab: slug, slug };
   }
   project.notesTabs.push({
     slug,
@@ -957,13 +1028,30 @@ function restoreNotesTabFromTrash(item) {
   appendTabOrder(project, "notes", slug);
   const trashIdx = store.trash.findIndex((t) => t.slug === item.slug);
   if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
-  return { ok: true, project: item.project, notesTab: slug, slug };
+  return { ok: true, project: project.slug, notesTab: slug, slug };
 }
 
 function restoreCardFromTrash(item, { restoreParent = false } = {}) {
-  const project = findProject(item.project);
+  let project = findProject(item.project);
+  if (!project) {
+    const parent = findTrashParent("project", item.project);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "project",
+        parentName: parent.projectName || parent.title || item.project,
+        parentTrashSlug: parent.slug,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreProjectFromTrash(parent);
+      if (!restored.ok) return restored;
+      project = findProject(restored.project);
+    }
+  }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(item.project)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
   let board = findBoard(project, item.board);
   if (!board) {
     const parent = findTrashParent("board", item.project, item.board);
@@ -1003,13 +1091,30 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
   if (item.doneAt) card.doneAt = item.doneAt;
   if (isDemoValue(item.isDemo)) card.isDemo = true;
   board.cards.push(card);
-  return { ok: true, project: item.project, board: item.board, slug };
+  return { ok: true, project: project.slug, board: board.slug || item.board, slug };
 }
 
 function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
-  const project = findProject(item.project);
+  let project = findProject(item.project);
+  if (!project) {
+    const parent = findTrashParent("project", item.project);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "project",
+        parentName: parent.projectName || parent.title || item.project,
+        parentTrashSlug: parent.slug,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreProjectFromTrash(parent);
+      if (!restored.ok) return restored;
+      project = findProject(restored.project);
+    }
+  }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(item.project)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
   let tab = findNotesTab(project, item.notesTab);
   if (!tab) {
     const parent = findTrashParent("notesTab", item.project, item.notesTab);
@@ -1043,7 +1148,7 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   });
-  return { ok: true, project: item.project, notesTab: item.notesTab, slug };
+  return { ok: true, project: project.slug, notesTab: tab.slug || item.notesTab, slug };
 }
 
 function readTrash() {
@@ -1070,6 +1175,12 @@ function readTrash() {
           note: t.note || "",
           title: t.title || t.note || "Untitled",
           body: t.body || "",
+        };
+      }
+      if (kind === "project") {
+        return {
+          ...base,
+          title: t.projectName || t.title || t.project || "Project",
         };
       }
       if (kind === "board") {
@@ -1109,8 +1220,9 @@ function restoreTrashItem(trashSlug, { restoreParent = false } = {}) {
   if (idx < 0) return { ok: false, error: "not found" };
   const item = store.trash[idx];
   const kind = item.kind || "card";
-  if (kind === "board") return restoreBoardFromTrash(item);
-  if (kind === "notesTab") return restoreNotesTabFromTrash(item);
+  if (kind === "project") return restoreProjectFromTrash(item);
+  if (kind === "board") return restoreBoardFromTrash(item, { restoreParent });
+  if (kind === "notesTab") return restoreNotesTabFromTrash(item, { restoreParent });
   if (kind === "note") return restoreNoteFromTrash(item, { restoreParent });
   return restoreCardFromTrash(item, { restoreParent });
 }
@@ -2164,7 +2276,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "DELETE" && url.pathname === "/api/project") {
       const body = await readBody(req);
       if (!body.project) return json(res, 400, { error: "missing fields" });
-      if (!deleteProject(body.project)) return json(res, 404, { error: "project not found" });
+      if (!softDeleteProject(body.project)) return json(res, 404, { error: "project not found" });
       saveStore();
       return json(res, 200, readWorkspace());
     }

@@ -5,6 +5,7 @@ import { GACC, formatTrashDate } from "../utils.js";
 import GlobalBar from "./GlobalBar.jsx";
 
 function trashKindLabel(kind) {
+  if (kind === "project") return "Project";
   if (kind === "note") return "Note";
   if (kind === "board") return "Board";
   if (kind === "notesTab") return "Notes tab";
@@ -12,6 +13,7 @@ function trashKindLabel(kind) {
 }
 
 function trashKindIcon(kind) {
+  if (kind === "project") return "folder";
   if (kind === "note" || kind === "notesTab") return "Notes";
   if (kind === "board") return "Board";
   return "Task";
@@ -21,6 +23,7 @@ function trashMeta(entry) {
   const type = trashKindLabel(entry.kind || "card");
   const project = entry.projectName || entry.project || "Project";
   const kind = entry.kind || "card";
+  if (kind === "project") return type;
   if (kind === "note") {
     const tab = entry.notesTabName || entry.notesTab || "Notes";
     return `${type} on ${project} / ${tab}`;

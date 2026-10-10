@@ -648,6 +648,8 @@ export default function App() {
   const setProjectArchived = async (folder, archived) => {
     if (!folder) return;
     const data = await putProject({ project: folder.slug, archived: !!archived });
+    discardCoverEdit();
+    setBoardEdit(false);
     applyWorkspace(data, { project: folder.slug, board: null, g: null });
     setG(null);
   };
@@ -686,19 +688,31 @@ export default function App() {
     [applyWorkspace, keepNav]
   );
 
-  const deleteProjectPermanently = async (folder) => {
+  const deleteProjectToTrash = async (folder) => {
     if (!folder) return;
     const data = await deleteProjectApi({ project: folder.slug });
+    // Delete is only offered while cover-editing; clear draft so the sidebar
+    // doesn't keep painting the deleted name/color onto the next project.
+    discardCoverEdit();
+    setBoardEdit(false);
     const next = applyWorkspace(data);
     if (!next.length) {
       setP(0);
       setM(0);
       setG("Masterboard");
+      pRef.current = 0;
+      mRef.current = 0;
+      gRef.current = "Masterboard";
     } else {
-      setP((prev) => Math.min(prev, next.length - 1));
-      setM(restoreTabIndex(next[Math.min(pRef.current, next.length - 1)]));
+      const nextM = restoreTabIndex(next[0]);
+      setP(0);
+      setM(nextM);
       setG(null);
+      pRef.current = 0;
+      mRef.current = nextM;
+      gRef.current = null;
     }
+    setTrashRefresh((n) => n + 1);
   };
 
   const confirmArchiveProject = async (folder) => {
@@ -726,21 +740,13 @@ export default function App() {
   const confirmDeleteProject = async (folder) => {
     if (!folder) return;
     const ok = await askConfirm({
-      title: `Delete "${folder.name}" permanently?`,
-      message:
-        "This cannot be undone. All boards and tasks in this project will be removed.",
+      title: `Delete "${folder.name}"?`,
+      message: "It will move to Trash and can be restored within 30 days.",
       confirmLabel: "Delete",
       danger: true,
     });
     if (!ok) return;
-    const okFinal = await askConfirm({
-      title: `Final confirmation`,
-      message: `Permanently delete "${folder.name}"?`,
-      confirmLabel: "Delete forever",
-      danger: true,
-    });
-    if (!okFinal) return;
-    deleteProjectPermanently(folder);
+    deleteProjectToTrash(folder);
   };
 
   const saveCover = async (folder, mod, patch) => {
@@ -1086,7 +1092,11 @@ export default function App() {
                 let data = await restoreTrashApi({ slug: entry.slug });
                 if (data.needsParent) {
                   const parentLabel =
-                    data.parentKind === "notesTab" ? "notes tab" : "board";
+                    data.parentKind === "project"
+                      ? "project"
+                      : data.parentKind === "notesTab"
+                        ? "notes tab"
+                        : "board";
                   const ok = await askConfirm({
                     title: `Restore with ${parentLabel}?`,
                     message: `“${entry.title || "This item"}” belongs to ${parentLabel} “${

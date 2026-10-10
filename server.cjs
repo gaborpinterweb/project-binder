@@ -723,6 +723,21 @@ function softDeleteProject(projectSlug) {
   return true;
 }
 
+function syncTimelogCardTitle(projectSlug, boardSlug, cardSlug, title) {
+  if (!cardSlug || title == null) return;
+  const next = String(title).trim() || "Untitled";
+  for (const t of store.timelogs || []) {
+    if (
+      t.project === projectSlug &&
+      t.board === boardSlug &&
+      t.card === cardSlug &&
+      t.title !== next
+    ) {
+      t.title = next;
+    }
+  }
+}
+
 function writeCard(projectSlug, boardSlug, card) {
   const project = findProject(projectSlug);
   const board = findBoard(project, boardSlug);
@@ -755,6 +770,7 @@ function writeCard(projectSlug, boardSlug, card) {
   const demo = card.isDemo != null ? card.isDemo : existing.isDemo;
   if (isDemoValue(demo)) existing.isDemo = true;
   else delete existing.isDemo;
+  if (!isNew) syncTimelogCardTitle(projectSlug, boardSlug, slug, existing.title);
   return slug;
 }
 
@@ -768,7 +784,10 @@ function writeCardOrder(items) {
     if (!project || !board || !board.cards) continue;
     const card = board.cards.find((c) => c.slug === item.slug);
     if (!card) continue;
-    if (item.title != null) card.title = item.title || card.title;
+    if (item.title != null) {
+      card.title = item.title || card.title;
+      syncTimelogCardTitle(item.project, item.board, item.slug, card.title);
+    }
     if (item.status != null) card.status = item.status;
     if (item.master != null) card.master = item.master;
     if (item.body != null) card.body = item.body;

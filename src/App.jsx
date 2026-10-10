@@ -45,6 +45,7 @@ import {
   isStoptimerSession,
   locateRow,
   findCardBySlugs,
+  liveCardTitle,
   modToTabType,
   tabsOrderPayload,
   isProjectArchived,
@@ -368,7 +369,13 @@ export default function App() {
       ? elapsed
       : Math.min(session.durationSec || POMO_DURATION_SEC, elapsed);
     const note = typeof session.note === "string" ? session.note.trim() : "";
-    const title = session.title || "Untitled";
+    const title = liveCardTitle(
+      foldersRef.current,
+      session.project,
+      session.board,
+      session.card,
+      session.title || "Untitled"
+    );
     try {
       const data = await postTimelog({
         project: session.project,
@@ -419,7 +426,13 @@ export default function App() {
     const kind = payload.kind === "stoptimer" ? "stoptimer" : "pomodoro";
     const cur = activePomoRef.current;
     if (cur) {
-      const curTitle = cur.title || "Untitled";
+      const curTitle = liveCardTitle(
+        foldersRef.current,
+        cur.project,
+        cur.board,
+        cur.card,
+        cur.title || "Untitled"
+      );
       const ok = await askConfirm({
         title: "Active timer is in progress",
         message: `You can have one timer in progress at a time. Starting a new one will stop your current timer for "${curTitle}".`,
@@ -466,11 +479,12 @@ export default function App() {
     async (row, folder, mod) => {
       if (!folder || !mod || mod[0] !== "Board") return;
       if (isProjectArchived(folder)) return;
+      const title = row.n || "Untitled";
       const data = await putCard({
         project: folder.slug,
         board: mod[2].slug,
         slug: row.slug,
-        title: row.n || "Untitled",
+        title,
         status: row.s || (mod[2].columns || stagesRef.current)[0] || stagesRef.current[0],
         master: row.ms || stagesRef.current[0],
         doneAt: row.doneAt || "",
@@ -478,6 +492,31 @@ export default function App() {
         ord: row.ord,
       });
       applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
+      const cur = activePomoRef.current;
+      if (
+        cur &&
+        cur.project === folder.slug &&
+        cur.board === mod[2].slug &&
+        cur.card === row.slug &&
+        cur.title !== title
+      ) {
+        const next = { ...cur, title };
+        setActivePomo(next);
+        activePomoRef.current = next;
+        savePomo(next);
+      }
+      setTimelogFilter((prev) => {
+        if (
+          !prev ||
+          prev.project !== folder.slug ||
+          prev.board !== mod[2].slug ||
+          prev.card !== row.slug ||
+          prev.title === title
+        ) {
+          return prev;
+        }
+        return { ...prev, title };
+      });
       return data;
     },
     [applyWorkspace, keepNav]

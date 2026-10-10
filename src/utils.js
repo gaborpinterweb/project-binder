@@ -899,6 +899,14 @@ export function findCardBySlugs(folders, project, board, card) {
   return row ? { row, folder, mod } : null;
 }
 
+/** Current card name from workspace; falls back when the card is gone. */
+export function liveCardTitle(folders, project, board, card, fallback = "Untitled") {
+  const hit = findCardBySlugs(folders, project, board, card);
+  const name = hit?.row?.n;
+  if (name != null && String(name).trim()) return String(name).trim();
+  return fallback || "Untitled";
+}
+
 export function allBoardTasks(folders, PC_COLORS = PC) {
   const out = [];
   folders.forEach((folder, fi) => {

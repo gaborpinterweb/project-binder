@@ -10,6 +10,7 @@ import {
   formatDuration,
   formatSpent,
   groupTimelogsByPeriodAndProject,
+  liveCardTitle,
   matchesTimelogFilter,
   matchesTimelogPeriod,
   pastel,
@@ -65,7 +66,17 @@ function formatExportHours(sec) {
   return (s / 3600).toFixed(2);
 }
 
-function timelogExportRows(entries) {
+function entryCardTitle(folders, entry) {
+  return liveCardTitle(
+    folders,
+    entry.project,
+    entry.board,
+    entry.card,
+    entry.title || "Untitled"
+  );
+}
+
+function timelogExportRows(entries, folders = []) {
   return (entries || []).map((entry) => {
     const stamp = entry.endedAt || entry.startedAt || "";
     return [
@@ -73,7 +84,7 @@ function timelogExportRows(entries) {
       formatClock(stamp),
       entry.projectName || entry.project || "",
       entry.boardName || entry.board || "",
-      entry.title || "Untitled",
+      entryCardTitle(folders, entry),
       formatDuration(entry.durationSec),
       formatExportHours(entry.durationSec),
       entry.note || "",
@@ -104,8 +115,8 @@ function exportFilename(period, ext) {
   return `timelogs-${slug}-${y}${m}${d}.${ext}`;
 }
 
-function exportTimelogsCsv(entries, period) {
-  const rows = timelogExportRows(entries);
+function exportTimelogsCsv(entries, period, folders = []) {
+  const rows = timelogExportRows(entries, folders);
   const lines = [EXPORT_HEADERS, ...rows].map((row) =>
     row.map(escapeCsvCell).join(",")
   );
@@ -116,8 +127,8 @@ function exportTimelogsCsv(entries, period) {
 }
 
 /** HTML table Excel opens as a spreadsheet (no library). */
-function exportTimelogsExcel(entries, period) {
-  const rows = timelogExportRows(entries);
+function exportTimelogsExcel(entries, period, folders = []) {
+  const rows = timelogExportRows(entries, folders);
   const head = EXPORT_HEADERS.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
   const body = rows
     .map(
@@ -130,7 +141,7 @@ function exportTimelogsExcel(entries, period) {
   downloadBlob(exportFilename(period, "xls"), blob);
 }
 
-function ExportDropdown({ entries, period, disabled }) {
+function ExportDropdown({ entries, period, folders = [], disabled }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
 
@@ -145,8 +156,8 @@ function ExportDropdown({ entries, period, disabled }) {
 
   const run = (format) => {
     if (disabled) return;
-    if (format === "csv") exportTimelogsCsv(entries, period);
-    else exportTimelogsExcel(entries, period);
+    if (format === "csv") exportTimelogsCsv(entries, period, folders);
+    else exportTimelogsExcel(entries, period, folders);
     setOpen(false);
   };
 
@@ -316,6 +327,7 @@ function TimelogMoreMenu({ disabled, onEdit, onDelete }) {
 
 function TimelogRow({
   entry,
+  folders = [],
   busySlug,
   onOpenCard,
   onEdit,
@@ -325,6 +337,7 @@ function TimelogRow({
   const note = entry.note || "";
   const busy = busySlug === entry.slug;
   const stamp = entry.endedAt || entry.startedAt || "";
+  const title = entryCardTitle(folders, entry);
 
   return (
     <div className="timelog-row" style={{ ["--pc"]: color }}>
@@ -336,7 +349,7 @@ function TimelogRow({
           onClick={() => onOpenCard?.(entry.project, entry.board, entry.card)}
         >
           <b>
-            <span className="card-name">{entry.title || "Untitled"}</span>
+            <span className="card-name">{title}</span>
           </b>
         </button>
       </div>
@@ -480,7 +493,7 @@ export default function Timelogs({
 
   const handleDelete = async (entry) => {
     if (busySlug) return;
-    const label = entry.title || "Untitled";
+    const label = entryCardTitle(folders, entry);
     const ok = await askConfirm({
       title: `Delete timelog for "${label}"?`,
       confirmLabel: "Delete",
@@ -505,6 +518,7 @@ export default function Timelogs({
     <TimelogRow
       key={entry.slug}
       entry={entry}
+      folders={folders}
       busySlug={busySlug}
       onOpenCard={onOpenCard}
       onEdit={openEditDialog}
@@ -565,12 +579,19 @@ export default function Timelogs({
         <ExportDropdown
           entries={shown || []}
           period={period}
+          folders={folders}
           disabled={!shown?.length}
         />
       </GlobalBar>
       {filter && (
         <div className="log-filter">
-          Card: <b>{filter.title || filter.card || "Untitled"}</b>
+          Card:{" "}
+          <b>
+            {entryCardTitle(folders, filter) ||
+              filter.title ||
+              filter.card ||
+              "Untitled"}
+          </b>
           <button type="button" className="clear" onClick={onClearFilter}>
             Clear filter
           </button>

@@ -7,6 +7,7 @@ import {
   formatDuration,
   globalLabel,
   isStoptimerSession,
+  liveCardTitle,
   pomoElapsedSec,
   pomoRemainingSec,
 } from "../utils.js";
@@ -322,6 +323,7 @@ export default function Sidebar({
       {activePomo ? (
         <div className="side-foot">
           <PomoBlock
+            folders={folders}
             activePomo={activePomo}
             onStop={onStopPomo}
             onNoteChange={onPomoNoteChange}
@@ -334,12 +336,19 @@ export default function Sidebar({
   );
 }
 
-function PomoBlock({ activePomo, onStop, onNoteChange, onOpenCard }) {
+function PomoBlock({ folders = [], activePomo, onStop, onNoteChange, onOpenCard }) {
   const stopwatch = isStoptimerSession(activePomo);
   const shown = stopwatch
     ? pomoElapsedSec(activePomo)
     : pomoRemainingSec(activePomo);
   const color = activePomo.color || GACC;
+  const cardTitle = liveCardTitle(
+    folders,
+    activePomo.project,
+    activePomo.board,
+    activePomo.card,
+    activePomo.title || "Untitled"
+  );
   return (
     <div className="pomo-block" id="pomo-block">
       <div className="pomo-time" id="pomo-time">
@@ -353,7 +362,7 @@ function PomoBlock({ activePomo, onStop, onNoteChange, onOpenCard }) {
         style={{ ["--pc"]: color }}
         onClick={onOpenCard}
       >
-        <b id="pomo-card-title">{activePomo.title || "Untitled"}</b>
+        <b id="pomo-card-title">{cardTitle}</b>
         <span className="meta">
           <span className="dot" id="pomo-card-dot" style={{ background: color }} />
           <span id="pomo-card-meta">

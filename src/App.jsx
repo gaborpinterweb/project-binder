@@ -1444,6 +1444,11 @@ export default function App() {
           stages={stages}
           g={g}
           readonly={!!dialog.readonly}
+          activeTimerKey={
+            activePomo
+              ? taskKey(activePomo.project, activePomo.board, activePomo.card)
+              : null
+          }
           onClose={(result) => {
             if (result?.draftRemember) {
               setCardDraft({

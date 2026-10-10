@@ -564,9 +564,10 @@ td:focus{outline:2px solid var(--acc);outline-offset:-2px}
 select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4px;padding:2px 6px}
 .board{display:flex;gap:0;padding:0;overflow-x:auto;overflow-y:hidden;flex:1;align-items:stretch;background:#fff;min-height:0;width:100%}
 .mb{flex:1;min-height:0;display:flex;flex-direction:column}
-.mb-foot{display:flex;flex:none;border-top:1px solid var(--line)}
-.mb-foot button{flex:1;min-width:0;padding:14px 10px;font-size:13px;text-align:center;border-radius:0;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .15s}
-.mb-foot button.off{text-decoration:line-through;opacity:.45}
+.mb-foot{display:flex;flex:none}
+.mb-foot button{flex:1;min-width:0;padding:10px;font-size:13px;text-align:center;border-radius:0;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid color-mix(in srgb,var(--pc) 25%,var(--line));margin-left:-1px;-webkit-tap-highlight-color:transparent}
+.mb-foot button:first-child{margin-left:0}
+.mb-foot button.off{text-decoration:line-through;color:var(--mute)}
 .card.tint{border-color:color-mix(in srgb,var(--pc) 25%,var(--line))}
 .col{flex:1 1 240px;min-width:240px;width:auto;display:flex;flex-direction:column;min-height:0;align-self:stretch;background:#fff;border-radius:0;padding:0;border-left:1px solid var(--line)}
 .col:first-child{border-left:0}
@@ -595,8 +596,8 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .card b,.card span{display:block}.card span{color:var(--mute);font-size:13px}
 .card b{display:flex;align-items:center;gap:8px;min-width:0;width:100%}
 .card .card-check{flex:none;width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
-.card .card-timer-dot{flex:none;width:8px;height:8px;border-radius:50%;background:#d92d20;animation:card-timer-flash 1s ease-in-out infinite}
-@keyframes card-timer-flash{0%,100%{opacity:1}50%{opacity:.2}}
+.card.timer-active,.dlg.timer-active{border-width:2px;border-style:dashed;border-color:#d92d20}
+.card.tint.timer-active,.dlg.tint.timer-active{border-color:#d92d20}
 .card .card-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-size:inherit;font-weight:inherit}
 .card.done .card-name{text-decoration:line-through;opacity:.72}
 .card .src,.card .card-spent{font-size:12px;color:var(--mute);margin-top:4px}

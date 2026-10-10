@@ -206,6 +206,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             height: session.height,
             color,
             done: isDone(row),
+            timerActive: !!payload.timerActive,
             title: row.n || "Untitled",
             src,
             x: ev.clientX - session.offsetX,
@@ -269,7 +270,11 @@ function DragPreview({ preview, previewElRef }) {
   return createPortal(
     <div
       ref={previewElRef}
-      className={"card tint drag-preview" + (preview.done ? " done" : "")}
+      className={
+        "card tint drag-preview" +
+        (preview.done ? " done" : "") +
+        (preview.timerActive ? " timer-active" : "")
+      }
       style={{
         ["--pc"]: pc,
         background: pastel(pc),
@@ -350,8 +355,14 @@ function TaskCard({
   const [timelogMenu, setTimelogMenu] = useState(null);
   return (
     <div
-      className={"card tint" + (done ? " done" : "") + (dragging ? " dragging" : "")}
+      className={
+        "card tint" +
+        (done ? " done" : "") +
+        (dragging ? " dragging" : "") +
+        (timerActive ? " timer-active" : "")
+      }
       style={{ ["--pc"]: pc, background: pastel(pc) }}
+      title={timerActive ? "Timer active" : undefined}
       onClick={() => {
         if (boardEdit) return;
         if (consumeDragClick?.()) return;
@@ -365,7 +376,11 @@ function TaskCard({
       }}
       onPointerDown={(e) => {
         if (!canDrag) return;
-        onArmDrag?.(e, dragPayload || { row, folder, mod }, key);
+        onArmDrag?.(
+          e,
+          { ...(dragPayload || { row, folder, mod }), timerActive },
+          key
+        );
       }}
     >
       <b>
@@ -381,9 +396,6 @@ function TaskCard({
             await onToggleDone(row, folder, mod, e.target.checked);
           }}
         />
-        {timerActive ? (
-          <span className="card-timer-dot" title="Timer active" aria-label="Timer active" />
-        ) : null}
         <span className="card-name">{row.n || "Untitled"}</span>
       </b>
       {src ? <span className="src">{src}</span> : null}
@@ -1469,7 +1481,7 @@ function MasterBoard({
                 key={key}
                 type="button"
                 className={masterOff.has(key) ? "off" : ""}
-                style={{ background: pastel(color) }}
+                style={{ ["--pc"]: color, background: pastel(color) }}
                 title={label}
                 onClick={() => {
                   if (masterOff.has(key)) masterOff.delete(key);

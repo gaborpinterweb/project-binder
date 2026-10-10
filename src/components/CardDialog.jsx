@@ -10,6 +10,7 @@ import {
   isDone,
   pastel,
   playTaskCompleteSound,
+  taskKey,
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
 import DbFieldInput from "./DbFieldInput.jsx";
@@ -109,6 +110,7 @@ export default function CardDialog({
   onSaveItem,
   showMasterColumn = true,
   showTimelogs = true,
+  activeTimerKey = null,
 }) {
   const [curLoc, setCurLoc] = useState(
     isDraft && loc
@@ -130,6 +132,14 @@ export default function CardDialog({
   originLocRef.current = originLoc;
 
   const isDb = !isDraft && originLoc?.mod?.[0] === "Database";
+  const timerActive =
+    !isDraft &&
+    !!activeTimerKey &&
+    !!curLoc?.folder?.slug &&
+    !!curLoc?.mod?.[2]?.slug &&
+    !!draft?.slug &&
+    taskKey(curLoc.folder.slug, curLoc.mod[2].slug, draft.slug) ===
+      activeTimerKey;
 
   const reloadCardLogs = async () => {
     const cur = curLocRef.current;
@@ -258,7 +268,15 @@ export default function CardDialog({
         else if (!e.target.closest?.(".prop-dd")) closePropDrops();
       }}
     >
-      <div className={"dlg" + (curLoc && !isDb ? " tint" : "")} style={tintStyle}>
+      <div
+        className={
+          "dlg" +
+          (curLoc && !isDb ? " tint" : "") +
+          (timerActive ? " timer-active" : "")
+        }
+        style={tintStyle}
+        title={timerActive ? "Timer active" : undefined}
+      >
         <div className="dlg-content">
           {isDb ? null : (
             <div className="title-row">

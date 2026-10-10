@@ -296,6 +296,11 @@ export default function CardDialog({
                   if (readonly) return;
                   patch({ n: e.target.value });
                 }}
+                onKeyDown={(e) => {
+                  if (readonly || e.key !== "Enter") return;
+                  e.preventDefault();
+                  close(isDraft);
+                }}
               />
               {!readonly &&
                 !isDraft &&

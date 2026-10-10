@@ -12,7 +12,8 @@ export default defineConfig({
   assetsInclude: ["**/*.wasm"],
   server: {
     proxy: {
-      "/api": "http://localhost:3456",
+      // CLI / npm start API (packaged Electron uses 3456)
+      "/api": "http://localhost:3457",
     },
   },
   build: {

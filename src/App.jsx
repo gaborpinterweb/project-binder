@@ -996,7 +996,7 @@ export default function App() {
             <div id="view" className="mod">
               <div style={{ padding: 24, color: "var(--mute)" }}>
                 Start the app with <code>npm start</code>, then open{" "}
-                <code>http://localhost:3456</code>.
+                <code>http://localhost:3457</code>.
                 <br />
                 <br />
                 {loadError}

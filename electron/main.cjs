@@ -2,7 +2,6 @@ const { app, BrowserWindow } = require("electron");
 const http = require("http");
 const path = require("path");
 
-const APP_URL = "http://127.0.0.1:3456";
 const ICON_PATH = path.join(__dirname, "..", "assets", "icon.png");
 
 app.setName("Project Binder");
@@ -24,7 +23,7 @@ function waitForServer(url, attempts = 40) {
   });
 }
 
-function createWindow() {
+function createWindow(appUrl) {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -34,17 +33,22 @@ function createWindow() {
       contextIsolation: true,
     },
   });
-  win.loadURL(APP_URL);
+  win.loadURL(appUrl);
 }
 
 app.whenReady().then(async () => {
   // Only the packaged app may use real OS Application Support / userData.
   if (app.isPackaged) {
     process.env.PROJECT_BINDER_USER_DATA = app.getPath("userData");
+    if (!process.env.PROJECT_BINDER_PORT) process.env.PROJECT_BINDER_PORT = "3456";
+  } else if (!process.env.PROJECT_BINDER_PORT) {
+    process.env.PROJECT_BINDER_PORT = "3457";
   }
+  const port = process.env.PROJECT_BINDER_PORT;
+  const appUrl = `http://127.0.0.1:${port}`;
   require("../server.cjs");
-  await waitForServer(APP_URL);
-  createWindow();
+  await waitForServer(appUrl);
+  createWindow(appUrl);
 });
 
 app.on("window-all-closed", () => {

@@ -4,7 +4,11 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const AdmZip = require("adm-zip");
-const { createUserDataStore, isValidStore } = require("./userDataStore.cjs");
+const {
+  createUserDataStore,
+  isPackagedElectron,
+  isValidStore,
+} = require("./userDataStore.cjs");
 
 const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
@@ -21,7 +25,16 @@ const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
 const AUTO_BACKUP_KEEP_DAYS = 3;
 const AUTO_BACKUP_DAY_RE = /^project-binder-backup-(\d{4}-\d{2}-\d{2})\.zip$/i;
 const AUTO_BACKUP_INTERVAL_MS = 5 * 60 * 1000;
-const PORT = 3456;
+// Packaged desktop keeps 3456; CLI / unpackaged use 3457 so both can run at once.
+const DEFAULT_PORT_PACKAGED = 3456;
+const DEFAULT_PORT_CLI = 3457;
+function resolvePort() {
+  const raw = process.env.PROJECT_BINDER_PORT || process.env.PORT;
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  return isPackagedElectron() ? DEFAULT_PORT_PACKAGED : DEFAULT_PORT_CLI;
+}
+const PORT = resolvePort();
 const DIST = path.join(__dirname, "dist");
 const MIME = {
   ".html": "text/html; charset=utf-8",

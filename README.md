@@ -15,15 +15,19 @@
 npm install
 npm run build
 npm start
-# → http://localhost:3456
+# → http://localhost:3457  (CLI / browser; in-memory seed)
 ```
 
-Dev (Vite HMR + API on :3456):
+Packaged Electron listens on **:3456** (OS user-data). CLI / `npm start` / unpackaged Electron use **:3457** so both can run at once without sharing a port or workspace.
+
+Dev (Vite HMR + API on :3457):
 
 ```bash
-npm start          # API + static (build first)
-npm run dev        # Vite on :5173, proxies /api → :3456
+npm start          # API + static on :3457 (build first)
+npm run dev        # Vite on :5173, proxies /api → :3457
 ```
+
+Override either with `PROJECT_BINDER_PORT` (or `PORT`).
 
 ## Storage
 

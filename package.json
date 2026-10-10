@@ -26,6 +26,7 @@
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
     "adm-zip": "^0.6.1",
+    "lucide-react": "^1.54.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-file-icon": "^1.6.0",

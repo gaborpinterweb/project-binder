@@ -47,7 +47,7 @@ function ProjectDragPreview({ preview, previewElRef }) {
       aria-hidden="true"
     >
       <span style={{ color: preview.color }}>
-        <Icon name="folder" />
+        <Icon name="folder" filled />
       </span>
       <span>{preview.label}</span>
     </div>,
@@ -307,7 +307,7 @@ export default function Sidebar({
                   }}
                 >
                   <span style={{ color: icColor }}>
-                    <Icon name="folder" />
+                    <Icon name="folder" filled />
                   </span>
                   <span>{label}</span>
                 </button>

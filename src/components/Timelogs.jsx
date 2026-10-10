@@ -344,7 +344,7 @@ function TimelogRow({
         {note ? (
           <span className="timelog-note-text">{note}</span>
         ) : (
-          <span className="timelog-note-text empty">-</span>
+          <span className="timelog-note-text is-empty">No notes…</span>
         )}
       </div>
       <time className="timelog-date" dateTime={stamp}>

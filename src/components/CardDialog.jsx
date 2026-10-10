@@ -477,10 +477,10 @@ export default function CardDialog({
                           <span
                             className={
                               "dlg-timelog-note" +
-                              (entry.note ? "" : " empty")
+                              (entry.note ? "" : " is-empty")
                             }
                           >
-                            {entry.note || "—"}
+                            {entry.note || "No notes…"}
                           </span>
                           <time className="dlg-timelog-date" dateTime={stamp}>
                             {formatCardTimelogDate(stamp)}

@@ -55,6 +55,8 @@ import {
   saveUiSounds,
   playSound,
   playTaskCompleteSound,
+  playTimerCompleteSound,
+  playTimerDiscardSound,
   clearClientAppState,
   hasSeenLaunch,
   markLaunchSeen,
@@ -349,6 +351,8 @@ export default function App() {
     const elapsed = pomoElapsedSec(session);
     const pomoDone =
       !isStoptimerSession(session) && pomoRemainingSec(session) <= 0;
+    if (elapsed < MIN_TIMELOG_SEC) playTimerDiscardSound();
+    else playTimerCompleteSound();
     setActivePomo(null);
     activePomoRef.current = null;
     savePomo(null);

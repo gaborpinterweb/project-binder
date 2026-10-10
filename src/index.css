@@ -491,7 +491,7 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .timelog-card{display:flex;align-items:center;flex:1;width:100%;margin:0;padding:5px 10px;box-sizing:border-box;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .timelog-card:hover{box-shadow:0 0 0 1px color-mix(in srgb,var(--pc) 35%,var(--line))}
 .timelog-note-text{display:block;margin:0;padding:0 2px;min-height:0;font-size:12px;line-height:1.35;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
-.timelog-note-text.empty{color:var(--mute);white-space:nowrap;line-height:1.35;height:1.35em;overflow:hidden}
+.timelog-note-text.is-empty{color:var(--mute);font-style:italic;white-space:nowrap}
 .timelog-date,.timelog-range{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
 .timelog-time{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
 .timelog-time .dur{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
@@ -736,7 +736,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .dlg-timelog-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px 14px;align-items:baseline;padding:6px 4px;font-size:13px;line-height:1.35;border-bottom:1px solid color-mix(in srgb,var(--ink) 6%,transparent)}
 .dlg .dlg-timelog-item:last-child{border-bottom:0}
 .dlg .dlg-timelog-note{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
-.dlg .dlg-timelog-note.empty{color:var(--mute)}
+.dlg .dlg-timelog-note.is-empty{color:var(--mute);font-style:italic}
 .dlg .dlg-timelog-date{flex:none;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
 .dlg .dlg-timelog-dur{flex:none;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
 .dlg .dlg-fields{display:flex;flex-direction:column;gap:0;padding:0}

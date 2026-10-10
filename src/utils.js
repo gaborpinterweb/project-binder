@@ -696,6 +696,14 @@ export function playTaskCompleteSound() {
   playSound("/sounds/task-complete.mp3");
 }
 
+export function playTimerCompleteSound() {
+  playSound("/sounds/timer-complete.mp3");
+}
+
+export function playTimerDiscardSound() {
+  playSound("/sounds/timer-discard.mp3");
+}
+
 export function clearClientAppState() {
   try {
     const keys = [];

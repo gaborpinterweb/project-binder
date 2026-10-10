@@ -8,6 +8,7 @@ import {
   putMasterboard,
   putCardOrder,
   fetchWorkspace,
+  fetchTimelogs,
 } from "../api.js";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
@@ -42,14 +43,18 @@ import {
   allBoards,
   boardKey,
   boardLabel,
+  boardColumnLabel,
   byOrd,
   colCollapseKey,
   columnRows,
   confirmDeleteColumn,
+  formatSpent,
+  getBoardShow,
   groupByDoneDay,
   isDone,
   pastel,
   playTaskCompleteSound,
+  taskKey,
   COMPLETED_VIEWS,
   loadCompletedViews,
   loadDbViewsSidebar,
@@ -312,6 +317,8 @@ function TaskCard({
   mod,
   color,
   src,
+  spentSec,
+  showTimeSpent = false,
   boardEdit,
   noDrag,
   dragPayload,
@@ -370,6 +377,9 @@ function TaskCard({
         <span className="card-name">{row.n || "Untitled"}</span>
       </b>
       {src ? <span className="src">{src}</span> : null}
+      {showTimeSpent ? (
+        <span className="card-spent">{formatSpent(spentSec || 0)}</span>
+      ) : null}
       {timelogMenu
         ? createPortal(
             <TimelogContextMenu
@@ -396,14 +406,55 @@ const COMPLETED_VIEW_OPTIONS = [
   { value: "virtual", label: "Show completed column" },
 ];
 
+const BOARD_SHOW_OPTIONS = [
+  { value: "projectName", label: "Project name" },
+  { value: "timeSpent", label: "Time spent" },
+];
+
+function useCardSpentByKey(enabled, refreshKey) {
+  const [spentByKey, setSpentByKey] = useState(() => new Map());
+  useEffect(() => {
+    if (!enabled) {
+      setSpentByKey(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchTimelogs()
+      .then((entries) => {
+        if (cancelled) return;
+        const map = new Map();
+        for (const e of entries || []) {
+          const key = taskKey(e.project, e.board, e.card);
+          map.set(key, (map.get(key) || 0) + (e.durationSec || 0));
+        }
+        setSpentByKey(map);
+      })
+      .catch(() => {
+        if (!cancelled) setSpentByKey(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, refreshKey]);
+  return spentByKey;
+}
+
+function cardSpentSec(spentByKey, folder, mod, row) {
+  if (!folder?.slug || !mod?.[2]?.slug || !row?.slug) return 0;
+  return spentByKey.get(taskKey(folder.slug, mod[2].slug, row.slug)) || 0;
+}
+
 function CompletedViewBtn({
   scope,
   completedViewByScope,
+  boardShowByScope,
   onChange,
+  onSetBoardShow,
   triggerLabel,
   align = "right",
 }) {
   const mode = getCompletedView(scope, completedViewByScope);
+  const show = getBoardShow(scope, boardShowByScope);
   const asViewMenu = Boolean(triggerLabel);
   return (
     <Dropdown
@@ -413,12 +464,38 @@ function CompletedViewBtn({
       title={asViewMenu ? "View options" : "Completed tasks view"}
       align={align}
       caret={!asViewMenu}
-      value={mode}
-      options={COMPLETED_VIEW_OPTIONS}
-      onChange={(next) => {
-        if (next === mode) return;
-        onChange(scope, next);
-      }}
+      sections={[
+        {
+          label: "Completed",
+          value: mode,
+          onChange: (next) => {
+            if (next === mode) return;
+            onChange(scope, next);
+          },
+          options: COMPLETED_VIEW_OPTIONS,
+        },
+        {
+          label: "Show",
+          closeOnSelect: false,
+          onChange: (key) => {
+            if (key === "projectName") {
+              onSetBoardShow(scope, { projectName: !show.projectName });
+            } else if (key === "timeSpent") {
+              onSetBoardShow(scope, { timeSpent: !show.timeSpent });
+            }
+          },
+          options: BOARD_SHOW_OPTIONS.map((o) => ({
+            ...o,
+            checked: show[o.value],
+          })),
+          renderOption: (o) => (
+            <span className="dd-check">
+              <input type="checkbox" checked={!!o.checked} readOnly tabIndex={-1} />
+              {o.label}
+            </span>
+          ),
+        },
+      ]}
     >
       {asViewMenu ? (
         <>
@@ -468,6 +545,7 @@ function fillDoneGroups(items, opts, cardProps) {
             mod={item.mod}
             color={item.color}
             src={item.src}
+            spentSec={item.spentSec}
             dragPayload={item.dragPayload}
             {...cardProps}
           />
@@ -683,6 +761,8 @@ function ProjectBoard({
   boardEdit,
   colCollapsed,
   completedViewByScope,
+  boardShowByScope,
+  uiTick,
   onBumpCollapse,
   onSetCompletedView,
   onSaveCard,
@@ -698,6 +778,8 @@ function ProjectBoard({
 }) {
   const scope = boardKey(folder, mod);
   const mode = getCompletedView(scope, completedViewByScope);
+  const show = getBoardShow(scope, boardShowByScope);
+  const spentByKey = useCardSpentByKey(show.timeSpent, uiTick);
 
   const resolveDrop = useCallback(
     async (payload, hint) => {
@@ -765,7 +847,11 @@ function ProjectBoard({
     onAddManualTimelog,
     onOpenTimelogs,
     readonly,
+    showTimeSpent: show.timeSpent,
   };
+
+  const cardSrc = (row) =>
+    show.projectName ? boardColumnLabel(folder, mod, row.s) : null;
 
   const renameBoardColumn = async (from, to) => {
     const next = (to || "").trim().replace(/,/g, " ");
@@ -945,6 +1031,8 @@ function ProjectBoard({
                     row={item.row}
                     folder={folder}
                     mod={mod}
+                    src={cardSrc(item.row)}
+                    spentSec={cardSpentSec(spentByKey, folder, mod, item.row)}
                     {...cardProps}
                   />
                 )
@@ -958,6 +1046,8 @@ function ProjectBoard({
                   folder,
                   mod,
                   color: folder.color || PC[0],
+                  src: cardSrc(row),
+                  spentSec: cardSpentSec(spentByKey, folder, mod, row),
                   dragPayload: { row, folder, mod },
                 })),
                 { showEmpty: false },
@@ -991,6 +1081,8 @@ function ProjectBoard({
                 folder,
                 mod,
                 color: folder.color || PC[0],
+                src: cardSrc(row),
+                spentSec: cardSpentSec(spentByKey, folder, mod, row),
                 dragPayload: { row, folder, mod },
               })),
               {},
@@ -1010,6 +1102,8 @@ function MasterBoard({
   masterOff,
   colCollapsed,
   completedViewByScope,
+  boardShowByScope,
+  uiTick,
   onBump,
   onSetCompletedView,
   onSaveCard,
@@ -1027,6 +1121,10 @@ function MasterBoard({
     (t) => !masterOff.has(boardKey(t.folder, t.mod))
   );
   const mode = getCompletedView("master", completedViewByScope);
+  const show = getBoardShow("master", boardShowByScope);
+  const spentByKey = useCardSpentByKey(show.timeSpent, uiTick);
+  const cardSrc = (t) =>
+    show.projectName ? boardColumnLabel(t.folder, t.mod, t.row.s) : null;
 
   const resolveDrop = useCallback(
     async (payload, hint) => {
@@ -1095,6 +1193,7 @@ function MasterBoard({
     onStartPomo,
     onAddManualTimelog,
     onOpenTimelogs,
+    showTimeSpent: show.timeSpent,
   };
 
   const renameMasterColumn = async (from, to) => {
@@ -1284,7 +1383,8 @@ function MasterBoard({
                         folder={t.folder}
                         mod={t.mod}
                         color={t.folder.color || PC[t.fi % PC.length]}
-                        src={boardLabel(t.folder, t.mod)}
+                        src={cardSrc(t)}
+                        spentSec={cardSpentSec(spentByKey, t.folder, t.mod, t.row)}
                         dragPayload={t}
                         {...cardProps}
                       />
@@ -1300,7 +1400,8 @@ function MasterBoard({
                     folder: t.folder,
                     mod: t.mod,
                     color: t.folder.color || PC[t.fi % PC.length],
-                    src: boardLabel(t.folder, t.mod),
+                    src: cardSrc(t),
+                    spentSec: cardSpentSec(spentByKey, t.folder, t.mod, t.row),
                     dragPayload: t,
                   })),
                   { showEmpty: false },
@@ -1334,7 +1435,8 @@ function MasterBoard({
                     folder: t.folder,
                     mod: t.mod,
                     color: t.folder.color || PC[t.fi % PC.length],
-                    src: boardLabel(t.folder, t.mod),
+                    src: cardSrc(t),
+                    spentSec: cardSpentSec(spentByKey, t.folder, t.mod, t.row),
                     dragPayload: t,
                   })),
                 {},
@@ -2047,9 +2149,11 @@ export default function Board({
   masterOff,
   colCollapsed,
   completedViewByScope,
+  boardShowByScope,
   uiTick,
   onBump,
   onSetCompletedView,
+  onSetBoardShow,
   onSaveCard,
   onOpenCard,
   onToggleDone,
@@ -2095,7 +2199,9 @@ export default function Board({
             <CompletedViewBtn
               scope="master"
               completedViewByScope={completedViewByScope}
+              boardShowByScope={boardShowByScope}
               onChange={onSetCompletedView}
+              onSetBoardShow={onSetBoardShow}
               triggerLabel="View"
               align="right"
             />
@@ -2109,6 +2215,8 @@ export default function Board({
           masterOff={masterOff}
           colCollapsed={colCollapsed}
           completedViewByScope={completedViewByScope}
+          boardShowByScope={boardShowByScope}
+          uiTick={uiTick}
           onBump={onBump}
           onSetCompletedView={onSetCompletedView}
           onSaveCard={onSaveCard}
@@ -2155,7 +2263,9 @@ export default function Board({
             <CompletedViewBtn
               scope={scope}
               completedViewByScope={completedViewByScope}
+              boardShowByScope={boardShowByScope}
               onChange={onSetCompletedView}
+              onSetBoardShow={onSetBoardShow}
               triggerLabel="View"
               align="left"
             />
@@ -2173,6 +2283,8 @@ export default function Board({
         boardEdit={editing}
         colCollapsed={colCollapsed}
         completedViewByScope={completedViewByScope}
+        boardShowByScope={boardShowByScope}
+        uiTick={uiTick}
         onBumpCollapse={onBump}
         onSetCompletedView={onSetCompletedView}
         onSaveCard={onSaveCard}

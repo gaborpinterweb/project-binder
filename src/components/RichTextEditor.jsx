@@ -419,6 +419,13 @@ export default function RichTextEditor({
     return () => onEditor?.(null);
   }, [editor, onEditor]);
 
+  // useEditor ignores later `editable` option changes (preserves isEditable).
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    if (editor.isEditable === editable) return;
+    editor.setEditable(editable);
+  }, [editor, editable]);
+
   useEffect(() => {
     if (!editor || !autofocus) return;
     // Keep caret inside the first block (heading), not a trailing empty paragraph.

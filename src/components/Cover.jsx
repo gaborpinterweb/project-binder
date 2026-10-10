@@ -160,6 +160,7 @@ export default function Cover({
               }
             />
             <CoverDescription
+              key="edit"
               value={viewDesc}
               editable
               onChange={(html) =>
@@ -198,7 +199,7 @@ export default function Cover({
           {isEmptyDescription(viewDesc) ? (
             <p className="cover-desc-display is-empty">No description yet.</p>
           ) : (
-            <CoverDescription value={viewDesc} editable={false} />
+            <CoverDescription key="view" value={viewDesc} editable={false} />
           )}
           {!archived && (
             <button

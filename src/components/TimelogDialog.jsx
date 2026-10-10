@@ -124,11 +124,13 @@ export default function TimelogDialog({
     const onKey = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         if (!saving) onClose?.();
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // Capture so Escape does not also close a CardDialog underneath.
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, [onClose, saving]);
 
   const selected = options.find((o) => o.value === taskValue) || options[0];

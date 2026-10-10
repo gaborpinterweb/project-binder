@@ -4,7 +4,7 @@ import { Icon } from "../icons.jsx";
 import {
   GACC,
   PC,
-  formatDuration,
+  formatTimer,
   globalLabel,
   isStoptimerSession,
   liveCardTitle,
@@ -352,7 +352,7 @@ function PomoBlock({ folders = [], activePomo, onStop, onNoteChange, onOpenCard 
   return (
     <div className="pomo-block" id="pomo-block">
       <div className="pomo-time" id="pomo-time">
-        {formatDuration(shown)}
+        {formatTimer(shown)}
       </div>
       <button
         type="button"

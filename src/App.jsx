@@ -28,6 +28,7 @@ import {
   GACC,
   COMPLETED_VIEWS,
   COMPLETED_VIEW_KEY,
+  BOARD_SHOW_KEY,
   POMO_DURATION_SEC,
   WORKSPACE_ITEMS,
   fromApi,
@@ -38,6 +39,8 @@ import {
   restoreTabIndex,
   saveLastTab,
   loadCompletedViews,
+  loadBoardShow,
+  normalizeBoardShow,
   loadPomo,
   savePomo,
   pomoRemainingSec,
@@ -137,7 +140,9 @@ export default function App() {
   const masterOff = useRef(new Set());
   const colCollapsed = useRef(new Set());
   const completedViewByScope = useRef(new Map());
+  const boardShowByScope = useRef(new Map());
   const pomoFinishing = useRef(false);
+  const timelogDialogDoneRef = useRef(null);
   const foldersRef = useRef(folders);
   const stagesRef = useRef(stages);
   const pRef = useRef(p);
@@ -461,13 +466,30 @@ export default function App() {
     playSound("/sounds/timer-start.mp3");
   }
 
+  function settleTimelogDialog() {
+    const done = timelogDialogDoneRef.current;
+    timelogDialogDoneRef.current = null;
+    done?.();
+  }
+
   function addManualTimelog(filter) {
     if (filter?.project && filter?.board && filter?.card) {
-      setTimelogDialog({
-        mode: "add",
-        defaultTaskKey: taskKey(filter.project, filter.board, filter.card),
+      return new Promise((resolve) => {
+        timelogDialogDoneRef.current = resolve;
+        setTimelogDialog({
+          mode: "add",
+          defaultTaskKey: taskKey(filter.project, filter.board, filter.card),
+        });
       });
     }
+  }
+
+  function editTimelog(entry) {
+    if (!entry?.slug) return;
+    return new Promise((resolve) => {
+      timelogDialogDoneRef.current = resolve;
+      setTimelogDialog({ mode: "edit", entry });
+    });
   }
 
   function openTimelogs(filter) {
@@ -639,6 +661,24 @@ export default function App() {
       map[scope] = mode;
       try {
         localStorage.setItem(COMPLETED_VIEW_KEY, JSON.stringify(map));
+      } catch {}
+      bump();
+    },
+    [bump]
+  );
+
+  const setBoardShow = useCallback(
+    (scope, patch) => {
+      const next = normalizeBoardShow(scope, {
+        ...normalizeBoardShow(scope, loadBoardShow()[scope]),
+        ...(boardShowByScope.current.get(scope) || {}),
+        ...patch,
+      });
+      boardShowByScope.current.set(scope, next);
+      const map = loadBoardShow();
+      map[scope] = next;
+      try {
+        localStorage.setItem(BOARD_SHOW_KEY, JSON.stringify(map));
       } catch {}
       bump();
     },
@@ -1065,9 +1105,11 @@ export default function App() {
               masterOff={masterOff.current}
               colCollapsed={colCollapsed.current}
               completedViewByScope={completedViewByScope.current}
+              boardShowByScope={boardShowByScope.current}
               uiTick={uiTick}
               onBump={bump}
               onSetCompletedView={setCompletedView}
+              onSetBoardShow={setBoardShow}
               onSaveCard={saveCard}
               onOpenCard={openItem}
               onToggleDone={onToggleDone}
@@ -1247,9 +1289,11 @@ export default function App() {
                 masterOff={masterOff.current}
                 colCollapsed={colCollapsed.current}
                 completedViewByScope={completedViewByScope.current}
+                boardShowByScope={boardShowByScope.current}
                 uiTick={uiTick}
                 onBump={bump}
                 onSetCompletedView={setCompletedView}
+                onSetBoardShow={setBoardShow}
                 onSaveCard={saveCard}
                 onOpenCard={openItem}
                 onToggleDone={onToggleDone}
@@ -1419,6 +1463,7 @@ export default function App() {
           }}
           onStartPomo={startPomodoro}
           onAddManualTimelog={addManualTimelog}
+          onEditTimelog={editTimelog}
           onOpenTimelogs={openTimelogs}
           onMoveCard={moveCard}
           onSaveItem={async (r, folder, mod) => {
@@ -1453,9 +1498,13 @@ export default function App() {
               if (data?.error) throw new Error(data.error);
             }
             setTimelogDialog(null);
+            settleTimelogDialog();
             if (gRef.current === "Timelogs") setTimelogRefresh((n) => n + 1);
           }}
-          onClose={() => setTimelogDialog(null)}
+          onClose={() => {
+            setTimelogDialog(null);
+            settleTimelogDialog();
+          }}
         />
       ) : null}
 

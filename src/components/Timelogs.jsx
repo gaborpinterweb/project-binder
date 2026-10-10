@@ -8,7 +8,6 @@ import {
   allBoards,
   formatClock,
   formatDuration,
-  formatSpent,
   groupTimelogsByPeriodAndProject,
   liveCardTitle,
   matchesTimelogFilter,
@@ -619,7 +618,7 @@ export default function Timelogs({
                 <header className="log-period-head">
                   <h3>{periodGroup.label}</h3>
                   <span className="log-agg">
-                    {formatSpent(periodGroup.totalSec)}
+                    {formatDuration(periodGroup.totalSec)}
                   </span>
                 </header>
               )}

@@ -12,7 +12,7 @@ function timelogOptions({ showTimers = true } = {}) {
         ]
       : []),
     { value: "manual", label: "Add manually", icon: "pencil" },
-    { value: "logs", label: "Open timelogs...", icon: "list" },
+    { value: "logs", label: "Open in Timelogs...", icon: "list" },
   ];
 }
 
@@ -69,6 +69,7 @@ export default function TimelogDropdown({
   showTimers = true,
   className = "",
   buttonClassName = "",
+  align = "left",
   ariaLabel = "Timelog",
   title = "Timelog",
   caret = false,
@@ -80,6 +81,7 @@ export default function TimelogDropdown({
     <Dropdown
       className={className}
       buttonClassName={buttonClassName}
+      align={align}
       ariaLabel={ariaLabel}
       title={title}
       caret={caret}

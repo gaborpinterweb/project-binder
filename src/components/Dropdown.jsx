@@ -17,10 +17,23 @@ function optionKey(o) {
   return String(o);
 }
 
-function renderOptions({ options, value, onChange, renderOption, close }) {
+function renderOptions({
+  options,
+  value,
+  onChange,
+  renderOption,
+  close,
+  closeOnSelect = true,
+}) {
   return options.map((o) => {
     const val = optionValue(o);
-    const selectedOpt = val === value;
+    const selectedOpt =
+      typeof o === "object" && o != null && "checked" in o
+        ? !!o.checked
+        : val === value;
+    const keepOpen =
+      closeOnSelect === false ||
+      (typeof o === "object" && o != null && o.closeOnSelect === false);
     return (
       <button
         key={optionKey(o)}
@@ -31,7 +44,7 @@ function renderOptions({ options, value, onChange, renderOption, close }) {
         onClick={(e) => {
           e.stopPropagation();
           onChange?.(val, o);
-          close?.();
+          if (!keepOpen) close?.();
         }}
       >
         {renderOption ? (
@@ -127,6 +140,7 @@ export default function Dropdown({
                     onChange: sec.onChange,
                     renderOption: sec.renderOption || renderOption,
                     close,
+                    closeOnSelect: sec.closeOnSelect !== false,
                   })}
                 </div>
               ))

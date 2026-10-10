@@ -7,14 +7,13 @@ import {
   boardColumnLabel,
   boardLabel,
   formatDuration,
-  formatSpent,
   isDone,
   pastel,
   playTaskCompleteSound,
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
 import DbFieldInput from "./DbFieldInput.jsx";
-import PropDropdown, { PropAffix, closePropDrops } from "./PropDropdown.jsx";
+import PropDropdown, { closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 import TimelogDropdown from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
@@ -71,7 +70,8 @@ function CardMoreMenu({ onDuplicate, onDelete }) {
             role="menuitem"
             onClick={() => run(onDuplicate)}
           >
-            Duplicate
+            <Icon name="copy" size={14} />
+            Duplicate task
           </button>
           <button
             type="button"
@@ -79,7 +79,8 @@ function CardMoreMenu({ onDuplicate, onDelete }) {
             className="danger"
             onClick={() => run(onDelete)}
           >
-            Delete
+            <Icon name="Trash" size={14} />
+            Delete task
           </button>
         </div>
       ) : null}
@@ -102,6 +103,7 @@ export default function CardDialog({
   onDuplicate,
   onStartPomo,
   onAddManualTimelog,
+  onEditTimelog,
   onOpenTimelogs,
   onMoveCard,
   onSaveItem,
@@ -128,6 +130,23 @@ export default function CardDialog({
   originLocRef.current = originLoc;
 
   const isDb = !isDraft && originLoc?.mod?.[0] === "Database";
+
+  const reloadCardLogs = async () => {
+    const cur = curLocRef.current;
+    const slug = draftRef.current?.slug;
+    if (isDraft || !cur || cur.mod[0] !== "Board" || !slug) {
+      setCardLogs([]);
+      setSpent(0);
+      return;
+    }
+    const entries = await fetchCardTimelogs(
+      cur.folder.slug,
+      cur.mod[2].slug,
+      slug
+    );
+    setCardLogs(entries);
+    setSpent(entries.reduce((sum, e) => sum + (e.durationSec || 0), 0));
+  };
 
   useEffect(() => {
     if (isDraft || !curLoc || curLoc.mod[0] !== "Board" || !draft.slug) {
@@ -429,29 +448,6 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
-                  {!isDraft &&
-                    !readonly &&
-                    curLoc?.mod[0] === "Board" &&
-                    draft.slug && (
-                      <TimelogDropdown
-                        className="prop-dd prop-chip"
-                        buttonClassName="prop-dd-btn"
-                        folder={curLoc.folder}
-                        mod={curLoc.mod}
-                        row={draft}
-                        showTimers={showTimelogs}
-                        onStartPomo={onStartPomo}
-                        onAddManualTimelog={onAddManualTimelog}
-                        onOpenTimelogs={onOpenTimelogs}
-                        onAfterAction={async () => {
-                          await close(false);
-                        }}
-                      >
-                        <Icon name="Timelogs" size={12} />
-                        <span className="lab">{formatSpent(spent)}</span>
-                        <PropAffix kind="caret" />
-                      </TimelogDropdown>
-                    )}
                 </div>
               </div>
               <div className="dlg-description">
@@ -466,32 +462,84 @@ export default function CardDialog({
                   }}
                 />
               </div>
-              {cardLogs.length > 0 ? (
+              {!isDraft && curLoc?.mod[0] === "Board" && draft.slug ? (
                 <section className="dlg-timelogs">
-                  <h2>Timelogs</h2>
-                  <ul className="dlg-timelog-list">
-                    {cardLogs.map((entry) => {
-                      const stamp = entry.endedAt || entry.startedAt || "";
-                      return (
-                        <li key={entry.slug} className="dlg-timelog-item">
-                          <span
-                            className={
-                              "dlg-timelog-note" +
-                              (entry.note ? "" : " is-empty")
-                            }
-                          >
-                            {entry.note || "No notes…"}
-                          </span>
-                          <time className="dlg-timelog-date" dateTime={stamp}>
-                            {formatCardTimelogDate(stamp)}
-                          </time>
-                          <span className="dlg-timelog-dur">
-                            {formatDuration(entry.durationSec)}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div className="dlg-desc-head">
+                    <span className="dlg-desc-label">Timelogs</span>
+                    <span className="dlg-timelog-total">
+                      {formatDuration(spent)}
+                    </span>
+                    {!readonly ? (
+                      <TimelogDropdown
+                        className="dlg-timelog-more"
+                        buttonClassName="dlg-timelog-more-btn"
+                        align="right"
+                        caret={false}
+                        folder={curLoc.folder}
+                        mod={curLoc.mod}
+                        row={draft}
+                        showTimers={showTimelogs}
+                        onStartPomo={onStartPomo}
+                        onAddManualTimelog={onAddManualTimelog}
+                        onOpenTimelogs={onOpenTimelogs}
+                        ariaLabel="Timelog actions"
+                        title="Timelog actions"
+                        onAfterAction={async (v) => {
+                          if (v === "manual") {
+                            await reloadCardLogs();
+                            return;
+                          }
+                          await close(false);
+                        }}
+                      >
+                        <Icon name="more" size={16} />
+                      </TimelogDropdown>
+                    ) : null}
+                  </div>
+                  {cardLogs.length > 0 ? (
+                    <ul className="dlg-timelog-list">
+                      {cardLogs.map((entry) => {
+                        const stamp = entry.endedAt || entry.startedAt || "";
+                        return (
+                          <li key={entry.slug} className="dlg-timelog-item">
+                            <span
+                              className={
+                                "dlg-timelog-note" +
+                                (entry.note ? "" : " is-empty")
+                              }
+                            >
+                              {entry.note || "No notes…"}
+                            </span>
+                            <time
+                              className="dlg-timelog-date"
+                              dateTime={stamp}
+                            >
+                              {formatCardTimelogDate(stamp)}
+                            </time>
+                            <span className="dlg-timelog-dur">
+                              {formatDuration(entry.durationSec)}
+                            </span>
+                            {!readonly ? (
+                              <button
+                                type="button"
+                                className="dlg-timelog-edit-btn"
+                                title="Edit timelog"
+                                aria-label="Edit timelog"
+                                onClick={async () => {
+                                  await onEditTimelog?.(entry);
+                                  await reloadCardLogs();
+                                }}
+                              >
+                                <Icon name="pencil" size={14} />
+                              </button>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="dlg-timelog-empty">No timelogs yet.</p>
+                  )}
                 </section>
               ) : null}
             </>

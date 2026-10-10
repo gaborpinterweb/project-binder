@@ -24,6 +24,7 @@ const STORAGE_PREFIX = "project-binder:";
 const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
 const SESSION_KEY = `${STORAGE_PREFIX}session`;
 export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
+export const BOARD_SHOW_KEY = `${STORAGE_PREFIX}boardShow`;
 const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
@@ -369,21 +370,28 @@ export function columnRows(rows, mode) {
   return { open, done: [], all: open };
 }
 
+/** Display duration as "4h 23m" / "23m". */
 export function formatDuration(sec) {
-  const s = Math.max(0, Math.floor(sec || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
-  if (h) return h + ":" + String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
-  return m + ":" + String(r).padStart(2, "0");
-}
-
-export function formatSpent(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   if (h) return h + "h " + m + "m";
   return m + "m";
+}
+
+export function formatSpent(sec) {
+  return formatDuration(sec);
+}
+
+/** Live countdown/stopwatch — same units, includes seconds. */
+export function formatTimer(sec) {
+  const s = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  if (h) return h + "h " + m + "m " + r + "s";
+  if (m) return m + "m " + r + "s";
+  return r + "s";
 }
 
 export function formatClock(iso) {
@@ -813,6 +821,39 @@ export function saveFilesSort(tabKey, sort) {
 export function loadCompletedViews() {
   const stored = readStorageJson(COMPLETED_VIEW_KEY, {});
   return stored && typeof stored === "object" ? stored : {};
+}
+
+/** Defaults: project name on for Masterboard only; time spent off. */
+export function defaultBoardShow(scope) {
+  return {
+    projectName: scope === "master",
+    timeSpent: false,
+  };
+}
+
+export function loadBoardShow() {
+  const stored = readStorageJson(BOARD_SHOW_KEY, {});
+  return stored && typeof stored === "object" ? stored : {};
+}
+
+export function normalizeBoardShow(scope, raw) {
+  const defaults = defaultBoardShow(scope);
+  if (!raw || typeof raw !== "object") return defaults;
+  return {
+    projectName:
+      typeof raw.projectName === "boolean" ? raw.projectName : defaults.projectName,
+    timeSpent:
+      typeof raw.timeSpent === "boolean" ? raw.timeSpent : defaults.timeSpent,
+  };
+}
+
+export function getBoardShow(scope, boardShowByScope) {
+  if (boardShowByScope?.has(scope)) {
+    return normalizeBoardShow(scope, boardShowByScope.get(scope));
+  }
+  const next = normalizeBoardShow(scope, loadBoardShow()[scope]);
+  boardShowByScope?.set(scope, next);
+  return next;
 }
 
 export function loadDbViewsSidebar() {

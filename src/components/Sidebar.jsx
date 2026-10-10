@@ -219,19 +219,23 @@ export default function Sidebar({
       <div className="side-scroll">
         <h2>Workspace</h2>
         <div id="globals">
-          {globals.map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={"bm" + (g === n ? " on" : "")}
-              onClick={() => onSelectGlobal(n)}
-            >
-              <span style={{ color: GACC }}>
-                <Icon name={n} />
-              </span>
-              <span>{globalLabel(n)}</span>
-            </button>
-          ))}
+          {globals.map((n) => {
+            const on = g === n;
+            const rainbow = n === "Masterboard" && on;
+            return (
+              <button
+                key={n}
+                type="button"
+                className={"bm" + (on ? " on" : "")}
+                onClick={() => onSelectGlobal(n)}
+              >
+                <span style={rainbow ? undefined : { color: GACC }}>
+                  <Icon name={n} rainbow={rainbow} />
+                </span>
+                <span>{globalLabel(n)}</span>
+              </button>
+            );
+          })}
           <button
             type="button"
             className="bm"

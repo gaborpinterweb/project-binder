@@ -1,3 +1,4 @@
+import { useId } from "react";
 import {
   AlignLeft,
   AppWindow,
@@ -61,6 +62,41 @@ import {
   Workflow,
   X,
 } from "lucide-react";
+
+/** Spectrum stroke for Master board selected state — Lucide asterisk paths. */
+function RainbowAsterisk({ size = 16, strokeWidth = 1.75, className, ...rest }) {
+  const gid = `asterisk-rainbow-${useId().replace(/:/g, "")}`;
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={`url(#${gid})`}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+      {...rest}
+    >
+      <defs>
+        <linearGradient id={gid} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#22d3ee" />
+          <stop offset="20%" stopColor="#4ade80" />
+          <stop offset="40%" stopColor="#facc15" />
+          <stop offset="60%" stopColor="#fb923c" />
+          <stop offset="80%" stopColor="#f43f5e" />
+          <stop offset="100%" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+      <path d="M12 5v14" />
+      <path d="m18.065 8.496-12.125 7" />
+      <path d="m5.94 8.504 12.125 7" />
+    </svg>
+  );
+}
 
 /** Countdown tomato — not in Lucide. */
 function TomatoIcon({ size = 16, color = "currentColor", strokeWidth = 2, className, ...rest }) {
@@ -156,7 +192,10 @@ export const IC = {
   fieldDate: Calendar,
 };
 
-export function Icon({ name, size = 16, filled = false }) {
+export function Icon({ name, size = 16, filled = false, rainbow = false }) {
+  if (rainbow) {
+    return <RainbowAsterisk size={size} strokeWidth={filled ? 2.25 : 1.75} />;
+  }
   const Comp = IC[name] || IC.folder;
   return (
     <Comp

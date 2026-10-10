@@ -384,7 +384,7 @@ function PomoBlock({ folders = [], activePomo, onStop, onNoteChange, onOpenCard 
         }}
       />
       <button type="button" className="pomo-stop" id="pomo-stop" onClick={onStop}>
-        {stopwatch ? "Stop stoptimer" : "Stop pomodoro"}
+        {stopwatch ? "Stop stoptimer" : "Stop countdown"}
       </button>
     </div>
   );

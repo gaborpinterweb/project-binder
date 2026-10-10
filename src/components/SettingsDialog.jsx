@@ -9,21 +9,30 @@ import {
   pickBackupFolder,
   importBackup,
 } from "../api.js";
-import { APP_NAME, APP_VERSION, PC } from "../utils.js";
+import {
+  APP_NAME,
+  APP_VERSION,
+  COUNTDOWN_DURATION_OPTIONS,
+  PC,
+} from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import Dropdown from "./Dropdown.jsx";
 
 const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
 const AUTO_BACKUP_KEEP_DAYS = 3;
 
-const BMC_URL = "https://buymeacoffee.com/gaborpinter";
+const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
+const BMC_BTN =
+  "https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL = "https://gaborpinter.com";
+const LEARN_URL = "https://projectbinder.app/learn";
+const FEEDBACK_URL = "https://projectbinder.app/feedback";
 
-const OPEN_ON_LAUNCH_OPTIONS = [
-  { value: "masterboard", label: "Master board" },
-  { value: "last-tab", label: "Last tab" },
-];
+const COUNTDOWN_DURATION_DD_OPTIONS = COUNTDOWN_DURATION_OPTIONS.map((min) => ({
+  value: String(min),
+  label: `${min} min`,
+}));
 
 function formatBackupTime(iso) {
   if (!iso) return null;
@@ -40,8 +49,8 @@ function formatBackupTime(iso) {
 
 export default function SettingsDialog({
   folders = [],
-  openOnLaunch,
-  onOpenOnLaunchChange,
+  countdownDurationMin,
+  onCountdownDurationChange,
   uiSounds,
   onUiSoundsChange,
   onReactivate,
@@ -53,9 +62,10 @@ export default function SettingsDialog({
 }) {
   const tabs = useMemo(() => {
     const list = [
-      { id: "appearance", label: "Appearance", icon: "Appearance" },
+      { id: "experience", label: "Experience", icon: "Experience" },
       { id: "archive", label: "Archive", icon: "Archive" },
-      { id: "data", label: "Data", icon: "Workspace" },
+      { id: "data", label: "Backup", icon: "Workspace" },
+      { id: "help", label: "Help", icon: "Help" },
       { id: "about", label: "About", icon: "About" },
     ];
     if (import.meta.env.DEV) {
@@ -69,7 +79,7 @@ export default function SettingsDialog({
     [folders]
   );
 
-  const [tab, setTab] = useState("appearance");
+  const [tab, setTab] = useState("experience");
   const [resetting, setResetting] = useState(null);
   const [desktop, setDesktop] = useState(false);
   const [backup, setBackup] = useState({
@@ -110,7 +120,7 @@ export default function SettingsDialog({
   }, []);
 
   useEffect(() => {
-    if (!import.meta.env.DEV && tab === "developer") setTab("appearance");
+    if (!import.meta.env.DEV && tab === "developer") setTab("experience");
   }, [tab]);
 
   useEffect(() => {
@@ -308,41 +318,38 @@ export default function SettingsDialog({
         </div>
 
         <div className="dlg-content settings-panel" role="tabpanel">
-          {tab === "appearance" && (
-            <>
-              <section className="settings-section">
-                <div className="settings-rows">
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Open on launch</b>
-                    </div>
-                    <Dropdown
-                      className="settings-launch-dd"
-                      align="right"
-                      ariaLabel="Open on launch"
-                      value={openOnLaunch}
-                      options={OPEN_ON_LAUNCH_OPTIONS}
-                      onChange={onOpenOnLaunchChange}
-                    />
+          {tab === "experience" && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Countdown duration</b>
                   </div>
+                  <Dropdown
+                    className="settings-pref-dd"
+                    align="right"
+                    ariaLabel="Countdown duration"
+                    value={String(countdownDurationMin)}
+                    options={COUNTDOWN_DURATION_DD_OPTIONS}
+                    onChange={(value) => onCountdownDurationChange?.(Number(value))}
+                  />
                 </div>
-              </section>
-              <section className="settings-section">
-                <h3 className="settings-heading">Sound</h3>
-                <ul className="settings-checks">
-                  <li>
-                    <label className="settings-check">
-                      <input
-                        type="checkbox"
-                        checked={!!uiSounds}
-                        onChange={(e) => onUiSoundsChange?.(e.target.checked)}
-                      />
-                      <span>UI sounds</span>
-                    </label>
-                  </li>
-                </ul>
-              </section>
-            </>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>UI sounds</b>
+                  </div>
+                  <label className="settings-toggle">
+                    <input
+                      type="checkbox"
+                      checked={!!uiSounds}
+                      onChange={(e) => onUiSoundsChange?.(e.target.checked)}
+                      aria-label="UI sounds"
+                    />
+                    <span className="settings-toggle-ui" aria-hidden="true" />
+                  </label>
+                </div>
+              </div>
+            </section>
           )}
 
           {tab === "archive" && (
@@ -484,30 +491,105 @@ export default function SettingsDialog({
             </>
           )}
 
+          {tab === "help" && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <span className="settings-row-icon" aria-hidden="true">
+                    <Icon name="Play" size={20} />
+                  </span>
+                  <div className="settings-row-copy">
+                    <b>Learning videos</b>
+                    <span>Tutorials, tips and guides to become a pro binder</span>
+                  </div>
+                  <a
+                    className="settings-row-btn"
+                    href={LEARN_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open videos
+                    <Icon name="external" size={14} />
+                  </a>
+                </div>
+                <div className="settings-row">
+                  <span className="settings-row-icon" aria-hidden="true">
+                    <Icon name="Chat" size={20} />
+                  </span>
+                  <div className="settings-row-copy">
+                    <b>Feedback form</b>
+                    <span>Submit a feature request, bug report or ask a question</span>
+                  </div>
+                  <a
+                    className="settings-row-btn"
+                    href={FEEDBACK_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open form
+                    <Icon name="external" size={14} />
+                  </a>
+                </div>
+                <div className="settings-row">
+                  <span className="settings-row-icon" aria-hidden="true">
+                    <Icon name="GitHub" size={20} />
+                  </span>
+                  <div className="settings-row-copy">
+                    <b>GitHub</b>
+                    <span>Browse the source, star the project, or follow updates</span>
+                  </div>
+                  <a
+                    className="settings-row-btn"
+                    href={GITHUB_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open repo
+                    <Icon name="external" size={14} />
+                  </a>
+                </div>
+              </div>
+            </section>
+          )}
+
           {tab === "about" && (
             <section className="settings-about">
-              <div className="settings-about-brand">
-                <img
-                  className="settings-about-icon"
-                  src="/app-icon.png"
-                  alt=""
-                  width={72}
-                  height={72}
-                  draggable={false}
-                />
-                <b>{APP_NAME}</b>
-                <span>v{APP_VERSION}</span>
+              <div className="settings-about-main">
+                <div className="settings-about-brand">
+                  <img
+                    className="settings-about-icon"
+                    src="/app-icon.png"
+                    alt=""
+                    width={72}
+                    height={72}
+                    draggable={false}
+                  />
+                  <b>{APP_NAME}</b>
+                  <span>v{APP_VERSION}</span>
+                  <p className="settings-about-byline">
+                    Created by{" "}
+                    <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
+                      Gábor Pintér
+                    </a>
+                  </p>
+                </div>
               </div>
-              <div className="settings-about-links">
-                <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-                  GitHub
-                </a>
-                <p>
-                  Created by Gábor Pintér ·{" "}
-                  <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
-                    gaborpinter.com
-                  </a>
+              <div className="settings-bmc-wrap">
+                <p className="settings-bmc-copy">
+                  Enjoying {APP_NAME}?
+                  <br />
+                  <span className="settings-bmc-line">
+                    Consider showing your appreciation ↓
+                  </span>
                 </p>
+                <a
+                  className="settings-bmc"
+                  href={BMC_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img src={BMC_BTN} alt="Buy me a coffee" width={217} height={60} />
+                </a>
               </div>
             </section>
           )}
@@ -562,18 +644,6 @@ export default function SettingsDialog({
             </section>
           )}
         </div>
-
-        <a
-          className="settings-announce"
-          href={BMC_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span className="settings-announce-heart" aria-hidden="true">
-            ♥
-          </span>
-          Enjoying {APP_NAME}? Buy me a coffee →
-        </a>
       </div>
     </div>
   );

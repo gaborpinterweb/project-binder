@@ -12,6 +12,8 @@ import {
   ChevronsUpDown,
   ChevronDown,
   ChevronRight,
+  CircleHelp,
+  CirclePlay,
   Cloud,
   Code,
   CodeXml,
@@ -27,6 +29,7 @@ import {
   Folder,
   FolderInput,
   FolderOpen,
+  GitBranch,
   GripVertical,
   Hash,
   Highlighter,
@@ -39,8 +42,8 @@ import {
   Lock,
   Maximize2,
   MessageSquare,
-  Palette,
   PanelLeft,
+  Sparkles,
   Pencil,
   Plus,
   Quote,
@@ -59,7 +62,7 @@ import {
   X,
 } from "lucide-react";
 
-/** Pomodoro tomato — not in Lucide. */
+/** Countdown tomato — not in Lucide. */
 function TomatoIcon({ size = 16, color = "currentColor", strokeWidth = 2, className, ...rest }) {
   return (
     <svg
@@ -122,9 +125,12 @@ export const IC = {
   arrow: ChevronRight,
   arrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
-  Appearance: Palette,
+  Experience: Sparkles,
   Workspace: FolderOpen,
   About: Info,
+  Help: CircleHelp,
+  Play: CirclePlay,
+  GitHub: GitBranch,
   Developer: CodeXml,
   Archive,
   bold: Bold,

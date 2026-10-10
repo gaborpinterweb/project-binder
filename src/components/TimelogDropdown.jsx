@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { timelogTaskFromCard } from "../utils.js";
+import { loadCountdownDurationMin, timelogTaskFromCard } from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 
 function timelogOptions({ showTimers = true } = {}) {
+  const mins = loadCountdownDurationMin();
   return [
     ...(showTimers
       ? [
-          { value: "pomo", label: "Start pomodoro", icon: "tomato" },
+          {
+            value: "pomo",
+            label: `Start ${mins}m countdown`,
+            icon: "tomato",
+          },
           { value: "stoptimer", label: "Start stopwatch", icon: "stopwatch" },
         ]
       : []),

@@ -53,8 +53,8 @@ import {
   tabsOrderPayload,
   isProjectArchived,
   slugifyClient,
-  loadOpenOnLaunch,
-  saveOpenOnLaunch,
+  loadCountdownDurationMin,
+  saveCountdownDurationMin,
   loadUiSounds,
   saveUiSounds,
   playSound,
@@ -131,7 +131,9 @@ export default function App() {
   const [timelogRefresh, setTimelogRefresh] = useState(0);
   const [trashRefresh, setTrashRefresh] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [openOnLaunch, setOpenOnLaunch] = useState(() => loadOpenOnLaunch());
+  const [countdownDurationMin, setCountdownDurationMin] = useState(() =>
+    loadCountdownDurationMin()
+  );
   const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
@@ -175,7 +177,7 @@ export default function App() {
   }, []);
 
   // Apply API workspace payload into folders/stages. Navigation opts (mutually used):
-  // - initial: restore session / open-on-launch
+  // - initial: restore last session tab
   // - project (+ optional board, g): jump to a specific place
   // - keepNav: { project, board, g } — keep selection after a mutation reload
   const applyWorkspace = useCallback(
@@ -195,18 +197,16 @@ export default function App() {
         let nextG = "Masterboard";
         let nextP = 0;
         let nextM = 0;
-        if (loadOpenOnLaunch() === "last-tab") {
-          const sess = loadSession();
-          if (sess && "g" in sess) nextG = sess.g || null;
-          if (nextG && !WORKSPACE_ITEMS.includes(nextG)) {
-            nextG = "Masterboard";
-          }
-          if (sess?.project) {
-            const pi = next.findIndex((f) => f.slug === sess.project);
-            nextP = pi >= 0 ? pi : 0;
-          }
-          nextM = restoreTabIndex(next[nextP]);
+        const sess = loadSession();
+        if (sess && "g" in sess) nextG = sess.g || null;
+        if (nextG && !WORKSPACE_ITEMS.includes(nextG)) {
+          nextG = "Masterboard";
         }
+        if (sess?.project) {
+          const pi = next.findIndex((f) => f.slug === sess.project);
+          nextP = pi >= 0 ? pi : 0;
+        }
+        nextM = restoreTabIndex(next[nextP]);
         setG(nextG);
         setP(nextP);
         setM(nextM);
@@ -312,7 +312,7 @@ export default function App() {
     if (!g) rememberCurrentTab(folders, p, m);
   }, [loaded, loadError, g, folders, p, m, rememberCurrentTab]);
 
-  // Pomodoro init + ticker
+  // Countdown / stopwatch init + ticker
   useEffect(() => {
     const session = loadPomo();
     if (session && !isStoptimerSession(session) && pomoRemainingSec(session) <= 0) {
@@ -458,7 +458,9 @@ export default function App() {
       kind,
       note: "",
       startedAt: new Date().toISOString(),
-      ...(kind === "pomodoro" ? { durationSec: POMO_DURATION_SEC } : {}),
+      ...(kind === "pomodoro"
+        ? { durationSec: loadCountdownDurationMin() * 60 }
+        : {}),
     };
     setActivePomo(session);
     activePomoRef.current = session;
@@ -1545,8 +1547,10 @@ export default function App() {
       {settingsOpen && (
         <SettingsDialog
           folders={folders}
-          openOnLaunch={openOnLaunch}
-          onOpenOnLaunchChange={(value) => setOpenOnLaunch(saveOpenOnLaunch(value))}
+          countdownDurationMin={countdownDurationMin}
+          onCountdownDurationChange={(value) =>
+            setCountdownDurationMin(saveCountdownDurationMin(value))
+          }
           uiSounds={uiSounds}
           onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
           onReactivate={confirmUnarchiveProject}

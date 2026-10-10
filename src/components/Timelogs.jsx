@@ -606,9 +606,9 @@ export default function Timelogs({
                 : `No timelogs for this card in ${period.toLowerCase()}.`
               : entries?.length
                 ? period === "All time"
-                  ? "No timelogs yet. Start a pomodoro from a card."
+                  ? "No timelogs yet. Start a countdown from a card."
                   : `No timelogs for ${period.toLowerCase()}.`
-                : "No timelogs yet. Start a pomodoro from a card."}
+                : "No timelogs yet. Start a countdown from a card."}
           </div>
         )}
         {groups &&

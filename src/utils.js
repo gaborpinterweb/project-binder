@@ -28,14 +28,14 @@ export const BOARD_SHOW_KEY = `${STORAGE_PREFIX}boardShow`;
 const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
-const OPEN_ON_LAUNCH_KEY = `${STORAGE_PREFIX}openOnLaunch`;
+const COUNTDOWN_DURATION_KEY = `${STORAGE_PREFIX}countdownDurationMin`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
-const OPEN_ON_LAUNCH_VALUES = ["masterboard", "last-tab"];
-const DEFAULT_OPEN_ON_LAUNCH = "last-tab";
 const DEFAULT_UI_SOUNDS = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
-export const POMO_DURATION_SEC = 25 * 60;
+export const DEFAULT_COUNTDOWN_DURATION_MIN = 25;
+export const COUNTDOWN_DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60];
+export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const GACC = "#9a5b2e";
 export const PC = [
@@ -661,18 +661,21 @@ function writeStorageJson(key, value) {
   } catch {}
 }
 
-export function loadOpenOnLaunch() {
+export function loadCountdownDurationMin() {
   try {
-    const stored = localStorage.getItem(OPEN_ON_LAUNCH_KEY);
-    if (OPEN_ON_LAUNCH_VALUES.includes(stored)) return stored;
+    const n = Number(localStorage.getItem(COUNTDOWN_DURATION_KEY));
+    if (COUNTDOWN_DURATION_OPTIONS.includes(n)) return n;
   } catch {}
-  return DEFAULT_OPEN_ON_LAUNCH;
+  return DEFAULT_COUNTDOWN_DURATION_MIN;
 }
 
-export function saveOpenOnLaunch(value) {
-  const next = OPEN_ON_LAUNCH_VALUES.includes(value) ? value : DEFAULT_OPEN_ON_LAUNCH;
+export function saveCountdownDurationMin(value) {
+  const n = Number(value);
+  const next = COUNTDOWN_DURATION_OPTIONS.includes(n)
+    ? n
+    : DEFAULT_COUNTDOWN_DURATION_MIN;
   try {
-    localStorage.setItem(OPEN_ON_LAUNCH_KEY, next);
+    localStorage.setItem(COUNTDOWN_DURATION_KEY, String(next));
   } catch {}
   return next;
 }

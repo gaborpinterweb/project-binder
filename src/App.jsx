@@ -424,7 +424,7 @@ export default function App() {
           durationMs: 7000,
           persist: autoDone,
           action: {
-            label: "Edit",
+            label: note ? "Edit timelog" : "Add note",
             onClick: () => setTimelogDialog({ mode: "edit", entry }),
           },
         });

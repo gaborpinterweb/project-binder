@@ -10,7 +10,7 @@ export const TYPES = [
   { t: "Board", title: "Tasks", sub: "Kanban columns with cards" },
   { t: "Notes", title: "Notes", sub: "Rich text editor with notes list" },
   { t: "Files", title: "Files", sub: "Documents, assets, and other uploads" },
-  { t: "Database", title: "Records", sub: "Databse with custom schema" },
+  { t: "Database", title: "Database", sub: "Tables with custom schema" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
   { t: "Chat", title: "Chat", sub: "Communication channels and threads", off: true },
@@ -29,12 +29,16 @@ const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 const COUNTDOWN_DURATION_KEY = `${STORAGE_PREFIX}countdownDurationMin`;
+const STOPTIMER_MAX_KEY = `${STORAGE_PREFIX}stoptimerMaxMin`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
 const DEFAULT_UI_SOUNDS = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 export const DEFAULT_COUNTDOWN_DURATION_MIN = 25;
 export const COUNTDOWN_DURATION_OPTIONS = [10, 15, 20, 25, 30, 45, 50, 60];
+/** Minutes; `0` means no limit. */
+export const DEFAULT_STOPTIMER_MAX_MIN = 240;
+export const STOPTIMER_MAX_OPTIONS_MIN = [60, 120, 240, 480, 0];
 export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const GACC = "#9a5b2e";
@@ -680,6 +684,25 @@ export function saveCountdownDurationMin(value) {
   return next;
 }
 
+export function loadStoptimerMaxMin() {
+  try {
+    const n = Number(localStorage.getItem(STOPTIMER_MAX_KEY));
+    if (STOPTIMER_MAX_OPTIONS_MIN.includes(n)) return n;
+  } catch {}
+  return DEFAULT_STOPTIMER_MAX_MIN;
+}
+
+export function saveStoptimerMaxMin(value) {
+  const n = Number(value);
+  const next = STOPTIMER_MAX_OPTIONS_MIN.includes(n)
+    ? n
+    : DEFAULT_STOPTIMER_MAX_MIN;
+  try {
+    localStorage.setItem(STOPTIMER_MAX_KEY, String(next));
+  } catch {}
+  return next;
+}
+
 export function loadUiSounds() {
   try {
     const stored = localStorage.getItem(UI_SOUNDS_KEY);
@@ -905,6 +928,20 @@ export function savePomo(session) {
 
 export function isStoptimerSession(session) {
   return session?.kind === "stoptimer";
+}
+
+/** Cap in seconds, or `null` when unlimited. */
+export function stoptimerMaxSec(maxMin = loadStoptimerMaxMin()) {
+  const n = Number(maxMin);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.floor(n * 60);
+}
+
+export function isStoptimerAtMax(session, maxMin = loadStoptimerMaxMin()) {
+  if (!isStoptimerSession(session)) return false;
+  const maxSec = stoptimerMaxSec(maxMin);
+  if (maxSec == null) return false;
+  return pomoElapsedSec(session) >= maxSec;
 }
 
 export function pomoRemainingSec(session) {

@@ -13,6 +13,7 @@ import {
   APP_NAME,
   APP_VERSION,
   COUNTDOWN_DURATION_OPTIONS,
+  STOPTIMER_MAX_OPTIONS_MIN,
   PC,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
@@ -34,6 +35,11 @@ const COUNTDOWN_DURATION_DD_OPTIONS = COUNTDOWN_DURATION_OPTIONS.map((min) => ({
   label: `${min} min`,
 }));
 
+const STOPTIMER_MAX_DD_OPTIONS = STOPTIMER_MAX_OPTIONS_MIN.map((min) => ({
+  value: String(min),
+  label: min === 0 ? "No limit" : `${min / 60}h`,
+}));
+
 function formatBackupTime(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -51,6 +57,8 @@ export default function SettingsDialog({
   folders = [],
   countdownDurationMin,
   onCountdownDurationChange,
+  stoptimerMaxMin,
+  onStoptimerMaxChange,
   uiSounds,
   onUiSoundsChange,
   onReactivate,
@@ -332,6 +340,19 @@ export default function SettingsDialog({
                     value={String(countdownDurationMin)}
                     options={COUNTDOWN_DURATION_DD_OPTIONS}
                     onChange={(value) => onCountdownDurationChange?.(Number(value))}
+                  />
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Stopwatch maximum</b>
+                  </div>
+                  <Dropdown
+                    className="settings-pref-dd"
+                    align="right"
+                    ariaLabel="Stopwatch maximum"
+                    value={String(stoptimerMaxMin)}
+                    options={STOPTIMER_MAX_DD_OPTIONS}
+                    onChange={(value) => onStoptimerMaxChange?.(Number(value))}
                   />
                 </div>
                 <div className="settings-row">

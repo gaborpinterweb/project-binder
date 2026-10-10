@@ -46,6 +46,8 @@ import {
   pomoRemainingSec,
   pomoElapsedSec,
   isStoptimerSession,
+  isStoptimerAtMax,
+  stoptimerMaxSec,
   locateRow,
   findCardBySlugs,
   liveCardTitle,
@@ -55,6 +57,8 @@ import {
   slugifyClient,
   loadCountdownDurationMin,
   saveCountdownDurationMin,
+  loadStoptimerMaxMin,
+  saveStoptimerMaxMin,
   loadUiSounds,
   saveUiSounds,
   playSound,
@@ -133,6 +137,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [countdownDurationMin, setCountdownDurationMin] = useState(() =>
     loadCountdownDurationMin()
+  );
+  const [stoptimerMaxMin, setStoptimerMaxMin] = useState(() =>
+    loadStoptimerMaxMin()
   );
   const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
   const [launchOpen, setLaunchOpen] = useState(false);
@@ -315,7 +322,11 @@ export default function App() {
   // Countdown / stopwatch init + ticker
   useEffect(() => {
     const session = loadPomo();
-    if (session && !isStoptimerSession(session) && pomoRemainingSec(session) <= 0) {
+    const expired =
+      session &&
+      ((!isStoptimerSession(session) && pomoRemainingSec(session) <= 0) ||
+        isStoptimerAtMax(session));
+    if (expired) {
       (async () => {
         setActivePomo(session);
         activePomoRef.current = session;
@@ -335,7 +346,10 @@ export default function App() {
     const id = setInterval(() => {
       bump();
       const cur = activePomoRef.current;
-      if (!isStoptimerSession(cur) && pomoRemainingSec(cur) <= 0) {
+      if (
+        (!isStoptimerSession(cur) && pomoRemainingSec(cur) <= 0) ||
+        isStoptimerAtMax(cur)
+      ) {
         stopPomodoro();
       }
     }, 1000);
@@ -355,8 +369,11 @@ export default function App() {
     if (!session || pomoFinishing.current) return;
     pomoFinishing.current = true;
     const elapsed = pomoElapsedSec(session);
+    const maxSec = isStoptimerSession(session) ? stoptimerMaxSec() : null;
+    const stoptimerDone = maxSec != null && elapsed >= maxSec;
     const pomoDone =
       !isStoptimerSession(session) && pomoRemainingSec(session) <= 0;
+    const autoDone = pomoDone || stoptimerDone;
     if (elapsed < MIN_TIMELOG_SEC) playTimerDiscardSound();
     else playTimerCompleteSound();
     setActivePomo(null);
@@ -371,7 +388,9 @@ export default function App() {
     }
     const endedAt = new Date().toISOString();
     const durationSec = isStoptimerSession(session)
-      ? elapsed
+      ? maxSec != null
+        ? Math.min(maxSec, elapsed)
+        : elapsed
       : Math.min(session.durationSec || POMO_DURATION_SEC, elapsed);
     const note = typeof session.note === "string" ? session.note.trim() : "";
     const title = liveCardTitle(
@@ -399,9 +418,11 @@ export default function App() {
       const entry = data?.entry;
       if (entry?.slug) {
         showSnackbar({
-          message: `${title} · ${formatDuration(durationSec)}`,
+          message: stoptimerDone
+            ? `${title} · ${formatDuration(durationSec)} (max reached)`
+            : `${title} · ${formatDuration(durationSec)}`,
           durationMs: 7000,
-          persist: pomoDone,
+          persist: autoDone,
           action: {
             label: "Edit",
             onClick: () => setTimelogDialog({ mode: "edit", entry }),
@@ -1550,6 +1571,10 @@ export default function App() {
           countdownDurationMin={countdownDurationMin}
           onCountdownDurationChange={(value) =>
             setCountdownDurationMin(saveCountdownDurationMin(value))
+          }
+          stoptimerMaxMin={stoptimerMaxMin}
+          onStoptimerMaxChange={(value) =>
+            setStoptimerMaxMin(saveStoptimerMaxMin(value))
           }
           uiSounds={uiSounds}
           onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}

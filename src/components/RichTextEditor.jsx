@@ -1,5 +1,6 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
@@ -85,6 +86,137 @@ function ToolbarBtn({ onClick, active, title, disabled, className, children }) {
     >
       {children}
     </button>
+  );
+}
+
+function tableDomFromSelection(editor) {
+  const { state, view } = editor;
+  const $from = state.selection.$anchor;
+  for (let d = $from.depth; d > 0; d--) {
+    if ($from.node(d).type.name === "table") {
+      const dom = view.nodeDOM($from.before(d));
+      return dom instanceof HTMLElement ? dom : null;
+    }
+  }
+  return null;
+}
+
+/** Floating table ops — fixed overlay, no in-flow spacing on the table. */
+function TableFloat({ editor }) {
+  const [coords, setCoords] = useState(null);
+  const [, bump] = useState(0);
+
+  const sync = useCallback(() => {
+    if (!editor || editor.isDestroyed || !editor.isEditable || !editor.isActive("table")) {
+      setCoords(null);
+      return;
+    }
+    const tableEl = tableDomFromSelection(editor);
+    if (!tableEl) {
+      setCoords(null);
+      return;
+    }
+    const rect = tableEl.getBoundingClientRect();
+    const viewRect = editor.view.dom.getBoundingClientRect();
+    if (
+      rect.width < 1 ||
+      rect.height < 1 ||
+      rect.bottom < viewRect.top ||
+      rect.top > viewRect.bottom
+    ) {
+      setCoords(null);
+      return;
+    }
+    const floatH = 34;
+    const gap = 8;
+    let top = rect.top - floatH - gap;
+    if (top < gap) top = Math.min(rect.top + gap, window.innerHeight - floatH - gap);
+    setCoords({
+      top,
+      left: rect.left + rect.width / 2,
+    });
+    bump((n) => n + 1);
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const onUpdate = () => sync();
+    editor.on("selectionUpdate", onUpdate);
+    editor.on("transaction", onUpdate);
+    const dom = editor.view.dom;
+    dom.addEventListener("scroll", onUpdate, true);
+    window.addEventListener("resize", onUpdate);
+    window.addEventListener("scroll", onUpdate, true);
+    sync();
+    return () => {
+      editor.off("selectionUpdate", onUpdate);
+      editor.off("transaction", onUpdate);
+      dom.removeEventListener("scroll", onUpdate, true);
+      window.removeEventListener("resize", onUpdate);
+      window.removeEventListener("scroll", onUpdate, true);
+    };
+  }, [editor, sync]);
+
+  if (!coords || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="rte-table-float"
+      style={{ top: coords.top, left: coords.left }}
+      role="toolbar"
+      aria-label="Table"
+    >
+      <ToolbarBtn
+        title="Add row below"
+        disabled={!editor.can().addRowAfter()}
+        onClick={() => editor.chain().focus().addRowAfter().run()}
+      >
+        <span className="rte-table-float-act" aria-hidden="true">
+          +
+        </span>
+        <Icon name="tableRow" size={15} />
+      </ToolbarBtn>
+      <ToolbarBtn
+        title="Add column after"
+        disabled={!editor.can().addColumnAfter()}
+        onClick={() => editor.chain().focus().addColumnAfter().run()}
+      >
+        <span className="rte-table-float-act" aria-hidden="true">
+          +
+        </span>
+        <Icon name="tableCol" size={15} />
+      </ToolbarBtn>
+      <span className="rte-table-float-sep" aria-hidden="true" />
+      <ToolbarBtn
+        title="Delete row"
+        disabled={!editor.can().deleteRow()}
+        onClick={() => editor.chain().focus().deleteRow().run()}
+      >
+        <span className="rte-table-float-act" aria-hidden="true">
+          −
+        </span>
+        <Icon name="tableRow" size={15} />
+      </ToolbarBtn>
+      <ToolbarBtn
+        title="Delete column"
+        disabled={!editor.can().deleteColumn()}
+        onClick={() => editor.chain().focus().deleteColumn().run()}
+      >
+        <span className="rte-table-float-act" aria-hidden="true">
+          −
+        </span>
+        <Icon name="tableCol" size={15} />
+      </ToolbarBtn>
+      <ToolbarBtn
+        title="Delete table"
+        disabled={!editor.can().deleteTable()}
+        onClick={() => editor.chain().focus().deleteTable().run()}
+        className="rte-btn-danger"
+      >
+        <Icon name="tableDelete" size={15} />
+      </ToolbarBtn>
+    </div>,
+    document.body,
   );
 }
 
@@ -219,36 +351,16 @@ export function RteToolbar({
           <ToolbarBtn
             title="Insert table"
             active={inTable}
-            onClick={() =>
+            onClick={() => {
+              if (inTable) return;
               editor
                 .chain()
                 .focus()
                 .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-                .run()
-            }
+                .run();
+            }}
           >
             <Icon name="table" size={15} />
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Insert column"
-            disabled={!inTable}
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-          >
-            <Icon name="tableCol" size={15} />
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Insert row"
-            disabled={!inTable}
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-          >
-            <Icon name="tableRow" size={15} />
-          </ToolbarBtn>
-          <ToolbarBtn
-            title="Delete table"
-            disabled={!inTable}
-            onClick={() => editor.chain().focus().deleteTable().run()}
-          >
-            <Icon name="tableDelete" size={15} />
           </ToolbarBtn>
         </div>
       )}
@@ -495,6 +607,7 @@ export default function RichTextEditor({
           </div>
         ))}
       <EditorContent editor={editor} />
+      {tables && editable ? <TableFloat editor={editor} /> : null}
     </div>
   );
 }

@@ -32,6 +32,8 @@ function renderOptions({
       typeof o === "object" && o != null && "checked" in o
         ? !!o.checked
         : val === value;
+    const optDisabled =
+      typeof o === "object" && o != null && !!o.disabled;
     const keepOpen =
       closeOnSelect === false ||
       (typeof o === "object" && o != null && o.closeOnSelect === false);
@@ -42,9 +44,14 @@ function renderOptions({
         role="option"
         aria-selected={selectedOpt}
         className={selectedOpt ? "on" : ""}
-        onMouseEnter={() => onHighlight?.(val, o)}
+        disabled={optDisabled}
+        onMouseEnter={() => {
+          if (optDisabled) return;
+          onHighlight?.(val, o);
+        }}
         onClick={(e) => {
           e.stopPropagation();
+          if (optDisabled) return;
           onChange?.(val, o);
           if (!keepOpen) close?.();
         }}

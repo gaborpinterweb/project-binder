@@ -19,6 +19,12 @@ import {
   taskKey,
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
+import {
+  normalizeCustomViews,
+  normalizeHiddenCols,
+  resolveCustomViewId,
+  visibleDbCols,
+} from "../dbViews.js";
 import DbFieldInput from "./DbFieldInput.jsx";
 import CardTitleIcons from "./CardTitleIcons.jsx";
 import FilePreviewDialog from "./FilePreviewDialog.jsx";
@@ -376,7 +382,7 @@ export default function CardDialog({
   }, []);
 
   const tintStyle = (() => {
-    if (isDb || !curLoc) return {};
+    if (!curLoc) return {};
     const pc = curLoc.folder.color || PC[0];
     return { ["--pc"]: pc, background: pastel(pc) };
   })();
@@ -572,7 +578,7 @@ export default function CardDialog({
       <div
         className={
           "dlg" +
-          (curLoc && !isDb ? " tint" : "") +
+          (curLoc ? " tint" : "") +
           (fileDragOver ? " is-file-dragover" : "")
         }
         style={tintStyle}
@@ -1022,59 +1028,176 @@ export default function CardDialog({
   );
 }
 
+function dbTitleCol(cols) {
+  return cols.find((c) => c.id === "n") || cols.find((c) => c.type === "text");
+}
+
+function activeDbHiddenCols(modData) {
+  const customViews = normalizeCustomViews(modData?.customViews);
+  const viewId = resolveCustomViewId(modData?.customViewId, customViews);
+  const active = customViews.find((v) => v.id === viewId) || customViews[0];
+  return normalizeHiddenCols(active?.hiddenCols);
+}
+
+function groupDbFields(cols) {
+  const groups = [];
+  let meta = [];
+  const flush = () => {
+    if (!meta.length) return;
+    groups.push({ kind: "meta", cols: meta });
+    meta = [];
+  };
+  for (const c of cols) {
+    if (c.type === "longtext") {
+      flush();
+      groups.push({ kind: "rich", col: c });
+    } else {
+      meta.push(c);
+    }
+  }
+  flush();
+  return groups;
+}
+
+function DbFieldGroups({
+  cols,
+  row,
+  stages,
+  readonly,
+  focusId,
+  onPatch,
+  onPersist,
+}) {
+  if (!cols.length) return null;
+  return groupDbFields(cols).map((g, i) => {
+    if (g.kind === "rich") {
+      const c = g.col;
+      return (
+        <div key={c.id} className="dlg-description db-entry-notes">
+          <RichTextEditor
+            value={row[c.id] || ""}
+            label={c.label || "Notes"}
+            showLabel
+            placeholder="Write something…"
+            editable={!readonly}
+            showToolbar={!readonly}
+            variant="mini"
+            onChange={(html) => {
+              if (readonly) return;
+              onPatch({ [c.id]: html });
+            }}
+          />
+        </div>
+      );
+    }
+    return (
+      <div key={"meta-" + i + "-" + g.cols[0].id} className="dlg-fields">
+        <div className="db-entry-rows">
+          {g.cols.map((c) => (
+            <div key={c.id} className="db-entry-row">
+              <span className="db-entry-lab">
+                <Icon name={fieldTypeIcon(c.type)} size={14} />
+                <span className="db-entry-lab-text">
+                  {c.label}
+                  {c.required ? <span className="db-req">*</span> : null}
+                </span>
+              </span>
+              <div className="db-entry-val">
+                <DbFieldInput
+                  col={c}
+                  value={row[c.id]}
+                  stages={stages}
+                  variant="prop"
+                  autoFocus={!readonly && c.id === focusId}
+                  onChange={(next) => onPatch({ [c.id]: next })}
+                  onCommit={() => onPersist()}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  });
+}
+
 function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
-  const cols = loc?.mod?.[2]?.cols || [];
-  const firstEditable = cols.find((c) => c.type !== "longtext") || cols[0];
+  const modData = loc?.mod?.[2];
+  const cols = (modData?.cols || []).filter(Boolean);
+  const hiddenList = activeDbHiddenCols(modData);
+  const hiddenIds = new Set(hiddenList);
+  const visibleCols = visibleDbCols(cols, hiddenList);
+  const hiddenCols = cols.filter((c) => hiddenIds.has(c.id));
+  const titleCol = dbTitleCol(visibleCols);
+  const visibleRest = titleCol
+    ? visibleCols.filter((c) => c.id !== titleCol.id)
+    : visibleCols;
+  const focusId = readonly
+    ? null
+    : titleCol?.id ||
+      visibleRest.find((c) => c.type !== "longtext")?.id ||
+      visibleRest[0]?.id ||
+      hiddenCols.find((c) => c.type !== "longtext")?.id ||
+      hiddenCols[0]?.id ||
+      null;
 
   if (!cols.length) return null;
 
   return (
-    <div className="dlg-fields">
-      <table className="props">
-        <tbody>
-          {cols.map((c) => (
-            <tr
-              key={c.id}
-              className={c.type === "longtext" ? "db-prop-rich" : undefined}
-            >
-              <td>
-                <span className="db-prop-lab">
-                  <Icon name={fieldTypeIcon(c.type)} size={14} />
-                  {c.label}
-                  {c.required ? <span className="db-req">*</span> : null}
-                </span>
-              </td>
-              <td>
-                {c.type === "longtext" ? (
-                  <RichTextEditor
-                    value={row[c.id] || ""}
-                    showLabel={false}
-                    placeholder="Write something…"
-                    editable={!readonly}
-                    showToolbar={!readonly}
-                    variant="mini"
-                    onChange={(html) => {
-                      if (readonly) return;
-                      onPatch({ [c.id]: html });
-                    }}
-                  />
-                ) : (
-                  <DbFieldInput
-                    col={c}
-                    value={row[c.id]}
-                    stages={stages}
-                    variant="prop"
-                    autoFocus={!readonly && c.id === firstEditable?.id}
-                    placeholder={c.id === "n" ? "New entry" : ""}
-                    onChange={(next) => onPatch({ [c.id]: next })}
-                    onCommit={() => onPersist()}
-                  />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {titleCol ? (
+        <div className="title-row">
+          <input
+            className="title"
+            value={row[titleCol.id] || ""}
+            placeholder={
+              titleCol.id === "n" ? "New entry" : titleCol.label || "Untitled"
+            }
+            autoFocus={focusId === titleCol.id}
+            readOnly={readonly}
+            onChange={(e) => {
+              if (readonly) return;
+              onPatch({ [titleCol.id]: e.target.value });
+            }}
+            onBlur={() => {
+              if (readonly) return;
+              onPersist();
+            }}
+            onKeyDown={(e) => {
+              if (readonly || e.key !== "Enter") return;
+              e.preventDefault();
+              e.currentTarget.blur();
+            }}
+          />
+        </div>
+      ) : null}
+
+      <DbFieldGroups
+        cols={visibleRest}
+        row={row}
+        stages={stages}
+        readonly={readonly}
+        focusId={focusId}
+        onPatch={onPatch}
+        onPersist={onPersist}
+      />
+
+      {hiddenCols.length ? (
+        <div className="db-entry-hidden">
+          <h3 className="db-entry-section-lab">
+            Hidden fields in current view
+          </h3>
+          <DbFieldGroups
+            cols={hiddenCols}
+            row={row}
+            stages={stages}
+            readonly={readonly}
+            focusId={focusId}
+            onPatch={onPatch}
+            onPersist={onPersist}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }

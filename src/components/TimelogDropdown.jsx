@@ -11,12 +11,12 @@ export function timelogOptions({ showTimers = true } = {}) {
           {
             value: "pomo",
             label: `Start ${mins}m countdown`,
-            icon: "tomato",
+            icon: "hourglass",
           },
           { value: "stoptimer", label: "Start stopwatch", icon: "stopwatch" },
         ]
       : []),
-    { value: "manual", label: "Add manually", icon: "pencil" },
+    { value: "manual", label: "Add timelog manually", icon: "pencil" },
     { value: "logs", label: "Open in Timelogs...", icon: "list" },
   ];
 }

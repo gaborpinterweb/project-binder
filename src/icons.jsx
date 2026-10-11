@@ -45,6 +45,7 @@ import {
   GripVertical,
   Hash,
   Highlighter,
+  Hourglass,
   Info,
   Kanban,
   BookMarked,
@@ -173,28 +174,6 @@ function RainbowAsterisk({ size = 16, strokeWidth = 2, className, ...rest }) {
   );
 }
 
-/** Countdown tomato — not in Lucide. */
-function TomatoIcon({ size = 16, color = "currentColor", strokeWidth = 2, className, ...rest }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      {...rest}
-    >
-      <path d="M12 4.8c-.9 1.35-2.4 1.95-3.9 1.8 1.05.75 2.4 1.05 3.9.75 1.35.3 2.7 0 3.75-.75-1.5.15-3-.45-3.75-1.8z" />
-      <path d="M6.3 9.3c-1.05 1.8-1.05 4.5.45 6.75 1.65 2.4 4.2 3.45 5.25 3.45s3.6-1.05 5.25-3.45c1.5-2.25 1.5-4.95.45-6.75C16.2 7.5 14.1 6.75 12 6.75S7.8 7.5 6.3 9.3z" />
-    </svg>
-  );
-}
-
 /** Animated stopwatch APNG (public/icons/stopwatch-running.png). */
 function RunningClockIcon({ size = 18, className, strokeWidth, fill, ...rest }) {
   return (
@@ -254,7 +233,7 @@ export const IC = {
   folders: Folders,
   settings: Settings,
   pencil: Pencil,
-  tomato: TomatoIcon,
+  hourglass: Hourglass,
   stopwatch: Timer,
   runningClock: RunningClockIcon,
   priority: Diamond,

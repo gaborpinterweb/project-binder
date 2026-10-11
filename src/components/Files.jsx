@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { postFile, putFile, deleteFileApi, moveFileApi, revealFilesTab } from "../api.js";
+import {
+  postFile,
+  putFile,
+  deleteFileApi,
+  moveFileApi,
+  revealFile,
+  revealFilesTab,
+} from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
   allFilesTabs,
@@ -17,6 +24,10 @@ function folderAppLabel() {
   if (/mac/i.test(platform)) return "Finder";
   if (/win/i.test(platform)) return "File Explorer";
   return "Folder";
+}
+
+function showInFolderLabel() {
+  return `Show in ${folderAppLabel()}`;
 }
 
 function formatFileSize(bytes) {
@@ -113,7 +124,14 @@ function readFileAsBase64(file) {
   });
 }
 
-function FileMoreMenu({ disabled, moveTargets = [], onRename, onMove, onDelete }) {
+function FileMoreMenu({
+  disabled,
+  moveTargets = [],
+  onShowInFolder,
+  onRename,
+  onMove,
+  onDelete,
+}) {
   const wrapRef = useRef(null);
   const btnRef = useRef(null);
   const leaveTimer = useRef(0);
@@ -197,6 +215,17 @@ function FileMoreMenu({ disabled, moveTargets = [], onRename, onMove, onDelete }
           role="menu"
           style={{ top: pos.top, right: pos.right, left: "auto" }}
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onShowInFolder);
+            }}
+          >
+            <Icon name="folder" size={14} />
+            {showInFolderLabel()}
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -320,6 +349,18 @@ export default function Files({
       await revealFilesTab({ project: folder.slug, filesTab: d.slug });
     } catch (err) {
       window.alert(err.message || "Could not open the folder");
+    }
+  };
+
+  const showFileInFolder = async (file) => {
+    try {
+      await revealFile({
+        project: folder.slug,
+        filesTab: d.slug,
+        file: file.slug,
+      });
+    } catch (err) {
+      window.alert(err.message || "Could not show the file");
     }
   };
 
@@ -560,6 +601,7 @@ export default function Files({
                     <FileMoreMenu
                       disabled={busy}
                       moveTargets={moveTargets}
+                      onShowInFolder={() => showFileInFolder(file)}
                       onRename={() => renameFile(file)}
                       onMove={(dest) => moveFile(file, dest)}
                       onDelete={() => removeFile(file)}

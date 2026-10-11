@@ -21,15 +21,7 @@ function flipSwapTabs(tabsEl, leftSlug, rightSlug, applyOrder) {
   );
 }
 
-function TabMoreMenu({
-  visible,
-  canLeft,
-  canRight,
-  onMoveLeft,
-  onMoveRight,
-  onRename,
-  onDelete,
-}) {
+function TabMoreShell({ visible, title = "Tab options", children }) {
   const wrapRef = useRef(null);
   const btnRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -79,8 +71,8 @@ function TabMoreMenu({
         type="button"
         ref={btnRef}
         className="tab-more-btn"
-        title="Tab options"
-        aria-label="Tab options"
+        title={title}
+        aria-label={title}
         aria-haspopup="menu"
         aria-expanded={open}
         tabIndex={visible ? 0 : -1}
@@ -100,6 +92,26 @@ function TabMoreMenu({
           role="menu"
           style={{ top: pos.top, right: pos.right, left: "auto" }}
         >
+          {children(run)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabMoreMenu({
+  visible,
+  canLeft,
+  canRight,
+  onMoveLeft,
+  onMoveRight,
+  onRename,
+  onDelete,
+}) {
+  return (
+    <TabMoreShell visible={visible} title="Tab options">
+      {(run) => (
+        <>
           <button
             type="button"
             role="menuitem"
@@ -147,9 +159,55 @@ function TabMoreMenu({
             <Icon name="Trash" size={14} />
             Delete
           </button>
-        </div>
+        </>
       )}
-    </div>
+    </TabMoreShell>
+  );
+}
+
+function CoverTabMoreMenu({ visible, editing, onEdit, onArchive, onDelete }) {
+  return (
+    <TabMoreShell visible={visible} title="Project options">
+      {(run) => (
+        <>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!!editing}
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onEdit);
+            }}
+          >
+            <Icon name="pencil" size={14} />
+            Edit project
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onArchive);
+            }}
+          >
+            <Icon name="Archive" size={14} />
+            Archive project
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onDelete);
+            }}
+          >
+            <Icon name="Trash" size={14} />
+            Delete project
+          </button>
+        </>
+      )}
+    </TabMoreShell>
   );
 }
 
@@ -162,6 +220,7 @@ function TabBtn({
   onClick,
   disabled,
   showMenu,
+  menuKind = "tab",
   menuVisible,
   canLeft,
   canRight,
@@ -169,6 +228,10 @@ function TabBtn({
   onMoveRight,
   onRename,
   onDelete,
+  coverEditing,
+  onCoverEdit,
+  onCoverArchive,
+  onCoverDelete,
 }) {
   const className =
     "tab" + (on ? " on" : "") + (disabled ? " locked" : "");
@@ -182,15 +245,25 @@ function TabBtn({
       ) : null}
       <span className="tab-label">{label}</span>
       {showMenu ? (
-        <TabMoreMenu
-          visible={!!menuVisible}
-          canLeft={canLeft}
-          canRight={canRight}
-          onMoveLeft={onMoveLeft}
-          onMoveRight={onMoveRight}
-          onRename={onRename}
-          onDelete={onDelete}
-        />
+        menuKind === "cover" ? (
+          <CoverTabMoreMenu
+            visible={!!menuVisible}
+            editing={coverEditing}
+            onEdit={onCoverEdit}
+            onArchive={onCoverArchive}
+            onDelete={onCoverDelete}
+          />
+        ) : (
+          <TabMoreMenu
+            visible={!!menuVisible}
+            canLeft={canLeft}
+            canRight={canRight}
+            onMoveLeft={onMoveLeft}
+            onMoveRight={onMoveRight}
+            onRename={onRename}
+            onDelete={onDelete}
+          />
+        )
       ) : null}
     </>
   );
@@ -245,6 +318,7 @@ export default function TabBar({
   archived,
   draftProject,
   boardEdit,
+  coverEdit,
   menuOpen,
   menuPos,
   onSelectTab,
@@ -253,6 +327,9 @@ export default function TabBar({
   onMoveTab,
   onRenameTab,
   onDeleteTab,
+  onCoverEdit,
+  onCoverArchive,
+  onCoverDelete,
 }) {
   const tabsRef = useRef(null);
   const swappingRef = useRef(false);
@@ -307,10 +384,12 @@ export default function TabBar({
                 type={mod[0]}
                 slug={slug}
                 disabled={locked}
-                showMenu={mod[0] !== "Cover" && !archived}
+                showMenu={!archived}
+                menuKind={mod[0] === "Cover" ? "cover" : "tab"}
                 menuVisible={active}
                 canLeft={i > 1}
                 canRight={i < mods.length - 1}
+                coverEditing={!!coverEdit}
                 onClick={() => {
                   if (locked) return;
                   onSelectTab(i);
@@ -319,6 +398,9 @@ export default function TabBar({
                 onMoveRight={() => moveAnimated(i, 1)}
                 onRename={() => onRenameTab?.(i)}
                 onDelete={() => onDeleteTab?.(i)}
+                onCoverEdit={onCoverEdit}
+                onCoverArchive={onCoverArchive}
+                onCoverDelete={onCoverDelete}
               />
             );
           })}

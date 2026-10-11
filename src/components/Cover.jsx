@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { PC, coverColorChoices, coverColorName } from "../utils.js";
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
@@ -41,8 +42,12 @@ function patchDraft(onChange, draft, patch) {
 
 function ColorDropdown({ draft, onChange }) {
   const color = draft.color || PC[0];
+  const committedRef = useRef(color);
+  const previewingRef = useRef(false);
+  if (!previewingRef.current) committedRef.current = color;
+  const chosen = committedRef.current;
   const name = coverColorName(color);
-  const options = coverColorChoices(color).map((c) => ({
+  const options = coverColorChoices(chosen).map((c) => ({
     value: c,
     label: coverColorName(c),
   }));
@@ -51,86 +56,33 @@ function ColorDropdown({ draft, onChange }) {
       className="cover-color-dd"
       align="right"
       options={options}
-      value={color}
-      onChange={(c) => patchDraft(onChange, draft, { color: c })}
+      value={chosen}
+      onChange={(c) => {
+        committedRef.current = c;
+        previewingRef.current = false;
+        patchDraft(onChange, draft, { color: c });
+      }}
+      onHighlight={(c) => {
+        if (c == null) {
+          previewingRef.current = false;
+          patchDraft(onChange, draft, { color: committedRef.current });
+          return;
+        }
+        previewingRef.current = true;
+        patchDraft(onChange, draft, { color: c });
+      }}
       ariaLabel={name}
       title={name}
       renderOption={(o) => (
         <span className="cover-color-opt">
           <span className="cover-color-opt-dot" style={{ background: o.value }} />
           <span className="cover-color-opt-lab">{o.label}</span>
-          {o.value === color ? <Icon name="check" size={14} /> : null}
+          {o.value === chosen ? <Icon name="check" size={14} /> : null}
         </span>
       )}
     >
       <span className="cover-color-dd-dot" style={{ background: color }} />
-      <span className="cover-color-dd-lab">{name}</span>
     </Dropdown>
-  );
-}
-
-function CoverDock({ children }) {
-  return (
-    <div className="cover-dock">
-      <div className="cover-dock-inner">{children}</div>
-    </div>
-  );
-}
-
-function CoverActions({ editing, draft, folder, onStartEdit, onSave, onArchive, onDelete }) {
-  const label = editing ? "Save project" : "Edit project";
-  return (
-    <CoverDock>
-      <button
-        type="button"
-        className={"cover-dock-btn" + (editing ? " primary" : "")}
-        title={label}
-        aria-label={label}
-        onClick={() => {
-          if (editing) {
-            const name = (draft.name || "").trim() || folder.name || "Untitled";
-            onSave({
-              name,
-              description: draft.description || "",
-              color: draft.color || folder.color,
-            });
-            return;
-          }
-          onStartEdit({
-            name: folder.name || "",
-            description: draft.description || "",
-            color: draft.color || folder.color || PC[0],
-          });
-        }}
-      >
-        <Icon name={editing ? "check" : "pencil"} size={18} />
-        <span>{label}</span>
-      </button>
-      {editing && (
-        <>
-          <button
-            type="button"
-            className="cover-dock-btn"
-            title="Archive"
-            aria-label="Archive"
-            onClick={onArchive}
-          >
-            <Icon name="Archive" size={18} />
-            <span>Archive</span>
-          </button>
-          <button
-            type="button"
-            className="cover-dock-btn danger"
-            title="Delete"
-            aria-label="Delete"
-            onClick={onDelete}
-          >
-            <Icon name="Trash" size={18} />
-            <span>Delete</span>
-          </button>
-        </>
-      )}
-    </CoverDock>
   );
 }
 
@@ -143,11 +95,8 @@ export default function Cover({
   coverEdit,
   coverDraft,
   onCoverDraftChange,
-  onStartEdit,
   onSave,
   onCommitDraft,
-  onArchive,
-  onDelete,
 }) {
   if (draftProject) {
     return (
@@ -173,6 +122,15 @@ export default function Cover({
   const viewColor = editing ? draft.color || tabC : tabC;
   const viewName = editing ? draft.name || "" : folder.name || "";
   const viewDesc = editing ? draft.description || "" : values.description || "";
+
+  const saveEdit = () => {
+    const name = (draft.name || "").trim() || folder.name || "Untitled";
+    onSave({
+      name,
+      description: draft.description || "",
+      color: draft.color || folder.color,
+    });
+  };
 
   return (
     <div id="view" className="mod cover-view" style={{ ["--tab"]: viewColor }}>
@@ -200,6 +158,10 @@ export default function Cover({
                   patchDraft(onCoverDraftChange, draft, { description: html })
                 }
               />
+              <button type="button" className="cover-done" onClick={saveEdit}>
+                <Icon name="check" size={16} />
+                Done
+              </button>
             </>
           ) : (
             <>
@@ -213,25 +175,6 @@ export default function Cover({
           )}
         </div>
       </div>
-      {!archived && (
-        <CoverActions
-          editing={editing}
-          draft={
-            editing
-              ? draft
-              : {
-                  name: folder.name || "",
-                  description: values.description || "",
-                  color: folder.color || tabC || PC[0],
-                }
-          }
-          folder={folder}
-          onStartEdit={onStartEdit}
-          onSave={onSave}
-          onArchive={onArchive}
-          onDelete={onDelete}
-        />
-      )}
     </div>
   );
 }
@@ -261,21 +204,17 @@ function DraftCover({ draft, onChange, onCommit }) {
               patchDraft(onChange, draft, { description: html })
             }
           />
+          <button
+            type="button"
+            className="cover-done"
+            disabled={!canCreate}
+            onClick={onCommit}
+          >
+            <Icon name="flag" size={16} />
+            Create project
+          </button>
         </div>
       </div>
-      <CoverDock>
-        <button
-          type="button"
-          className="cover-dock-btn primary"
-          title="Create project"
-          aria-label="Create project"
-          disabled={!canCreate}
-          onClick={onCommit}
-        >
-          <Icon name="check" size={18} />
-          <span>Create project</span>
-        </button>
-      </CoverDock>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { bindConfirmHost, settleConfirm } from "../confirmDialog.js";
+import { Icon } from "../icons.jsx";
 
 export default function ConfirmDialog() {
   const [req, setReq] = useState(null);
@@ -72,9 +73,14 @@ export default function ConfirmDialog() {
             <button
               ref={confirmRef}
               type="button"
-              className={req.danger ? "dlg-create prompt-danger" : "dlg-create"}
+              className={
+                "dlg-create" +
+                (req.danger ? " prompt-danger" : "") +
+                (req.confirmIcon ? " dlg-create-icon" : "")
+              }
               onClick={accept}
             >
+              {req.confirmIcon ? <Icon name={req.confirmIcon} size={16} /> : null}
               {req.confirmLabel}
             </button>
           </div>

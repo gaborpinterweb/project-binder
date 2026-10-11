@@ -21,6 +21,7 @@ function renderOptions({
   options,
   value,
   onChange,
+  onHighlight,
   renderOption,
   close,
   closeOnSelect = true,
@@ -41,6 +42,7 @@ function renderOptions({
         role="option"
         aria-selected={selectedOpt}
         className={selectedOpt ? "on" : ""}
+        onMouseEnter={() => onHighlight?.(val, o)}
         onClick={(e) => {
           e.stopPropagation();
           onChange?.(val, o);
@@ -67,6 +69,7 @@ export default function Dropdown({
   options = [],
   value,
   onChange,
+  onHighlight,
   sections,
   className = "",
   buttonClassName = "",
@@ -82,6 +85,8 @@ export default function Dropdown({
 }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const highlightRef = useRef(onHighlight);
+  highlightRef.current = onHighlight;
 
   useEffect(() => {
     if (!open) return;
@@ -90,6 +95,11 @@ export default function Dropdown({
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) return;
+    highlightRef.current?.(null);
   }, [open]);
 
   const selected = options.find((o) => optionValue(o) === value);
@@ -129,7 +139,12 @@ export default function Dropdown({
         ) : null}
       </button>
       {open && !disabled && (
-        <div className={"pop dd-menu" + (menuClassName ? " " + menuClassName : "")} style={{ display: "block" }} role="listbox">
+        <div
+          className={"pop dd-menu" + (menuClassName ? " " + menuClassName : "")}
+          style={{ display: "block" }}
+          role="listbox"
+          onMouseLeave={() => onHighlight?.(null)}
+        >
           {sections?.length
             ? sections.map((sec, i) => (
                 <div key={sec.key || sec.label || i} className="dd-section" role="group" aria-label={sec.label}>
@@ -138,13 +153,21 @@ export default function Dropdown({
                     options: sec.options || [],
                     value: sec.value,
                     onChange: sec.onChange,
+                    onHighlight: sec.onHighlight || onHighlight,
                     renderOption: sec.renderOption || renderOption,
                     close,
                     closeOnSelect: sec.closeOnSelect !== false,
                   })}
                 </div>
               ))
-            : renderOptions({ options, value, onChange, renderOption, close })}
+            : renderOptions({
+                options,
+                value,
+                onChange,
+                onHighlight,
+                renderOption,
+                close,
+              })}
         </div>
       )}
     </div>

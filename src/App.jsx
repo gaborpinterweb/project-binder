@@ -881,8 +881,10 @@ export default function App() {
     if (!folder) return;
     const ok = await askConfirm({
       title: `Archive "${folder.name}"?`,
-      message: "Archived projects are read-only until you unarchive them.",
-      confirmLabel: "Archive",
+      message:
+        "Archived projects are hidden from the sidebar, and their items are hidden from the UI entirely. They are not deleted, and you can reactivate them anytime from Settings.",
+      confirmLabel: "Archive project",
+      confirmIcon: "Archive",
     });
     if (!ok) return;
     setProjectArchived(folder, true);
@@ -904,7 +906,8 @@ export default function App() {
     const ok = await askConfirm({
       title: `Delete "${folder.name}"?`,
       message: "It will move to Trash and can be restored within 30 days.",
-      confirmLabel: "Delete",
+      confirmLabel: "Delete project",
+      confirmIcon: "Trash",
       danger: true,
     });
     if (!ok) return;
@@ -1122,6 +1125,7 @@ export default function App() {
               archived={archived}
               draftProject={draftProject}
               boardEdit={boardEdit && !archived}
+              coverEdit={coverEdit}
               menuOpen={menuOpen}
               menuPos={menuPos}
               onSelectTab={(i) => {
@@ -1143,6 +1147,20 @@ export default function App() {
               onMoveTab={onMoveTab}
               onRenameTab={onRenameTab}
               onDeleteTab={onDeleteTab}
+              onCoverEdit={() => {
+                if (!folder || archived) return;
+                const coverMod =
+                  folder.mods?.find((mod) => mod[0] === "Cover") || folder.mods?.[0];
+                const values = coverMod?.[2]?.values || { description: "" };
+                setCoverEdit(true);
+                setCoverDraft({
+                  name: folder.name || "",
+                  description: values.description || "",
+                  color: folder.color || tabC || PC[0],
+                });
+              }}
+              onCoverArchive={() => confirmArchiveProject(folder)}
+              onCoverDelete={() => confirmDeleteProject(folder)}
             />
           )}
           {isGlobal && <div id="bar" style={{ display: "none" }} />}
@@ -1338,13 +1356,7 @@ export default function App() {
               coverEdit={coverEdit}
               coverDraft={coverDraft}
               onCoverDraftChange={setCoverDraft}
-              onStartEdit={(draft) => {
-                setCoverEdit(true);
-                setCoverDraft(draft);
-              }}
               onSave={(patch) => saveCover(folder, x, patch)}
-              onArchive={() => confirmArchiveProject(folder)}
-              onDelete={() => confirmDeleteProject(folder)}
             />
           )}
           {loaded &&

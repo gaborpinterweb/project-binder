@@ -120,7 +120,7 @@ function CoverActions({ editing, draft, folder, onStartEdit, onSave, onArchive, 
           </button>
           <button
             type="button"
-            className="cover-dock-btn"
+            className="cover-dock-btn danger"
             title="Delete"
             aria-label="Delete"
             onClick={onDelete}

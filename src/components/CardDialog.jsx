@@ -596,34 +596,36 @@ export default function CardDialog({
         <div className="dlg-content">
           {isDb ? null : (
             <div className="title-row">
-              <input
-                type="checkbox"
-                className="card-check"
-                checked={isDone(draft)}
-                disabled={readonly}
-                title={
-                  readonly
-                    ? undefined
-                    : isDone(draft)
-                      ? "Mark active"
-                      : "Mark completed"
-                }
-                onChange={(e) => {
-                  if (readonly) return;
-                  const doneAt = e.target.checked
-                    ? new Date().toISOString()
-                    : "";
-                  if (e.target.checked) playTaskCompleteSound();
-                  patch({ doneAt });
-                  clearTimeout(persistTimer.current);
-                  draftRef.current = { ...draftRef.current, doneAt };
-                  persist();
-                }}
-              />
+              {!isDraft ? (
+                <input
+                  type="checkbox"
+                  className="card-check"
+                  checked={isDone(draft)}
+                  disabled={readonly}
+                  title={
+                    readonly
+                      ? undefined
+                      : isDone(draft)
+                        ? "Mark active"
+                        : "Mark completed"
+                  }
+                  onChange={(e) => {
+                    if (readonly) return;
+                    const doneAt = e.target.checked
+                      ? new Date().toISOString()
+                      : "";
+                    if (e.target.checked) playTaskCompleteSound();
+                    patch({ doneAt });
+                    clearTimeout(persistTimer.current);
+                    draftRef.current = { ...draftRef.current, doneAt };
+                    persist();
+                  }}
+                />
+              ) : null}
               <input
                 className={"title" + (isDone(draft) ? " done" : "")}
                 value={draft.n || ""}
-                placeholder="Untitled"
+                placeholder={isDraft ? "New task..." : "Untitled"}
                 autoFocus={!readonly}
                 readOnly={readonly}
                 onChange={(e) => {
@@ -633,6 +635,7 @@ export default function CardDialog({
                 onKeyDown={(e) => {
                   if (readonly || e.key !== "Enter") return;
                   e.preventDefault();
+                  if (isDraft && !(draft.n || "").trim()) return;
                   close(isDraft);
                 }}
               />
@@ -891,6 +894,9 @@ export default function CardDialog({
                     placeholder="Write something…"
                     editable={!readonly}
                     showToolbar={!readonly}
+                    headingLevels={[1, 2]}
+                    showCodeBlock
+                    showHelp={false}
                     onChange={(html) => {
                       if (readonly) return;
                       patch({ body: html });
@@ -984,6 +990,7 @@ export default function CardDialog({
               <button
                 type="button"
                 className="dlg-create"
+                disabled={!(draft.n || "").trim()}
                 onClick={() => close(true)}
               >
                 Add task
@@ -1047,6 +1054,9 @@ function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
                     placeholder="Write something…"
                     editable={!readonly}
                     showToolbar={!readonly}
+                    headingLevels={[1, 2]}
+                    showCodeBlock
+                    showHelp={false}
                     onChange={(html) => {
                       if (readonly) return;
                       onPatch({ [c.id]: html });

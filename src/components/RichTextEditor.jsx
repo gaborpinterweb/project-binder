@@ -94,6 +94,8 @@ export function RteToolbar({
   headingLevels = [],
   showTable = false,
   showQuote = false,
+  showCodeBlock = false,
+  showHelp = true,
   onDelete,
   moveOptions = [],
   onMove,
@@ -111,9 +113,14 @@ export function RteToolbar({
   }, [editor]);
 
   if (!editor) return null;
-  const levels = forNotes ? [1, 2, 3, 4] : headingLevels;
+  const levels = forNotes
+    ? [1, 2, 3, 4]
+    : headingLevels.length
+      ? headingLevels
+      : [1];
   const tables = forNotes || showTable;
   const quotes = forNotes || showQuote;
+  const codeBlocks = forNotes || showCodeBlock;
   const inTable = tables && editor.isActive("table");
   const canMove = typeof onMove === "function" && moveOptions.length > 0;
   return (
@@ -166,6 +173,13 @@ export function RteToolbar({
           <Icon name="list" size={15} />
         </ToolbarBtn>
         <ToolbarBtn
+          title="Numbered list"
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
+          <Icon name="listOrdered" size={15} />
+        </ToolbarBtn>
+        <ToolbarBtn
           title="Checklist"
           active={editor.isActive("taskList")}
           onClick={() => editor.chain().focus().toggleTaskList().run()}
@@ -181,23 +195,23 @@ export function RteToolbar({
             <Icon name="blockquote" size={15} />
           </ToolbarBtn>
         )}
+        {codeBlocks && (
+          <ToolbarBtn
+            title="Code block"
+            active={editor.isActive("codeBlock")}
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          >
+            <Icon name="codeBlock" size={15} />
+          </ToolbarBtn>
+        )}
         {forNotes && (
-          <>
-            <ToolbarBtn
-              title="Code block"
-              active={editor.isActive("codeBlock")}
-              onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            >
-              <Icon name="codeBlock" size={15} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              title="Highlight"
-              active={editor.isActive("highlight")}
-              onClick={() => editor.chain().focus().toggleHighlight().run()}
-            >
-              <Icon name="highlight" size={15} />
-            </ToolbarBtn>
-          </>
+          <ToolbarBtn
+            title="Highlight"
+            active={editor.isActive("highlight")}
+            onClick={() => editor.chain().focus().toggleHighlight().run()}
+          >
+            <Icon name="highlight" size={15} />
+          </ToolbarBtn>
         )}
       </div>
       {tables && (
@@ -238,6 +252,7 @@ export function RteToolbar({
           </ToolbarBtn>
         </div>
       )}
+      {showHelp ? (
       <div className="rte-group" role="group" aria-label="Help">
         <span className="dlg-desc-info" tabIndex={0} aria-label="Help">
           <Icon name="About" size={15} />
@@ -276,25 +291,26 @@ export function RteToolbar({
             <div>
               <b>Inline code:</b> `text`
             </div>
-            {forNotes && (
-              <>
-                <div>
-                  <b>Code block:</b>
-                  <br />
-                  ```
-                  <br />
-                  code
-                  <br />
-                  ```
-                </div>
-                <div>
-                  <b>Quote:</b> &gt; text
-                </div>
-              </>
+            {codeBlocks && (
+              <div>
+                <b>Code block:</b>
+                <br />
+                ```
+                <br />
+                code
+                <br />
+                ```
+              </div>
+            )}
+            {quotes && (
+              <div>
+                <b>Quote:</b> &gt; text
+              </div>
             )}
           </div>
         </span>
       </div>
+      ) : null}
       {(canMove || onDelete) && (
         <div className="rte-group" role="group" aria-label="Note actions">
           {canMove && (
@@ -349,6 +365,8 @@ export default function RichTextEditor({
   headingLevels = [],
   showTable = false,
   showQuote = false,
+  showCodeBlock = false,
+  showHelp = true,
   onEditor,
 }) {
   const levels = forNotes
@@ -358,6 +376,7 @@ export default function RichTextEditor({
       : [1];
   const tables = forNotes || showTable;
   const quotes = forNotes || showQuote;
+  const codeBlocks = forNotes || showCodeBlock;
 
   const initialContent = (() => {
     const html = toEditorContent(value);
@@ -373,7 +392,7 @@ export default function RichTextEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels },
-        codeBlock: forNotes ? undefined : false,
+        codeBlock: codeBlocks ? undefined : false,
         blockquote: quotes ? undefined : false,
         horizontalRule: false,
       }),
@@ -458,6 +477,8 @@ export default function RichTextEditor({
               headingLevels={headingLevels}
               showTable={showTable}
               showQuote={showQuote}
+              showCodeBlock={showCodeBlock}
+              showHelp={showHelp}
             />
           </div>
         ) : (
@@ -468,6 +489,8 @@ export default function RichTextEditor({
               headingLevels={headingLevels}
               showTable={showTable}
               showQuote={showQuote}
+              showCodeBlock={showCodeBlock}
+              showHelp={showHelp}
             />
           </div>
         ))}

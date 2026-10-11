@@ -379,10 +379,9 @@ function findFilesTab(project, tabId) {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CARD_FILES_DIR = "__cardfiles__";
 
 function isSafePathId(s) {
-  return typeof s === "string" && (UUID_RE.test(s) || s === CARD_FILES_DIR);
+  return typeof s === "string" && UUID_RE.test(s);
 }
 
 function removeUploadTree(projectId, tabId) {
@@ -816,10 +815,10 @@ function uniqueCardFileId() {
   return newId();
 }
 
-function purgeCardFileBlobs(projectId, files) {
-  if (!isSafePathId(projectId)) return;
+function purgeCardFileBlobs(projectId, boardId, files) {
+  if (!isSafePathId(projectId) || !isSafePathId(boardId)) return;
   for (const f of normalizeCardFiles(files)) {
-    userData.unlinkCardFile(projectId, f.id);
+    userData.unlinkUpload(projectId, boardId, f.id);
   }
 }
 
@@ -848,7 +847,7 @@ function addCardFile(projectId, boardId, cardId, { name, mime, data }) {
   const files = listCardFiles(projectId, boardId, cardId);
   const id = uniqueCardFileId();
   if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
-  userData.writeCardFile(projectId, id, buf);
+  userData.writeUpload(projectId, boardId, id, buf);
   const meta = {
     id,
     name: fileName,
@@ -875,7 +874,7 @@ function deleteCardFile(projectId, boardId, cardId, fileId) {
   if (idx < 0) return { ok: false, error: "file not found" };
   files.splice(idx, 1);
   setCardFilesList(projectId, boardId, cardId, files);
-  userData.unlinkCardFile(projectId, fileId);
+  userData.unlinkUpload(projectId, boardId, fileId);
   return { ok: true, files };
 }
 
@@ -890,7 +889,7 @@ function discardCardFiles(projectId, boardId, cardId) {
   const card = findCardRecord(projectId, boardId, cardId);
   if (card) return { ok: false, error: "card exists" };
   const files = listCardFiles(projectId, boardId, cardId);
-  purgeCardFileBlobs(projectId, files);
+  purgeCardFileBlobs(projectId, boardId, files);
   clearPendingCardFiles(projectId, boardId, cardId);
   return { ok: true };
 }
@@ -906,7 +905,7 @@ function readCardFileBytes(projectId, boardId, cardId, fileId) {
   }
   const meta = listCardFiles(projectId, boardId, cardId).find((f) => f.id === fileId);
   if (!meta) return { ok: false, error: "file not found" };
-  const body = userData.readCardFile(projectId, fileId);
+  const body = userData.readUpload(projectId, boardId, fileId);
   if (!body) return { ok: false, error: "file not found" };
   return {
     ok: true,
@@ -916,13 +915,26 @@ function readCardFileBytes(projectId, boardId, cardId, fileId) {
   };
 }
 
-function moveCardFileBlobs(fromProject, toProject, files) {
-  if (fromProject === toProject) return { ok: true };
-  if (!isSafePathId(fromProject) || !isSafePathId(toProject)) {
+/** Move card attachment blobs between tab folders (board UUID = folder). */
+function moveCardFileBlobs(fromProject, fromBoard, toProject, toBoard, files) {
+  if (fromProject === toProject && fromBoard === toBoard) return { ok: true };
+  if (
+    !isSafePathId(fromProject) ||
+    !isSafePathId(fromBoard) ||
+    !isSafePathId(toProject) ||
+    !isSafePathId(toBoard)
+  ) {
     return { ok: false, error: "invalid path" };
   }
   for (const f of normalizeCardFiles(files)) {
-    const moved = userData.moveCardFile(fromProject, f.id, toProject, f.id);
+    const moved = userData.moveUpload(
+      fromProject,
+      fromBoard,
+      f.id,
+      toProject,
+      toBoard,
+      f.id
+    );
     if (!moved.ok) return moved;
   }
   return { ok: true };
@@ -1135,7 +1147,7 @@ function hardDeleteCard(projectId, boardId, cardId, { purgeFiles = true } = {}) 
   const idx = board.cards.findIndex((c) => c.id === cardId);
   if (idx < 0) return;
   const [card] = board.cards.splice(idx, 1);
-  if (purgeFiles) purgeCardFileBlobs(projectId, card?.files);
+  if (purgeFiles) purgeCardFileBlobs(projectId, boardId, card?.files);
   clearPendingCardFiles(projectId, boardId, cardId);
 }
 
@@ -1483,7 +1495,7 @@ function purgeExpiredTrash() {
       continue;
     }
     if (item && item.kind === "card") {
-      purgeCardFileBlobs(item.project, item.files);
+      purgeCardFileBlobs(item.project, item.board, item.files);
     }
   }
   store.trash = kept;
@@ -1986,26 +1998,37 @@ function revealCardFile(projectId, boardId, cardId, fileId) {
   if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
   const result = readCardFileBytes(projectId, boardId, cardId, fileId);
   if (!result.ok) return result;
-  const filePath = userData.cardFilePath(projectId, fileId);
-  if (!filePath || !userData.cardFileExists(projectId, fileId)) {
+  const filePath = userData.uploadPath(projectId, boardId, fileId);
+  if (!filePath || !userData.uploadExists(projectId, boardId, fileId)) {
     return { ok: false, error: "file not found" };
   }
   revealPath(filePath, { select: true });
   return { ok: true };
 }
 
-function revealFilesTabDir(projectId, filesTabId) {
+/** Open the on-disk folder for any tab (board / notes / files / database). Folder name = tab UUID. */
+function revealTabDir(projectId, tabType, tabId) {
   if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  const project = findProject(projectId);
-  const tab = findFilesTab(project, filesTabId);
-  if (!tab) return { ok: false, error: "files tab not found" };
-  if (!isSafePathId(projectId) || !isSafePathId(filesTabId)) {
+  if (!isSafePathId(projectId) || !isSafePathId(tabId)) {
     return { ok: false, error: "invalid path" };
   }
-  userData.ensureUploadDir(projectId, filesTabId);
-  const dir = userData.uploadDir(projectId, filesTabId);
+  const project = findProject(projectId);
+  if (!project) return { ok: false, error: "project not found" };
+  let tab = null;
+  if (tabType === "board") tab = findBoard(project, tabId);
+  else if (tabType === "notes") tab = findNotesTab(project, tabId);
+  else if (tabType === "files") tab = findFilesTab(project, tabId);
+  else if (tabType === "database") tab = findDatabase(project, tabId);
+  else return { ok: false, error: "invalid type" };
+  if (!tab) return { ok: false, error: "tab not found" };
+  userData.ensureUploadDir(projectId, tabId);
+  const dir = userData.uploadDir(projectId, tabId);
   revealPath(dir);
   return { ok: true, dir };
+}
+
+function revealFilesTabDir(projectId, filesTabId) {
+  return revealTabDir(projectId, "files", filesTabId);
 }
 
 function isDesktopApp() {
@@ -2672,7 +2695,20 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const result = revealFilesTabDir(body.project, body.filesTab);
       if (!result.ok) {
-        const status = result.error === "files tab not found" ? 404 : 400;
+        const status = result.error === "tab not found" || result.error === "files tab not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === "POST" && url.pathname === "/api/tab/reveal") {
+      const body = await readBody(req);
+      if (!body.project || !body.type || !body.id) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      const result = revealTabDir(body.project, body.type, body.id);
+      if (!result.ok) {
+        const status =
+          result.error === "tab not found" || result.error === "project not found" ? 404 : 400;
         return json(res, status, { error: result.error });
       }
       return json(res, 200, { ok: true });
@@ -2714,13 +2750,19 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && url.pathname === "/api/card-file/move") {
       const body = await readBody(req);
-      if (!body.fromProject || !body.toProject) {
+      if (!body.fromProject || !body.toProject || !body.fromBoard || !body.toBoard) {
         return json(res, 400, { error: "missing fields" });
       }
       if (projectIsArchived(body.fromProject) || projectIsArchived(body.toProject)) {
         return json(res, 403, { error: "project is archived" });
       }
-      const result = moveCardFileBlobs(body.fromProject, body.toProject, body.files);
+      const result = moveCardFileBlobs(
+        body.fromProject,
+        body.fromBoard,
+        body.toProject,
+        body.toBoard,
+        body.files
+      );
       if (!result.ok) {
         const status = result.error === "file not found" ? 404 : 400;
         return json(res, status, { error: result.error });

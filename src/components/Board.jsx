@@ -9,6 +9,7 @@ import {
   putCardOrder,
   fetchWorkspace,
   fetchTimelogs,
+  revealTab,
 } from "../api.js";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
@@ -56,6 +57,7 @@ import {
   playTaskCompleteSound,
   taskKey,
   COMPLETED_VIEWS,
+  folderAppLabel,
   loadCompletedViews,
   loadDbViewsSidebar,
   saveDbViewsSidebar,
@@ -1918,6 +1920,15 @@ export function DatabaseView({
   onOpenCard,
   onApplyWorkspace,
 }) {
+  const openTabFolder = async () => {
+    if (!folder?.id || !mod?.[2]?.id) return;
+    try {
+      await revealTab({ project: folder.id, type: "database", id: mod[2].id });
+    } catch (err) {
+      window.alert(err.message || "Could not open folder");
+    }
+  };
+
   const scope = boardKey(folder, mod);
   const [showViews, setShowViews] = useState(
     () => !!loadDbViewsSidebar()[scope]
@@ -2107,6 +2118,16 @@ export function DatabaseView({
           </button>
           <button
             type="button"
+            className="mod-act"
+            onClick={openTabFolder}
+            title={folderAppLabel()}
+            aria-label={`Open in ${folderAppLabel()}`}
+          >
+            <Icon name="folder" size={18} />
+            <span className="mod-act-lab">{folderAppLabel()}</span>
+          </button>
+          <button
+            type="button"
             className={"mod-act" + (showViews ? " on" : "")}
             title="Views"
             aria-label="Views"
@@ -2280,6 +2301,15 @@ export default function Board({
   const d = mod[2] || { rows: [], columns: stages.slice() };
   const scope = boardKey(folder, mod);
 
+  const openTabFolder = async () => {
+    if (!folder?.id || !d.id) return;
+    try {
+      await revealTab({ project: folder.id, type: "board", id: d.id });
+    } catch (err) {
+      window.alert(err.message || "Could not open folder");
+    }
+  };
+
   return (
     <div id="view" className="db" style={{ ["--tab"]: tabC }}>
       <div className="modbar">
@@ -2299,6 +2329,18 @@ export default function Board({
             >
               <Icon name="plus" size={18} />
               <span className="mod-act-lab">Add task</span>
+            </button>
+          )}
+          {!editing && mode === "project" && (
+            <button
+              type="button"
+              className="mod-act"
+              onClick={openTabFolder}
+              title={folderAppLabel()}
+              aria-label={`Open in ${folderAppLabel()}`}
+            >
+              <Icon name="folder" size={18} />
+              <span className="mod-act-lab">{folderAppLabel()}</span>
             </button>
           )}
           {!editing && (

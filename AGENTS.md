@@ -38,7 +38,7 @@ Short orientation for coding agents. Human run/dev/storage docs: [README.md](REA
 | Styles | `src/index.css` (single stylesheet; no new CSS framework) |
 | Server writes / schema | `server.cjs` |
 
-Entity identity is UUID `id` (not slug). Display names stay `name` / `title`. Workspace schema `version` ≥ 2. Legacy production migration handoff: [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md). Some normalize logic (DB columns, custom views) is still duplicated between client `src/db*` / `utils` and `server.cjs` — change both sides together.
+Entity identity is UUID `id` (not slug). Display names stay `name` / `title`. Workspace schema `version` ≥ 2. Uploads live at `uploads/<projectId>/<tabId>/<fileId>` (tab UUID folder for Files and board card attachments). Legacy production migration handoff: [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md). Some normalize logic (DB columns, custom views) is still duplicated between client `src/db*` / `utils` and `server.cjs` — change both sides together.
 
 ## Hard constraints (anti-spaghetti)
 

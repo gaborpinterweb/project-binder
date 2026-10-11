@@ -11,24 +11,15 @@ import { Icon } from "../icons.jsx";
 import {
   allFilesTabs,
   DEFAULT_FILES_SORT,
+  folderAppLabel,
   loadFilesSorts,
   saveFilesSort,
+  showInFolderLabel,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
 import FilePreviewDialog from "./FilePreviewDialog.jsx";
 import FileTypeIcon, { fileKindLabel } from "./FileTypeIcon.jsx";
-
-function folderAppLabel() {
-  const platform = navigator.userAgentData?.platform || navigator.platform || "";
-  if (/mac/i.test(platform)) return "Finder";
-  if (/win/i.test(platform)) return "File Explorer";
-  return "Folder";
-}
-
-function showInFolderLabel() {
-  return `Show in ${folderAppLabel()}`;
-}
 
 function formatFileSize(bytes) {
   const n = Number(bytes) || 0;

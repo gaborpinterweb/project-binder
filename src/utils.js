@@ -53,6 +53,18 @@ export const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
 export function newId() {
   return crypto.randomUUID();
 }
+
+/** OS file-manager label for “Show in …” actions. */
+export function folderAppLabel() {
+  const platform = navigator.userAgentData?.platform || navigator.platform || "";
+  if (/mac/i.test(platform)) return "Finder";
+  if (/win/i.test(platform)) return "File Explorer";
+  return "Folder";
+}
+
+export function showInFolderLabel() {
+  return `Show in ${folderAppLabel()}`;
+}
 /** 16 cover colors: hue-spaced, no grays, each ≥4.5:1 with white text. */
 export const PC = [
   "#e42737",

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { postNote, putNote, deleteNoteApi, moveNoteApi } from "../api.js";
+import { postNote, putNote, deleteNoteApi, moveNoteApi, revealTab } from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
   allNotesTabs,
+  folderAppLabel,
   noteListTitle,
   noteListPreview,
   isEmptyNoteBody,
@@ -877,6 +878,15 @@ export default function Notes({
     setCtxMenu({ left: e.clientX, top: e.clientY, note });
   };
 
+  const openTabFolder = async () => {
+    if (!folder?.id || !d.id) return;
+    try {
+      await revealTab({ project: folder.id, type: "notes", id: d.id });
+    } catch (err) {
+      window.alert(err.message || "Could not open folder");
+    }
+  };
+
   return (
     <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>
       <div className="modbar notes-chrome">
@@ -893,6 +903,16 @@ export default function Notes({
               <span className="mod-act-lab">Add note</span>
             </button>
           )}
+          <button
+            type="button"
+            className="mod-act"
+            onClick={openTabFolder}
+            title={folderAppLabel()}
+            aria-label={`Open in ${folderAppLabel()}`}
+          >
+            <Icon name="folder" size={18} />
+            <span className="mod-act-lab">{folderAppLabel()}</span>
+          </button>
           <Dropdown
             className="mod-view-dd"
             buttonClassName="mod-act"

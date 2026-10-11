@@ -636,14 +636,12 @@ export default function App() {
       from.mod[2].rows = (from.mod[2].rows || []).filter((r) => r !== row);
       if (!to.mod[2].rows) to.mod[2].rows = [];
       if (!to.mod[2].rows.includes(row)) to.mod[2].rows.push(row);
-      if (
-        from.folder.id !== to.folder.id &&
-        Array.isArray(row.files) &&
-        row.files.length
-      ) {
+      if (Array.isArray(row.files) && row.files.length) {
         await moveCardFilesApi({
           fromProject: from.folder.id,
+          fromBoard: from.mod[2].id,
           toProject: to.folder.id,
+          toBoard: to.mod[2].id,
           files: row.files,
         });
       }

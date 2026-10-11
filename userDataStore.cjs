@@ -95,13 +95,6 @@ function uploadKey(projectId, tabId, fileId) {
   return `${projectId}/${tabId}/${fileId}`;
 }
 
-/** Reserved folder under each project for board-card attachments (not a Files tab). */
-const CARD_FILES_DIR = "__cardfiles__";
-
-function cardFileKey(projectId, fileId) {
-  return `${projectId}/${CARD_FILES_DIR}/${fileId}`;
-}
-
 function createDiskStore(userDataDir, seedUploadsDir) {
   fs.mkdirSync(userDataDir, { recursive: true });
   const workspacePath = path.join(userDataDir, "userWorkspace.json");
@@ -158,50 +151,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
       } catch {
         /* may already be gone */
       }
-    },
-    cardFilePath(projectId, fileId) {
-      return path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId);
-    },
-    writeCardFile(projectId, fileId, buf) {
-      const dir = path.join(uploadsRoot, projectId, CARD_FILES_DIR);
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, fileId), buf);
-    },
-    readCardFile(projectId, fileId) {
-      const filePath = path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId);
-      if (!fs.existsSync(filePath)) return null;
-      return fs.readFileSync(filePath);
-    },
-    cardFileExists(projectId, fileId) {
-      return fs.existsSync(path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId));
-    },
-    unlinkCardFile(projectId, fileId) {
-      try {
-        fs.unlinkSync(path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId));
-      } catch {
-        /* may already be gone */
-      }
-    },
-    moveCardFile(fromProject, fileId, toProject, toFileId) {
-      const fromPath = path.join(uploadsRoot, fromProject, CARD_FILES_DIR, fileId);
-      const toDir = path.join(uploadsRoot, toProject, CARD_FILES_DIR);
-      const toPath = path.join(toDir, toFileId);
-      if (!fs.existsSync(fromPath)) return { ok: false, error: "file not found" };
-      fs.mkdirSync(toDir, { recursive: true });
-      try {
-        fs.renameSync(fromPath, toPath);
-      } catch (err) {
-        if (!err || err.code !== "EXDEV") {
-          return { ok: false, error: "could not move file" };
-        }
-        try {
-          fs.copyFileSync(fromPath, toPath);
-          fs.unlinkSync(fromPath);
-        } catch {
-          return { ok: false, error: "could not move file" };
-        }
-      }
-      return { ok: true };
     },
     moveUpload(fromProject, fromTab, fileId, toProject, toTab, toFileId) {
       const fromPath = path.join(uploadsRoot, fromProject, fromTab, fileId);
@@ -307,30 +256,6 @@ function createMemoryStore(seedUploadsDir) {
     },
     unlinkUpload(projectId, tabId, fileId) {
       uploads.delete(uploadKey(projectId, tabId, fileId));
-    },
-    cardFilePath() {
-      return null;
-    },
-    writeCardFile(projectId, fileId, buf) {
-      uploads.set(cardFileKey(projectId, fileId), Buffer.from(buf));
-    },
-    readCardFile(projectId, fileId) {
-      const buf = uploads.get(cardFileKey(projectId, fileId));
-      return buf ? Buffer.from(buf) : null;
-    },
-    cardFileExists(projectId, fileId) {
-      return uploads.has(cardFileKey(projectId, fileId));
-    },
-    unlinkCardFile(projectId, fileId) {
-      uploads.delete(cardFileKey(projectId, fileId));
-    },
-    moveCardFile(fromProject, fileId, toProject, toFileId) {
-      const fromKey = cardFileKey(fromProject, fileId);
-      const buf = uploads.get(fromKey);
-      if (!buf) return { ok: false, error: "file not found" };
-      uploads.set(cardFileKey(toProject, toFileId), buf);
-      uploads.delete(fromKey);
-      return { ok: true };
     },
     moveUpload(fromProject, fromTab, fileId, toProject, toTab, toFileId) {
       const fromKey = uploadKey(fromProject, fromTab, fileId);

@@ -194,6 +194,11 @@ export async function revealFilesTab(body) {
   );
 }
 
+/** Reveal on-disk folder for a tab. body: { project, type: board|notes|files|database, id } */
+export async function revealTab(body) {
+  return apiOkData("/api/tab/reveal", { method: "POST", body }, "Could not open folder");
+}
+
 export async function moveFileApi(body) {
   return apiOkData("/api/file/move", { method: "POST", body }, "Could not move file");
 }

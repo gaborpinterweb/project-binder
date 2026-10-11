@@ -18,8 +18,7 @@ Identity used to be name-derived `slug` fields. That was wrong for renames/colli
 | tabOrder | `{ "type": "board\|notes\|files\|database", "id": "<uuid>" }` |
 | Timelogs | `id` + `project` / `board` / `card` are UUIDs |
 | Trash rows | `id` + pointer fields are UUIDs |
-| Uploads disk | `uploads/<projectId>/<filesTabId>/<fileId>` |
-| Card attachment blobs | `uploads/<projectId>/__cardfiles__/<fileId>` |
+| Uploads disk | `uploads/<projectId>/<tabId>/<fileId>` — **tab UUID folder** for Files tabs and board card attachments (and empty folders for Notes/Database when revealed) |
 | Validation | `isValidStore` requires `version >= 2`. Legacy slug files are **rejected**. |
 
 **Safety rail:** if packaged mode finds a legacy slug `userWorkspace.json` (has `projects[0].slug`, no `id`, version &lt; 2), the server **exits** instead of overwriting with seed. See `looksLikeLegacySlugWorkspace` in `server.cjs`.
@@ -94,7 +93,7 @@ Build one old→new map (script does this). Keys used by `scripts/migrate-worksp
 | `project/<projectSlug>` | Project |
 | `board/<projectSlug>/<boardSlug>` | Board tab |
 | `card/<projectSlug>/<boardSlug>/<cardSlug>` | Task card |
-| `cardFile/<projectSlug>/<boardSlug>/<cardSlug>/<fileSlug>` | Card attachment meta (+ blob name under `__cardfiles__`) |
+| `cardFile/<projectSlug>/<boardSlug>/<cardSlug>/<fileSlug>` | Card attachment meta (+ blob under board tab folder) |
 | `notesTab/<projectSlug>/<tabSlug>` | Notes tab |
 | `note/<projectSlug>/<tabSlug>/<noteSlug>` | Note |
 | `filesTab/<projectSlug>/<tabSlug>` | Files tab |
@@ -196,7 +195,7 @@ Do **not** re-run the seed converter unless you intentionally regenerate seed UU
 
 | Area | Notes |
 |------|--------|
-| `server.cjs` | `newId()`, `isSafePathId` (UUID or `__cardfiles__`), entity `.id`, API create returns `{ id, … }` |
+| `server.cjs` | `newId()`, `isSafePathId` (UUID), entity `.id`, API create returns `{ id, … }` |
 | `userDataStore.cjs` | `isValidStore` ⇒ `version >= 2` |
 | `src/utils.js` | `fromApi` / nav / `COVER_TAB_ID` / `newId()` |
 | Client components | Entity access via `.id` |
@@ -206,9 +205,9 @@ Do **not** re-run the seed converter unless you intentionally regenerate seed UU
 
 ## Out of scope / follow-ups (not this migration)
 
-- Moving card attachments from `__cardfiles__` into per-board tab folders (“tabs = folders” storage layout).
 - Renaming API query param names.
 - Migrating DB column short ids to UUIDs (would break row `fields` keys).
+- If a workspace still has legacy `uploads/<project>/__cardfiles__/`, move those blobs into the owning board tab UUID folder (current app writes board attachments under the board id).
 
 ---
 
@@ -216,7 +215,7 @@ Do **not** re-run the seed converter unless you intentionally regenerate seed UU
 
 - [ ] Backup of pre-migration user-data exists outside the app folder  
 - [ ] `userWorkspace.json` has `version: 2`, no entity `slug` keys  
-- [ ] `uploads/` paths use UUIDs (plus `__cardfiles__` where used)  
+- [ ] `uploads/` paths use project/tab/file UUIDs  
 - [ ] Packaged app opens migrated data without refusing legacy workspace  
 - [ ] Spot-check Files, card files, timelogs, trash  
 

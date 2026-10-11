@@ -449,7 +449,7 @@ export default function Files({
     if (readonly || busy) return;
     const ok = await askConfirm({
       title: `Delete "${file.name}"?`,
-      message: "This permanently removes the file.",
+      message: "It will move to Trash and can be restored within 30 days.",
       confirmLabel: "Delete",
       danger: true,
     });

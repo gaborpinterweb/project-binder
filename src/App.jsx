@@ -1022,8 +1022,8 @@ export default function App() {
       } else if (mod[0] === "Files") {
         const count = (mod[2].files || []).length;
         message = count
-          ? `This tab and its ${count} file${count === 1 ? "" : "s"} will be permanently deleted.`
-          : "This tab will be permanently deleted.";
+          ? `This tab and its ${count} file${count === 1 ? "" : "s"} will move to Trash.`
+          : "This tab will move to Trash.";
       }
       const ok = await askConfirm({
         title: `Delete "${mod[1]}"?`,
@@ -1278,7 +1278,9 @@ export default function App() {
                       ? "project"
                       : data.parentKind === "notesTab"
                         ? "notes tab"
-                        : "board";
+                        : data.parentKind === "filesTab"
+                          ? "files tab"
+                          : "board";
                   const ok = await askConfirm({
                     title: `Restore with ${parentLabel}?`,
                     message: `“${entry.title || "This item"}” belongs to ${parentLabel} “${
@@ -1299,7 +1301,7 @@ export default function App() {
                 applyWorkspace(data, {
                   keepNav: {
                     project: data.project,
-                    board: data.board || data.notesTab || null,
+                    board: data.board || data.notesTab || data.filesTab || null,
                     g: "Trash",
                   },
                 });

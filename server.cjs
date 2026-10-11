@@ -476,7 +476,8 @@ function renameTab(projectId, type, id, name) {
 function deleteTab(projectId, type, id) {
   if (type === "board") return softDeleteBoard(projectId, id);
   if (type === "notes") return softDeleteNotesTab(projectId, id);
-  // databases / files stay hard-delete for now
+  if (type === "files") return softDeleteFilesTab(projectId, id);
+  // databases stay hard-delete for now
   const project = findProject(projectId);
   if (!project) return { ok: false, error: "project not found" };
   if (type === "database") {
@@ -484,14 +485,6 @@ function deleteTab(projectId, type, id) {
     if (idx < 0) return { ok: false, error: "tab not found" };
     project.databases.splice(idx, 1);
     removeTabOrder(project, type, id);
-    return { ok: true };
-  }
-  if (type === "files") {
-    const idx = (project.filesTabs || []).findIndex((t) => t.id === id);
-    if (idx < 0) return { ok: false, error: "tab not found" };
-    project.filesTabs.splice(idx, 1);
-    removeTabOrder(project, type, id);
-    removeUploadTree(projectId, id);
     return { ok: true };
   }
   return { ok: false, error: "invalid type" };
@@ -1140,6 +1133,66 @@ function softDeleteNotesTab(projectId, notesTabId) {
   return { ok: true };
 }
 
+function softDeleteUploadedFile(projectId, filesTabId, fileId) {
+  const project = findProject(projectId);
+  const tab = findFilesTab(project, filesTabId);
+  if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(filesTabId) ||
+    !isSafePathId(fileId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const idx = tab.files.findIndex((f) => f.id === fileId);
+  if (idx < 0) return { ok: false, error: "file not found" };
+  const [file] = tab.files.splice(idx, 1);
+  ensureTrash();
+  store.trash.push({
+    kind: "file",
+    id: uniqueTrashId(),
+    deletedAt: new Date().toISOString(),
+    project: projectId,
+    filesTab: filesTabId,
+    file: file.id || fileId,
+    title: file.name || file.id || "Untitled",
+    name: file.name || file.id || "Untitled",
+    mime: file.mime || "application/octet-stream",
+    size: Number(file.size) || 0,
+    createdAt: file.createdAt || "",
+    projectName: project.name || projectId,
+    filesTabName: tab.name || filesTabId,
+    color: project.color || "#3c3c40",
+  });
+  return { ok: true };
+}
+
+function softDeleteFilesTab(projectId, filesTabId) {
+  const project = findProject(projectId);
+  if (!project) return { ok: false, error: "project not found" };
+  const idx = (project.filesTabs || []).findIndex((t) => t.id === filesTabId);
+  if (idx < 0) return { ok: false, error: "tab not found" };
+  const tab = project.filesTabs[idx];
+  for (const file of [...(tab.files || [])]) {
+    softDeleteUploadedFile(projectId, filesTabId, file.id);
+  }
+  ensureTrash();
+  store.trash.push({
+    kind: "filesTab",
+    id: uniqueTrashId(),
+    deletedAt: new Date().toISOString(),
+    project: projectId,
+    filesTab: tab.id,
+    filesTabName: tab.name || tab.id,
+    projectName: project.name || projectId,
+    color: project.color || "#3c3c40",
+    title: tab.name || tab.id,
+  });
+  project.filesTabs.splice(idx, 1);
+  removeTabOrder(project, "files", filesTabId);
+  return { ok: true };
+}
+
 function hardDeleteCard(projectId, boardId, cardId, { purgeFiles = true } = {}) {
   const project = findProject(projectId);
   const board = findBoard(project, boardId);
@@ -1175,6 +1228,14 @@ function findTrashParent(kind, projectId, containerId) {
       store.trash.find(
         (t) =>
           t.kind === "notesTab" && t.project === projectId && t.notesTab === containerId
+      ) || null
+    );
+  }
+  if (kind === "filesTab") {
+    return (
+      store.trash.find(
+        (t) =>
+          t.kind === "filesTab" && t.project === projectId && t.filesTab === containerId
       ) || null
     );
   }
@@ -1403,6 +1464,121 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
   return { ok: true, project: project.id, notesTab: tab.id || item.notesTab, id };
 }
 
+function restoreFilesTabFromTrash(item, { restoreParent = false } = {}) {
+  let project = findProject(item.project);
+  if (!project) {
+    const parent = findTrashParent("project", item.project);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "project",
+        parentName: parent.projectName || parent.title || item.project,
+        parentTrashId: parent.id,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreProjectFromTrash(parent);
+      if (!restored.ok) return restored;
+      project = findProject(restored.project);
+    }
+  }
+  if (!project) return { ok: false, error: "project not found" };
+  if (projectIsArchived(project.id)) return { ok: false, error: "project is archived" };
+  if (!project.filesTabs) project.filesTabs = [];
+  let id = item.filesTab || newId() || "files";
+  if (findFilesTab(project, id)) {
+    return { ok: true, project: project.id, filesTab: id, id };
+  }
+  project.filesTabs.push({
+    id,
+    name: item.filesTabName || item.title || id,
+    files: [],
+  });
+  appendTabOrder(project, "files", id);
+  const trashIdx = store.trash.findIndex((t) => t.id === item.id);
+  if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
+  return { ok: true, project: project.id, filesTab: id, id };
+}
+
+function restoreFileFromTrash(item, { restoreParent = false } = {}) {
+  let project = findProject(item.project);
+  if (!project) {
+    const parent = findTrashParent("project", item.project);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "project",
+        parentName: parent.projectName || parent.title || item.project,
+        parentTrashId: parent.id,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreProjectFromTrash(parent);
+      if (!restored.ok) return restored;
+      project = findProject(restored.project);
+    }
+  }
+  if (!project) return { ok: false, error: "project not found" };
+  if (projectIsArchived(project.id)) return { ok: false, error: "project is archived" };
+  let tab = findFilesTab(project, item.filesTab);
+  if (!tab) {
+    const parent = findTrashParent("filesTab", item.project, item.filesTab);
+    if (parent && !restoreParent) {
+      return {
+        ok: false,
+        needsParent: true,
+        parentKind: "filesTab",
+        parentName: parent.filesTabName || parent.title || item.filesTab,
+        parentTrashId: parent.id,
+      };
+    }
+    if (parent && restoreParent) {
+      const restored = restoreFilesTabFromTrash(parent);
+      if (!restored.ok) return restored;
+      tab = findFilesTab(project, restored.filesTab);
+    }
+  }
+  if (!tab) return { ok: false, error: "original files tab not found" };
+  const fileId = item.file || "";
+  if (
+    !isSafePathId(project.id) ||
+    !isSafePathId(tab.id || item.filesTab) ||
+    !isSafePathId(fileId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  if (!userData.uploadExists(project.id, tab.id || item.filesTab, fileId)) {
+    return { ok: false, error: "file data missing" };
+  }
+  ensureTrash();
+  const idx = store.trash.findIndex((t) => t.id === item.id);
+  if (idx >= 0) store.trash.splice(idx, 1);
+  if (!tab.files) tab.files = [];
+  let id = fileId;
+  if (tab.files.some((f) => f.id === id)) id = uniqueFileId();
+  if (id !== fileId) {
+    const moved = userData.moveUpload(
+      project.id,
+      tab.id || item.filesTab,
+      fileId,
+      project.id,
+      tab.id || item.filesTab,
+      id
+    );
+    if (!moved?.ok) return { ok: false, error: "file data missing" };
+  }
+  tab.files.push({
+    id,
+    name: item.name || item.title || id,
+    mime: item.mime || "application/octet-stream",
+    size: Number(item.size) || 0,
+    createdAt: item.createdAt || new Date().toISOString(),
+  });
+  return { ok: true, project: project.id, filesTab: tab.id || item.filesTab, id };
+}
+
 function readTrash() {
   ensureTrash();
   return store.trash
@@ -1452,6 +1628,26 @@ function readTrash() {
           title: t.notesTabName || t.title || t.notesTab || "Notes",
         };
       }
+      if (kind === "filesTab") {
+        return {
+          ...base,
+          filesTab: t.filesTab || "",
+          filesTabName: t.filesTabName || t.filesTab || "",
+          title: t.filesTabName || t.title || t.filesTab || "Files",
+        };
+      }
+      if (kind === "file") {
+        return {
+          ...base,
+          filesTab: t.filesTab || "",
+          filesTabName: t.filesTabName || t.filesTab || "",
+          file: t.file || "",
+          title: t.title || t.name || t.file || "Untitled",
+          name: t.name || t.title || t.file || "Untitled",
+          mime: t.mime || "application/octet-stream",
+          size: Number(t.size) || 0,
+        };
+      }
       const card = {
         ...base,
         board: t.board || "",
@@ -1477,7 +1673,9 @@ function restoreTrashItem(trashId, { restoreParent = false } = {}) {
   if (kind === "project") return restoreProjectFromTrash(item);
   if (kind === "board") return restoreBoardFromTrash(item, { restoreParent });
   if (kind === "notesTab") return restoreNotesTabFromTrash(item, { restoreParent });
+  if (kind === "filesTab") return restoreFilesTabFromTrash(item, { restoreParent });
   if (kind === "note") return restoreNoteFromTrash(item, { restoreParent });
+  if (kind === "file") return restoreFileFromTrash(item, { restoreParent });
   return restoreCardFromTrash(item, { restoreParent });
 }
 
@@ -1496,6 +1694,14 @@ function purgeExpiredTrash() {
     }
     if (item && item.kind === "card") {
       purgeCardFileBlobs(item.project, item.board, item.files);
+    } else if (
+      item &&
+      item.kind === "file" &&
+      isSafePathId(item.project) &&
+      isSafePathId(item.filesTab) &&
+      isSafePathId(item.file)
+    ) {
+      userData.unlinkUpload(item.project, item.filesTab, item.file);
     }
   }
   store.trash = kept;
@@ -1663,21 +1869,7 @@ function addUploadedFile(projectId, filesTabId, { name, mime, data }) {
 }
 
 function deleteUploadedFile(projectId, filesTabId, fileId) {
-  const project = findProject(projectId);
-  const tab = findFilesTab(project, filesTabId);
-  if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
-  if (
-    !isSafePathId(projectId) ||
-    !isSafePathId(filesTabId) ||
-    !isSafePathId(fileId)
-  ) {
-    return { ok: false, error: "invalid path" };
-  }
-  const idx = tab.files.findIndex((f) => f.id === fileId);
-  if (idx < 0) return { ok: false, error: "file not found" };
-  tab.files.splice(idx, 1);
-  userData.unlinkUpload(projectId, filesTabId, fileId);
-  return { ok: true };
+  return softDeleteUploadedFile(projectId, filesTabId, fileId);
 }
 
 function renameUploadedFile(projectId, filesTabId, fileId, name) {

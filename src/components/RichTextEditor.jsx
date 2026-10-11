@@ -220,14 +220,23 @@ function TableFloat({ editor }) {
   );
 }
 
+/** mini: card/DB · full: notes/project cover */
+function rteFeatures(variant = "mini") {
+  const full = variant === "full";
+  return {
+    full,
+    levels: full ? [1, 2, 3, 4] : [1, 2],
+    paragraph: full,
+    quote: full,
+    codeBlock: true,
+    highlight: full,
+    table: full,
+  };
+}
+
 export function RteToolbar({
   editor,
-  forNotes = false,
-  headingLevels = [],
-  showTable = false,
-  showQuote = false,
-  showCodeBlock = false,
-  showHelp = true,
+  variant = "mini",
   onDelete,
   moveOptions = [],
   onMove,
@@ -245,43 +254,34 @@ export function RteToolbar({
   }, [editor]);
 
   if (!editor) return null;
-  const levels = forNotes
-    ? [1, 2, 3, 4]
-    : headingLevels.length
-      ? headingLevels
-      : [1];
-  const tables = forNotes || showTable;
-  const quotes = forNotes || showQuote;
-  const codeBlocks = forNotes || showCodeBlock;
-  const inTable = tables && editor.isActive("table");
+  const feat = rteFeatures(variant);
+  const inTable = feat.table && editor.isActive("table");
   const canMove = typeof onMove === "function" && moveOptions.length > 0;
   return (
-    <div className={"rte-toolbar" + (forNotes ? " notes-rte-toolbar" : "")}>
-      {levels.length > 0 && (
-        <div className="rte-group" role="group" aria-label="Blocks">
-          {levels.map((level) => (
-            <ToolbarBtn
-              key={level}
-              title={`Heading ${level}`}
-              active={editor.isActive("heading", { level })}
-              onClick={() =>
-                editor.chain().focus().toggleHeading({ level }).run()
-              }
-            >
-              <span className="rte-block-lab">{`H${level}`}</span>
-            </ToolbarBtn>
-          ))}
-          {forNotes && (
-            <ToolbarBtn
-              title="Paragraph"
-              active={editor.isActive("paragraph")}
-              onClick={() => editor.chain().focus().setParagraph().run()}
-            >
-              <span className="rte-block-lab">P</span>
-            </ToolbarBtn>
-          )}
-        </div>
-      )}
+    <div className={"rte-toolbar" + (feat.full ? " rte-toolbar-full" : " rte-toolbar-mini")}>
+      <div className="rte-group" role="group" aria-label="Blocks">
+        {feat.levels.map((level) => (
+          <ToolbarBtn
+            key={level}
+            title={`Heading ${level}`}
+            active={editor.isActive("heading", { level })}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level }).run()
+            }
+          >
+            <span className="rte-block-lab">{`H${level}`}</span>
+          </ToolbarBtn>
+        ))}
+        {feat.paragraph && (
+          <ToolbarBtn
+            title="Paragraph"
+            active={editor.isActive("paragraph")}
+            onClick={() => editor.chain().focus().setParagraph().run()}
+          >
+            <span className="rte-block-lab">P</span>
+          </ToolbarBtn>
+        )}
+      </div>
       <div className="rte-group" role="group" aria-label="Text">
         <ToolbarBtn
           title="Bold"
@@ -318,7 +318,7 @@ export function RteToolbar({
         >
           <Icon name="checklist" size={15} />
         </ToolbarBtn>
-        {quotes && (
+        {feat.quote && (
           <ToolbarBtn
             title="Quote"
             active={editor.isActive("blockquote")}
@@ -327,7 +327,7 @@ export function RteToolbar({
             <Icon name="blockquote" size={15} />
           </ToolbarBtn>
         )}
-        {codeBlocks && (
+        {feat.codeBlock && (
           <ToolbarBtn
             title="Code block"
             active={editor.isActive("codeBlock")}
@@ -336,7 +336,7 @@ export function RteToolbar({
             <Icon name="codeBlock" size={15} />
           </ToolbarBtn>
         )}
-        {forNotes && (
+        {feat.highlight && (
           <ToolbarBtn
             title="Highlight"
             active={editor.isActive("highlight")}
@@ -346,7 +346,7 @@ export function RteToolbar({
           </ToolbarBtn>
         )}
       </div>
-      {tables && (
+      {feat.table && (
         <div className="rte-group" role="group" aria-label="Table">
           <ToolbarBtn
             title="Insert table"
@@ -364,65 +364,6 @@ export function RteToolbar({
           </ToolbarBtn>
         </div>
       )}
-      {showHelp ? (
-      <div className="rte-group" role="group" aria-label="Help">
-        <span className="dlg-desc-info" tabIndex={0} aria-label="Help">
-          <Icon name="About" size={15} />
-          <div className="dlg-desc-tip" role="tooltip">
-            <div>
-              <b>Bold:</b> **text**
-            </div>
-            <div>
-              <b>Italic:</b> _text_
-            </div>
-            <div>
-              <b>Strikethrough:</b> ~~text~~
-            </div>
-            <div>
-              <b>Heading:</b> # text
-            </div>
-            <div>
-              <b>List:</b>
-              <br />- Item 1
-              <br />- Item 2
-            </div>
-            <div>
-              <b>Numbered list:</b>
-              <br />
-              1. Item 1
-              <br />
-              2. Item 2
-            </div>
-            <div>
-              <b>Checklist:</b>
-              <br />
-              [] Item 1
-              <br />
-              [x] Item 2
-            </div>
-            <div>
-              <b>Inline code:</b> `text`
-            </div>
-            {codeBlocks && (
-              <div>
-                <b>Code block:</b>
-                <br />
-                ```
-                <br />
-                code
-                <br />
-                ```
-              </div>
-            )}
-            {quotes && (
-              <div>
-                <b>Quote:</b> &gt; text
-              </div>
-            )}
-          </div>
-        </span>
-      </div>
-      ) : null}
       {(canMove || onDelete) && (
         <div className="rte-group" role="group" aria-label="Note actions">
           {canMove && (
@@ -473,22 +414,10 @@ export default function RichTextEditor({
   editable = true,
   autofocus = false,
   startInHeading = false,
-  forNotes = false,
-  headingLevels = [],
-  showTable = false,
-  showQuote = false,
-  showCodeBlock = false,
-  showHelp = true,
+  variant = "mini",
   onEditor,
 }) {
-  const levels = forNotes
-    ? [1, 2, 3, 4]
-    : headingLevels.length
-      ? headingLevels
-      : [1];
-  const tables = forNotes || showTable;
-  const quotes = forNotes || showQuote;
-  const codeBlocks = forNotes || showCodeBlock;
+  const feat = rteFeatures(variant);
 
   const initialContent = (() => {
     const html = toEditorContent(value);
@@ -503,9 +432,9 @@ export default function RichTextEditor({
     autofocus: false,
     extensions: [
       StarterKit.configure({
-        heading: { levels },
-        codeBlock: codeBlocks ? undefined : false,
-        blockquote: quotes ? undefined : false,
+        heading: { levels: feat.levels },
+        codeBlock: feat.codeBlock ? undefined : false,
+        blockquote: feat.quote ? undefined : false,
         horizontalRule: false,
       }),
       Placeholder.configure({
@@ -524,8 +453,8 @@ export default function RichTextEditor({
           target: "_blank",
         },
       }),
-      ...(forNotes ? [Highlight] : []),
-      ...(tables
+      ...(feat.highlight ? [Highlight] : []),
+      ...(feat.table
         ? [
             Table.configure({ resizable: true }),
             TableRow,
@@ -583,31 +512,15 @@ export default function RichTextEditor({
         (showLabel ? (
           <div className="dlg-desc-head">
             <span className="dlg-desc-label">{label}</span>
-            <RteToolbar
-              editor={editor}
-              forNotes={forNotes}
-              headingLevels={headingLevels}
-              showTable={showTable}
-              showQuote={showQuote}
-              showCodeBlock={showCodeBlock}
-              showHelp={showHelp}
-            />
+            <RteToolbar editor={editor} variant={variant} />
           </div>
         ) : (
           <div className="dlg-desc-head notes-rte-head">
-            <RteToolbar
-              editor={editor}
-              forNotes={forNotes}
-              headingLevels={headingLevels}
-              showTable={showTable}
-              showQuote={showQuote}
-              showCodeBlock={showCodeBlock}
-              showHelp={showHelp}
-            />
+            <RteToolbar editor={editor} variant={variant} />
           </div>
         ))}
       <EditorContent editor={editor} />
-      {tables && editable ? <TableFloat editor={editor} /> : null}
+      {feat.table && editable ? <TableFloat editor={editor} /> : null}
     </div>
   );
 }

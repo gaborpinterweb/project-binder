@@ -24,9 +24,7 @@ function CoverDescription({ value, onChange, editable }) {
         placeholder={DESC_PLACEHOLDER}
         editable={editable}
         showToolbar={editable}
-        headingLevels={[1, 2]}
-        showTable
-        showQuote
+        variant="full"
         onChange={(html) => {
           if (!editable) return;
           onChange(html);
@@ -38,6 +36,14 @@ function CoverDescription({ value, onChange, editable }) {
 
 function patchDraft(onChange, draft, patch) {
   onChange((prev) => ({ ...(prev || draft), ...patch }));
+}
+
+function CoverDock({ children }) {
+  return (
+    <div className="cover-dock">
+      <div className="cover-dock-inner">{children}</div>
+    </div>
+  );
 }
 
 function ColorDropdown({ draft, onChange }) {
@@ -158,10 +164,6 @@ export default function Cover({
                   patchDraft(onCoverDraftChange, draft, { description: html })
                 }
               />
-              <button type="button" className="cover-done" onClick={saveEdit}>
-                <Icon name="check" size={16} />
-                Done
-              </button>
             </>
           ) : (
             <>
@@ -175,6 +177,14 @@ export default function Cover({
           )}
         </div>
       </div>
+      {editing && (
+        <CoverDock>
+          <button type="button" className="cover-done" onClick={saveEdit}>
+            <Icon name="check" size={16} />
+            Done
+          </button>
+        </CoverDock>
+      )}
     </div>
   );
 }
@@ -204,17 +214,19 @@ function DraftCover({ draft, onChange, onCommit }) {
               patchDraft(onChange, draft, { description: html })
             }
           />
-          <button
-            type="button"
-            className="cover-done"
-            disabled={!canCreate}
-            onClick={onCommit}
-          >
-            <Icon name="flag" size={16} />
-            Create project
-          </button>
         </div>
       </div>
+      <CoverDock>
+        <button
+          type="button"
+          className="cover-done"
+          disabled={!canCreate}
+          onClick={onCommit}
+        >
+          <Icon name="flag" size={16} />
+          Create project
+        </button>
+      </CoverDock>
     </div>
   );
 }

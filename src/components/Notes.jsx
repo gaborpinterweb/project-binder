@@ -467,7 +467,7 @@ export default function Notes({
             >
               <RteToolbar
                 editor={editor}
-                forNotes
+                variant="full"
                 moveOptions={readonly ? [] : moveOptions}
                 onMove={readonly ? undefined : (dest) => moveNote(dest)}
                 onDelete={readonly ? undefined : () => deleteNote()}
@@ -543,7 +543,7 @@ export default function Notes({
                 onChange={saveBody}
                 showLabel={false}
                 showToolbar={false}
-                forNotes
+                variant="full"
                 autofocus
                 startInHeading
                 onEditor={setEditor}

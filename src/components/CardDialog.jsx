@@ -894,9 +894,7 @@ export default function CardDialog({
                     placeholder="Write something…"
                     editable={!readonly}
                     showToolbar={!readonly}
-                    headingLevels={[1, 2]}
-                    showCodeBlock
-                    showHelp={false}
+                    variant="mini"
                     onChange={(html) => {
                       if (readonly) return;
                       patch({ body: html });
@@ -1054,9 +1052,7 @@ function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
                     placeholder="Write something…"
                     editable={!readonly}
                     showToolbar={!readonly}
-                    headingLevels={[1, 2]}
-                    showCodeBlock
-                    showHelp={false}
+                    variant="mini"
                     onChange={(html) => {
                       if (readonly) return;
                       onPatch({ [c.id]: html });

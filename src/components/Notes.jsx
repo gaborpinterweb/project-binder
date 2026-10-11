@@ -16,21 +16,136 @@ const EMPTY_NOTE_BODY = "<h1></h1>";
 const NOTE_PLACEHOLDER = "New note...";
 
 const NOTE_SORT_OPTIONS = [
-  { value: "created-asc", label: "Creation ascending" },
-  { value: "created-desc", label: "Creation descending" },
-  { value: "updated-asc", label: "Updated ascending" },
-  { value: "updated-desc", label: "Updated descending" },
-  { value: "alpha-asc", label: "Alphabetical ascending" },
-  { value: "alpha-desc", label: "Alphabetical descending" },
+  { value: "created-asc", label: "Creation ascending", icon: "sortAsc" },
+  { value: "created-desc", label: "Creation descending", icon: "sortDesc" },
+  { value: "updated-asc", label: "Updated ascending", icon: "sortAsc" },
+  { value: "updated-desc", label: "Updated descending", icon: "sortDesc" },
+  { value: "alpha-asc", label: "Alphabetical ascending", icon: "sortAlphaAsc" },
+  { value: "alpha-desc", label: "Alphabetical descending", icon: "sortAlphaDesc" },
 ];
 
 const NOTE_SIZE_OPTIONS = [
-  { value: "sm", label: "Small" },
-  { value: "md", label: "Medium" },
-  { value: "lg", label: "Large" },
+  { value: "sm", label: "Small", icon: "rows2" },
+  { value: "md", label: "Medium", icon: "rows3" },
+  { value: "lg", label: "Large", icon: "rows4" },
+];
+
+const NOTE_SHOW_OPTIONS = [
+  { value: "created", label: "Show creation date" },
+  { value: "updated", label: "Show update date" },
+];
+
+const NOTE_FILTER_SECTIONS = [
+  {
+    key: "all",
+    options: [{ value: "all", label: "All", icon: "list" }],
+  },
+  {
+    key: "content",
+    options: [
+      { value: "todo", label: "Has todo", icon: "Task" },
+      { value: "checklist", label: "Has checklist", icon: "checklist" },
+      { value: "table", label: "Has table", icon: "table" },
+      { value: "code", label: "Has code block", icon: "codeBlock" },
+    ],
+  },
+  {
+    key: "recency",
+    options: [
+      { value: "updated-today", label: "Updated today", icon: "Calendar" },
+      { value: "updated-week", label: "Updated this week", icon: "Calendar" },
+      { value: "updated-month", label: "Updated this month", icon: "Calendar" },
+    ],
+  },
+  {
+    key: "empty",
+    options: [{ value: "empty", label: "Is empty", icon: "Notes" }],
+  },
 ];
 
 const NOTE_PREVIEW_LEN = { sm: 0, md: 140, lg: 280 };
+
+function formatNoteDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function startOfLocalDay(d = new Date()) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function startOfLocalWeek(d = new Date()) {
+  const day = startOfLocalDay(d);
+  const wd = day.getDay();
+  day.setDate(day.getDate() - (wd === 0 ? 6 : wd - 1));
+  return day;
+}
+
+function startOfLocalMonth(d = new Date()) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function noteUpdatedSince(note, since) {
+  const t = new Date(note?.updatedAt || "").getTime();
+  return !Number.isNaN(t) && t >= since.getTime();
+}
+
+function noteHasChecklist(body) {
+  return String(body || "").includes('data-type="taskList"');
+}
+
+function noteHasOpenTodo(body) {
+  const html = String(body || "");
+  if (!noteHasChecklist(html) && !html.includes("taskItem")) return false;
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return [...doc.querySelectorAll('li[data-type="taskItem"]')].some((li) => {
+      const v = li.getAttribute("data-checked");
+      return v !== "true" && v !== "";
+    });
+  } catch {
+    return /data-checked="false"/.test(html);
+  }
+}
+
+function noteHasTable(body) {
+  return /<table[\s>]/i.test(String(body || ""));
+}
+
+function noteHasCodeBlock(body) {
+  return /<pre[\s>]/i.test(String(body || ""));
+}
+
+function filterNotes(list, filter) {
+  const notes = list || [];
+  switch (filter) {
+    case "todo":
+      return notes.filter((n) => noteHasOpenTodo(n.body));
+    case "checklist":
+      return notes.filter((n) => noteHasChecklist(n.body));
+    case "table":
+      return notes.filter((n) => noteHasTable(n.body));
+    case "code":
+      return notes.filter((n) => noteHasCodeBlock(n.body));
+    case "updated-today":
+      return notes.filter((n) => noteUpdatedSince(n, startOfLocalDay()));
+    case "updated-week":
+      return notes.filter((n) => noteUpdatedSince(n, startOfLocalWeek()));
+    case "updated-month":
+      return notes.filter((n) => noteUpdatedSince(n, startOfLocalMonth()));
+    case "empty":
+      return notes.filter((n) => isEmptyNoteBody(n.body));
+    case "all":
+    default:
+      return notes;
+  }
+}
 
 function previewHtml(body) {
   if (!body) return "<p></p>";
@@ -47,46 +162,23 @@ function clampMenuPos(left, top, menuEl) {
   };
 }
 
-/** Fixed-position menu for note list right-click. */
-function NoteContextMenu({
-  left,
-  top,
+/** Shared Move / Duplicate / Delete items for note menus. */
+function NoteActionsItems({
   moveOptions = [],
   onMove,
   onDuplicate,
   onDelete,
-  onClose,
+  onRun,
 }) {
-  const wrapRef = useRef(null);
   const leaveTimer = useRef(0);
-  const [pos, setPos] = useState({ left, top });
   const [moveOpen, setMoveOpen] = useState(false);
   const canMove = moveOptions.length > 0;
-
-  useEffect(() => {
-    setPos(clampMenuPos(left, top, wrapRef.current));
-  }, [left, top]);
-
-  useEffect(() => {
-    const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) onClose?.();
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
 
   useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
 
   const run = (fn) => {
-    onClose?.();
-    fn?.();
+    setMoveOpen(false);
+    onRun?.(fn);
   };
 
   const showMove = () => {
@@ -101,18 +193,7 @@ function NoteContextMenu({
   };
 
   return (
-    <div
-      ref={wrapRef}
-      className="pop dd-menu notes-ctx-menu"
-      role="menu"
-      aria-label="Note options"
-      style={{ display: "block", left: pos.left, top: pos.top }}
-      onClick={(e) => e.stopPropagation()}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-    >
+    <>
       <div
         className={"notes-ctx-move" + (moveOpen ? " open" : "")}
         onMouseEnter={showMove}
@@ -168,6 +249,7 @@ function NoteContextMenu({
           run(onDuplicate);
         }}
       >
+        <Icon name="copy" size={14} />
         Duplicate
       </button>
       <button
@@ -182,6 +264,159 @@ function NoteContextMenu({
         <Icon name="Trash" size={14} />
         Delete
       </button>
+    </>
+  );
+}
+
+/** Fixed-position menu for note list right-click. */
+function NoteContextMenu({
+  left,
+  top,
+  moveOptions = [],
+  onMove,
+  onDuplicate,
+  onDelete,
+  onClose,
+}) {
+  const wrapRef = useRef(null);
+  const [pos, setPos] = useState({ left, top });
+
+  useEffect(() => {
+    setPos(clampMenuPos(left, top, wrapRef.current));
+  }, [left, top]);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) onClose?.();
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={wrapRef}
+      className="pop dd-menu notes-ctx-menu"
+      role="menu"
+      aria-label="Note options"
+      style={{ display: "block", left: pos.left, top: pos.top }}
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <NoteActionsItems
+        moveOptions={moveOptions}
+        onMove={onMove}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        onRun={(fn) => {
+          onClose?.();
+          fn?.();
+        }}
+      />
+    </div>
+  );
+}
+
+/** ⋮ menu next to Lock/Unlock — same actions as the list context menu. */
+function NoteMoreMenu({
+  disabled,
+  moveOptions = [],
+  onMove,
+  onDuplicate,
+  onDelete,
+}) {
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const place = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onReposition = () => place();
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  return (
+    <div
+      className={"notes-more" + (open ? " open" : "")}
+      ref={wrapRef}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        ref={btnRef}
+        className="mod-act"
+        title="Organise"
+        aria-label="Organise"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (disabled) return;
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="folders" size={18} />
+        <span className="mod-act-lab">Organise</span>
+      </button>
+      {open && pos ? (
+        <div
+          className="pop dd-menu notes-ctx-menu"
+          role="menu"
+          aria-label="Organise"
+          style={{
+            display: "block",
+            top: pos.top,
+            right: pos.right,
+            left: "auto",
+          }}
+        >
+          <NoteActionsItems
+            moveOptions={moveOptions}
+            onMove={onMove}
+            onDuplicate={onDuplicate}
+            onDelete={onDelete}
+            onRun={(fn) => {
+              setOpen(false);
+              fn?.();
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -226,7 +461,13 @@ export default function Notes({
   const d = mod[2] || { slug: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
   const [cardSize, setCardSize] = useState("md");
-  const notes = useMemo(() => sortNotes(d.notes, sort), [d.notes, sort]);
+  const [showCreated, setShowCreated] = useState(false);
+  const [showUpdated, setShowUpdated] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const notes = useMemo(
+    () => sortNotes(filterNotes(d.notes, filter), sort),
+    [d.notes, filter, sort]
+  );
   const [selectedSlug, setSelectedSlug] = useState(notes[0]?.slug || null);
   const [unlocked, setUnlocked] = useState({});
   const [editor, setEditor] = useState(null);
@@ -439,10 +680,44 @@ export default function Notes({
                 onChange: setCardSize,
                 options: NOTE_SIZE_OPTIONS,
               },
+              {
+                label: "Show",
+                closeOnSelect: false,
+                onChange: (key) => {
+                  if (key === "created") setShowCreated((v) => !v);
+                  else if (key === "updated") setShowUpdated((v) => !v);
+                },
+                options: NOTE_SHOW_OPTIONS.map((o) => ({
+                  ...o,
+                  checked: o.value === "created" ? showCreated : showUpdated,
+                })),
+                renderOption: (o) => (
+                  <span className="dd-check">
+                    <input type="checkbox" checked={!!o.checked} readOnly tabIndex={-1} />
+                    {o.label}
+                  </span>
+                ),
+              },
             ]}
           >
             <Icon name="eye" size={18} />
             <span className="mod-act-lab">View</span>
+          </Dropdown>
+          <Dropdown
+            className="mod-view-dd"
+            buttonClassName={"mod-act" + (filter !== "all" ? " on" : "")}
+            ariaLabel="Filter notes"
+            title="Filter notes"
+            align="left"
+            caret={false}
+            sections={NOTE_FILTER_SECTIONS.map((sec) => ({
+              ...sec,
+              value: filter,
+              onChange: setFilter,
+            }))}
+          >
+            <Icon name="filter" size={18} />
+            <span className="mod-act-lab">Filter</span>
           </Dropdown>
           <Dropdown
             className="mod-view-dd"
@@ -459,54 +734,48 @@ export default function Notes({
             <span className="mod-act-lab">Sort</span>
           </Dropdown>
         </div>
-        <div className="notes-toolbar-mid">
-          {toolbarMounted && (
-            <div
-              className={"notes-toolbar-anim" + (toolbarIn ? " in" : "")}
-              aria-hidden={!toolbarIn}
-            >
-              <RteToolbar
-                editor={editor}
-                variant="full"
-                moveOptions={readonly ? [] : moveOptions}
-                onMove={readonly ? undefined : (dest) => moveNote(dest)}
-                onDelete={readonly ? undefined : () => deleteNote()}
-              />
-            </div>
-          )}
-        </div>
         <div className="modbar-end">
           {selected && !readonly && (
-            locked ? (
-              <button
-                type="button"
-                className="mod-act"
-                onClick={() => setLocked(false)}
-                title="Edit note"
-                aria-label="Edit note"
-              >
-                <Icon name="pencil" size={18} />
-                <span className="mod-act-lab">Edit note</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="mod-act on"
-                onClick={() => setLocked(true)}
-                title="Lock note"
-                aria-label="Lock note"
-              >
-                <Icon name="lock" size={18} />
-                <span className="mod-act-lab">Lock note</span>
-              </button>
-            )
+            <>
+              <NoteMoreMenu
+                moveOptions={moveOptions}
+                onMove={(dest) => moveNote(dest)}
+                onDuplicate={() => duplicateNote(selected)}
+                onDelete={() => deleteNote()}
+              />
+              {locked ? (
+                <button
+                  type="button"
+                  className="mod-act"
+                  onClick={() => setLocked(false)}
+                  title="Unlock"
+                  aria-label="Unlock"
+                >
+                  <Icon name="unlock" size={18} />
+                  <span className="mod-act-lab">Unlock</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="mod-act on"
+                  onClick={() => setLocked(true)}
+                  title="Lock"
+                  aria-label="Lock"
+                >
+                  <Icon name="lock" size={18} />
+                  <span className="mod-act-lab">Lock</span>
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
       <div className="notes-layout">
         <aside className="notes-sidebar">
-          {notes.length === 0 ? (
+          {(d.notes || []).length === 0 ? (
             <p className="notes-empty">No notes yet</p>
+          ) : notes.length === 0 ? (
+            <p className="notes-empty">No matching notes</p>
           ) : (
             <div className={"notes-list size-" + cardSize}>
               {notes.map((n) => {
@@ -514,6 +783,7 @@ export default function Notes({
                   cardSize === "sm"
                     ? ""
                     : noteListPreview(n.body, NOTE_PREVIEW_LEN[cardSize] || 140);
+                const isEditing = !!unlocked[unlockKey(n.slug)];
                 return (
                   <button
                     key={n.slug}
@@ -522,9 +792,28 @@ export default function Notes({
                     onClick={() => selectNote(n.slug)}
                     onContextMenu={(e) => openNoteCtx(e, n)}
                   >
-                    <span className="notes-item-title">{noteListTitle(n.body)}</span>
+                    <span className={"notes-item-head" + (isEditing ? " editing" : "")}>
+                      <span className="notes-item-edit" aria-hidden={!isEditing}>
+                        <span className="notes-item-edit-clip">
+                          <Icon name="unlock" size={12} />
+                        </span>
+                      </span>
+                      <span className="notes-item-title">{noteListTitle(n.body)}</span>
+                    </span>
                     {preview ? (
                       <span className="notes-item-preview">{preview}</span>
+                    ) : null}
+                    {showCreated ? (
+                      <span className="notes-item-meta">
+                        <Icon name="fieldDate" size={12} />
+                        {formatNoteDate(n.createdAt)}
+                      </span>
+                    ) : null}
+                    {showUpdated ? (
+                      <span className="notes-item-meta">
+                        <Icon name="stopwatch" size={12} />
+                        {formatNoteDate(n.updatedAt)}
+                      </span>
                     ) : null}
                   </button>
                 );
@@ -537,6 +826,18 @@ export default function Notes({
             <p className="notes-placeholder">Nothing is selected</p>
           ) : editingView ? (
             <div className="notes-rte-wrap">
+              {toolbarMounted ? (
+                <div
+                  className={"notes-rte-toolbar" + (toolbarIn ? " in" : "")}
+                  aria-hidden={!toolbarIn}
+                >
+                  <div className="notes-rte-toolbar-clip">
+                    <div className="notes-rte-toolbar-inner">
+                      <RteToolbar editor={editor} variant="full" />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <RichTextEditor
                 key={selected.slug}
                 value={selected.body || EMPTY_NOTE_BODY}

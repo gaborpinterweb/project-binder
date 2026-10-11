@@ -203,27 +203,44 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .files-more .files-move-pop{position:absolute;right:calc(100% + 4px);top:-6px;left:auto;min-width:200px;max-width:min(280px,70vw);max-height:min(280px,50vh);overflow:auto;z-index:81}
 .files-more .files-move-dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px #0002}
 .notes-view{--notes-sidebar-w:320px;--notes-editor-pad-x:18px}
-.modbar.notes-chrome{flex:none;display:grid;grid-template-columns:var(--notes-sidebar-w) minmax(0,1fr) auto;align-items:center;gap:0;padding-left:0;border-radius:0}
+.modbar.notes-chrome{flex:none;display:grid;grid-template-columns:var(--notes-sidebar-w) minmax(0,1fr);align-items:center;gap:0;padding-left:0;border-radius:0}
 .notes-chrome .modbar-start{padding-left:12px}
+.notes-chrome .modbar-end{justify-self:end}
 .notes-layout{display:flex;flex:1;min-height:0}
 .notes-sidebar{width:var(--notes-sidebar-w);flex:none;display:flex;flex-direction:column;padding:0;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));color:var(--ink);min-height:0}
-.notes-list{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
-.notes-item{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;padding:10px 12px;border:3px solid transparent;border-radius:calc(var(--radius) - 2px);font:inherit;text-align:left;color:var(--ink);background:#fff;box-shadow:0 1px 2px #0001;cursor:pointer;overflow:hidden}
-.notes-item:hover{box-shadow:0 1px 4px #0002}
-.notes-sidebar .notes-item.on{background:#fff;border-color:var(--tab,var(--acc));box-shadow:none;color:var(--ink)}
-.notes-item-title{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notes-list{flex:1;min-height:0;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:2px}
+.notes-item{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);font:inherit;text-align:left;color:var(--ink);background:transparent;box-shadow:none;cursor:pointer;overflow:hidden}
+.notes-item:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.notes-sidebar .notes-item.on{background:color-mix(in srgb,var(--tab,var(--acc)) 14%,transparent);color:var(--ink)}
+.notes-sidebar .notes-item.on:hover{background:color-mix(in srgb,var(--tab,var(--acc)) 18%,transparent)}
+.notes-item-head{display:flex;align-items:center;min-width:0;width:100%}
+.notes-item-edit{flex:none;display:grid;grid-template-columns:0fr;transition:grid-template-columns .22s ease;pointer-events:none}
+.notes-item-head.editing .notes-item-edit{grid-template-columns:1fr}
+.notes-item-edit-clip{overflow:hidden;min-width:0;display:flex;align-items:center}
+.notes-item-edit svg{flex:none;width:12px;height:12px;margin-right:0;color:var(--mute);opacity:0;transition:opacity .2s ease,margin-right .22s ease}
+.notes-item-head.editing .notes-item-edit svg{opacity:.85;margin-right:6px}
+.notes-item-title{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){
+  .notes-item-edit{transition:none}
+  .notes-item-edit svg{transition:none}
+  .notes-item-head:not(.editing) .notes-item-edit svg{opacity:0}
+}
+.notes-item-meta{display:inline-flex;align-items:center;gap:5px;min-width:0;font-size:11px;font-weight:400;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notes-item-meta svg{flex:none;opacity:.7}
 .notes-item-preview{font-size:12px;font-weight:400;color:var(--mute);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;white-space:normal;word-break:break-word}
 .notes-list.size-sm .notes-item-preview{display:none}
 .notes-list.size-md .notes-item-preview{-webkit-line-clamp:2}
 .notes-list.size-lg .notes-item-preview{-webkit-line-clamp:4}
 .notes-empty,.notes-placeholder{margin:0;font-size:13px;color:var(--mute);flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px}
-.notes-ctx-menu.pop.dd-menu{position:fixed;top:auto;left:auto;z-index:90;width:max-content;min-width:180px;max-width:min(280px,calc(100vw - 16px));padding:6px}
-.notes-ctx-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
-.notes-ctx-menu button:hover:not(:disabled){background:var(--sel)}
-.notes-ctx-menu button:disabled{opacity:.35;cursor:default}
-.notes-ctx-menu button svg{flex:none;opacity:.75}
-.notes-ctx-menu button.danger{color:#b42318}
-.notes-ctx-menu button.danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 10%,transparent)}
+/* overflow:visible so Move flyout isn't clipped by .dd-menu{overflow:auto} */
+.notes-ctx-menu.pop.dd-menu{position:fixed;top:auto;left:auto;z-index:90;width:max-content;min-width:180px;max-width:min(280px,calc(100vw - 16px));max-height:none;overflow:visible;padding:6px}
+/* Beat .dd-menu/.pop button{display:block} so icon+label gap applies */
+.notes-ctx-menu.pop.dd-menu button,.notes-ctx-menu .notes-ctx-move-pop button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
+.notes-ctx-menu.pop.dd-menu button:hover:not(:disabled),.notes-ctx-menu .notes-ctx-move-pop button:hover:not(:disabled){background:var(--sel)}
+.notes-ctx-menu.pop.dd-menu button:disabled{opacity:.35;cursor:default}
+.notes-ctx-menu.pop.dd-menu button svg,.notes-ctx-menu .notes-ctx-move-pop button svg{flex:none;opacity:.75}
+.notes-ctx-menu.pop.dd-menu button.danger{color:#b42318}
+.notes-ctx-menu.pop.dd-menu button.danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 10%,transparent)}
 .notes-ctx-menu .notes-ctx-move{position:relative}
 .notes-ctx-menu .notes-ctx-move-btn{justify-content:flex-start}
 .notes-ctx-menu .notes-ctx-move-lab{flex:1;min-width:0}
@@ -231,14 +248,21 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .notes-ctx-menu .notes-ctx-move.open > .notes-ctx-move-btn{background:var(--sel)}
 .notes-ctx-menu .notes-ctx-move-pop{position:absolute;right:calc(100% + 4px);top:-6px;left:auto;min-width:200px;max-width:min(280px,70vw);max-height:min(280px,50vh);overflow:auto;z-index:91;display:block;padding:6px}
 .notes-ctx-menu .notes-ctx-move-dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px #0002}
+.notes-more{position:relative;flex:none}
+.notes-more .notes-ctx-menu{position:fixed;top:auto;left:auto;z-index:90}
 .notes-main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:#fff}
-.notes-toolbar-mid{display:flex;justify-content:flex-start;align-items:center;min-width:0;overflow:visible;padding-left:var(--notes-editor-pad-x)}
-.notes-chrome .modbar-end{margin-left:0}
-.notes-toolbar-anim{display:flex;justify-content:flex-start;align-items:center;min-width:0;opacity:0;transform:translateX(-12px);transition:opacity .22s ease,transform .22s ease;pointer-events:none}
-.notes-toolbar-anim.in{opacity:1;transform:translateX(0);pointer-events:auto}
+/* In-note TipTap bar: height animates so editor content is pushed, not jumped */
+.notes-rte-toolbar{flex:none;position:relative;z-index:3;display:grid;grid-template-rows:0fr;background:color-mix(in srgb,var(--tab,var(--acc)) 10%,#fff);border-bottom:1px solid color-mix(in srgb,var(--tab,var(--acc)) 16%,var(--line));transition:grid-template-rows .24s ease;pointer-events:none}
+.notes-rte-toolbar.in{grid-template-rows:1fr;pointer-events:auto}
+.notes-rte-toolbar-clip{overflow:hidden;min-height:0}
+/* Allow tip ::after to paint over the editor once open (clip only while collapsing) */
+.notes-rte-toolbar.in .notes-rte-toolbar-clip{overflow:visible}
+.notes-rte-toolbar-inner{display:flex;justify-content:center;align-items:center;padding:8px 12px;opacity:0;transform:translateY(-10px);transition:opacity .22s ease,transform .22s ease}
+.notes-rte-toolbar.in .notes-rte-toolbar-inner{opacity:1;transform:translateY(0)}
 @media (prefers-reduced-motion:reduce){
-  .notes-toolbar-anim{transition:none;transform:none}
-  .notes-toolbar-anim:not(.in){opacity:0}
+  .notes-rte-toolbar{transition:none}
+  .notes-rte-toolbar-inner{transition:none;transform:none}
+  .notes-rte-toolbar:not(.in) .notes-rte-toolbar-inner{opacity:0}
 }
 .rte-toolbar [data-tip]{position:relative}
 .rte-toolbar [data-tip]::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 7px);transform:translateX(-50%) translateY(-2px);padding:5px 8px;border-radius:4px;background:#111;color:#fff;font:500 11px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.01em;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s ease,transform .12s ease;z-index:90;box-shadow:0 4px 12px #0005}
@@ -259,12 +283,13 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
   .rte-toolbar [data-tip]::after,
   .rte-table-float [data-tip]::after{transition:none}
 }
-.notes-chrome .rte-toolbar{display:flex;align-items:center;gap:28px;margin:0}
-.notes-chrome .rte-toolbar .rte-group{display:flex;align-items:center;gap:2px}
-.notes-chrome .rte-btn{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0;border:none;border-radius:calc(var(--radius) - 6px);font:inherit;color:color-mix(in srgb,#fff 78%,transparent);background:transparent;cursor:pointer;box-shadow:none}
-.notes-chrome .rte-btn .rte-block-lab{font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1}
-.notes-chrome .rte-btn:hover{color:#fff;background:color-mix(in srgb,#fff 14%,transparent)}
-.notes-chrome .rte-btn.on{color:#fff;background:color-mix(in srgb,#fff 22%,transparent)}
+.notes-rte-toolbar .rte-toolbar{display:flex;align-items:center;justify-content:center;gap:28px;margin:0}
+.notes-rte-toolbar .rte-toolbar .rte-group{display:flex;align-items:center;gap:2px}
+.notes-rte-toolbar .rte-btn{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0;border:none;border-radius:calc(var(--radius) - 6px);font:inherit;color:var(--mute);background:transparent;cursor:pointer;box-shadow:none}
+.notes-rte-toolbar .rte-btn .rte-block-lab{font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1}
+.notes-rte-toolbar .rte-btn:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.notes-rte-toolbar .rte-btn.on{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.notes-rte-toolbar .rte-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
 .notes-rte-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;border:0;border-radius:0;background:transparent;overflow:hidden}
 .notes-rte-wrap .rte{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;overflow:hidden}
 .notes-rte-wrap .tiptap,
@@ -312,11 +337,19 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .notes-rte-wrap .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div{color:var(--mute);text-decoration:line-through}
 .notes-preview .tiptap{min-height:100%}
 .notes-rte-wrap .tiptap table,
-.notes-rte-wrap .ProseMirror table{width:100%;border-collapse:collapse;margin:1.15em 0;table-layout:fixed;overflow:hidden}
+.notes-rte-wrap .ProseMirror table{width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;table-layout:fixed;overflow:hidden;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px)}
 .notes-rte-wrap .tiptap td,
 .notes-rte-wrap .tiptap th,
 .notes-rte-wrap .ProseMirror td,
-.notes-rte-wrap .ProseMirror th{position:relative;border:1px solid var(--line);padding:6px 10px;vertical-align:top;min-width:48px;font:inherit;color:var(--ink);line-height:1.55}
+.notes-rte-wrap .ProseMirror th{position:relative;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 14px;vertical-align:top;min-width:48px;font:inherit;color:var(--ink);line-height:1.55}
+.notes-rte-wrap .tiptap tr:last-child td,
+.notes-rte-wrap .tiptap tr:last-child th,
+.notes-rte-wrap .ProseMirror tr:last-child td,
+.notes-rte-wrap .ProseMirror tr:last-child th{border-bottom:0}
+.notes-rte-wrap .tiptap td:last-child,
+.notes-rte-wrap .tiptap th:last-child,
+.notes-rte-wrap .ProseMirror td:last-child,
+.notes-rte-wrap .ProseMirror th:last-child{border-right:0}
 .notes-rte-wrap .tiptap td > p,
 .notes-rte-wrap .tiptap th > p,
 .notes-rte-wrap .ProseMirror td > p,
@@ -347,13 +380,6 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .notes-rte-wrap .ProseMirror mark{background:color-mix(in srgb,#e8c547 55%,#fff);color:inherit;border-radius:2px;padding:.05em .15em}
 .notes-rte-wrap .tiptap a,
 .notes-rte-wrap .ProseMirror a{color:var(--tab,var(--acc));text-decoration:underline;text-underline-offset:2px}
-.notes-chrome .rte-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
-.notes-chrome .rte-move-dd{flex:none}
-.notes-chrome .rte-move-dd .dd-btn.rte-btn{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0}
-.notes-chrome .rte-move-dd .dd-menu{min-width:220px;max-height:min(320px,50vh);overflow:auto}
-.notes-chrome .rte-move-dd .dd-menu button{display:flex;align-items:center;gap:8px}
-.notes-chrome .rte-move-dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px #0002}
-.notes-chrome .rte-btn-danger:hover{color:#fff;background:color-mix(in srgb,#b42318 55%,transparent)}
 .modbar{position:relative;z-index:2;color:#fff;background-color:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);background-image:var(--leather),linear-gradient(180deg,transparent 50%,color-mix(in srgb,#000 22%,transparent));background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;background-clip:padding-box;display:flex;align-items:center;gap:4px;padding:4px 12px 8px;min-height:56px;border-bottom:none;box-shadow:inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
 main:not(.global-view) .modbar{margin-top:-2px;padding-top:6px}
 main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;background-image:var(--leather),linear-gradient(180deg,color-mix(in srgb,#fff 12%,transparent),transparent 36%,color-mix(in srgb,#000 22%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 18%,transparent),inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
@@ -369,7 +395,8 @@ main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;backgroun
 .modbar .mod-view-dd{flex:none;width:72px;position:relative}
 .modbar .mod-view-dd .mod-act{width:100%}
 .modbar .mod-view-dd .dd-caret{display:none}
-.modbar .mod-view-dd .dd-menu{min-width:200px;max-height:none;overflow:visible}
+.modbar .mod-view-dd .dd-menu{min-width:220px;max-height:none;overflow:visible}
+.modbar .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
 .modbar .gbar-tools .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
 .modbar .db-view-check{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;color:var(--ink)}
 .modbar .db-cols-dd,.modbar .db-filters-dd,.modbar .db-sorts-dd{position:relative;flex:none;width:72px}
@@ -710,8 +737,10 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .cover-description .rte .tiptap ul[data-type="taskList"] li[data-checked="true"] > div{color:color-mix(in srgb,#fff 55%,transparent);text-decoration:line-through}
 .cover-description .rte .tiptap p.is-editor-empty:first-child::before{content:attr(data-placeholder);float:left;color:color-mix(in srgb,#fff 45%,transparent);pointer-events:none;height:0}
 .cover-description .rte .tiptap a{color:#fff;text-decoration:underline;text-underline-offset:2px}
-.cover-description .rte .tiptap table{width:100%;border-collapse:collapse;margin:1.15em 0;table-layout:fixed;overflow:hidden}
-.cover-description .rte .tiptap td,.cover-description .rte .tiptap th{position:relative;border:1px solid color-mix(in srgb,#fff 28%,transparent);padding:6px 10px;vertical-align:top;min-width:48px;font:inherit;color:#fff;line-height:1.55}
+.cover-description .rte .tiptap table{width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;table-layout:fixed;overflow:hidden;border:1px solid color-mix(in srgb,#fff 28%,transparent);border-radius:calc(var(--radius) - 6px)}
+.cover-description .rte .tiptap td,.cover-description .rte .tiptap th{position:relative;border:0;border-right:1px solid color-mix(in srgb,#fff 28%,transparent);border-bottom:1px solid color-mix(in srgb,#fff 28%,transparent);padding:10px 14px;vertical-align:top;min-width:48px;font:inherit;color:#fff;line-height:1.55}
+.cover-description .rte .tiptap tr:last-child td,.cover-description .rte .tiptap tr:last-child th{border-bottom:0}
+.cover-description .rte .tiptap td:last-child,.cover-description .rte .tiptap th:last-child{border-right:0}
 .cover-description .rte .tiptap td > p,.cover-description .rte .tiptap th > p{margin:0;min-height:1.55em}
 .cover-description .rte .tiptap td:empty::before,.cover-description .rte .tiptap th:empty::before{content:"";display:inline-block;height:1.55em}
 .cover-description .rte .tiptap th{font-weight:600;background:color-mix(in srgb,#000 22%,transparent);text-align:left}
@@ -926,8 +955,10 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .trash-note-dlg .tiptap pre code{padding:0;background:transparent}
 .trash-note-dlg .tiptap mark{background:color-mix(in srgb,#e8c547 55%,#fff);color:inherit;border-radius:2px;padding:.05em .15em}
 .trash-note-dlg .tiptap a{color:var(--acc)}
-.trash-note-dlg .tiptap table{width:100%;border-collapse:collapse;margin:1.15em 0;table-layout:fixed}
-.trash-note-dlg .tiptap td,.trash-note-dlg .tiptap th{border:1px solid var(--line);padding:6px 10px;vertical-align:top}
+.trash-note-dlg .tiptap table{width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;table-layout:fixed;overflow:hidden;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px)}
+.trash-note-dlg .tiptap td,.trash-note-dlg .tiptap th{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 14px;vertical-align:top}
+.trash-note-dlg .tiptap tr:last-child td,.trash-note-dlg .tiptap tr:last-child th{border-bottom:0}
+.trash-note-dlg .tiptap td:last-child,.trash-note-dlg .tiptap th:last-child{border-right:0}
 .trash-note-dlg .tiptap th{background:color-mix(in srgb,var(--ink) 4%,#fff);font-weight:650}
 .dlg .prop-affix{flex:none;display:grid;place-items:center;margin-left:auto;color:var(--mute);opacity:.8}
 .dlg .prop-affix svg{display:block}

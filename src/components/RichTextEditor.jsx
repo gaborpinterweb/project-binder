@@ -15,7 +15,6 @@ import {
 } from "@tiptap/extension-table";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
-import Dropdown from "./Dropdown.jsx";
 
 function toEditorContent(body) {
   if (!body) return "";
@@ -234,13 +233,7 @@ function rteFeatures(variant = "mini") {
   };
 }
 
-export function RteToolbar({
-  editor,
-  variant = "mini",
-  onDelete,
-  moveOptions = [],
-  onMove,
-}) {
+export function RteToolbar({ editor, variant = "mini" }) {
   const [, bump] = useState(0);
   useEffect(() => {
     if (!editor) return;
@@ -256,7 +249,6 @@ export function RteToolbar({
   if (!editor) return null;
   const feat = rteFeatures(variant);
   const inTable = feat.table && editor.isActive("table");
-  const canMove = typeof onMove === "function" && moveOptions.length > 0;
   return (
     <div className={"rte-toolbar" + (feat.full ? " rte-toolbar-full" : " rte-toolbar-mini")}>
       <div className="rte-group" role="group" aria-label="Blocks">
@@ -362,42 +354,6 @@ export function RteToolbar({
           >
             <Icon name="table" size={15} />
           </ToolbarBtn>
-        </div>
-      )}
-      {(canMove || onDelete) && (
-        <div className="rte-group" role="group" aria-label="Note actions">
-          {canMove && (
-            <Dropdown
-              className="rte-move-dd"
-              buttonClassName="rte-btn"
-              ariaLabel="Move"
-              dataTip="Move"
-              align="right"
-              caret={false}
-              options={moveOptions}
-              onChange={(_val, opt) => onMove(opt)}
-              renderOption={(o) => (
-                <>
-                  <span
-                    className="rte-move-dot"
-                    style={{ background: o.color || "var(--acc)" }}
-                  />
-                  {o.label}
-                </>
-              )}
-            >
-              <Icon name="move" size={15} />
-            </Dropdown>
-          )}
-          {onDelete && (
-            <ToolbarBtn
-              title="Delete"
-              onClick={onDelete}
-              className="rte-btn-danger"
-            >
-              <Icon name="Trash" size={15} />
-            </ToolbarBtn>
-          )}
         </div>
       )}
     </div>

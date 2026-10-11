@@ -710,7 +710,8 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .bm span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .none{color:var(--side-mute);font-size:13px;margin:0 8px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:10;padding:16px}
-.ov.ov-top{align-items:start;padding-top:48px}
+.ov.ov-top{align-items:start;padding-top:48px;padding-bottom:48px}
+.ov.ov-top > .dlg{max-height:calc(100vh - 96px);max-height:calc(100dvh - 96px);overflow:auto}
 .ov.ov-prompt{z-index:30}
 .prompt-dlg{width:min(400px,100%);box-shadow:0 12px 40px #0006}
 .prompt-body{gap:10px}
@@ -762,7 +763,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .card-file-drop-overlay{position:absolute;inset:0;z-index:80;display:grid;place-items:center;pointer-events:none;border-radius:inherit;background:color-mix(in srgb,var(--pc,var(--acc)) 42%,transparent);color:#fff;font-size:15px;font-weight:650;letter-spacing:.02em;text-shadow:0 1px 2px #0004}
 .dlg:not(.tint) .card-file-drop-overlay{background:color-mix(in srgb,var(--acc) 38%,transparent)}
 .dlg.is-file-dragover{outline:2px solid color-mix(in srgb,var(--pc,var(--acc)) 55%,transparent);outline-offset:-2px}
-.dlg .dlg-content{display:flex;flex-direction:column;gap:12px;padding:16px;min-width:0}
+.dlg .dlg-content{display:flex;flex-direction:column;gap:12px;padding:16px 16px 28px;min-width:0}
 .dlg .dlg-description,.dlg .dlg-timelogs,.dlg .dlg-fields:has(.props){min-width:0;border-radius:calc(var(--radius) - 2px);background:color-mix(in srgb,#fff 38%,transparent);border:1px solid color-mix(in srgb,var(--ink) 7%,transparent);overflow:visible}
 .dlg.tint .dlg-description,.dlg.tint .dlg-timelogs,.dlg.tint .dlg-fields:has(.props){background:color-mix(in srgb,#fff 42%,transparent);border-color:color-mix(in srgb,#000 7%,transparent)}
 .dlg .dlg-fields:has(.prop-chips){min-width:0;padding:0;background:transparent;border:0;border-radius:0;overflow:visible}

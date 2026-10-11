@@ -326,37 +326,37 @@ export default function CardDialog({
   const timerActive =
     !isDraft &&
     !!activeTimerKey &&
-    !!curLoc?.folder?.slug &&
-    !!curLoc?.mod?.[2]?.slug &&
-    !!draft?.slug &&
-    taskKey(curLoc.folder.slug, curLoc.mod[2].slug, draft.slug) ===
+    !!curLoc?.folder?.id &&
+    !!curLoc?.mod?.[2]?.id &&
+    !!draft?.id &&
+    taskKey(curLoc.folder.id, curLoc.mod[2].id, draft.id) ===
       activeTimerKey;
 
   const reloadCardLogs = async () => {
     const cur = curLocRef.current;
-    const slug = draftRef.current?.slug;
-    if (isDraft || !cur || cur.mod[0] !== "Board" || !slug) {
+    const id = draftRef.current?.id;
+    if (isDraft || !cur || cur.mod[0] !== "Board" || !id) {
       setCardLogs([]);
       setSpent(0);
       return;
     }
     const entries = await fetchCardTimelogs(
-      cur.folder.slug,
-      cur.mod[2].slug,
-      slug
+      cur.folder.id,
+      cur.mod[2].id,
+      id
     );
     setCardLogs(entries);
     setSpent(entries.reduce((sum, e) => sum + (e.durationSec || 0), 0));
   };
 
   useEffect(() => {
-    if (isDraft || !curLoc || curLoc.mod[0] !== "Board" || !draft.slug) {
+    if (isDraft || !curLoc || curLoc.mod[0] !== "Board" || !draft.id) {
       setCardLogs([]);
       setSpent(0);
       return;
     }
     let cancelled = false;
-    fetchCardTimelogs(curLoc.folder.slug, curLoc.mod[2].slug, draft.slug).then(
+    fetchCardTimelogs(curLoc.folder.id, curLoc.mod[2].id, draft.id).then(
       (entries) => {
         if (cancelled) return;
         setCardLogs(entries);
@@ -368,7 +368,7 @@ export default function CardDialog({
     return () => {
       cancelled = true;
     };
-  }, [isDraft, curLoc, draft.slug]);
+  }, [isDraft, curLoc, draft.id]);
 
   useEffect(() => {
     const esc = (e) => {
@@ -395,8 +395,8 @@ export default function CardDialog({
     if (cur.mod[0] === "Board") {
       if (
         origin &&
-        (origin.folder.slug !== cur.folder.slug ||
-          origin.mod[2].slug !== cur.mod[2].slug)
+        (origin.folder.id !== cur.folder.id ||
+          origin.mod[2].id !== cur.mod[2].id)
       ) {
         await onMoveCard(r, origin, cur);
         setOriginLoc(cur);
@@ -453,13 +453,13 @@ export default function CardDialog({
 
   const boards = allBoards(folders);
   const canTimelogCard =
-    !isDraft && curLoc?.mod[0] === "Board" && !!draft.slug;
+    !isDraft && curLoc?.mod[0] === "Board" && !!draft.id;
   const showTimelogSection = canTimelogCard && cardLogs.length > 0;
   const canAddFile =
     !readonly &&
-    !!curLoc?.folder?.slug &&
+    !!curLoc?.folder?.id &&
     curLoc?.mod?.[0] === "Board" &&
-    !!draft.slug;
+    !!draft.id;
   const cardFiles = Array.isArray(draft.files) ? draft.files : [];
 
   const setDraftFiles = (files) => {
@@ -479,16 +479,16 @@ export default function CardDialog({
       for (const file of list) {
         const data = await readFileAsBase64(file);
         const res = await postCardFile({
-          project: curLoc.folder.slug,
-          board: curLoc.mod[2].slug,
-          card: draft.slug,
+          project: curLoc.folder.id,
+          board: curLoc.mod[2].id,
+          card: draft.id,
           name: file.name,
           mime: file.type || "application/octet-stream",
           data,
         });
         files = res.files || [];
         setDraftFiles(files);
-        onApplyWorkspace?.(res, keepNav?.(curLoc.folder.slug, curLoc.mod[2].slug));
+        onApplyWorkspace?.(res, keepNav?.(curLoc.folder.id, curLoc.mod[2].id));
       }
     } catch (err) {
       window.alert(err.message || "Could not upload file");
@@ -498,7 +498,7 @@ export default function CardDialog({
   };
 
   const removeCardFile = async (file) => {
-    if (!canAddFile || !file?.slug || fileBusy) return;
+    if (!canAddFile || !file?.id || fileBusy) return;
     setConfirming(true);
     const ok = await askConfirm({
       title: `Delete "${file.name || "file"}"?`,
@@ -511,13 +511,13 @@ export default function CardDialog({
     setFileBusy(true);
     try {
       const res = await deleteCardFileApi({
-        project: curLoc.folder.slug,
-        board: curLoc.mod[2].slug,
-        card: draft.slug,
-        file: file.slug,
+        project: curLoc.folder.id,
+        board: curLoc.mod[2].id,
+        card: draft.id,
+        file: file.id,
       });
       setDraftFiles(res.files || []);
-      onApplyWorkspace?.(res, keepNav?.(curLoc.folder.slug, curLoc.mod[2].slug));
+      onApplyWorkspace?.(res, keepNav?.(curLoc.folder.id, curLoc.mod[2].id));
     } catch (err) {
       window.alert(err.message || "Could not delete file");
     } finally {
@@ -653,7 +653,7 @@ export default function CardDialog({
               {!readonly &&
                 !isDraft &&
                 curLoc?.mod[0] === "Board" &&
-                draft.slug && (
+                draft.id && (
                   <CardMoreMenu
                     onDuplicate={async () => {
                       clearTimeout(persistTimer.current);
@@ -669,7 +669,7 @@ export default function CardDialog({
                       });
                       if (!ok) return;
                       clearTimeout(persistTimer.current);
-                      await onDelete(curLoc.folder, curLoc.mod, draft.slug);
+                      await onDelete(curLoc.folder, curLoc.mod, draft.id);
                       onClose({ deleted: true });
                     }}
                   />
@@ -712,8 +712,8 @@ export default function CardDialog({
                         const cols = mod[2]?.columns || stages;
                         const isCurrent =
                           curLoc &&
-                          curLoc.folder.slug === folder.slug &&
-                          curLoc.mod[2].slug === mod[2].slug;
+                          curLoc.folder.id === folder.id &&
+                          curLoc.mod[2].id === mod[2].id;
                         return {
                           key,
                           label: boardLabel(folder, mod),
@@ -830,7 +830,7 @@ export default function CardDialog({
                     </div>
                   ) : null}
                   {cardFiles.map((file) => (
-                    <div key={file.slug} className="prop-chip card-file-chip">
+                    <div key={file.id} className="prop-chip card-file-chip">
                       <button
                         type="button"
                         className="card-file-chip-open"
@@ -947,7 +947,7 @@ export default function CardDialog({
                     {cardLogs.map((entry) => {
                       const stamp = entry.endedAt || entry.startedAt || "";
                       return (
-                        <li key={entry.slug} className="dlg-timelog-item">
+                        <li key={entry.id} className="dlg-timelog-item">
                           <span
                             className={
                               "dlg-timelog-note" +
@@ -1009,17 +1009,17 @@ export default function CardDialog({
         ) : null}
       </div>
     </div>
-    {previewFile && curLoc?.folder?.slug && curLoc?.mod?.[2]?.slug && draft.slug ? (
+    {previewFile && curLoc?.folder?.id && curLoc?.mod?.[2]?.id && draft.id ? (
       <FilePreviewDialog
         file={previewFile}
-        project={curLoc.folder.slug}
-        board={curLoc.mod[2].slug}
-        card={draft.slug}
+        project={curLoc.folder.id}
+        board={curLoc.mod[2].id}
+        card={draft.id}
         downloadUrl={cardFileDownloadUrl(
-          curLoc.folder.slug,
-          curLoc.mod[2].slug,
-          draft.slug,
-          previewFile.slug
+          curLoc.folder.id,
+          curLoc.mod[2].id,
+          draft.id,
+          previewFile.id
         )}
         onClose={() => setPreviewFile(null)}
       />

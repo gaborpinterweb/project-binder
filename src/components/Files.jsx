@@ -53,8 +53,8 @@ function formatDateAdded(iso) {
 
 const FILE_SORT_DEFAULT_DIR = { name: "asc", type: "asc", size: "asc", added: "desc" };
 
-function filesTabSortKey(folderSlug, tabSlug) {
-  return `${folderSlug || ""}/${tabSlug || ""}`;
+function filesTabSortKey(folderId, tabId) {
+  return `${folderId || ""}/${tabId || ""}`;
 }
 
 function sortFiles(list, sort) {
@@ -79,7 +79,7 @@ function sortFiles(list, sort) {
     } else {
       cmp = String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
     }
-    if (!cmp) cmp = String(a.slug || "").localeCompare(String(b.slug || ""));
+    if (!cmp) cmp = String(a.id || "").localeCompare(String(b.id || ""));
     return cmp * dir;
   });
   return files;
@@ -310,7 +310,7 @@ export default function Files({
   readonly,
   onApplyWorkspace,
 }) {
-  const d = mod[2] || { slug: "", files: [] };
+  const d = mod[2] || { id: "", files: [] };
   const files = d.files || [];
   const inputRef = useRef(null);
   const dragDepth = useRef(0);
@@ -318,16 +318,16 @@ export default function Files({
   const [dragOver, setDragOver] = useState(false);
   const [preview, setPreview] = useState(null);
   const [sorts, setSorts] = useState(() => loadFilesSorts());
-  const tabSortKey = filesTabSortKey(folder?.slug, d.slug);
+  const tabSortKey = filesTabSortKey(folder?.id, d.id);
   const sort = sorts[tabSortKey] || DEFAULT_FILES_SORT;
   const sortedFiles = useMemo(() => sortFiles(files, sort), [files, sort]);
   const moveTargets = useMemo(() => {
-    const currentKey = `${folder?.slug || ""}/${d.slug || ""}`;
+    const currentKey = `${folder?.id || ""}/${d.id || ""}`;
     return allFilesTabs(folders).filter((t) => t.key !== currentKey);
-  }, [folders, folder?.slug, d.slug]);
+  }, [folders, folder?.id, d.id]);
 
   const keepNav = {
-    keepNav: { project: folder.slug, board: d.slug, g: null },
+    keepNav: { project: folder.id, board: d.id, g: null },
   };
 
   const clearDragOver = () => {
@@ -346,7 +346,7 @@ export default function Files({
 
   const openFolder = async () => {
     try {
-      await revealFilesTab({ project: folder.slug, filesTab: d.slug });
+      await revealFilesTab({ project: folder.id, filesTab: d.id });
     } catch (err) {
       window.alert(err.message || "Could not open the folder");
     }
@@ -355,9 +355,9 @@ export default function Files({
   const showFileInFolder = async (file) => {
     try {
       await revealFile({
-        project: folder.slug,
-        filesTab: d.slug,
-        file: file.slug,
+        project: folder.id,
+        filesTab: d.id,
+        file: file.id,
       });
     } catch (err) {
       window.alert(err.message || "Could not show the file");
@@ -373,8 +373,8 @@ export default function Files({
       for (const file of list) {
         const data = await readFileAsBase64(file);
         const next = await postFile({
-          project: folder.slug,
-          filesTab: d.slug,
+          project: folder.id,
+          filesTab: d.id,
           name: file.name,
           mime: file.type || "application/octet-stream",
           data,
@@ -441,9 +441,9 @@ export default function Files({
     setBusy(true);
     try {
       const next = await putFile({
-        project: folder.slug,
-        filesTab: d.slug,
-        file: file.slug,
+        project: folder.id,
+        filesTab: d.id,
+        file: file.id,
         name,
       });
       onApplyWorkspace(next, keepNav);
@@ -466,9 +466,9 @@ export default function Files({
     setBusy(true);
     try {
       const next = await deleteFileApi({
-        project: folder.slug,
-        filesTab: d.slug,
-        file: file.slug,
+        project: folder.id,
+        filesTab: d.id,
+        file: file.id,
       });
       onApplyWorkspace(next, keepNav);
     } finally {
@@ -478,15 +478,15 @@ export default function Files({
 
   const moveFile = async (file, dest) => {
     if (readonly || busy || !file || !dest?.folder || !dest?.mod) return;
-    const toProject = dest.folder.slug;
-    const toFilesTab = dest.mod[2]?.slug;
+    const toProject = dest.folder.id;
+    const toFilesTab = dest.mod[2]?.id;
     if (!toProject || !toFilesTab) return;
     setBusy(true);
     try {
       const next = await moveFileApi({
-        project: folder.slug,
-        filesTab: d.slug,
-        file: file.slug,
+        project: folder.id,
+        filesTab: d.id,
+        file: file.id,
         toProject,
         toFilesTab,
       });
@@ -574,7 +574,7 @@ export default function Files({
             <ul className="files-list">
               {sortedFiles.map((file) => (
                 <li
-                  key={file.slug}
+                  key={file.id}
                   className="files-row"
                   onClick={() => setPreview(file)}
                 >
@@ -623,8 +623,8 @@ export default function Files({
       {preview ? (
         <FilePreviewDialog
           file={preview}
-          project={folder.slug}
-          filesTab={d.slug}
+          project={folder.id}
+          filesTab={d.id}
           onClose={() => setPreview(null)}
         />
       ) : null}

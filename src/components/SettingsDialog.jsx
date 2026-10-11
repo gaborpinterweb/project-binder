@@ -407,7 +407,7 @@ export default function SettingsDialog({
               ) : (
                 <div className="settings-rows">
                   {archivedProjects.map((pr, i) => (
-                    <div key={pr.slug} className="settings-row">
+                    <div key={pr.id} className="settings-row">
                       <div className="settings-row-copy settings-archive-item">
                         <span
                           className="settings-archive-icon"

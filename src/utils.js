@@ -48,6 +48,11 @@ export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
 export const MIN_TIMELOG_SEC = 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const GACC = "#3c3c40";
+/** Client-only Cover tab identity (not stored on the server). */
+export const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
+export function newId() {
+  return crypto.randomUUID();
+}
 /** 16 cover colors: hue-spaced, no grays, each ≥4.5:1 with white text. */
 export const PC = [
   "#e42737",
@@ -104,11 +109,11 @@ export function fromApi(data, loadStagesFn) {
     const cover = pr.cover || { values: { description: "" } };
     const boardMods = new Map();
     (pr.boards || []).forEach((b) => {
-      boardMods.set(b.slug, [
+      boardMods.set(b.id, [
         "Board",
         b.name,
         {
-          slug: b.slug,
+          id: b.id,
           columns: b.columns && b.columns.length ? b.columns : undefined,
           rows: (b.cards || []).map((c) => {
             const msRaw = c.master || c.status;
@@ -116,7 +121,7 @@ export function fromApi(data, loadStagesFn) {
               n: c.title,
               s: c.status,
               ms: msRaw,
-              slug: c.slug,
+              id: c.id,
               doneAt: c.doneAt || "",
               body: c.body || "",
             };
@@ -126,8 +131,8 @@ export function fromApi(data, loadStagesFn) {
             if (c.priority) row.priority = true;
             if (Array.isArray(c.files) && c.files.length) {
               row.files = c.files.map((f) => ({
-                slug: f.slug,
-                name: f.name || f.slug,
+                id: f.id,
+                name: f.name || f.id,
                 mime: f.mime || "application/octet-stream",
                 size: Number(f.size) || 0,
                 createdAt: f.createdAt || "",
@@ -140,14 +145,14 @@ export function fromApi(data, loadStagesFn) {
     });
     const notesMods = new Map();
     (pr.notesTabs || []).forEach((nt) => {
-      notesMods.set(nt.slug, [
+      notesMods.set(nt.id, [
         "Notes",
         nt.name,
         {
-          slug: nt.slug,
+          id: nt.id,
           notes: (nt.notes || []).map((n) => ({
-            slug: n.slug,
-            title: n.title || n.slug,
+            id: n.id,
+            title: n.title || n.id,
             body: n.body || "",
             createdAt: n.createdAt || n.updatedAt || "",
             updatedAt: n.updatedAt || "",
@@ -157,14 +162,14 @@ export function fromApi(data, loadStagesFn) {
     });
     const filesMods = new Map();
     (pr.filesTabs || []).forEach((ft) => {
-      filesMods.set(ft.slug, [
+      filesMods.set(ft.id, [
         "Files",
         ft.name,
         {
-          slug: ft.slug,
+          id: ft.id,
           files: (ft.files || []).map((f) => ({
-            slug: f.slug,
-            name: f.name || f.slug,
+            id: f.id,
+            name: f.name || f.id,
             mime: f.mime || "application/octet-stream",
             size: Number(f.size) || 0,
             createdAt: f.createdAt || "",
@@ -174,14 +179,14 @@ export function fromApi(data, loadStagesFn) {
     });
     const dbMods = new Map();
     (pr.databases || []).forEach((db) => {
-      dbMods.set(db.slug, [
+      dbMods.set(db.id, [
         "Database",
         db.name,
         {
-          slug: db.slug,
+          id: db.id,
           cols: (db.columns || []).map(normalizeDbCol).filter(Boolean),
           rows: (db.items || []).map((item) => ({
-            slug: item.slug,
+            id: item.id,
             body: item.body || "",
             ...(item.fields || {}),
           })),
@@ -196,11 +201,11 @@ export function fromApi(data, loadStagesFn) {
       ]);
     });
 
-    const pick = (type, slug) => {
-      if (type === "board") return boardMods.get(slug);
-      if (type === "notes") return notesMods.get(slug);
-      if (type === "files") return filesMods.get(slug);
-      if (type === "database") return dbMods.get(slug);
+    const pick = (type, id) => {
+      if (type === "board") return boardMods.get(id);
+      if (type === "notes") return notesMods.get(id);
+      if (type === "files") return filesMods.get(id);
+      if (type === "database") return dbMods.get(id);
       return null;
     };
 
@@ -209,7 +214,7 @@ export function fromApi(data, loadStagesFn) {
         "Cover",
         "Cover",
         {
-          slug: "cover",
+          id: COVER_TAB_ID,
           values: { description: (cover.values && cover.values.description) || "" },
         },
       ],
@@ -217,14 +222,14 @@ export function fromApi(data, loadStagesFn) {
     const seen = new Set();
     const pushMod = (mod) => {
       if (!mod) return;
-      const key = `${mod[0]}:${mod[2]?.slug}`;
+      const key = `${mod[0]}:${mod[2]?.id}`;
       if (seen.has(key)) return;
       seen.add(key);
       mods.push(mod);
     };
 
     for (const entry of pr.tabOrder || []) {
-      pushMod(pick(entry.type, entry.slug));
+      pushMod(pick(entry.type, entry.id));
     }
     for (const mod of boardMods.values()) pushMod(mod);
     for (const mod of notesMods.values()) pushMod(mod);
@@ -232,7 +237,7 @@ export function fromApi(data, loadStagesFn) {
     for (const mod of dbMods.values()) pushMod(mod);
 
     return {
-      slug: pr.slug,
+      id: pr.id,
       name: pr.name,
       color: pr.color || GACC,
       archived: !!pr.archived,
@@ -255,9 +260,9 @@ export function tabsOrderPayload(mods) {
   return (mods || [])
     .map((mod) => {
       const type = modToTabType(mod);
-      const slug = mod[2]?.slug;
-      if (!type || !slug) return null;
-      return { type, slug };
+      const id = mod[2]?.id;
+      if (!type || !id) return null;
+      return { type, id };
     })
     .filter(Boolean);
 }
@@ -285,7 +290,7 @@ export function normalizeFolders(folders, stages) {
 }
 
 export function boardKey(folder, mod) {
-  return folder.slug + "/" + (mod[2]?.slug || mod[1]);
+  return folder.id + "/" + (mod[2]?.id || mod[1]);
 }
 
 /** Project name alone when it has one Board tab; otherwise "Project · Tab". */
@@ -918,10 +923,10 @@ export function loadLastTabs() {
   return stored && typeof stored === "object" ? stored : {};
 }
 
-export function saveLastTab(slug, tabSlug) {
-  if (!slug || !tabSlug) return;
+export function saveLastTab(id, tabId) {
+  if (!id || !tabId) return;
   const map = loadLastTabs();
-  map[slug] = tabSlug;
+  map[id] = tabId;
   writeStorageJson(LAST_TAB_KEY, map);
 }
 
@@ -973,18 +978,18 @@ export function saveNotesUnlocked(map) {
   );
 }
 
-export function notesTabKey(projectSlug, notesTabSlug) {
-  if (!projectSlug || !notesTabSlug) return "";
-  return `${projectSlug}/${notesTabSlug}`;
+export function notesTabKey(projectId, notesTabId) {
+  if (!projectId || !notesTabId) return "";
+  return `${projectId}/${notesTabId}`;
 }
 
-export function noteUnlockKey(projectSlug, notesTabSlug, noteSlug) {
-  if (!noteSlug) return "";
-  const tab = notesTabKey(projectSlug, notesTabSlug);
-  return tab ? `${tab}/${noteSlug}` : "";
+export function noteUnlockKey(projectId, notesTabId, noteId) {
+  if (!noteId) return "";
+  const tab = notesTabKey(projectId, notesTabId);
+  return tab ? `${tab}/${noteId}` : "";
 }
 
-/** Map of notes-tab keys → last viewed note slug. */
+/** Map of notes-tab keys → last viewed note id. */
 export function loadNotesSelected() {
   const stored = readStorageJson(NOTES_SELECTED_KEY, {});
   return stored && typeof stored === "object" && !Array.isArray(stored)
@@ -992,10 +997,10 @@ export function loadNotesSelected() {
     : {};
 }
 
-export function saveNotesSelected(tabKey, noteSlug) {
+export function saveNotesSelected(tabKey, noteId) {
   if (!tabKey) return;
   const map = loadNotesSelected();
-  if (noteSlug) map[tabKey] = String(noteSlug);
+  if (noteId) map[tabKey] = String(noteId);
   else delete map[tabKey];
   writeStorageJson(NOTES_SELECTED_KEY, map);
 }
@@ -1052,15 +1057,15 @@ export function loadSession() {
 export function saveSession(g, folders, p) {
   writeStorageJson(SESSION_KEY, {
     g: g || null,
-    project: folders[p]?.slug || null,
+    project: folders[p]?.id || null,
   });
 }
 
 export function restoreTabIndex(pr) {
   if (!pr?.mods?.length) return 0;
-  const want = loadLastTabs()[pr.slug];
+  const want = loadLastTabs()[pr.id];
   if (!want) return 0;
-  const i = pr.mods.findIndex((mod) => mod[2]?.slug === want);
+  const i = pr.mods.findIndex((mod) => mod[2]?.id === want);
   return i >= 0 ? i : 0;
 }
 
@@ -1116,24 +1121,24 @@ export function locateRow(folders, r) {
       const rows = mod[2]?.rows;
       if (!rows) continue;
       if (rows.includes(r)) return { folder, mod };
-      if (r?.slug && rows.some((row) => row.slug === r.slug)) return { folder, mod };
+      if (r?.id && rows.some((row) => row.id === r.id)) return { folder, mod };
     }
   }
   return null;
 }
 
-export function findCardBySlugs(folders, project, board, card) {
-  const folder = folders.find((f) => f.slug === project);
+export function findCardByIds(folders, project, board, card) {
+  const folder = folders.find((f) => f.id === project);
   if (!folder) return null;
-  const mod = folder.mods.find((m) => m[0] === "Board" && m[2]?.slug === board);
+  const mod = folder.mods.find((m) => m[0] === "Board" && m[2]?.id === board);
   if (!mod) return null;
-  const row = (mod[2].rows || []).find((r) => r.slug === card);
+  const row = (mod[2].rows || []).find((r) => r.id === card);
   return row ? { row, folder, mod } : null;
 }
 
 /** Current card name from workspace; falls back when the card is gone. */
 export function liveCardTitle(folders, project, board, card, fallback = "Untitled") {
-  const hit = findCardBySlugs(folders, project, board, card);
+  const hit = findCardByIds(folders, project, board, card);
   const name = hit?.row?.n;
   if (name != null && String(name).trim()) return String(name).trim();
   return fallback || "Untitled";
@@ -1180,7 +1185,7 @@ export function allModTabs(folders, modType) {
         mod,
         fi,
         color: folder.color || PC[fi % PC.length],
-        key: `${folder.slug || ""}/${mod[2]?.slug || ""}`,
+        key: `${folder.id || ""}/${mod[2]?.id || ""}`,
         label: `${folder.name} · ${mod[1]}`,
       });
     });
@@ -1203,10 +1208,10 @@ export function taskKey(project, board, card) {
 /** Timelog target from a board card (folder + mod + row). */
 export function timelogTaskFromCard(folder, mod, row, fi = 0) {
   return {
-    key: taskKey(folder.slug, mod[2]?.slug, row.slug),
-    project: folder.slug,
-    board: mod[2]?.slug || "",
-    card: row.slug,
+    key: taskKey(folder.id, mod[2]?.id, row.id),
+    project: folder.id,
+    board: mod[2]?.id || "",
+    card: row.id,
     title: row.n || "Untitled",
     projectName: folder.name || "",
     boardName: mod[1] || "",

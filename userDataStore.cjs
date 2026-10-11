@@ -52,7 +52,7 @@ function isValidStore(doc) {
   return (
     doc &&
     typeof doc === "object" &&
-    doc.version != null &&
+    Number(doc.version) >= 2 &&
     Array.isArray(doc.stages) &&
     Array.isArray(doc.projects) &&
     Array.isArray(doc.timelogs)
@@ -91,15 +91,15 @@ function walkFiles(rootDir, onFile) {
   walk(rootDir, []);
 }
 
-function uploadKey(projectSlug, tabSlug, fileSlug) {
-  return `${projectSlug}/${tabSlug}/${fileSlug}`;
+function uploadKey(projectId, tabId, fileId) {
+  return `${projectId}/${tabId}/${fileId}`;
 }
 
 /** Reserved folder under each project for board-card attachments (not a Files tab). */
 const CARD_FILES_DIR = "__cardfiles__";
 
-function cardFileKey(projectSlug, fileSlug) {
-  return `${projectSlug}/${CARD_FILES_DIR}/${fileSlug}`;
+function cardFileKey(projectId, fileId) {
+  return `${projectId}/${CARD_FILES_DIR}/${fileId}`;
 }
 
 function createDiskStore(userDataDir, seedUploadsDir) {
@@ -130,62 +130,62 @@ function createDiskStore(userDataDir, seedUploadsDir) {
     writeAppSettingsFile(doc) {
       atomicWriteJson(settingsPath, doc);
     },
-    uploadPath(projectSlug, tabSlug, fileSlug) {
-      return path.join(uploadsRoot, projectSlug, tabSlug, fileSlug);
+    uploadPath(projectId, tabId, fileId) {
+      return path.join(uploadsRoot, projectId, tabId, fileId);
     },
-    uploadDir(projectSlug, tabSlug) {
-      return path.join(uploadsRoot, projectSlug, tabSlug);
+    uploadDir(projectId, tabId) {
+      return path.join(uploadsRoot, projectId, tabId);
     },
-    ensureUploadDir(projectSlug, tabSlug) {
-      fs.mkdirSync(path.join(uploadsRoot, projectSlug, tabSlug), { recursive: true });
+    ensureUploadDir(projectId, tabId) {
+      fs.mkdirSync(path.join(uploadsRoot, projectId, tabId), { recursive: true });
     },
-    writeUpload(projectSlug, tabSlug, fileSlug, buf) {
-      const dir = path.join(uploadsRoot, projectSlug, tabSlug);
+    writeUpload(projectId, tabId, fileId, buf) {
+      const dir = path.join(uploadsRoot, projectId, tabId);
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, fileSlug), buf);
+      fs.writeFileSync(path.join(dir, fileId), buf);
     },
-    readUpload(projectSlug, tabSlug, fileSlug) {
-      const filePath = path.join(uploadsRoot, projectSlug, tabSlug, fileSlug);
+    readUpload(projectId, tabId, fileId) {
+      const filePath = path.join(uploadsRoot, projectId, tabId, fileId);
       if (!fs.existsSync(filePath)) return null;
       return fs.readFileSync(filePath);
     },
-    uploadExists(projectSlug, tabSlug, fileSlug) {
-      return fs.existsSync(path.join(uploadsRoot, projectSlug, tabSlug, fileSlug));
+    uploadExists(projectId, tabId, fileId) {
+      return fs.existsSync(path.join(uploadsRoot, projectId, tabId, fileId));
     },
-    unlinkUpload(projectSlug, tabSlug, fileSlug) {
+    unlinkUpload(projectId, tabId, fileId) {
       try {
-        fs.unlinkSync(path.join(uploadsRoot, projectSlug, tabSlug, fileSlug));
+        fs.unlinkSync(path.join(uploadsRoot, projectId, tabId, fileId));
       } catch {
         /* may already be gone */
       }
     },
-    cardFilePath(projectSlug, fileSlug) {
-      return path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug);
+    cardFilePath(projectId, fileId) {
+      return path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId);
     },
-    writeCardFile(projectSlug, fileSlug, buf) {
-      const dir = path.join(uploadsRoot, projectSlug, CARD_FILES_DIR);
+    writeCardFile(projectId, fileId, buf) {
+      const dir = path.join(uploadsRoot, projectId, CARD_FILES_DIR);
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, fileSlug), buf);
+      fs.writeFileSync(path.join(dir, fileId), buf);
     },
-    readCardFile(projectSlug, fileSlug) {
-      const filePath = path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug);
+    readCardFile(projectId, fileId) {
+      const filePath = path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId);
       if (!fs.existsSync(filePath)) return null;
       return fs.readFileSync(filePath);
     },
-    cardFileExists(projectSlug, fileSlug) {
-      return fs.existsSync(path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug));
+    cardFileExists(projectId, fileId) {
+      return fs.existsSync(path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId));
     },
-    unlinkCardFile(projectSlug, fileSlug) {
+    unlinkCardFile(projectId, fileId) {
       try {
-        fs.unlinkSync(path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug));
+        fs.unlinkSync(path.join(uploadsRoot, projectId, CARD_FILES_DIR, fileId));
       } catch {
         /* may already be gone */
       }
     },
-    moveCardFile(fromProject, fileSlug, toProject, toSlug) {
-      const fromPath = path.join(uploadsRoot, fromProject, CARD_FILES_DIR, fileSlug);
+    moveCardFile(fromProject, fileId, toProject, toFileId) {
+      const fromPath = path.join(uploadsRoot, fromProject, CARD_FILES_DIR, fileId);
       const toDir = path.join(uploadsRoot, toProject, CARD_FILES_DIR);
-      const toPath = path.join(toDir, toSlug);
+      const toPath = path.join(toDir, toFileId);
       if (!fs.existsSync(fromPath)) return { ok: false, error: "file not found" };
       fs.mkdirSync(toDir, { recursive: true });
       try {
@@ -203,10 +203,10 @@ function createDiskStore(userDataDir, seedUploadsDir) {
       }
       return { ok: true };
     },
-    moveUpload(fromProject, fromTab, fileSlug, toProject, toTab, toSlug) {
-      const fromPath = path.join(uploadsRoot, fromProject, fromTab, fileSlug);
+    moveUpload(fromProject, fromTab, fileId, toProject, toTab, toFileId) {
+      const fromPath = path.join(uploadsRoot, fromProject, fromTab, fileId);
       const toDir = path.join(uploadsRoot, toProject, toTab);
-      const toPath = path.join(toDir, toSlug);
+      const toPath = path.join(toDir, toFileId);
       if (!fs.existsSync(fromPath)) return { ok: false, error: "file not found" };
       fs.mkdirSync(toDir, { recursive: true });
       try {
@@ -224,8 +224,8 @@ function createDiskStore(userDataDir, seedUploadsDir) {
       }
       return { ok: true };
     },
-    removeUploadTree(projectSlug, tabSlug) {
-      const dir = path.join(uploadsRoot, projectSlug, tabSlug);
+    removeUploadTree(projectId, tabId) {
+      const dir = path.join(uploadsRoot, projectId, tabId);
       if (!fs.existsSync(dir)) return;
       try {
         fs.rmSync(dir, { recursive: true, force: true });
@@ -295,53 +295,53 @@ function createMemoryStore(seedUploadsDir) {
       return null;
     },
     ensureUploadDir() {},
-    writeUpload(projectSlug, tabSlug, fileSlug, buf) {
-      uploads.set(uploadKey(projectSlug, tabSlug, fileSlug), Buffer.from(buf));
+    writeUpload(projectId, tabId, fileId, buf) {
+      uploads.set(uploadKey(projectId, tabId, fileId), Buffer.from(buf));
     },
-    readUpload(projectSlug, tabSlug, fileSlug) {
-      const buf = uploads.get(uploadKey(projectSlug, tabSlug, fileSlug));
+    readUpload(projectId, tabId, fileId) {
+      const buf = uploads.get(uploadKey(projectId, tabId, fileId));
       return buf ? Buffer.from(buf) : null;
     },
-    uploadExists(projectSlug, tabSlug, fileSlug) {
-      return uploads.has(uploadKey(projectSlug, tabSlug, fileSlug));
+    uploadExists(projectId, tabId, fileId) {
+      return uploads.has(uploadKey(projectId, tabId, fileId));
     },
-    unlinkUpload(projectSlug, tabSlug, fileSlug) {
-      uploads.delete(uploadKey(projectSlug, tabSlug, fileSlug));
+    unlinkUpload(projectId, tabId, fileId) {
+      uploads.delete(uploadKey(projectId, tabId, fileId));
     },
     cardFilePath() {
       return null;
     },
-    writeCardFile(projectSlug, fileSlug, buf) {
-      uploads.set(cardFileKey(projectSlug, fileSlug), Buffer.from(buf));
+    writeCardFile(projectId, fileId, buf) {
+      uploads.set(cardFileKey(projectId, fileId), Buffer.from(buf));
     },
-    readCardFile(projectSlug, fileSlug) {
-      const buf = uploads.get(cardFileKey(projectSlug, fileSlug));
+    readCardFile(projectId, fileId) {
+      const buf = uploads.get(cardFileKey(projectId, fileId));
       return buf ? Buffer.from(buf) : null;
     },
-    cardFileExists(projectSlug, fileSlug) {
-      return uploads.has(cardFileKey(projectSlug, fileSlug));
+    cardFileExists(projectId, fileId) {
+      return uploads.has(cardFileKey(projectId, fileId));
     },
-    unlinkCardFile(projectSlug, fileSlug) {
-      uploads.delete(cardFileKey(projectSlug, fileSlug));
+    unlinkCardFile(projectId, fileId) {
+      uploads.delete(cardFileKey(projectId, fileId));
     },
-    moveCardFile(fromProject, fileSlug, toProject, toSlug) {
-      const fromKey = cardFileKey(fromProject, fileSlug);
+    moveCardFile(fromProject, fileId, toProject, toFileId) {
+      const fromKey = cardFileKey(fromProject, fileId);
       const buf = uploads.get(fromKey);
       if (!buf) return { ok: false, error: "file not found" };
-      uploads.set(cardFileKey(toProject, toSlug), buf);
+      uploads.set(cardFileKey(toProject, toFileId), buf);
       uploads.delete(fromKey);
       return { ok: true };
     },
-    moveUpload(fromProject, fromTab, fileSlug, toProject, toTab, toSlug) {
-      const fromKey = uploadKey(fromProject, fromTab, fileSlug);
+    moveUpload(fromProject, fromTab, fileId, toProject, toTab, toFileId) {
+      const fromKey = uploadKey(fromProject, fromTab, fileId);
       const buf = uploads.get(fromKey);
       if (!buf) return { ok: false, error: "file not found" };
-      uploads.set(uploadKey(toProject, toTab, toSlug), buf);
+      uploads.set(uploadKey(toProject, toTab, toFileId), buf);
       uploads.delete(fromKey);
       return { ok: true };
     },
-    removeUploadTree(projectSlug, tabSlug) {
-      const prefix = `${projectSlug}/${tabSlug}/`;
+    removeUploadTree(projectId, tabId) {
+      const prefix = `${projectId}/${tabId}/`;
       for (const key of [...uploads.keys()]) {
         if (key.startsWith(prefix)) uploads.delete(key);
       }

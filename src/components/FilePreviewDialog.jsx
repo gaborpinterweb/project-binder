@@ -262,7 +262,7 @@ export default function FilePreviewDialog({
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(0);
   const [paged, setPaged] = useState(false);
-  const url = downloadUrl || fileDownloadUrl(project, filesTab, file.slug);
+  const url = downloadUrl || fileDownloadUrl(project, filesTab, file.id);
   const format = formatFromName(file.name);
   const fit = fitsContent(format);
 
@@ -379,10 +379,10 @@ export default function FilePreviewDialog({
           project,
           board,
           card,
-          file: file.slug,
+          file: file.id,
         });
       } else {
-        await revealFile({ project, filesTab, file: file.slug });
+        await revealFile({ project, filesTab, file: file.id });
       }
     } catch (err) {
       window.alert(err.message || "Could not show the file");

@@ -24,7 +24,7 @@ Short orientation for coding agents. Human run/dev/storage docs: [README.md](REA
 - Projects are folders in App state (`folders`).
 - Each project has `mods`: tuples **`[type, name, data]`** where `type` is `Board` | `Notes` | `Files` | `Database` | …
 - Navigation: `p` (project index), `m` (tab/mod index), `g` (global view: Masterboard, Timelogs, Trash, or `null` for project tabs).
-- **Mutations**: call API → feed response into `applyWorkspace(data, opts)`. Prefer `keepNav(projectSlug, boardSlug)` from App so selection survives reload. Do not invent a parallel store.
+- **Mutations**: call API → feed response into `applyWorkspace(data, opts)`. Prefer `keepNav(projectId, boardId)` from App so selection survives reload. Do not invent a parallel store.
 
 ## Where to put code
 
@@ -38,7 +38,7 @@ Short orientation for coding agents. Human run/dev/storage docs: [README.md](REA
 | Styles | `src/index.css` (single stylesheet; no new CSS framework) |
 | Server writes / schema | `server.cjs` |
 
-Some normalize logic (columns, custom views, slugify) is still duplicated between client `src/db*` / `utils` and `server.cjs`. If you change one side, check the other.
+Entity identity is UUID `id` (not slug). Display names stay `name` / `title`. Workspace schema `version` ≥ 2. Legacy production migration handoff: [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md). Some normalize logic (DB columns, custom views) is still duplicated between client `src/db*` / `utils` and `server.cjs` — change both sides together.
 
 ## Hard constraints (anti-spaghetti)
 

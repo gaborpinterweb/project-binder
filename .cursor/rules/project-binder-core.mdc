@@ -23,7 +23,7 @@ Read [AGENTS.md](AGENTS.md) for the module map. Do not invent parallel architect
 API call (src/api.js) → applyWorkspace(data, opts) in App
 ```
 
-- Prefer `keepNav(projectSlug, boardSlug)` from App so project/tab/`g` survive reload.
+- Prefer `keepNav(projectId, boardId)` from App so project/tab/`g` survive reload.
 - Do not introduce a second client store for workspace data.
 
 ## Agent defaults

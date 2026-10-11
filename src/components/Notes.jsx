@@ -647,7 +647,7 @@ export default function Notes({
   readonly,
   onApplyWorkspace,
 }) {
-  const d = mod[2] || { slug: "", notes: [] };
+  const d = mod[2] || { id: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
   const [cardSize, setCardSize] = useState("md");
   const [showCreated, setShowCreated] = useState(false);
@@ -657,7 +657,7 @@ export default function Notes({
     () => sortNotes(filterNotes(d.notes, filter), sort),
     [d.notes, filter, sort]
   );
-  const tabKey = notesTabKey(folder?.slug, d.slug);
+  const tabKey = notesTabKey(folder?.id, d.id);
   const [selectedByTab, setSelectedByTab] = useState(() => loadNotesSelected());
   const [unlocked, setUnlocked] = useState(() => loadNotesUnlocked());
   const [editor, setEditor] = useState(null);
@@ -666,7 +666,7 @@ export default function Notes({
   const [editingView, setEditingView] = useState(false);
   const [ctxMenu, setCtxMenu] = useState(null);
   const moveOptions = useMemo(() => {
-    const currentKey = `${folder?.slug || ""}/${d.slug || ""}`;
+    const currentKey = `${folder?.id || ""}/${d.id || ""}`;
     return allNotesTabs(folders)
       .filter((t) => t.key !== currentKey)
       .map((t) => ({
@@ -676,38 +676,38 @@ export default function Notes({
         folder: t.folder,
         mod: t.mod,
       }));
-  }, [folders, folder?.slug, d.slug]);
+  }, [folders, folder?.id, d.id]);
 
-  const rememberedSlug = (tabKey && selectedByTab[tabKey]) || null;
-  const selectedSlug =
-    rememberedSlug && notes.some((n) => n.slug === rememberedSlug)
-      ? rememberedSlug
-      : notes[0]?.slug || null;
+  const rememberedId = (tabKey && selectedByTab[tabKey]) || null;
+  const selectedId =
+    rememberedId && notes.some((n) => n.id === rememberedId)
+      ? rememberedId
+      : notes[0]?.id || null;
 
-  const setSelectedSlug = (slug) => {
+  const setSelectedId = (id) => {
     if (!tabKey) return;
-    const nextSlug = slug || null;
+    const nextId = id || null;
     setSelectedByTab((prev) => {
-      if ((prev[tabKey] || null) === nextSlug) return prev;
+      if ((prev[tabKey] || null) === nextId) return prev;
       const next = { ...prev };
-      if (nextSlug) next[tabKey] = nextSlug;
+      if (nextId) next[tabKey] = nextId;
       else delete next[tabKey];
       return next;
     });
-    saveNotesSelected(tabKey, nextSlug);
+    saveNotesSelected(tabKey, nextId);
   };
 
-  const unlockKey = (noteSlug) =>
-    noteUnlockKey(folder?.slug, d.slug, noteSlug);
-  const locked = !selectedSlug || !unlocked[unlockKey(selectedSlug)];
+  const unlockKey = (noteId) =>
+    noteUnlockKey(folder?.id, d.id, noteId);
+  const locked = !selectedId || !unlocked[unlockKey(selectedId)];
 
   useEffect(() => {
     saveNotesUnlocked(unlocked);
   }, [unlocked]);
 
-  const setNoteLocked = (noteSlug, next) => {
-    if (!noteSlug) return;
-    const key = unlockKey(noteSlug);
+  const setNoteLocked = (noteId, next) => {
+    if (!noteId) return;
+    const key = unlockKey(noteId);
     if (!key) return;
     setUnlocked((prev) => {
       if (next) {
@@ -721,27 +721,27 @@ export default function Notes({
     });
   };
 
-  const setLocked = (next) => setNoteLocked(selectedSlug, next);
+  const setLocked = (next) => setNoteLocked(selectedId, next);
 
-  const toggleNoteLock = (noteSlug) => {
-    if (!noteSlug || readonly) return;
-    const key = unlockKey(noteSlug);
-    setNoteLocked(noteSlug, !!unlocked[key]);
+  const toggleNoteLock = (noteId) => {
+    if (!noteId || readonly) return;
+    const key = unlockKey(noteId);
+    setNoteLocked(noteId, !!unlocked[key]);
   };
 
   // Drop remembered selection only when that note was deleted/moved away.
   useEffect(() => {
-    if (!tabKey || !rememberedSlug) return;
+    if (!tabKey || !rememberedId) return;
     const all = Array.isArray(d.notes) ? d.notes : [];
-    if (all.some((n) => n.slug === rememberedSlug)) return;
-    setSelectedSlug(notes[0]?.slug || null);
-  }, [tabKey, d.notes, rememberedSlug, notes]);
+    if (all.some((n) => n.id === rememberedId)) return;
+    setSelectedId(notes[0]?.id || null);
+  }, [tabKey, d.notes, rememberedId, notes]);
 
   useEffect(() => {
     let raf1 = 0;
     let raf2 = 0;
     let timeout = 0;
-    if (!selectedSlug || locked) {
+    if (!selectedId || locked) {
       setToolbarIn(false);
       timeout = window.setTimeout(() => {
         setToolbarMounted(false);
@@ -763,16 +763,16 @@ export default function Notes({
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
     };
-  }, [locked, selectedSlug, editor]);
+  }, [locked, selectedId, editor]);
 
-  const selected = notes.find((n) => n.slug === selectedSlug) || null;
+  const selected = notes.find((n) => n.id === selectedId) || null;
 
   const saveBody = async (body) => {
     if (!selected || readonly) return;
     const data = await putNote({
-      project: folder.slug,
-      notesTab: d.slug,
-      note: selected.slug,
+      project: folder.id,
+      notesTab: d.id,
+      note: selected.id,
       title: noteListTitle(body),
       body,
     });
@@ -782,20 +782,20 @@ export default function Notes({
   const addNote = async () => {
     if (readonly) return;
     const data = await postNote({
-      project: folder.slug,
-      notesTab: d.slug,
+      project: folder.id,
+      notesTab: d.id,
       title: "New note...",
       body: EMPTY_NOTE_BODY,
     });
     onApplyWorkspace(data);
-    if (data.slug) {
-      setSelectedSlug(data.slug);
-      setUnlocked((prev) => ({ ...prev, [unlockKey(data.slug)]: true }));
+    if (data.id) {
+      setSelectedId(data.id);
+      setUnlocked((prev) => ({ ...prev, [unlockKey(data.id)]: true }));
     }
   };
 
-  const clearNoteUnlock = (noteSlug) => {
-    const key = unlockKey(noteSlug);
+  const clearNoteUnlock = (noteId) => {
+    const key = unlockKey(noteId);
     if (!key) return;
     setUnlocked((prev) => {
       if (!prev[key]) return prev;
@@ -816,30 +816,30 @@ export default function Notes({
     });
     if (!ok) return;
     const data = await deleteNoteApi({
-      project: folder.slug,
-      notesTab: d.slug,
-      note: note.slug,
+      project: folder.id,
+      notesTab: d.id,
+      note: note.id,
     });
-    clearNoteUnlock(note.slug);
-    if (selectedSlug === note.slug) setSelectedSlug(null);
+    clearNoteUnlock(note.id);
+    if (selectedId === note.id) setSelectedId(null);
     onApplyWorkspace(data);
   };
 
   const moveNote = async (dest, note = selected) => {
     if (!note || readonly || !dest?.folder || !dest?.mod) return;
-    const toProject = dest.folder.slug;
-    const toNotesTab = dest.mod[2]?.slug;
+    const toProject = dest.folder.id;
+    const toNotesTab = dest.mod[2]?.id;
     if (!toProject || !toNotesTab) return;
     try {
       const data = await moveNoteApi({
-        project: folder.slug,
-        notesTab: d.slug,
-        note: note.slug,
+        project: folder.id,
+        notesTab: d.id,
+        note: note.id,
         toProject,
         toNotesTab,
       });
-      clearNoteUnlock(note.slug);
-      if (selectedSlug === note.slug) setSelectedSlug(null);
+      clearNoteUnlock(note.id);
+      if (selectedId === note.id) setSelectedId(null);
       onApplyWorkspace(data, {
         keepNav: { project: toProject, board: toNotesTab, g: null },
       });
@@ -852,28 +852,28 @@ export default function Notes({
     if (!note || readonly) return;
     const title = noteListTitle(note.body) || "Untitled";
     const data = await postNote({
-      project: folder.slug,
-      notesTab: d.slug,
+      project: folder.id,
+      notesTab: d.id,
       title,
       body: note.body || EMPTY_NOTE_BODY,
     });
     onApplyWorkspace(data);
-    if (data.slug) {
-      setSelectedSlug(data.slug);
-      setUnlocked((prev) => ({ ...prev, [unlockKey(data.slug)]: true }));
+    if (data.id) {
+      setSelectedId(data.id);
+      setUnlocked((prev) => ({ ...prev, [unlockKey(data.id)]: true }));
     }
   };
 
-  const selectNote = (slug) => {
-    if (slug === selectedSlug) return;
-    setSelectedSlug(slug);
+  const selectNote = (id) => {
+    if (id === selectedId) return;
+    setSelectedId(id);
   };
 
   const openNoteCtx = (e, note) => {
     if (readonly || !note) return;
     e.preventDefault();
     e.stopPropagation();
-    setSelectedSlug(note.slug);
+    setSelectedId(note.id);
     setCtxMenu({ left: e.clientX, top: e.clientY, note });
   };
 
@@ -1013,16 +1013,16 @@ export default function Notes({
                   cardSize === "sm"
                     ? ""
                     : noteListPreview(n.body, NOTE_PREVIEW_LEN[cardSize] || 140);
-                const isEditing = !!unlocked[unlockKey(n.slug)];
+                const isEditing = !!unlocked[unlockKey(n.id)];
                 return (
                   <button
-                    key={n.slug}
+                    key={n.id}
                     type="button"
-                    className={"notes-item" + (n.slug === selectedSlug ? " on" : "")}
-                    onClick={() => selectNote(n.slug)}
+                    className={"notes-item" + (n.id === selectedId ? " on" : "")}
+                    onClick={() => selectNote(n.id)}
                     onDoubleClick={() => {
-                      setSelectedSlug(n.slug);
-                      toggleNoteLock(n.slug);
+                      setSelectedId(n.id);
+                      toggleNoteLock(n.id);
                     }}
                     onContextMenu={(e) => openNoteCtx(e, n)}
                   >
@@ -1077,7 +1077,7 @@ export default function Notes({
                 </div>
               ) : null}
               <RichTextEditor
-                key={selected.slug}
+                key={selected.id}
                 value={selected.body || EMPTY_NOTE_BODY}
                 onChange={saveBody}
                 showLabel={false}

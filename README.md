@@ -41,7 +41,9 @@ Override either with `PROJECT_BINDER_PORT` (or `PORT`).
 | [`seedWorkspace.json`](seedWorkspace.json) | Read-only seed for a fresh start. The app never writes this file. |
 | `userWorkspace.json` | Packaged app only: live workspace under OS user data. |
 
-Packaged app: if `userWorkspace.json` is missing, empty, or corrupt/invalid, the server deep-clones `seedWorkspace.json` into a new file on disk.
+Entity identity is UUID `id` (`version: 2`). Legacy slug workspaces must be migrated offline — see [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md).
+
+Packaged app: if `userWorkspace.json` is missing, empty, or corrupt/invalid, the server deep-clones `seedWorkspace.json` into a new file on disk. A detectable legacy slug workspace is **not** overwritten (process exits; migrate first).
 
 Restore the demo (dev / CLI): Settings → Developer → **Reset to seed workspace**, or restart the server (memory mode always reseeds on boot).
 
@@ -72,44 +74,46 @@ Master board stages:
 
 `Backlog, This week, Today, Tomorrow, Next week`
 
-| Project slug | Name | Color | Tab (slug) | Tab columns |
-|---|---|---|---|---|
-| `freelancing` | Freelancing | `#2f7a6e` | Ops (`ops`) | Admin, Marketing, Finance |
-| `client-project-a` | Client project A | `#b45a3c` | Delivery (`delivery`) | Design, Frontend, Content |
-| `client-project-b` | Client project B | `#6b4f8c` | Launch (`launch`) | Design, Development, Content |
+Entities use UUID `id` (see `seedWorkspace.json`). Display names below:
+
+| Project | Color | Tab | Tab columns |
+|---|---|---|---|
+| Freelancing | `#2f7a6e` | Ops | Admin, Marketing, Finance |
+| Client project A | `#b45a3c` | Delivery | Design, Frontend, Content |
+| Client project B | `#6b4f8c` | Launch | Design, Development, Content |
 
 ### Freelancing — Ops
 
-| Card slug | Title | Task board column | Master board column | Done |
-|---|---|---|---|---|
-| `invoice-template` | Update invoice template | Finance | Today | |
-| `quarterly-taxes` | Quarterly tax checklist | Finance | This week | |
-| `linkedin-cadence` | LinkedIn post cadence | Marketing | Today | |
-| `portfolio-site` | Portfolio site refresh | Marketing | Next week | |
-| `crm-cleanup` | CRM cleanup | Admin | Backlog | |
-| `contract-template` | Client contract template | Admin | This week | yes |
+| Title | Task board column | Master board column | Done |
+|---|---|---|---|
+| Update invoice template | Finance | Today | |
+| Quarterly tax checklist | Finance | This week | |
+| LinkedIn post cadence | Marketing | Today | |
+| Portfolio site refresh | Marketing | Next week | |
+| CRM cleanup | Admin | Backlog | |
+| Client contract template | Admin | This week | yes |
 
 ### Client project A — Delivery
 
-| Card slug | Title | Task board column | Master board column | Done |
-|---|---|---|---|---|
-| `homepage-wireframes` | Homepage wireframes | Design | Today | |
-| `design-system` | Type & color system | Design | This week | |
-| `services-page` | Services page draft | Content | Today | |
-| `component-library` | Frontend component kit | Frontend | Next week | |
-| `case-study-template` | Case study template | Content | This week | yes |
-| `accessibility-pass` | Accessibility pass | Frontend | Backlog | |
+| Title | Task board column | Master board column | Done |
+|---|---|---|---|
+| Homepage wireframes | Design | Today | |
+| Type & color system | Design | This week | |
+| Services page draft | Content | Today | |
+| Frontend component kit | Frontend | Next week | |
+| Case study template | Content | This week | yes |
+| Accessibility pass | Frontend | Backlog | |
 
 ### Client project B — Launch
 
-| Card slug | Title | Task board column | Master board column | Done |
-|---|---|---|---|---|
-| `landing-hero` | Landing hero copy | Content | Today | |
-| `waitlist-flow` | Waitlist signup flow | Development | Today | |
-| `pricing-section` | Pricing section | Development | Backlog | yes |
-| `press-kit` | Press kit PDF | Content | This week | yes |
-| `launch-checklist` | Launch day checklist | Development | This week | |
-| `onboarding-email` | Onboarding email sequence | Content | Next week | |
+| Title | Task board column | Master board column | Done |
+|---|---|---|---|
+| Landing hero copy | Content | Today | |
+| Waitlist signup flow | Development | Today | |
+| Pricing section | Development | Backlog | yes |
+| Press kit PDF | Content | This week | yes |
+| Launch day checklist | Development | This week | |
+| Onboarding email sequence | Content | Next week | |
 
 Each project also has matching Notes, Files, and Database demo tabs. Descriptions live in each project’s `description` field in the JSON.
 

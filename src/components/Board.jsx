@@ -78,14 +78,14 @@ function getCompletedView(scope, completedViewByScope) {
 }
 
 function cardDragKey(row, folder, mod) {
-  return `${folder?.slug || ""}/${mod?.[2]?.slug || ""}/${row?.slug || row?.n || ""}`;
+  return `${folder?.id || ""}/${mod?.[2]?.id || ""}/${row?.id || row?.n || ""}`;
 }
 
 function orderPayload(row, folder, mod, ord) {
   return {
-    project: folder.slug,
-    board: mod[2].slug,
-    slug: row.slug,
+    project: folder.id,
+    board: mod[2].id,
+    id: row.id,
     title: row.n || "Untitled",
     status: row.s,
     master: row.ms,
@@ -351,13 +351,13 @@ function TaskCard({
   const key = cardKey || cardDragKey(row, folder, mod);
   const dragging = dragKey === key;
   const canTimelog =
-    !boardEdit && !readonly && folder && mod?.[2]?.slug && row?.slug;
+    !boardEdit && !readonly && folder && mod?.[2]?.id && row?.id;
   const timerActive =
     !!activeTimerKey &&
-    !!folder?.slug &&
-    !!mod?.[2]?.slug &&
-    !!row?.slug &&
-    taskKey(folder.slug, mod[2].slug, row.slug) === activeTimerKey;
+    !!folder?.id &&
+    !!mod?.[2]?.id &&
+    !!row?.id &&
+    taskKey(folder.id, mod[2].id, row.id) === activeTimerKey;
   const [timelogMenu, setTimelogMenu] = useState(null);
   return (
     <div
@@ -476,8 +476,8 @@ function useCardSpentByKey(enabled, refreshKey) {
 }
 
 function cardSpentSec(spentByKey, folder, mod, row) {
-  if (!folder?.slug || !mod?.[2]?.slug || !row?.slug) return 0;
-  return spentByKey.get(taskKey(folder.slug, mod[2].slug, row.slug)) || 0;
+  if (!folder?.id || !mod?.[2]?.id || !row?.id) return 0;
+  return spentByKey.get(taskKey(folder.id, mod[2].id, row.id)) || 0;
 }
 
 function CompletedViewBtn({
@@ -575,7 +575,7 @@ function fillDoneGroups(items, opts, cardProps) {
         if (!item) return null;
         return (
           <TaskCard
-            key={r.slug || r.n}
+            key={r.id || r.n}
             row={r}
             folder={item.folder}
             mod={item.mod}
@@ -822,7 +822,7 @@ function ProjectBoard({
     async (payload, hint) => {
       if (!hint || boardEdit) return;
       const row = payload.row || payload;
-      if (!row?.slug) return;
+      if (!row?.id) return;
 
       if (hint.done) {
         if (isDone(row)) return;
@@ -856,7 +856,7 @@ function ProjectBoard({
       });
       onBumpCollapse();
       const res = await putCardOrder({ items });
-      onApplyWorkspace(res, keepNav(folder.slug, mod[2].slug));
+      onApplyWorkspace(res, keepNav(folder.id, mod[2].id));
     },
     [
       boardEdit,
@@ -911,13 +911,13 @@ function ProjectBoard({
       colCollapsed.add(colCollapseKey(scope, next));
     }
     const res = await putBoard({
-      project: folder.slug,
-      board: mod[2].slug,
+      project: folder.id,
+      board: mod[2].id,
       name: mod[1],
       columns: nextCols,
       rename: { from, to: next },
     });
-    onApplyWorkspace(res, keepNav(folder.slug, mod[2].slug));
+    onApplyWorkspace(res, keepNav(folder.id, mod[2].id));
   };
 
   const addBoardColumn = async () => {
@@ -938,12 +938,12 @@ function ProjectBoard({
     }
     nextCols.push(label);
     const res = await putBoard({
-      project: folder.slug,
-      board: mod[2].slug,
+      project: folder.id,
+      board: mod[2].id,
       name: mod[1],
       columns: nextCols,
     });
-    onApplyWorkspace(res, keepNav(folder.slug, mod[2].slug));
+    onApplyWorkspace(res, keepNav(folder.id, mod[2].id));
   };
 
   const deleteBoardColumn = async (name) => {
@@ -961,23 +961,23 @@ function ProjectBoard({
     });
     colCollapsed.delete(colCollapseKey(scope, name));
     const res = await putBoard({
-      project: folder.slug,
-      board: mod[2].slug,
+      project: folder.id,
+      board: mod[2].id,
       name: mod[1],
       columns: nextCols,
       rename: { from: name, to: target },
     });
-    onApplyWorkspace(res, keepNav(folder.slug, mod[2].slug));
+    onApplyWorkspace(res, keepNav(folder.id, mod[2].id));
   };
 
   const moveBoardColumn = async (nextCols) => {
     const res = await putBoard({
-      project: folder.slug,
-      board: mod[2].slug,
+      project: folder.id,
+      board: mod[2].id,
       name: mod[1],
       columns: nextCols,
     });
-    onApplyWorkspace(res, keepNav(folder.slug, mod[2].slug));
+    onApplyWorkspace(res, keepNav(folder.id, mod[2].id));
   };
 
   const boardRef = useRef(null);
@@ -1029,7 +1029,7 @@ function ProjectBoard({
         const key = colCollapseKey(scope, s);
         const collapsed = !boardEdit && colCollapsed.has(key);
         const openItems = split.open.map((r) => ({
-          key: r.slug || r.n,
+          key: r.id || r.n,
           dragKey: cardDragKey(r, folder, mod),
           row: r,
         }));
@@ -1172,7 +1172,7 @@ function MasterBoard({
       const loc = payload.folder
         ? { folder: payload.folder, mod: payload.mod }
         : locateRow(row);
-      if (!row?.slug || !loc) return;
+      if (!row?.id || !loc) return;
 
       if (hint.done) {
         if (isDone(row)) return;
@@ -1367,7 +1367,7 @@ function MasterBoard({
           const key = colCollapseKey("master", s);
           const collapsed = !boardEdit && colCollapsed.has(key);
           const openItems = open.map((t) => ({
-            key: (t.folder.slug || "") + "/" + (t.row.slug || t.row.n),
+            key: (t.folder.id || "") + "/" + (t.row.id || t.row.n),
             dragKey: cardDragKey(t.row, t.folder, t.mod),
             task: t,
           }));
@@ -1590,8 +1590,8 @@ function DbColHeader({
 async function persistDbColumns(folder, mod, cols) {
   const columns = cols.map(serializeDbCol).filter(Boolean);
   await putDatabase({
-    project: folder.slug,
-    database: mod[2].slug,
+    project: folder.id,
+    database: mod[2].id,
     name: mod[1],
     columns,
     customViews: normalizeCustomViews(mod[2].customViews),
@@ -1601,8 +1601,8 @@ async function persistDbColumns(folder, mod, cols) {
 
 async function persistDbCustomViews(folder, mod) {
   await putDatabase({
-    project: folder.slug,
-    database: mod[2].slug,
+    project: folder.id,
+    database: mod[2].id,
     name: mod[1],
     columns: (mod[2].cols || []).map(serializeDbCol).filter(Boolean),
     customViews: normalizeCustomViews(mod[2].customViews),
@@ -1616,9 +1616,9 @@ async function persistDbRow(folder, mod, row, cols) {
     fields[c.id] = row[c.id] != null ? row[c.id] : emptyFieldValue(c);
   });
   await putItem({
-    project: folder.slug,
-    database: mod[2].slug,
-    slug: row.slug,
+    project: folder.id,
+    database: mod[2].id,
+    id: row.id,
     fields,
     body: row.body || "",
   });
@@ -1739,7 +1739,7 @@ function DbTable({
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.slug}>
+            <tr key={r.id}>
               <td className="db-enlarge-col">
                 <button
                   type="button"
@@ -1774,13 +1774,13 @@ function DbTable({
                   fields[c.id] = emptyFieldValue(c, stages);
                 });
                 const data = await postItem({
-                  project: folder.slug,
-                  database: mod[2].slug,
+                  project: folder.id,
+                  database: mod[2].id,
                   fields,
                 });
                 onApplyWorkspace(data, {
-                  project: folder.slug,
-                  board: mod[2].slug,
+                  project: folder.id,
+                  board: mod[2].id,
                 });
               }}
             >
@@ -1811,7 +1811,7 @@ function DbGallery({ d, onOpen, displayRows }) {
   return (
     <div className="gallery">
       {rows.map((r) => (
-        <div className="gcard" key={r.slug} onClick={() => onOpen(r)}>
+        <div className="gcard" key={r.id} onClick={() => onOpen(r)}>
           <div className="cover">{(r.n || "?")[0].toUpperCase()}</div>
           <b>{r.n || "Untitled"}</b>
           <span>{r.r || ""}</span>
@@ -2051,17 +2051,17 @@ export function DatabaseView({
       fields[c.id] = emptyFieldValue(c, stages);
     });
     const data = await postItem({
-      project: folder.slug,
-      database: mod[2].slug,
+      project: folder.id,
+      database: mod[2].id,
       fields,
     });
     const next = onApplyWorkspace(data, {
-      project: folder.slug,
-      board: mod[2].slug,
+      project: folder.id,
+      board: mod[2].id,
     });
-    const nextFolder = next.find((f) => f.slug === folder.slug);
-    const nextMod = nextFolder?.mods?.find((m) => m[2]?.slug === mod[2].slug);
-    const row = nextMod?.[2]?.rows?.find((r) => r.slug === data.slug);
+    const nextFolder = next.find((f) => f.id === folder.id);
+    const nextMod = nextFolder?.mods?.find((m) => m[2]?.id === mod[2].id);
+    const row = nextMod?.[2]?.rows?.find((r) => r.id === data.id);
     if (row && nextFolder && nextMod) {
       onOpenCard(row, { folder: nextFolder, mod: nextMod });
     }

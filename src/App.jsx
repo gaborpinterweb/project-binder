@@ -51,12 +51,13 @@ import {
   isStoptimerAtMax,
   stoptimerMaxSec,
   locateRow,
-  findCardBySlugs,
+  findCardByIds,
   liveCardTitle,
   modToTabType,
   tabsOrderPayload,
   isProjectArchived,
-  slugifyClient,
+  newId,
+  COVER_TAB_ID,
   loadCountdownDurationMin,
   saveCountdownDurationMin,
   loadStoptimerMaxMin,
@@ -118,7 +119,7 @@ export default function App() {
   const [cardDraft, setCardDraft] = useState({
     n: "",
     body: "",
-    slug: "",
+    id: "",
     files: [],
     s: "",
     ms: "",
@@ -187,7 +188,7 @@ export default function App() {
   const rememberCurrentTab = useCallback((foldersArg, pArg, mArg) => {
     const pr = (foldersArg || foldersRef.current)[pArg ?? pRef.current];
     const mod = pr?.mods?.[mArg ?? mRef.current];
-    if (pr && mod?.[2]?.slug) saveLastTab(pr.slug, mod[2].slug);
+    if (pr && mod?.[2]?.id) saveLastTab(pr.id, mod[2].id);
   }, []);
 
   // Apply API workspace payload into folders/stages. Navigation opts (mutually used):
@@ -217,7 +218,7 @@ export default function App() {
           nextG = "Masterboard";
         }
         if (sess?.project) {
-          const pi = next.findIndex((f) => f.slug === sess.project);
+          const pi = next.findIndex((f) => f.id === sess.project);
           nextP = pi >= 0 ? pi : 0;
         }
         nextM = restoreTabIndex(next[nextP]);
@@ -230,14 +231,14 @@ export default function App() {
       } else if (opts.project != null) {
         let nextP = Math.max(
           0,
-          next.findIndex((f) => f.slug === opts.project)
+          next.findIndex((f) => f.id === opts.project)
         );
         if (nextP < 0) nextP = 0;
         let nextM = 0;
         if (opts.board != null) {
           nextM = Math.max(
             0,
-            (next[nextP]?.mods || []).findIndex((mod) => mod[2]?.slug === opts.board)
+            (next[nextP]?.mods || []).findIndex((mod) => mod[2]?.id === opts.board)
           );
           if (nextM < 0) nextM = 0;
         }
@@ -251,14 +252,14 @@ export default function App() {
         }
       } else if (opts.keepNav) {
         // If keepNav.g is omitted, preserve current global view; pass g: null to clear it.
-        const keepP = opts.keepNav.project ?? foldersRef.current[pRef.current]?.slug;
+        const keepP = opts.keepNav.project ?? foldersRef.current[pRef.current]?.id;
         const keepM = opts.keepNav.board;
         const keepG = opts.keepNav.g !== undefined ? opts.keepNav.g : gRef.current;
-        let nextP = Math.max(0, next.findIndex((f) => f.slug === keepP));
+        let nextP = Math.max(0, next.findIndex((f) => f.id === keepP));
         if (nextP < 0) nextP = 0;
         let nextM = Math.max(
           0,
-          (next[nextP]?.mods || []).findIndex((mod) => mod[2]?.slug === keepM)
+          (next[nextP]?.mods || []).findIndex((mod) => mod[2]?.id === keepM)
         );
         if (nextM < 0) nextM = 0;
         setP(nextP);
@@ -290,8 +291,8 @@ export default function App() {
     } else {
       applyWorkspace(data, {
         keepNav: {
-          project: foldersRef.current[pRef.current]?.slug,
-          board: foldersRef.current[pRef.current]?.mods[mRef.current]?.[2]?.slug,
+          project: foldersRef.current[pRef.current]?.id,
+          board: foldersRef.current[pRef.current]?.mods[mRef.current]?.[2]?.id,
           g: gRef.current,
         },
       });
@@ -447,7 +448,7 @@ export default function App() {
         durationSec,
       });
       const entry = data?.entry;
-      if (entry?.slug) {
+      if (entry?.id) {
         showSnackbar({
           message: stoptimerDone
             ? `${title} · ${formatDuration(durationSec)} (max reached)`
@@ -539,7 +540,7 @@ export default function App() {
   }
 
   function editTimelog(entry) {
-    if (!entry?.slug) return;
+    if (!entry?.id) return;
     return new Promise((resolve) => {
       timelogDialogDoneRef.current = resolve;
       setTimelogDialog({ mode: "edit", entry });
@@ -557,9 +558,9 @@ export default function App() {
       if (isProjectArchived(folder)) return;
       const title = row.n || "Untitled";
       const data = await putCard({
-        project: folder.slug,
-        board: mod[2].slug,
-        slug: row.slug,
+        project: folder.id,
+        board: mod[2].id,
+        id: row.id,
         title,
         status: row.s || (mod[2].columns || stagesRef.current)[0] || stagesRef.current[0],
         master: row.ms || stagesRef.current[0],
@@ -569,13 +570,13 @@ export default function App() {
         ord: row.ord,
         ...(Array.isArray(row.files) ? { files: row.files } : {}),
       });
-      applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
+      applyWorkspace(data, keepNav(folder.id, mod[2].id));
       const cur = activePomoRef.current;
       if (
         cur &&
-        cur.project === folder.slug &&
-        cur.board === mod[2].slug &&
-        cur.card === row.slug &&
+        cur.project === folder.id &&
+        cur.board === mod[2].id &&
+        cur.card === row.id &&
         cur.title !== title
       ) {
         const next = { ...cur, title };
@@ -586,9 +587,9 @@ export default function App() {
       setTimelogFilter((prev) => {
         if (
           !prev ||
-          prev.project !== folder.slug ||
-          prev.board !== mod[2].slug ||
-          prev.card !== row.slug ||
+          prev.project !== folder.id ||
+          prev.board !== mod[2].id ||
+          prev.card !== row.id ||
           prev.title === title
         ) {
           return prev;
@@ -601,14 +602,14 @@ export default function App() {
   );
 
   const deleteCard = useCallback(
-    async (folder, mod, slug) => {
-      if (!folder || !mod || mod[0] !== "Board" || !slug) return;
+    async (folder, mod, id) => {
+      if (!folder || !mod || mod[0] !== "Board" || !id) return;
       const data = await deleteCardApi({
-        project: folder.slug,
-        board: mod[2].slug,
-        slug,
+        project: folder.id,
+        board: mod[2].id,
+        id,
       });
-      applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
+      applyWorkspace(data, keepNav(folder.id, mod[2].id));
       setTrashRefresh((n) => n + 1);
       return data;
     },
@@ -619,7 +620,7 @@ export default function App() {
     async (row, from, to) => {
       if (!from || !to || from.mod[0] !== "Board" || to.mod[0] !== "Board") return;
       const same =
-        from.folder.slug === to.folder.slug && from.mod[2].slug === to.mod[2].slug;
+        from.folder.id === to.folder.id && from.mod[2].id === to.mod[2].id;
       if (same) {
         await saveCard(row, to.folder, to.mod);
         return;
@@ -627,39 +628,34 @@ export default function App() {
       const cols = to.mod[2].columns || stagesRef.current;
       if (!cols.includes(row.s)) row.s = cols[0] || stagesRef.current[0];
       if (!stagesRef.current.includes(row.ms)) row.ms = stagesRef.current[0];
-      const oldSlug = row.slug;
-      let slug = oldSlug || slugifyClient(row.n || "Untitled");
-      const taken = new Set((to.mod[2].rows || []).map((r) => r.slug));
-      if (taken.has(slug)) {
-        let i = 2;
-        const base = slugifyClient(row.n || "Untitled");
-        while (taken.has(base + "-" + i)) i++;
-        slug = base + "-" + i;
-      }
-      row.slug = slug;
+      const oldId = row.id;
+      let id = oldId || newId();
+      const taken = new Set((to.mod[2].rows || []).map((r) => r.id));
+      if (taken.has(id)) id = newId();
+      row.id = id;
       from.mod[2].rows = (from.mod[2].rows || []).filter((r) => r !== row);
       if (!to.mod[2].rows) to.mod[2].rows = [];
       if (!to.mod[2].rows.includes(row)) to.mod[2].rows.push(row);
       if (
-        from.folder.slug !== to.folder.slug &&
+        from.folder.id !== to.folder.id &&
         Array.isArray(row.files) &&
         row.files.length
       ) {
         await moveCardFilesApi({
-          fromProject: from.folder.slug,
-          toProject: to.folder.slug,
+          fromProject: from.folder.id,
+          toProject: to.folder.id,
           files: row.files,
         });
       }
       await saveCard(row, to.folder, to.mod);
       const data = await deleteCardApi({
-        project: from.folder.slug,
-        board: from.mod[2].slug,
-        slug: oldSlug,
+        project: from.folder.id,
+        board: from.mod[2].id,
+        id: oldId,
         permanent: true,
         keepFiles: true,
       });
-      applyWorkspace(data, keepNav(to.folder.slug, to.mod[2].slug));
+      applyWorkspace(data, keepNav(to.folder.id, to.mod[2].id));
     },
     [saveCard, applyWorkspace, keepNav]
   );
@@ -668,7 +664,7 @@ export default function App() {
     async (
       folder,
       mod,
-      { title, status, master, body, doneAt, priority, slug, files } = {}
+      { title, status, master, body, doneAt, priority, id, files } = {}
     ) => {
       if (isProjectArchived(folder)) return;
       const boardCol = status || (mod[2].columns || stagesRef.current)[0];
@@ -678,19 +674,19 @@ export default function App() {
           : stagesRef.current[0];
       const name = (title || "").trim() || "Untitled";
       const data = await postCard({
-        project: folder.slug,
-        board: mod[2].slug,
+        project: folder.id,
+        board: mod[2].id,
         title: name,
         status: boardCol,
         master: masterCol,
         body: body || "",
         doneAt: doneAt || "",
         priority: !!priority,
-        ...(slug ? { slug } : {}),
+        ...(id ? { id } : {}),
         ...(Array.isArray(files) ? { files } : {}),
       });
-      applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
-      return data.slug;
+      applyWorkspace(data, keepNav(folder.id, mod[2].id));
+      return data.id;
     },
     [applyWorkspace, keepNav]
   );
@@ -714,7 +710,7 @@ export default function App() {
       const cols = mod[2].columns || stagesRef.current;
       const cd = cardDraft;
       const sameLoc =
-        cd.project === folder.slug && cd.board === mod[2].slug && cd.slug;
+        cd.project === folder.id && cd.board === mod[2].id && cd.id;
       const row = {
         n: cd.n || "",
         body: cd.body || "",
@@ -724,7 +720,7 @@ export default function App() {
           (stagesRef.current.includes(cd.ms) ? cd.ms : stagesRef.current[0]),
         doneAt: cd.doneAt || "",
         priority: !!cd.priority,
-        slug: sameLoc ? cd.slug : `c-${Date.now().toString(36)}`,
+        id: sameLoc ? cd.id : newId(),
         files: sameLoc && Array.isArray(cd.files) ? cd.files : [],
       };
       openItem(row, { draft: true, folder, mod });
@@ -800,7 +796,7 @@ export default function App() {
     }
     setDraftProject(null);
     const next = applyWorkspace(data);
-    const pi = Math.max(0, next.findIndex((f) => f.slug === data.slug));
+    const pi = Math.max(0, next.findIndex((f) => f.id === data.id));
     setP(pi);
     setM(0);
     setG(null);
@@ -809,18 +805,18 @@ export default function App() {
 
   const setProjectArchived = async (folder, archived) => {
     if (!folder) return;
-    const data = await putProject({ project: folder.slug, archived: !!archived });
+    const data = await putProject({ project: folder.id, archived: !!archived });
     discardCoverEdit();
     setBoardEdit(false);
-    applyWorkspace(data, { project: folder.slug, board: null, g: null });
+    applyWorkspace(data, { project: folder.id, board: null, g: null });
     setG(null);
   };
 
   const onReorderProjects = useCallback(
-    (fromSlug, toIndex) => {
+    (fromId, toIndex) => {
       const current = foldersRef.current;
       const active = current.filter((f) => !isProjectArchived(f));
-      const from = active.findIndex((f) => f.slug === fromSlug);
+      const from = active.findIndex((f) => f.id === fromId);
       if (from < 0 || toIndex == null) return;
       const without = active.slice();
       const [moved] = without.splice(from, 1);
@@ -832,19 +828,19 @@ export default function App() {
       const next = current.map((f) =>
         isProjectArchived(f) ? f : without[ai++]
       );
-      const keepSlug = current[pRef.current]?.slug;
-      const keepBoard = current[pRef.current]?.mods?.[mRef.current]?.[2]?.slug;
+      const keepId = current[pRef.current]?.id;
+      const keepBoard = current[pRef.current]?.mods?.[mRef.current]?.[2]?.id;
       foldersRef.current = next;
       setFolders(next);
-      if (keepSlug) {
-        const ni = next.findIndex((f) => f.slug === keepSlug);
+      if (keepId) {
+        const ni = next.findIndex((f) => f.id === keepId);
         if (ni >= 0) {
           setP(ni);
           pRef.current = ni;
         }
       }
-      putProjectOrder({ order: next.map((f) => f.slug) }).then((data) => {
-        applyWorkspace(data, keepNav(keepSlug, keepBoard));
+      putProjectOrder({ order: next.map((f) => f.id) }).then((data) => {
+        applyWorkspace(data, keepNav(keepId, keepBoard));
       });
     },
     [applyWorkspace, keepNav]
@@ -852,7 +848,7 @@ export default function App() {
 
   const deleteProjectToTrash = async (folder) => {
     if (!folder) return;
-    const data = await deleteProjectApi({ project: folder.slug });
+    const data = await deleteProjectApi({ project: folder.id });
     // Delete is only offered while cover-editing; clear draft so the sidebar
     // doesn't keep painting the deleted name/color onto the next project.
     discardCoverEdit();
@@ -922,13 +918,13 @@ export default function App() {
         ? String(patch.description)
         : (mod[2].values && mod[2].values.description) || "";
     const data = await putProject({
-      project: folder.slug,
+      project: folder.id,
       name: patch && patch.name != null ? patch.name : folder.name,
       color: patch && patch.color != null ? patch.color : folder.color,
       cover: { values: { description } },
     });
     discardCoverEdit();
-    applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
+    applyWorkspace(data, keepNav(folder.id, mod[2].id));
   };
 
   const onAddTab = async (t, title) => {
@@ -938,17 +934,17 @@ export default function App() {
     const name = nextTabName(folder.mods, title);
     let data;
     if (t === "Board") {
-      data = await postBoard({ project: folder.slug, name });
+      data = await postBoard({ project: folder.id, name });
     } else if (t === "Notes") {
-      data = await postNotesTab({ project: folder.slug, name });
+      data = await postNotesTab({ project: folder.id, name });
     } else if (t === "Files") {
-      data = await postFilesTab({ project: folder.slug, name });
+      data = await postFilesTab({ project: folder.id, name });
     } else {
-      data = await postDatabase({ project: folder.slug, name });
+      data = await postDatabase({ project: folder.id, name });
     }
-    const next = applyWorkspace(data, { project: folder.slug, board: data.slug });
-    const pi = next.findIndex((f) => f.slug === folder.slug);
-    const mi = next[pi]?.mods.findIndex((mod) => mod[2]?.slug === data.slug);
+    const next = applyWorkspace(data, { project: folder.id, board: data.id });
+    const pi = next.findIndex((f) => f.id === folder.id);
+    const mi = next[pi]?.mods.findIndex((mod) => mod[2]?.id === data.id);
     setM(mi >= 0 ? mi : (next[pi]?.mods.length || 1) - 1);
     rememberCurrentTab(next, pi, mi);
   };
@@ -972,10 +968,10 @@ export default function App() {
       mRef.current = j;
       rememberCurrentTab(nextFolders, pRef.current, j);
       putTabOrder({
-        project: folder.slug,
+        project: folder.id,
         order: tabsOrderPayload(nextMods),
       }).then((data) => {
-        applyWorkspace(data, keepNav(folder.slug, nextMods[j][2]?.slug));
+        applyWorkspace(data, keepNav(folder.id, nextMods[j][2]?.id));
       });
     },
     [applyWorkspace, keepNav, rememberCurrentTab]
@@ -997,12 +993,12 @@ export default function App() {
       const name = next.trim();
       if (!name || name === mod[1]) return;
       const data = await putTab({
-        project: folder.slug,
+        project: folder.id,
         type,
-        slug: mod[2].slug,
+        id: mod[2].id,
         name,
       });
-      applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
+      applyWorkspace(data, keepNav(folder.id, mod[2].id));
     },
     [applyWorkspace, keepNav]
   );
@@ -1039,12 +1035,12 @@ export default function App() {
       });
       if (!ok) return;
       const data = await deleteTabApi({
-        project: folder.slug,
+        project: folder.id,
         type,
-        slug: mod[2].slug,
+        id: mod[2].id,
       });
-      const fallbackSlug = folder.mods[Math.max(0, index - 1)]?.[2]?.slug || "cover";
-      applyWorkspace(data, keepNav(folder.slug, fallbackSlug));
+      const fallbackId = folder.mods[Math.max(0, index - 1)]?.[2]?.id || COVER_TAB_ID;
+      applyWorkspace(data, keepNav(folder.id, fallbackId));
       setBoardEdit(false);
       discardCoverEdit();
       setTrashRefresh((n) => n + 1);
@@ -1096,7 +1092,7 @@ export default function App() {
         onPomoNoteChange={updatePomoNote}
         onOpenPomoCard={() => {
           if (!activePomo) return;
-          const hit = findCardBySlugs(
+          const hit = findCardByIds(
             folders,
             activePomo.project,
             activePomo.board,
@@ -1230,7 +1226,7 @@ export default function App() {
               timelogFilter={timelogFilter}
               onClearFilter={() => setTimelogFilter(null)}
               onOpenCard={(project, board, card) => {
-                const hit = findCardBySlugs(folders, project, board, card);
+                const hit = findCardByIds(folders, project, board, card);
                 if (hit) openItem(hit.row);
               }}
               refreshKey={timelogRefresh}
@@ -1255,13 +1251,13 @@ export default function App() {
                     s: entry.status || "",
                     ms: entry.master || "",
                     body: entry.body || "",
-                    slug: entry.card || entry.slug,
+                    id: entry.card || entry.id,
                     doneAt: entry.doneAt || "",
                     priority: !!entry.priority,
                   },
                   loc: {
                     folder: {
-                      slug: entry.project,
+                      id: entry.project,
                       name: entry.projectName || entry.project,
                       color: entry.color || GACC,
                     },
@@ -1269,7 +1265,7 @@ export default function App() {
                       "Board",
                       entry.boardName || entry.board || "Board",
                       {
-                        slug: entry.board,
+                        id: entry.board,
                         columns: entry.status ? [entry.status] : stages.slice(),
                       },
                     ],
@@ -1277,7 +1273,7 @@ export default function App() {
                 });
               }}
               onRestore={async (entry) => {
-                let data = await restoreTrashApi({ slug: entry.slug });
+                let data = await restoreTrashApi({ id: entry.id });
                 if (data.needsParent) {
                   const parentLabel =
                     data.parentKind === "project"
@@ -1294,7 +1290,7 @@ export default function App() {
                   });
                   if (!ok) return;
                   data = await restoreTrashApi({
-                    slug: entry.slug,
+                    id: entry.id,
                     restoreParent: true,
                   });
                   if (data.needsParent || data.error) {
@@ -1523,7 +1519,7 @@ export default function App() {
               setCardDraft({
                 n: result.draftRemember.n || "",
                 body: result.draftRemember.body || "",
-                slug: result.draftRemember.slug || "",
+                id: result.draftRemember.id || "",
                 files: Array.isArray(result.draftRemember.files)
                   ? result.draftRemember.files
                   : [],
@@ -1531,8 +1527,8 @@ export default function App() {
                 ms: result.draftRemember.ms || "",
                 doneAt: result.draftRemember.doneAt || "",
                 priority: !!result.draftRemember.priority,
-                project: result.loc?.folder?.slug || "",
-                board: result.loc?.mod?.[2]?.slug || "",
+                project: result.loc?.folder?.id || "",
+                board: result.loc?.mod?.[2]?.id || "",
               });
             }
             setDialog(null);
@@ -1547,12 +1543,12 @@ export default function App() {
               body: r.body || "",
               doneAt: r.doneAt || "",
               priority: !!r.priority,
-              slug: r.slug || "",
+              id: r.id || "",
             });
             setCardDraft({
               n: "",
               body: "",
-              slug: "",
+              id: "",
               files: [],
               s: "",
               ms: "",
@@ -1564,10 +1560,10 @@ export default function App() {
           }}
           onDelete={dialog.readonly ? undefined : deleteCard}
           onDuplicate={async (r, curLoc) => {
-            const projectSlug = curLoc.folder.slug;
-            const boardSlug = curLoc.mod[2].slug;
+            const projectId = curLoc.folder.id;
+            const boardId = curLoc.mod[2].id;
             const base = (r.n || "").trim() || "Untitled";
-            const slug = await createCard(curLoc.folder, curLoc.mod, {
+            const id = await createCard(curLoc.folder, curLoc.mod, {
               title: "Duplicate of " + base,
               status: r.s,
               master: r.ms,
@@ -1576,7 +1572,7 @@ export default function App() {
               priority: !!r.priority,
             });
             setDialog(null);
-            const hit = findCardBySlugs(foldersRef.current, projectSlug, boardSlug, slug);
+            const hit = findCardByIds(foldersRef.current, projectId, boardId, id);
             if (hit) openItem(hit.row);
           }}
           onStartPomo={startPomodoro}
@@ -1592,9 +1588,9 @@ export default function App() {
               fields[c.id] = r[c.id] != null ? r[c.id] : "";
             });
             await putItem({
-              project: folder.slug,
-              database: mod[2].slug,
-              slug: r.slug,
+              project: folder.id,
+              database: mod[2].id,
+              id: r.id,
               fields,
               body: r.body || "",
             });

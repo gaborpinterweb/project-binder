@@ -58,7 +58,7 @@ function ProjectDragPreview({ preview, previewElRef }) {
 }
 
 function useProjectDrag(listRef, onReorder) {
-  const [dragSlug, setDragSlug] = useState(null);
+  const [dragId, setDragId] = useState(null);
   const [dragHeight, setDragHeight] = useState(null);
   const [dragPreview, setDragPreview] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
@@ -88,7 +88,7 @@ function useProjectDrag(listRef, onReorder) {
       window.removeEventListener("pointercancel", session.onUp);
     }
     sessionRef.current = null;
-    setDragSlug(null);
+    setDragId(null);
     setDragHeight(null);
     setDragPreview(null);
     setDrop(null);
@@ -98,14 +98,14 @@ function useProjectDrag(listRef, onReorder) {
   useEffect(() => () => cleanup(), [cleanup]);
 
   const armDrag = useCallback(
-    (e, { slug, label, color }) => {
+    (e, { id, label, color }) => {
       if (e.button !== 0) return;
       if (sessionRef.current) cleanup();
 
       movedRef.current = false;
       const rect = e.currentTarget.getBoundingClientRect();
       const session = {
-        slug,
+        id,
         label,
         color,
         x: e.clientX,
@@ -125,7 +125,7 @@ function useProjectDrag(listRef, onReorder) {
           if (dist < DRAG_THRESHOLD_PX) return;
           session.started = true;
           movedRef.current = true;
-          setDragSlug(session.slug);
+          setDragId(session.id);
           setDragHeight(session.height);
           setDragPreview({
             width: session.width,
@@ -147,9 +147,9 @@ function useProjectDrag(listRef, onReorder) {
         if (ev.pointerId !== session.pointerId) return;
         const started = session.started;
         const toIndex = dropRef.current;
-        const fromSlug = session.slug;
+        const fromId = session.id;
         cleanup();
-        if (started && toIndex != null) onReorderRef.current?.(fromSlug, toIndex);
+        if (started && toIndex != null) onReorderRef.current?.(fromId, toIndex);
       };
 
       sessionRef.current = session;
@@ -167,7 +167,7 @@ function useProjectDrag(listRef, onReorder) {
   }, []);
 
   return {
-    dragSlug,
+    dragId,
     dragHeight,
     dragPreview,
     previewElRef,
@@ -202,7 +202,7 @@ export default function Sidebar({
   const globals = workspaceItems || [];
 
   const {
-    dragSlug,
+    dragId,
     dragHeight,
     dragPreview,
     previewElRef,
@@ -211,8 +211,8 @@ export default function Sidebar({
     consumeDragClick,
   } = useProjectDrag(foldersRef, onReorderProjects);
 
-  const visible = dragSlug
-    ? active.filter(({ pr }) => pr.slug !== dragSlug)
+  const visible = dragId
+    ? active.filter(({ pr }) => pr.id !== dragId)
     : active;
 
   return (
@@ -297,15 +297,15 @@ export default function Sidebar({
               : pr.color || PC[i % PC.length];
             const label = editingHere ? coverDraft.name || pr.name : pr.name;
             return (
-              <Fragment key={pr.slug}>
-                {dragSlug && dropIndex === vi ? (
+              <Fragment key={pr.id}>
+                {dragId && dropIndex === vi ? (
                   <SideDropShadow height={dragHeight} />
                 ) : null}
                 <button
                   type="button"
                   className={"bm" + (i === p && !g && !draftProject ? " on" : "")}
                   onPointerDown={(e) =>
-                    armDrag(e, { slug: pr.slug, label, color: icColor })
+                    armDrag(e, { id: pr.id, label, color: icColor })
                   }
                   onClick={() => {
                     if (consumeDragClick()) return;
@@ -320,7 +320,7 @@ export default function Sidebar({
               </Fragment>
             );
           })}
-          {dragSlug && dropIndex === visible.length ? (
+          {dragId && dropIndex === visible.length ? (
             <SideDropShadow height={dragHeight} />
           ) : null}
         </div>

@@ -80,7 +80,7 @@ export function TrashNotePreview({ entry, onClose }) {
 
 export default function Trash({ tabC = GACC, refreshKey, onRestore, onPreview }) {
   const [items, setItems] = useState(null);
-  const [busySlug, setBusySlug] = useState(null);
+  const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,14 +98,14 @@ export default function Trash({ tabC = GACC, refreshKey, onRestore, onPreview })
   }, [refreshKey]);
 
   const handleRestore = async (entry) => {
-    if (!onRestore || busySlug) return;
-    setBusySlug(entry.slug);
+    if (!onRestore || busyId) return;
+    setBusyId(entry.id);
     try {
       await onRestore(entry);
     } catch (err) {
       alert(err?.message || "Could not restore item.");
     } finally {
-      setBusySlug(null);
+      setBusyId(null);
     }
   };
 
@@ -125,7 +125,7 @@ export default function Trash({ tabC = GACC, refreshKey, onRestore, onPreview })
             const kind = entry.kind || "card";
             const previewable = canPreview(entry);
             return (
-              <div className="entry trash-entry" key={entry.slug}>
+              <div className="entry trash-entry" key={entry.id}>
                 <time dateTime={entry.deletedAt || ""}>
                   {formatTrashDate(entry.deletedAt)}
                 </time>
@@ -168,11 +168,11 @@ export default function Trash({ tabC = GACC, refreshKey, onRestore, onPreview })
                 <button
                   type="button"
                   className="trash-restore"
-                  disabled={busySlug === entry.slug}
+                  disabled={busyId === entry.id}
                   onClick={() => handleRestore(entry)}
                   title={`Restore ${trashKindLabel(kind).toLowerCase()}`}
                 >
-                  {busySlug === entry.slug ? "Restoring…" : "Restore"}
+                  {busyId === entry.id ? "Restoring…" : "Restore"}
                 </button>
               </div>
             );

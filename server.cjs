@@ -236,12 +236,8 @@ function normalizeDbColumns(columns) {
 /** @type {object|null} */
 let store = null;
 
-function slugify(s) {
-  return String(s || "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "item";
+function newId() {
+  return crypto.randomUUID();
 }
 
 function isDemoValue(v) {
@@ -283,6 +279,21 @@ function saveStore() {
   userData.writeWorkspaceFile(store);
 }
 
+/** Legacy slug workspace must not be overwritten by seed — migrate first (see docs/migrate-slugs-to-uids.md). */
+function looksLikeLegacySlugWorkspace(filePath) {
+  if (!fs.existsSync(filePath)) return false;
+  try {
+    const doc = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!doc || typeof doc !== "object") return false;
+    if (Number(doc.version) >= 2) return false;
+    const projects = doc.projects;
+    if (!Array.isArray(projects) || !projects.length) return false;
+    return typeof projects[0].slug === "string" && !projects[0].id;
+  } catch {
+    return false;
+  }
+}
+
 function ensureStore() {
   if (userData.persistent) {
     const user = userData.readWorkspaceFile();
@@ -292,6 +303,13 @@ function ensureStore() {
       const purged = purgeExpiredTrash();
       if (purged) saveStore();
       return { reseeded: false, purged };
+    }
+    if (looksLikeLegacySlugWorkspace(USER_WORKSPACE)) {
+      console.error(
+        `Refusing to replace legacy slug workspace at ${USER_WORKSPACE}.\n` +
+          "Migrate to UUID ids first — see docs/migrate-slugs-to-uids.md"
+      );
+      process.exit(1);
     }
     store = loadSeedWorkspace();
     ensureTrash();
@@ -322,7 +340,7 @@ function resetToSeedWorkspace() {
 
 function emptyWorkspaceDoc() {
   return {
-    version: 1,
+    version: 2,
     stages: DEFAULT_STAGES.slice(),
     projects: [],
     timelogs: [],
@@ -336,70 +354,73 @@ function resetToEmptyWorkspace() {
   saveStore();
 }
 
-function findProject(slug) {
-  return (store.projects || []).find((p) => p.slug === slug) || null;
+function findProject(id) {
+  return (store.projects || []).find((p) => p.id === id) || null;
 }
 
-function findBoard(project, boardSlug) {
+function findBoard(project, boardId) {
   if (!project) return null;
-  return (project.boards || []).find((b) => b.slug === boardSlug) || null;
+  return (project.boards || []).find((b) => b.id === boardId) || null;
 }
 
-function findDatabase(project, dbSlug) {
+function findDatabase(project, dbId) {
   if (!project) return null;
-  return (project.databases || []).find((d) => d.slug === dbSlug) || null;
+  return (project.databases || []).find((d) => d.id === dbId) || null;
 }
 
-function findNotesTab(project, tabSlug) {
+function findNotesTab(project, tabId) {
   if (!project) return null;
-  return (project.notesTabs || []).find((t) => t.slug === tabSlug) || null;
+  return (project.notesTabs || []).find((t) => t.id === tabId) || null;
 }
 
-function findFilesTab(project, tabSlug) {
+function findFilesTab(project, tabId) {
   if (!project) return null;
-  return (project.filesTabs || []).find((t) => t.slug === tabSlug) || null;
+  return (project.filesTabs || []).find((t) => t.id === tabId) || null;
 }
 
-function isSafePathSlug(s) {
-  return typeof s === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CARD_FILES_DIR = "__cardfiles__";
+
+function isSafePathId(s) {
+  return typeof s === "string" && (UUID_RE.test(s) || s === CARD_FILES_DIR);
 }
 
-function removeUploadTree(projectSlug, tabSlug) {
-  if (!isSafePathSlug(projectSlug) || !isSafePathSlug(tabSlug)) return;
-  userData.removeUploadTree(projectSlug, tabSlug);
+function removeUploadTree(projectId, tabId) {
+  if (!isSafePathId(projectId) || !isSafePathId(tabId)) return;
+  userData.removeUploadTree(projectId, tabId);
 }
 
-function tabKey(type, slug) {
-  return `${type}:${slug}`;
+function tabKey(type, id) {
+  return `${type}:${id}`;
 }
 
 function defaultTabOrderEntries(project) {
   return [
-    ...(project.boards || []).map((b) => ({ type: "board", slug: b.slug })),
-    ...(project.notesTabs || []).map((t) => ({ type: "notes", slug: t.slug })),
-    ...(project.filesTabs || []).map((t) => ({ type: "files", slug: t.slug })),
-    ...(project.databases || []).map((d) => ({ type: "database", slug: d.slug })),
+    ...(project.boards || []).map((b) => ({ type: "board", id: b.id })),
+    ...(project.notesTabs || []).map((t) => ({ type: "notes", id: t.id })),
+    ...(project.filesTabs || []).map((t) => ({ type: "files", id: t.id })),
+    ...(project.databases || []).map((d) => ({ type: "database", id: d.id })),
   ];
 }
 
 function normalizeTabOrder(project) {
   const valid = new Map();
   for (const e of defaultTabOrderEntries(project)) {
-    valid.set(tabKey(e.type, e.slug), e);
+    valid.set(tabKey(e.type, e.id), e);
   }
   const next = [];
   const seen = new Set();
   for (const raw of project.tabOrder || []) {
-    if (!raw || !raw.type || !raw.slug) continue;
+    if (!raw || !raw.type || !raw.id) continue;
     const type = String(raw.type);
-    const slug = String(raw.slug);
-    const key = tabKey(type, slug);
+    const id = String(raw.id);
+    const key = tabKey(type, id);
     if (!valid.has(key) || seen.has(key)) continue;
-    next.push({ type, slug });
+    next.push({ type, id });
     seen.add(key);
   }
   for (const e of defaultTabOrderEntries(project)) {
-    const key = tabKey(e.type, e.slug);
+    const key = tabKey(e.type, e.id);
     if (seen.has(key)) continue;
     next.push(e);
     seen.add(key);
@@ -408,44 +429,44 @@ function normalizeTabOrder(project) {
   return next;
 }
 
-function appendTabOrder(project, type, slug) {
+function appendTabOrder(project, type, id) {
   normalizeTabOrder(project);
-  const key = tabKey(type, slug);
-  if (project.tabOrder.some((e) => tabKey(e.type, e.slug) === key)) return;
-  project.tabOrder.push({ type, slug });
+  const key = tabKey(type, id);
+  if (project.tabOrder.some((e) => tabKey(e.type, e.id) === key)) return;
+  project.tabOrder.push({ type, id });
 }
 
-function removeTabOrder(project, type, slug) {
+function removeTabOrder(project, type, id) {
   if (!project.tabOrder) return;
-  const key = tabKey(type, slug);
-  project.tabOrder = project.tabOrder.filter((e) => tabKey(e.type, e.slug) !== key);
+  const key = tabKey(type, id);
+  project.tabOrder = project.tabOrder.filter((e) => tabKey(e.type, e.id) !== key);
 }
 
-function renameTab(projectSlug, type, slug, name) {
-  const project = findProject(projectSlug);
+function renameTab(projectId, type, id, name) {
+  const project = findProject(projectId);
   if (!project) return { ok: false, error: "project not found" };
   const title = String(name || "").trim();
   if (!title) return { ok: false, error: "missing fields" };
   if (type === "board") {
-    const board = findBoard(project, slug);
+    const board = findBoard(project, id);
     if (!board) return { ok: false, error: "tab not found" };
     board.name = title;
     return { ok: true };
   }
   if (type === "notes") {
-    const tab = findNotesTab(project, slug);
+    const tab = findNotesTab(project, id);
     if (!tab) return { ok: false, error: "tab not found" };
     tab.name = title;
     return { ok: true };
   }
   if (type === "database") {
-    const db = findDatabase(project, slug);
+    const db = findDatabase(project, id);
     if (!db) return { ok: false, error: "tab not found" };
     db.name = title;
     return { ok: true };
   }
   if (type === "files") {
-    const tab = findFilesTab(project, slug);
+    const tab = findFilesTab(project, id);
     if (!tab) return { ok: false, error: "tab not found" };
     tab.name = title;
     return { ok: true };
@@ -453,51 +474,51 @@ function renameTab(projectSlug, type, slug, name) {
   return { ok: false, error: "invalid type" };
 }
 
-function deleteTab(projectSlug, type, slug) {
-  if (type === "board") return softDeleteBoard(projectSlug, slug);
-  if (type === "notes") return softDeleteNotesTab(projectSlug, slug);
+function deleteTab(projectId, type, id) {
+  if (type === "board") return softDeleteBoard(projectId, id);
+  if (type === "notes") return softDeleteNotesTab(projectId, id);
   // databases / files stay hard-delete for now
-  const project = findProject(projectSlug);
+  const project = findProject(projectId);
   if (!project) return { ok: false, error: "project not found" };
   if (type === "database") {
-    const idx = (project.databases || []).findIndex((d) => d.slug === slug);
+    const idx = (project.databases || []).findIndex((d) => d.id === id);
     if (idx < 0) return { ok: false, error: "tab not found" };
     project.databases.splice(idx, 1);
-    removeTabOrder(project, type, slug);
+    removeTabOrder(project, type, id);
     return { ok: true };
   }
   if (type === "files") {
-    const idx = (project.filesTabs || []).findIndex((t) => t.slug === slug);
+    const idx = (project.filesTabs || []).findIndex((t) => t.id === id);
     if (idx < 0) return { ok: false, error: "tab not found" };
     project.filesTabs.splice(idx, 1);
-    removeTabOrder(project, type, slug);
-    removeUploadTree(projectSlug, slug);
+    removeTabOrder(project, type, id);
+    removeUploadTree(projectId, id);
     return { ok: true };
   }
   return { ok: false, error: "invalid type" };
 }
 
-function writeTabOrder(projectSlug, order) {
-  const project = findProject(projectSlug);
+function writeTabOrder(projectId, order) {
+  const project = findProject(projectId);
   if (!project) return { ok: false, error: "project not found" };
   if (!Array.isArray(order)) return { ok: false, error: "missing fields" };
   const valid = new Map();
   for (const e of defaultTabOrderEntries(project)) {
-    valid.set(tabKey(e.type, e.slug), e);
+    valid.set(tabKey(e.type, e.id), e);
   }
   const next = [];
   const seen = new Set();
   for (const raw of order) {
-    if (!raw || !raw.type || !raw.slug) continue;
+    if (!raw || !raw.type || !raw.id) continue;
     const type = String(raw.type);
-    const slug = String(raw.slug);
-    const key = tabKey(type, slug);
+    const id = String(raw.id);
+    const key = tabKey(type, id);
     if (!valid.has(key) || seen.has(key)) continue;
-    next.push({ type, slug });
+    next.push({ type, id });
     seen.add(key);
   }
   for (const e of defaultTabOrderEntries(project)) {
-    const key = tabKey(e.type, e.slug);
+    const key = tabKey(e.type, e.id);
     if (seen.has(key)) continue;
     next.push(e);
     seen.add(key);
@@ -508,25 +529,25 @@ function writeTabOrder(projectSlug, order) {
 
 function writeProjectOrder(order) {
   if (!Array.isArray(order)) return { ok: false, error: "missing fields" };
-  const bySlug = new Map((store.projects || []).map((p) => [p.slug, p]));
+  const byId = new Map((store.projects || []).map((p) => [p.id, p]));
   const next = [];
   const seen = new Set();
   for (const raw of order) {
-    const slug = String(raw || "");
-    if (!slug || !bySlug.has(slug) || seen.has(slug)) continue;
-    next.push(bySlug.get(slug));
-    seen.add(slug);
+    const id = String(raw || "");
+    if (!id || !byId.has(id) || seen.has(id)) continue;
+    next.push(byId.get(id));
+    seen.add(id);
   }
   for (const p of store.projects || []) {
-    if (seen.has(p.slug)) continue;
+    if (seen.has(p.id)) continue;
     next.push(p);
   }
   store.projects = next;
   return { ok: true };
 }
 
-function projectIsArchived(slug) {
-  const p = findProject(slug);
+function projectIsArchived(id) {
+  const p = findProject(id);
   return p ? isArchivedValue(p.archived) : false;
 }
 
@@ -545,19 +566,19 @@ function normalizeColumns(columns) {
 
 function projectToApi(p) {
   const out = {
-    slug: p.slug,
-    name: p.name || p.slug,
+    id: p.id,
+    name: p.name || p.id,
     color: p.color || "#3c3c40",
     cover: { values: { description: p.description || "" } },
     boards: (p.boards || []).map((b) => {
       const board = {
-        slug: b.slug,
-        name: b.name || b.slug,
+        id: b.id,
+        name: b.name || b.id,
         columns: Array.isArray(b.columns) && b.columns.length ? b.columns.slice() : DEFAULT_BOARD_COLS.slice(),
         cards: (b.cards || []).map((c) => {
           const card = {
-            slug: c.slug,
-            title: c.title || c.slug,
+            id: c.id,
+            title: c.title || c.id,
             status: c.status || (b.columns && b.columns[0]) || "Design",
             master: c.master || "Backlog",
             doneAt: c.doneAt || "",
@@ -579,41 +600,41 @@ function projectToApi(p) {
     databases: (p.databases || []).map((d) => {
       const customViews = normalizeCustomViews(d.customViews);
       return {
-        slug: d.slug,
-        name: d.name || d.slug,
+        id: d.id,
+        name: d.name || d.id,
         columns: normalizeDbColumns(d.columns),
         customViews,
         customViewId: resolveCustomViewId(d.customViewId, customViews),
         items: (d.items || []).map((item) => ({
-          slug: item.slug,
+          id: item.id,
           fields: { ...(item.fields || {}) },
           body: item.body || "",
         })),
       };
     }),
     notesTabs: (p.notesTabs || []).map((t) => ({
-      slug: t.slug,
-      name: t.name || t.slug,
+      id: t.id,
+      name: t.name || t.id,
       notes: (t.notes || []).map((n) => ({
-        slug: n.slug,
-        title: n.title || n.slug,
+        id: n.id,
+        title: n.title || n.id,
         body: n.body || "",
         createdAt: n.createdAt || n.updatedAt || "",
         updatedAt: n.updatedAt || "",
       })),
     })),
     filesTabs: (p.filesTabs || []).map((t) => ({
-      slug: t.slug,
-      name: t.name || t.slug,
+      id: t.id,
+      name: t.name || t.id,
       files: (t.files || []).map((f) => ({
-        slug: f.slug,
-        name: f.name || f.slug,
+        id: f.id,
+        name: f.name || f.id,
         mime: f.mime || "application/octet-stream",
         size: Number(f.size) || 0,
         createdAt: f.createdAt || "",
       })),
     })),
-    tabOrder: normalizeTabOrder(p).map((e) => ({ type: e.type, slug: e.slug })),
+    tabOrder: normalizeTabOrder(p).map((e) => ({ type: e.type, id: e.id })),
   };
   if (isDemoValue(p.isDemo)) out.isDemo = true;
   if (isArchivedValue(p.archived)) out.archived = true;
@@ -628,41 +649,24 @@ function readWorkspace() {
   return { stages, projects };
 }
 
-function uniqueProjectSlug(name) {
-  const base = slugify(name) || "project";
-  let slug = base;
-  let i = 2;
-  while (findProject(slug)) slug = base + "-" + i++;
-  return slug;
+function uniqueProjectId() {
+  return newId();
 }
 
-function uniqueCardSlug(board, title) {
-  const base = slugify(title) || "card";
-  let slug = base;
-  let i = 2;
-  const cards = board.cards || [];
-  while (cards.some((c) => c.slug === slug)) slug = base + "-" + i++;
-  return slug;
+function uniqueCardId() {
+  return newId();
 }
 
-function uniqueItemSlug(database, title) {
-  const base = slugify(title) || "item";
-  let slug = base;
-  let i = 2;
-  const items = database.items || [];
-  while (items.some((it) => it.slug === slug)) slug = base + "-" + i++;
-  return slug;
+function uniqueItemId() {
+  return newId();
 }
 
-function uniqueTimelogSlug(base) {
-  let slug = base;
-  let i = 2;
-  while ((store.timelogs || []).some((t) => t.slug === slug)) slug = base + "-" + i++;
-  return slug;
+function uniqueTimelogId() {
+  return newId();
 }
 
-function writeProject(projectSlug, patch) {
-  const p = findProject(projectSlug);
+function writeProject(projectId, patch) {
+  const p = findProject(projectId);
   if (!p) return false;
   if (patch.name != null) p.name = patch.name;
   if (patch.color != null) p.color = patch.color;
@@ -685,13 +689,13 @@ function writeProject(projectSlug, patch) {
 
 function createProject({ name, color, cover }) {
   const title = String(name || "").trim() || "Untitled";
-  const slug = uniqueProjectSlug(title);
+  const id = uniqueProjectId();
   const description =
     cover && cover.values && cover.values.description != null
       ? String(cover.values.description)
       : "";
   const project = {
-    slug,
+    id,
     name: title,
     color: color || "#3c3c40",
     description,
@@ -701,25 +705,25 @@ function createProject({ name, color, cover }) {
     filesTabs: [],
   };
   store.projects.push(project);
-  return slug;
+  return id;
 }
 
-function softDeleteProject(projectSlug) {
-  if (!projectSlug || projectSlug.includes("..") || projectSlug.includes("/") || projectSlug.includes("\\")) {
+function softDeleteProject(projectId) {
+  if (!projectId || projectId.includes("..") || projectId.includes("/") || projectId.includes("\\")) {
     return false;
   }
-  const idx = store.projects.findIndex((p) => p.slug === projectSlug);
+  const idx = store.projects.findIndex((p) => p.id === projectId);
   if (idx < 0) return false;
   const [project] = store.projects.splice(idx, 1);
   ensureTrash();
   const entry = {
     kind: "project",
-    slug: uniqueTrashSlug(project.slug || project.name || "project"),
+    id: uniqueTrashId(),
     deletedAt: new Date().toISOString(),
-    project: project.slug,
-    projectName: project.name || project.slug,
+    project: project.id,
+    projectName: project.name || project.id,
     color: project.color || "#3c3c40",
-    title: project.name || project.slug,
+    title: project.name || project.id,
     snapshot: deepClone(project),
   };
   if (isDemoValue(project.isDemo)) entry.isDemo = true;
@@ -727,14 +731,14 @@ function softDeleteProject(projectSlug) {
   return true;
 }
 
-function syncTimelogCardTitle(projectSlug, boardSlug, cardSlug, title) {
-  if (!cardSlug || title == null) return;
+function syncTimelogCardTitle(projectId, boardId, cardId, title) {
+  if (!cardId || title == null) return;
   const next = String(title).trim() || "Untitled";
   for (const t of store.timelogs || []) {
     if (
-      t.project === projectSlug &&
-      t.board === boardSlug &&
-      t.card === cardSlug &&
+      t.project === projectId &&
+      t.board === boardId &&
+      t.card === cardId &&
       t.title !== next
     ) {
       t.title = next;
@@ -745,8 +749,8 @@ function syncTimelogCardTitle(projectSlug, boardSlug, cardSlug, title) {
 /** Draft card attachments before the card row exists. key = project\\0board\\0card */
 const pendingCardFiles = new Map();
 
-function pendingCardFilesKey(projectSlug, boardSlug, cardSlug) {
-  return `${projectSlug}\0${boardSlug}\0${cardSlug}`;
+function pendingCardFilesKey(projectId, boardId, cardId) {
+  return `${projectId}\0${boardId}\0${cardId}`;
 }
 
 function normalizeCardFiles(files) {
@@ -755,12 +759,12 @@ function normalizeCardFiles(files) {
   const seen = new Set();
   for (const f of files) {
     if (!f || typeof f !== "object") continue;
-    const slug = String(f.slug || "").trim();
-    if (!slug || !isSafePathSlug(slug) || seen.has(slug)) continue;
-    seen.add(slug);
+    const id = String(f.id || "").trim();
+    if (!id || !isSafePathId(id) || seen.has(id)) continue;
+    seen.add(id);
     out.push({
-      slug,
-      name: String(f.name || slug).trim() || slug,
+      id,
+      name: String(f.name || id).trim() || id,
       mime: String(f.mime || "application/octet-stream").slice(0, 200),
       size: Number(f.size) || 0,
       createdAt: f.createdAt || new Date().toISOString(),
@@ -769,71 +773,66 @@ function normalizeCardFiles(files) {
   return out;
 }
 
-function findCardRecord(projectSlug, boardSlug, cardSlug) {
-  const project = findProject(projectSlug);
-  const board = findBoard(project, boardSlug);
+function findCardRecord(projectId, boardId, cardId) {
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
   if (!project || !board || !board.cards) return null;
-  return board.cards.find((c) => c.slug === cardSlug) || null;
+  return board.cards.find((c) => c.id === cardId) || null;
 }
 
-function listCardFiles(projectSlug, boardSlug, cardSlug) {
-  const card = findCardRecord(projectSlug, boardSlug, cardSlug);
+function listCardFiles(projectId, boardId, cardId) {
+  const card = findCardRecord(projectId, boardId, cardId);
   if (card) return normalizeCardFiles(card.files);
-  const pending = pendingCardFiles.get(pendingCardFilesKey(projectSlug, boardSlug, cardSlug));
+  const pending = pendingCardFiles.get(pendingCardFilesKey(projectId, boardId, cardId));
   return normalizeCardFiles(pending);
 }
 
-function setCardFilesList(projectSlug, boardSlug, cardSlug, files) {
+function setCardFilesList(projectId, boardId, cardId, files) {
   const next = normalizeCardFiles(files);
-  const card = findCardRecord(projectSlug, boardSlug, cardSlug);
+  const card = findCardRecord(projectId, boardId, cardId);
   if (card) {
     if (next.length) card.files = next;
     else delete card.files;
     return next;
   }
-  const key = pendingCardFilesKey(projectSlug, boardSlug, cardSlug);
+  const key = pendingCardFilesKey(projectId, boardId, cardId);
   if (next.length) pendingCardFiles.set(key, next);
   else pendingCardFiles.delete(key);
   return next;
 }
 
-function takePendingCardFiles(projectSlug, boardSlug, cardSlug) {
-  const key = pendingCardFilesKey(projectSlug, boardSlug, cardSlug);
+function takePendingCardFiles(projectId, boardId, cardId) {
+  const key = pendingCardFilesKey(projectId, boardId, cardId);
   const files = normalizeCardFiles(pendingCardFiles.get(key));
   pendingCardFiles.delete(key);
   return files;
 }
 
-function clearPendingCardFiles(projectSlug, boardSlug, cardSlug) {
-  pendingCardFiles.delete(pendingCardFilesKey(projectSlug, boardSlug, cardSlug));
+function clearPendingCardFiles(projectId, boardId, cardId) {
+  pendingCardFiles.delete(pendingCardFilesKey(projectId, boardId, cardId));
 }
 
-function uniqueCardFileSlug(files, fileName) {
-  const base = slugify(fileName) || "file";
-  const list = files || [];
-  if (!list.some((f) => f.slug === base)) return base;
-  let i = 2;
-  while (list.some((f) => f.slug === `${base}-${i}`)) i += 1;
-  return `${base}-${i}`;
+function uniqueCardFileId() {
+  return newId();
 }
 
-function purgeCardFileBlobs(projectSlug, files) {
-  if (!isSafePathSlug(projectSlug)) return;
+function purgeCardFileBlobs(projectId, files) {
+  if (!isSafePathId(projectId)) return;
   for (const f of normalizeCardFiles(files)) {
-    userData.unlinkCardFile(projectSlug, f.slug);
+    userData.unlinkCardFile(projectId, f.id);
   }
 }
 
-function addCardFile(projectSlug, boardSlug, cardSlug, { name, mime, data }) {
+function addCardFile(projectId, boardId, cardId, { name, mime, data }) {
   if (
-    !isSafePathSlug(projectSlug) ||
-    !isSafePathSlug(boardSlug) ||
-    !isSafePathSlug(cardSlug)
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const project = findProject(projectSlug);
-  const board = findBoard(project, boardSlug);
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
   if (!project || !board) return { ok: false, error: "board not found" };
   const fileName = String(name || "").trim();
   if (!fileName) return { ok: false, error: "missing fields" };
@@ -846,72 +845,72 @@ function addCardFile(projectSlug, boardSlug, cardSlug, { name, mime, data }) {
   }
   if (!buf.length) return { ok: false, error: "empty file" };
   if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: "file too large" };
-  const files = listCardFiles(projectSlug, boardSlug, cardSlug);
-  const slug = uniqueCardFileSlug(files, fileName);
-  if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
-  userData.writeCardFile(projectSlug, slug, buf);
+  const files = listCardFiles(projectId, boardId, cardId);
+  const id = uniqueCardFileId();
+  if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
+  userData.writeCardFile(projectId, id, buf);
   const meta = {
-    slug,
+    id,
     name: fileName,
     mime: String(mime || "application/octet-stream").slice(0, 200),
     size: buf.length,
     createdAt: new Date().toISOString(),
   };
   files.push(meta);
-  setCardFilesList(projectSlug, boardSlug, cardSlug, files);
+  setCardFilesList(projectId, boardId, cardId, files);
   return { ok: true, file: meta, files };
 }
 
-function deleteCardFile(projectSlug, boardSlug, cardSlug, fileSlug) {
+function deleteCardFile(projectId, boardId, cardId, fileId) {
   if (
-    !isSafePathSlug(projectSlug) ||
-    !isSafePathSlug(boardSlug) ||
-    !isSafePathSlug(cardSlug) ||
-    !isSafePathSlug(fileSlug)
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId) ||
+    !isSafePathId(fileId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const files = listCardFiles(projectSlug, boardSlug, cardSlug);
-  const idx = files.findIndex((f) => f.slug === fileSlug);
+  const files = listCardFiles(projectId, boardId, cardId);
+  const idx = files.findIndex((f) => f.id === fileId);
   if (idx < 0) return { ok: false, error: "file not found" };
   files.splice(idx, 1);
-  setCardFilesList(projectSlug, boardSlug, cardSlug, files);
-  userData.unlinkCardFile(projectSlug, fileSlug);
+  setCardFilesList(projectId, boardId, cardId, files);
+  userData.unlinkCardFile(projectId, fileId);
   return { ok: true, files };
 }
 
-function discardCardFiles(projectSlug, boardSlug, cardSlug) {
+function discardCardFiles(projectId, boardId, cardId) {
   if (
-    !isSafePathSlug(projectSlug) ||
-    !isSafePathSlug(boardSlug) ||
-    !isSafePathSlug(cardSlug)
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const card = findCardRecord(projectSlug, boardSlug, cardSlug);
+  const card = findCardRecord(projectId, boardId, cardId);
   if (card) return { ok: false, error: "card exists" };
-  const files = listCardFiles(projectSlug, boardSlug, cardSlug);
-  purgeCardFileBlobs(projectSlug, files);
-  clearPendingCardFiles(projectSlug, boardSlug, cardSlug);
+  const files = listCardFiles(projectId, boardId, cardId);
+  purgeCardFileBlobs(projectId, files);
+  clearPendingCardFiles(projectId, boardId, cardId);
   return { ok: true };
 }
 
-function readCardFileBytes(projectSlug, boardSlug, cardSlug, fileSlug) {
+function readCardFileBytes(projectId, boardId, cardId, fileId) {
   if (
-    !isSafePathSlug(projectSlug) ||
-    !isSafePathSlug(boardSlug) ||
-    !isSafePathSlug(cardSlug) ||
-    !isSafePathSlug(fileSlug)
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId) ||
+    !isSafePathId(fileId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const meta = listCardFiles(projectSlug, boardSlug, cardSlug).find((f) => f.slug === fileSlug);
+  const meta = listCardFiles(projectId, boardId, cardId).find((f) => f.id === fileId);
   if (!meta) return { ok: false, error: "file not found" };
-  const body = userData.readCardFile(projectSlug, fileSlug);
+  const body = userData.readCardFile(projectId, fileId);
   if (!body) return { ok: false, error: "file not found" };
   return {
     ok: true,
-    name: meta.name || fileSlug,
+    name: meta.name || fileId,
     mime: meta.mime || "application/octet-stream",
     body,
   };
@@ -919,29 +918,29 @@ function readCardFileBytes(projectSlug, boardSlug, cardSlug, fileSlug) {
 
 function moveCardFileBlobs(fromProject, toProject, files) {
   if (fromProject === toProject) return { ok: true };
-  if (!isSafePathSlug(fromProject) || !isSafePathSlug(toProject)) {
+  if (!isSafePathId(fromProject) || !isSafePathId(toProject)) {
     return { ok: false, error: "invalid path" };
   }
   for (const f of normalizeCardFiles(files)) {
-    const moved = userData.moveCardFile(fromProject, f.slug, toProject, f.slug);
+    const moved = userData.moveCardFile(fromProject, f.id, toProject, f.id);
     if (!moved.ok) return moved;
   }
   return { ok: true };
 }
 
-function writeCard(projectSlug, boardSlug, card) {
-  const project = findProject(projectSlug);
-  const board = findBoard(project, boardSlug);
+function writeCard(projectId, boardId, card) {
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
   if (!project || !board) throw new Error("board not found");
   if (!board.cards) board.cards = [];
-  const slug = card.slug || slugify(card.title);
-  let existing = board.cards.find((c) => c.slug === slug);
+  const id = card.id || newId();
+  let existing = board.cards.find((c) => c.id === id);
   const isNew = !existing;
   if (!existing) {
-    existing = { slug };
+    existing = { id };
     board.cards.push(existing);
   }
-  existing.title = card.title || slug;
+  existing.title = card.title || id;
   existing.status = card.status || "Design";
   existing.master = card.master || "Backlog";
   existing.body = card.body || "";
@@ -965,29 +964,29 @@ function writeCard(projectSlug, boardSlug, card) {
     if (files.length) existing.files = files;
     else delete existing.files;
   } else if (isNew) {
-    const pending = takePendingCardFiles(projectSlug, boardSlug, slug);
+    const pending = takePendingCardFiles(projectId, boardId, id);
     if (pending.length) existing.files = pending;
   }
   const demo = card.isDemo != null ? card.isDemo : existing.isDemo;
   if (isDemoValue(demo)) existing.isDemo = true;
   else delete existing.isDemo;
-  if (!isNew) syncTimelogCardTitle(projectSlug, boardSlug, slug, existing.title);
-  return slug;
+  if (!isNew) syncTimelogCardTitle(projectId, boardId, id, existing.title);
+  return id;
 }
 
 function writeCardOrder(items) {
   if (!Array.isArray(items)) return;
   for (const item of items) {
-    if (!item || !item.project || !item.board || !item.slug) continue;
+    if (!item || !item.project || !item.board || !item.id) continue;
     if (projectIsArchived(item.project)) continue;
     const project = findProject(item.project);
     const board = findBoard(project, item.board);
     if (!project || !board || !board.cards) continue;
-    const card = board.cards.find((c) => c.slug === item.slug);
+    const card = board.cards.find((c) => c.id === item.id);
     if (!card) continue;
     if (item.title != null) {
       card.title = item.title || card.title;
-      syncTimelogCardTitle(item.project, item.board, item.slug, card.title);
+      syncTimelogCardTitle(item.project, item.board, item.id, card.title);
     }
     if (item.status != null) card.status = item.status;
     if (item.master != null) card.master = item.master;
@@ -1011,37 +1010,32 @@ function ensureTrash() {
   if (!Array.isArray(store.trash)) store.trash = [];
 }
 
-function uniqueTrashSlug(base) {
-  ensureTrash();
-  const root = slugify(base) || "card";
-  let slug = "trash-" + root;
-  let i = 2;
-  while (store.trash.some((t) => t.slug === slug)) slug = "trash-" + root + "-" + i++;
-  return slug;
+function uniqueTrashId() {
+  return newId();
 }
 
-function softDeleteCard(projectSlug, boardSlug, cardSlug) {
-  const project = findProject(projectSlug);
-  const board = findBoard(project, boardSlug);
+function softDeleteCard(projectId, boardId, cardId) {
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
   if (!board || !board.cards) return false;
-  const idx = board.cards.findIndex((c) => c.slug === cardSlug);
+  const idx = board.cards.findIndex((c) => c.id === cardId);
   if (idx < 0) return false;
   const [card] = board.cards.splice(idx, 1);
   ensureTrash();
   const entry = {
     kind: "card",
-    slug: uniqueTrashSlug(card.slug || card.title || "card"),
+    id: uniqueTrashId(),
     deletedAt: new Date().toISOString(),
-    project: projectSlug,
-    board: boardSlug,
-    card: card.slug || "",
-    title: card.title || card.slug || "Untitled",
+    project: projectId,
+    board: boardId,
+    card: card.id || "",
+    title: card.title || card.id || "Untitled",
     status: card.status || "",
     master: card.master || "",
     body: card.body || "",
     doneAt: card.doneAt || "",
-    projectName: project.name || projectSlug,
-    boardName: board.name || boardSlug,
+    projectName: project.name || projectId,
+    boardName: board.name || boardId,
     color: project.color || "#3c3c40",
   };
   if (card.priority) entry.priority = true;
@@ -1052,115 +1046,115 @@ function softDeleteCard(projectSlug, boardSlug, cardSlug) {
   return true;
 }
 
-function softDeleteNote(projectSlug, notesTabSlug, noteSlug) {
-  const project = findProject(projectSlug);
-  const tab = findNotesTab(project, notesTabSlug);
+function softDeleteNote(projectId, notesTabId, noteId) {
+  const project = findProject(projectId);
+  const tab = findNotesTab(project, notesTabId);
   if (!project || !tab || !tab.notes) return false;
-  const idx = tab.notes.findIndex((n) => n.slug === noteSlug);
+  const idx = tab.notes.findIndex((n) => n.id === noteId);
   if (idx < 0) return false;
   const [note] = tab.notes.splice(idx, 1);
   ensureTrash();
   store.trash.push({
     kind: "note",
-    slug: uniqueTrashSlug(note.slug || note.title || "note"),
+    id: uniqueTrashId(),
     deletedAt: new Date().toISOString(),
-    project: projectSlug,
-    notesTab: notesTabSlug,
-    note: note.slug || "",
-    title: note.title || note.slug || "Untitled",
+    project: projectId,
+    notesTab: notesTabId,
+    note: note.id || "",
+    title: note.title || note.id || "Untitled",
     body: note.body || "",
     createdAt: note.createdAt || "",
     updatedAt: note.updatedAt || "",
-    projectName: project.name || projectSlug,
-    notesTabName: tab.name || notesTabSlug,
+    projectName: project.name || projectId,
+    notesTabName: tab.name || notesTabId,
     color: project.color || "#3c3c40",
   });
   return true;
 }
 
-function softDeleteBoard(projectSlug, boardSlug) {
-  const project = findProject(projectSlug);
+function softDeleteBoard(projectId, boardId) {
+  const project = findProject(projectId);
   if (!project) return { ok: false, error: "project not found" };
-  const idx = (project.boards || []).findIndex((b) => b.slug === boardSlug);
+  const idx = (project.boards || []).findIndex((b) => b.id === boardId);
   if (idx < 0) return { ok: false, error: "tab not found" };
   const board = project.boards[idx];
   for (const card of [...(board.cards || [])]) {
-    softDeleteCard(projectSlug, boardSlug, card.slug);
+    softDeleteCard(projectId, boardId, card.id);
   }
   ensureTrash();
   store.trash.push({
     kind: "board",
-    slug: uniqueTrashSlug(board.slug || board.name || "board"),
+    id: uniqueTrashId(),
     deletedAt: new Date().toISOString(),
-    project: projectSlug,
-    board: board.slug,
-    boardName: board.name || board.slug,
+    project: projectId,
+    board: board.id,
+    boardName: board.name || board.id,
     columns: Array.isArray(board.columns) && board.columns.length
       ? board.columns.slice()
       : DEFAULT_BOARD_COLS.slice(),
-    projectName: project.name || projectSlug,
+    projectName: project.name || projectId,
     color: project.color || "#3c3c40",
-    title: board.name || board.slug,
+    title: board.name || board.id,
   });
   if (isDemoValue(board.isDemo)) store.trash[store.trash.length - 1].isDemo = true;
   project.boards.splice(idx, 1);
-  removeTabOrder(project, "board", boardSlug);
+  removeTabOrder(project, "board", boardId);
   return { ok: true };
 }
 
-function softDeleteNotesTab(projectSlug, notesTabSlug) {
-  const project = findProject(projectSlug);
+function softDeleteNotesTab(projectId, notesTabId) {
+  const project = findProject(projectId);
   if (!project) return { ok: false, error: "project not found" };
-  const idx = (project.notesTabs || []).findIndex((t) => t.slug === notesTabSlug);
+  const idx = (project.notesTabs || []).findIndex((t) => t.id === notesTabId);
   if (idx < 0) return { ok: false, error: "tab not found" };
   const tab = project.notesTabs[idx];
   for (const note of [...(tab.notes || [])]) {
-    softDeleteNote(projectSlug, notesTabSlug, note.slug);
+    softDeleteNote(projectId, notesTabId, note.id);
   }
   ensureTrash();
   store.trash.push({
     kind: "notesTab",
-    slug: uniqueTrashSlug(tab.slug || tab.name || "notes"),
+    id: uniqueTrashId(),
     deletedAt: new Date().toISOString(),
-    project: projectSlug,
-    notesTab: tab.slug,
-    notesTabName: tab.name || tab.slug,
-    projectName: project.name || projectSlug,
+    project: projectId,
+    notesTab: tab.id,
+    notesTabName: tab.name || tab.id,
+    projectName: project.name || projectId,
     color: project.color || "#3c3c40",
-    title: tab.name || tab.slug,
+    title: tab.name || tab.id,
   });
   project.notesTabs.splice(idx, 1);
-  removeTabOrder(project, "notes", notesTabSlug);
+  removeTabOrder(project, "notes", notesTabId);
   return { ok: true };
 }
 
-function hardDeleteCard(projectSlug, boardSlug, cardSlug, { purgeFiles = true } = {}) {
-  const project = findProject(projectSlug);
-  const board = findBoard(project, boardSlug);
+function hardDeleteCard(projectId, boardId, cardId, { purgeFiles = true } = {}) {
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
   if (!board || !board.cards) return;
-  const idx = board.cards.findIndex((c) => c.slug === cardSlug);
+  const idx = board.cards.findIndex((c) => c.id === cardId);
   if (idx < 0) return;
   const [card] = board.cards.splice(idx, 1);
-  if (purgeFiles) purgeCardFileBlobs(projectSlug, card?.files);
-  clearPendingCardFiles(projectSlug, boardSlug, cardSlug);
+  if (purgeFiles) purgeCardFileBlobs(projectId, card?.files);
+  clearPendingCardFiles(projectId, boardId, cardId);
 }
 
-function deleteCard(projectSlug, boardSlug, cardSlug, { permanent = false, keepFiles = false } = {}) {
-  if (permanent) return hardDeleteCard(projectSlug, boardSlug, cardSlug, { purgeFiles: !keepFiles });
-  return softDeleteCard(projectSlug, boardSlug, cardSlug);
+function deleteCard(projectId, boardId, cardId, { permanent = false, keepFiles = false } = {}) {
+  if (permanent) return hardDeleteCard(projectId, boardId, cardId, { purgeFiles: !keepFiles });
+  return softDeleteCard(projectId, boardId, cardId);
 }
 
-function findTrashParent(kind, projectSlug, containerSlug) {
+function findTrashParent(kind, projectId, containerId) {
   ensureTrash();
   if (kind === "project") {
     return (
-      store.trash.find((t) => t.kind === "project" && t.project === projectSlug) || null
+      store.trash.find((t) => t.kind === "project" && t.project === projectId) || null
     );
   }
   if (kind === "board") {
     return (
       store.trash.find(
-        (t) => t.kind === "board" && t.project === projectSlug && t.board === containerSlug
+        (t) => t.kind === "board" && t.project === projectId && t.board === containerId
       ) || null
     );
   }
@@ -1168,7 +1162,7 @@ function findTrashParent(kind, projectSlug, containerSlug) {
     return (
       store.trash.find(
         (t) =>
-          t.kind === "notesTab" && t.project === projectSlug && t.notesTab === containerSlug
+          t.kind === "notesTab" && t.project === projectId && t.notesTab === containerId
       ) || null
     );
   }
@@ -1180,18 +1174,18 @@ function restoreProjectFromTrash(item) {
     return { ok: false, error: "invalid project snapshot" };
   }
   let project = deepClone(item.snapshot);
-  let slug = project.slug || item.project || slugify(item.projectName || item.title) || "project";
-  if (findProject(slug)) {
-    slug = uniqueProjectSlug(project.name || item.projectName || item.title || slug);
+  let id = project.id || item.project || newId() || "project";
+  if (findProject(id)) {
+    id = uniqueProjectId();
   }
-  project.slug = slug;
-  if (!project.name) project.name = item.projectName || item.title || slug;
+  project.id = id;
+  if (!project.name) project.name = item.projectName || item.title || id;
   if (!store.projects) store.projects = [];
   store.projects.push(project);
   ensureTrash();
-  const trashIdx = store.trash.findIndex((t) => t.slug === item.slug);
+  const trashIdx = store.trash.findIndex((t) => t.id === item.id);
   if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
-  return { ok: true, project: slug, slug };
+  return { ok: true, project: id, id };
 }
 
 function restoreBoardFromTrash(item, { restoreParent = false } = {}) {
@@ -1204,7 +1198,7 @@ function restoreBoardFromTrash(item, { restoreParent = false } = {}) {
         needsParent: true,
         parentKind: "project",
         parentName: parent.projectName || parent.title || item.project,
-        parentTrashSlug: parent.slug,
+        parentTrashId: parent.id,
       };
     }
     if (parent && restoreParent) {
@@ -1214,27 +1208,27 @@ function restoreBoardFromTrash(item, { restoreParent = false } = {}) {
     }
   }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.id)) return { ok: false, error: "project is archived" };
   if (!project.boards) project.boards = [];
-  let slug = item.board || slugify(item.boardName || item.title) || "board";
-  if (findBoard(project, slug)) {
+  let id = item.board || newId() || "board";
+  if (findBoard(project, id)) {
     // already restored
-    return { ok: true, project: project.slug, board: slug, slug };
+    return { ok: true, project: project.id, board: id, id };
   }
   const cols = Array.isArray(item.columns) && item.columns.length
     ? item.columns.slice()
     : DEFAULT_BOARD_COLS.slice();
   project.boards.push({
-    slug,
-    name: item.boardName || item.title || slug,
+    id,
+    name: item.boardName || item.title || id,
     columns: cols,
     cards: [],
   });
   if (isDemoValue(item.isDemo)) project.boards[project.boards.length - 1].isDemo = true;
-  appendTabOrder(project, "board", slug);
-  const trashIdx = store.trash.findIndex((t) => t.slug === item.slug);
+  appendTabOrder(project, "board", id);
+  const trashIdx = store.trash.findIndex((t) => t.id === item.id);
   if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
-  return { ok: true, project: project.slug, board: slug, slug };
+  return { ok: true, project: project.id, board: id, id };
 }
 
 function restoreNotesTabFromTrash(item, { restoreParent = false } = {}) {
@@ -1247,7 +1241,7 @@ function restoreNotesTabFromTrash(item, { restoreParent = false } = {}) {
         needsParent: true,
         parentKind: "project",
         parentName: parent.projectName || parent.title || item.project,
-        parentTrashSlug: parent.slug,
+        parentTrashId: parent.id,
       };
     }
     if (parent && restoreParent) {
@@ -1257,21 +1251,21 @@ function restoreNotesTabFromTrash(item, { restoreParent = false } = {}) {
     }
   }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.id)) return { ok: false, error: "project is archived" };
   if (!project.notesTabs) project.notesTabs = [];
-  let slug = item.notesTab || slugify(item.notesTabName || item.title) || "notes";
-  if (findNotesTab(project, slug)) {
-    return { ok: true, project: project.slug, notesTab: slug, slug };
+  let id = item.notesTab || newId() || "notes";
+  if (findNotesTab(project, id)) {
+    return { ok: true, project: project.id, notesTab: id, id };
   }
   project.notesTabs.push({
-    slug,
-    name: item.notesTabName || item.title || slug,
+    id,
+    name: item.notesTabName || item.title || id,
     notes: [],
   });
-  appendTabOrder(project, "notes", slug);
-  const trashIdx = store.trash.findIndex((t) => t.slug === item.slug);
+  appendTabOrder(project, "notes", id);
+  const trashIdx = store.trash.findIndex((t) => t.id === item.id);
   if (trashIdx >= 0) store.trash.splice(trashIdx, 1);
-  return { ok: true, project: project.slug, notesTab: slug, slug };
+  return { ok: true, project: project.id, notesTab: id, id };
 }
 
 function restoreCardFromTrash(item, { restoreParent = false } = {}) {
@@ -1284,7 +1278,7 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
         needsParent: true,
         parentKind: "project",
         parentName: parent.projectName || parent.title || item.project,
-        parentTrashSlug: parent.slug,
+        parentTrashId: parent.id,
       };
     }
     if (parent && restoreParent) {
@@ -1294,7 +1288,7 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
     }
   }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.id)) return { ok: false, error: "project is archived" };
   let board = findBoard(project, item.board);
   if (!board) {
     const parent = findTrashParent("board", item.project, item.board);
@@ -1304,7 +1298,7 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
         needsParent: true,
         parentKind: "board",
         parentName: parent.boardName || parent.title || item.board,
-        parentTrashSlug: parent.slug,
+        parentTrashId: parent.id,
       };
     }
     if (parent && restoreParent) {
@@ -1315,18 +1309,18 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
   }
   if (!board) return { ok: false, error: "original board not found" };
   ensureTrash();
-  const idx = store.trash.findIndex((t) => t.slug === item.slug);
+  const idx = store.trash.findIndex((t) => t.id === item.id);
   if (idx >= 0) store.trash.splice(idx, 1);
   if (!board.cards) board.cards = [];
-  let slug = item.card || slugify(item.title) || "card";
-  if (board.cards.some((c) => c.slug === slug)) slug = uniqueCardSlug(board, item.title || slug);
+  let id = item.card || newId() || "card";
+  if (board.cards.some((c) => c.id === id)) id = uniqueCardId();
   const cols = Array.isArray(board.columns) && board.columns.length ? board.columns : DEFAULT_BOARD_COLS;
   const status = cols.includes(item.status) ? item.status : cols[0];
   const stages = Array.isArray(store.stages) && store.stages.length ? store.stages : DEFAULT_STAGES;
   const master = stages.includes(item.master) ? item.master : stages[0];
   const card = {
-    slug,
-    title: item.title || slug,
+    id,
+    title: item.title || id,
     status,
     master,
     body: item.body || "",
@@ -1337,7 +1331,7 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
   if (files.length) card.files = files;
   if (isDemoValue(item.isDemo)) card.isDemo = true;
   board.cards.push(card);
-  return { ok: true, project: project.slug, board: board.slug || item.board, slug };
+  return { ok: true, project: project.id, board: board.id || item.board, id };
 }
 
 function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
@@ -1350,7 +1344,7 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
         needsParent: true,
         parentKind: "project",
         parentName: parent.projectName || parent.title || item.project,
-        parentTrashSlug: parent.slug,
+        parentTrashId: parent.id,
       };
     }
     if (parent && restoreParent) {
@@ -1360,7 +1354,7 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
     }
   }
   if (!project) return { ok: false, error: "project not found" };
-  if (projectIsArchived(project.slug)) return { ok: false, error: "project is archived" };
+  if (projectIsArchived(project.id)) return { ok: false, error: "project is archived" };
   let tab = findNotesTab(project, item.notesTab);
   if (!tab) {
     const parent = findTrashParent("notesTab", item.project, item.notesTab);
@@ -1370,7 +1364,7 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
         needsParent: true,
         parentKind: "notesTab",
         parentName: parent.notesTabName || parent.title || item.notesTab,
-        parentTrashSlug: parent.slug,
+        parentTrashId: parent.id,
       };
     }
     if (parent && restoreParent) {
@@ -1381,20 +1375,20 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
   }
   if (!tab) return { ok: false, error: "original notes tab not found" };
   ensureTrash();
-  const idx = store.trash.findIndex((t) => t.slug === item.slug);
+  const idx = store.trash.findIndex((t) => t.id === item.id);
   if (idx >= 0) store.trash.splice(idx, 1);
   if (!tab.notes) tab.notes = [];
-  let slug = item.note || slugify(item.title) || "note";
-  if (tab.notes.some((n) => n.slug === slug)) slug = uniqueNoteSlug(tab, item.title || slug);
+  let id = item.note || newId() || "note";
+  if (tab.notes.some((n) => n.id === id)) id = uniqueNoteId();
   const now = new Date().toISOString();
   tab.notes.push({
-    slug,
-    title: item.title || slug,
+    id,
+    title: item.title || id,
     body: item.body || "",
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   });
-  return { ok: true, project: project.slug, notesTab: tab.slug || item.notesTab, slug };
+  return { ok: true, project: project.id, notesTab: tab.id || item.notesTab, id };
 }
 
 function readTrash() {
@@ -1406,7 +1400,7 @@ function readTrash() {
       const kind = t.kind || "card";
       const base = {
         kind,
-        slug: t.slug,
+        id: t.id,
         deletedAt: t.deletedAt || "",
         project: t.project || "",
         projectName: t.projectName || t.project || "",
@@ -1462,9 +1456,9 @@ function readTrash() {
     });
 }
 
-function restoreTrashItem(trashSlug, { restoreParent = false } = {}) {
+function restoreTrashItem(trashId, { restoreParent = false } = {}) {
   ensureTrash();
-  const idx = store.trash.findIndex((t) => t.slug === trashSlug);
+  const idx = store.trash.findIndex((t) => t.id === trashId);
   if (idx < 0) return { ok: false, error: "not found" };
   const item = store.trash[idx];
   const kind = item.kind || "card";
@@ -1496,44 +1490,36 @@ function purgeExpiredTrash() {
   return before - store.trash.length;
 }
 
-function createBoard(projectSlug, name) {
-  const project = findProject(projectSlug);
+function createBoard(projectId, name) {
+  const project = findProject(projectId);
   if (!project) throw new Error("project not found");
   if (!project.boards) project.boards = [];
-  const bSlug = slugify(name);
-  const existing = findBoard(project, bSlug);
-  if (existing) {
-    existing.name = name;
-    if (!existing.columns || !existing.columns.length) existing.columns = DEFAULT_BOARD_COLS.slice();
-    if (!existing.cards) existing.cards = [];
-    appendTabOrder(project, "board", bSlug);
-    return bSlug;
-  }
+  const bId = newId();
   project.boards.push({
-    slug: bSlug,
+    id: bId,
     name,
     columns: DEFAULT_BOARD_COLS.slice(),
     cards: [],
   });
-  appendTabOrder(project, "board", bSlug);
-  return bSlug;
+  appendTabOrder(project, "board", bId);
+  return bId;
 }
 
-function writeBoard(projectSlug, boardSlug, { name, columns, isDemo }) {
-  const project = findProject(projectSlug);
-  const board = findBoard(project, boardSlug);
+function writeBoard(projectId, boardId, { name, columns, isDemo }) {
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
   if (!project || !board) throw new Error("board not found");
   const cols = normalizeColumns(columns);
-  board.name = name || board.name || boardSlug;
+  board.name = name || board.name || boardId;
   board.columns = cols.length ? cols : DEFAULT_BOARD_COLS.slice();
   const demo = isDemo != null ? isDemo : board.isDemo;
   if (isDemoValue(demo)) board.isDemo = true;
   else delete board.isDemo;
 }
 
-function renameBoardStatuses(projectSlug, boardSlug, from, to) {
+function renameBoardStatuses(projectId, boardId, from, to) {
   if (!from || !to || from === to) return;
-  const board = findBoard(findProject(projectSlug), boardSlug);
+  const board = findBoard(findProject(projectId), boardId);
   if (!board || !board.cards) return;
   for (const card of board.cards) {
     if (card.status === from) card.status = to;
@@ -1556,20 +1542,20 @@ function writeWorkspaceMeta({ stages }) {
   store.stages = cols.length ? cols : DEFAULT_STAGES.slice();
 }
 
-function loadDbColumns(projectSlug, databaseSlug) {
-  const db = findDatabase(findProject(projectSlug), databaseSlug);
+function loadDbColumns(projectId, databaseId) {
+  const db = findDatabase(findProject(projectId), databaseId);
   return normalizeDbColumns(db && db.columns);
 }
 
-function writeDatabase(projectSlug, databaseSlug, { name, columns, customViews, customViewId }) {
-  const project = findProject(projectSlug);
+function writeDatabase(projectId, databaseId, { name, columns, customViews, customViewId }) {
+  const project = findProject(projectId);
   if (!project) throw new Error("project not found");
   if (!project.databases) project.databases = [];
-  let db = findDatabase(project, databaseSlug);
+  let db = findDatabase(project, databaseId);
   if (!db) {
     db = {
-      slug: databaseSlug,
-      name: name || databaseSlug,
+      id: databaseId,
+      name: name || databaseId,
       columns: [],
       items: [],
       customViews: normalizeCustomViews(null),
@@ -1577,7 +1563,7 @@ function writeDatabase(projectSlug, databaseSlug, { name, columns, customViews, 
     };
     project.databases.push(db);
   }
-  db.name = name || db.name || databaseSlug;
+  db.name = name || db.name || databaseId;
   if (columns !== undefined) db.columns = normalizeDbColumns(columns);
   else if (!db.columns || !db.columns.length) db.columns = normalizeDbColumns(null);
   if (customViews !== undefined) db.customViews = normalizeCustomViews(customViews);
@@ -1589,78 +1575,54 @@ function writeDatabase(projectSlug, databaseSlug, { name, columns, customViews, 
   if (!db.items) db.items = [];
 }
 
-function createDatabase(projectSlug, name) {
-  const project = findProject(projectSlug);
-  const dSlug = slugify(name);
-  writeDatabase(projectSlug, dSlug, {
+function createDatabase(projectId, name) {
+  const project = findProject(projectId);
+  const dId = newId();
+  writeDatabase(projectId, dId, {
     name,
     columns: DEFAULT_DB_COLS,
     customViews: normalizeCustomViews(null),
     customViewId: DEFAULT_CUSTOM_VIEW_ID,
   });
-  if (project) appendTabOrder(project, "database", dSlug);
-  return dSlug;
+  if (project) appendTabOrder(project, "database", dId);
+  return dId;
 }
 
-function uniqueNoteSlug(notesTab, title) {
-  const base = slugify(title) || "note";
-  const notes = notesTab.notes || [];
-  if (!notes.some((n) => n.slug === base)) return base;
-  let i = 2;
-  while (notes.some((n) => n.slug === `${base}-${i}`)) i += 1;
-  return `${base}-${i}`;
+function uniqueNoteId() {
+  return newId();
 }
 
-function createNotesTab(projectSlug, name) {
-  const project = findProject(projectSlug);
+function createNotesTab(projectId, name) {
+  const project = findProject(projectId);
   if (!project) throw new Error("project not found");
   if (!project.notesTabs) project.notesTabs = [];
-  const tabSlug = slugify(name);
-  const existing = findNotesTab(project, tabSlug);
-  if (existing) {
-    existing.name = name;
-    if (!existing.notes) existing.notes = [];
-    appendTabOrder(project, "notes", tabSlug);
-    return tabSlug;
-  }
-  project.notesTabs.push({ slug: tabSlug, name, notes: [] });
-  appendTabOrder(project, "notes", tabSlug);
-  return tabSlug;
+  const tabId = newId();
+  project.notesTabs.push({ id: tabId, name, notes: [] });
+  appendTabOrder(project, "notes", tabId);
+  return tabId;
 }
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-function createFilesTab(projectSlug, name) {
-  const project = findProject(projectSlug);
+function createFilesTab(projectId, name) {
+  const project = findProject(projectId);
   if (!project) throw new Error("project not found");
   if (!project.filesTabs) project.filesTabs = [];
-  const tabSlug = slugify(name);
-  const existing = findFilesTab(project, tabSlug);
-  if (existing) {
-    existing.name = name;
-    if (!existing.files) existing.files = [];
-    appendTabOrder(project, "files", tabSlug);
-    return tabSlug;
-  }
-  project.filesTabs.push({ slug: tabSlug, name, files: [] });
-  appendTabOrder(project, "files", tabSlug);
-  return tabSlug;
+  const tabId = newId();
+  project.filesTabs.push({ id: tabId, name, files: [] });
+  appendTabOrder(project, "files", tabId);
+  return tabId;
 }
 
-function uniqueFileSlug(filesTab, fileName) {
-  const base = slugify(fileName) || "file";
-  const files = filesTab.files || [];
-  if (!files.some((f) => f.slug === base)) return base;
-  let i = 2;
-  while (files.some((f) => f.slug === `${base}-${i}`)) i += 1;
-  return `${base}-${i}`;
+function uniqueFileId() {
+  return newId();
 }
 
-function addUploadedFile(projectSlug, filesTabSlug, { name, mime, data }) {
-  const project = findProject(projectSlug);
-  const tab = findFilesTab(project, filesTabSlug);
+function addUploadedFile(projectId, filesTabId, { name, mime, data }) {
+  const project = findProject(projectId);
+  const tab = findFilesTab(project, filesTabId);
   if (!project || !tab) return { ok: false, error: "files tab not found" };
-  if (!isSafePathSlug(projectSlug) || !isSafePathSlug(filesTabSlug)) {
+  if (!isSafePathId(projectId) || !isSafePathId(filesTabId)) {
     return { ok: false, error: "invalid path" };
   }
   const fileName = String(name || "").trim();
@@ -1675,42 +1637,42 @@ function addUploadedFile(projectSlug, filesTabSlug, { name, mime, data }) {
   if (!buf.length) return { ok: false, error: "empty file" };
   if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: "file too large" };
   if (!tab.files) tab.files = [];
-  const slug = uniqueFileSlug(tab, fileName);
-  if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
-  userData.writeUpload(projectSlug, filesTabSlug, slug, buf);
+  const id = uniqueFileId();
+  if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
+  userData.writeUpload(projectId, filesTabId, id, buf);
   tab.files.push({
-    slug,
+    id,
     name: fileName,
     mime: String(mime || "application/octet-stream").slice(0, 200),
     size: buf.length,
     createdAt: new Date().toISOString(),
   });
-  return { ok: true, slug };
+  return { ok: true, id };
 }
 
-function deleteUploadedFile(projectSlug, filesTabSlug, fileSlug) {
-  const project = findProject(projectSlug);
-  const tab = findFilesTab(project, filesTabSlug);
+function deleteUploadedFile(projectId, filesTabId, fileId) {
+  const project = findProject(projectId);
+  const tab = findFilesTab(project, filesTabId);
   if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
   if (
-    !isSafePathSlug(projectSlug) ||
-    !isSafePathSlug(filesTabSlug) ||
-    !isSafePathSlug(fileSlug)
+    !isSafePathId(projectId) ||
+    !isSafePathId(filesTabId) ||
+    !isSafePathId(fileId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const idx = tab.files.findIndex((f) => f.slug === fileSlug);
+  const idx = tab.files.findIndex((f) => f.id === fileId);
   if (idx < 0) return { ok: false, error: "file not found" };
   tab.files.splice(idx, 1);
-  userData.unlinkUpload(projectSlug, filesTabSlug, fileSlug);
+  userData.unlinkUpload(projectId, filesTabId, fileId);
   return { ok: true };
 }
 
-function renameUploadedFile(projectSlug, filesTabSlug, fileSlug, name) {
-  const project = findProject(projectSlug);
-  const tab = findFilesTab(project, filesTabSlug);
+function renameUploadedFile(projectId, filesTabId, fileId, name) {
+  const project = findProject(projectId);
+  const tab = findFilesTab(project, filesTabId);
   if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
-  const meta = tab.files.find((f) => f.slug === fileSlug);
+  const meta = tab.files.find((f) => f.id === fileId);
   if (!meta) return { ok: false, error: "file not found" };
   const title = String(name || "").trim();
   if (!title) return { ok: false, error: "missing fields" };
@@ -1718,167 +1680,167 @@ function renameUploadedFile(projectSlug, filesTabSlug, fileSlug, name) {
   return { ok: true };
 }
 
-function moveUploadedFile(fromProjectSlug, fromTabSlug, fileSlug, toProjectSlug, toTabSlug) {
-  if (projectIsArchived(fromProjectSlug) || projectIsArchived(toProjectSlug)) {
+function moveUploadedFile(fromProjectId, fromTabId, fileId, toProjectId, toTabId) {
+  if (projectIsArchived(fromProjectId) || projectIsArchived(toProjectId)) {
     return { ok: false, error: "project is archived" };
   }
-  if (fromProjectSlug === toProjectSlug && fromTabSlug === toTabSlug) {
+  if (fromProjectId === toProjectId && fromTabId === toTabId) {
     return { ok: false, error: "same destination" };
   }
   if (
-    !isSafePathSlug(fromProjectSlug) ||
-    !isSafePathSlug(fromTabSlug) ||
-    !isSafePathSlug(fileSlug) ||
-    !isSafePathSlug(toProjectSlug) ||
-    !isSafePathSlug(toTabSlug)
+    !isSafePathId(fromProjectId) ||
+    !isSafePathId(fromTabId) ||
+    !isSafePathId(fileId) ||
+    !isSafePathId(toProjectId) ||
+    !isSafePathId(toTabId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const fromProject = findProject(fromProjectSlug);
-  const fromTab = findFilesTab(fromProject, fromTabSlug);
-  const toProject = findProject(toProjectSlug);
-  const toTab = findFilesTab(toProject, toTabSlug);
+  const fromProject = findProject(fromProjectId);
+  const fromTab = findFilesTab(fromProject, fromTabId);
+  const toProject = findProject(toProjectId);
+  const toTab = findFilesTab(toProject, toTabId);
   if (!fromProject || !fromTab || !fromTab.files) return { ok: false, error: "file not found" };
   if (!toProject || !toTab) return { ok: false, error: "destination not found" };
-  const idx = fromTab.files.findIndex((f) => f.slug === fileSlug);
+  const idx = fromTab.files.findIndex((f) => f.id === fileId);
   if (idx < 0) return { ok: false, error: "file not found" };
-  if (!userData.uploadExists(fromProjectSlug, fromTabSlug, fileSlug)) {
+  if (!userData.uploadExists(fromProjectId, fromTabId, fileId)) {
     return { ok: false, error: "file not found" };
   }
   if (!toTab.files) toTab.files = [];
-  let slug = fileSlug;
-  if (toTab.files.some((f) => f.slug === slug)) {
-    slug = uniqueFileSlug(toTab, fromTab.files[idx].name || slug);
+  let id = fileId;
+  if (toTab.files.some((f) => f.id === id)) {
+    id = uniqueFileId();
   }
-  if (!isSafePathSlug(slug)) return { ok: false, error: "invalid name" };
+  if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
   const moved = userData.moveUpload(
-    fromProjectSlug,
-    fromTabSlug,
-    fileSlug,
-    toProjectSlug,
-    toTabSlug,
-    slug
+    fromProjectId,
+    fromTabId,
+    fileId,
+    toProjectId,
+    toTabId,
+    id
   );
   if (!moved.ok) return moved;
   const [meta] = fromTab.files.splice(idx, 1);
   toTab.files.push({
-    slug,
-    name: meta.name || slug,
+    id,
+    name: meta.name || id,
     mime: meta.mime || "application/octet-stream",
     size: Number(meta.size) || 0,
     createdAt: meta.createdAt || new Date().toISOString(),
   });
-  return { ok: true, slug, project: toProjectSlug, filesTab: toTabSlug };
+  return { ok: true, id, project: toProjectId, filesTab: toTabId };
 }
 
-function readUploadedFile(projectSlug, filesTabSlug, fileSlug) {
-  const project = findProject(projectSlug);
-  const tab = findFilesTab(project, filesTabSlug);
+function readUploadedFile(projectId, filesTabId, fileId) {
+  const project = findProject(projectId);
+  const tab = findFilesTab(project, filesTabId);
   if (!project || !tab || !tab.files) return { ok: false, error: "file not found" };
   if (
-    !isSafePathSlug(projectSlug) ||
-    !isSafePathSlug(filesTabSlug) ||
-    !isSafePathSlug(fileSlug)
+    !isSafePathId(projectId) ||
+    !isSafePathId(filesTabId) ||
+    !isSafePathId(fileId)
   ) {
     return { ok: false, error: "invalid path" };
   }
-  const meta = tab.files.find((f) => f.slug === fileSlug);
+  const meta = tab.files.find((f) => f.id === fileId);
   if (!meta) return { ok: false, error: "file not found" };
-  const body = userData.readUpload(projectSlug, filesTabSlug, fileSlug);
+  const body = userData.readUpload(projectId, filesTabId, fileId);
   if (!body) return { ok: false, error: "file not found" };
   return {
     ok: true,
-    name: meta.name || fileSlug,
+    name: meta.name || fileId,
     mime: meta.mime || "application/octet-stream",
     body,
   };
 }
 
-function writeNote(projectSlug, notesTabSlug, { slug, title, body }) {
-  const project = findProject(projectSlug);
-  const tab = findNotesTab(project, notesTabSlug);
+function writeNote(projectId, notesTabId, { id, title, body }) {
+  const project = findProject(projectId);
+  const tab = findNotesTab(project, notesTabId);
   if (!project || !tab) throw new Error("notes tab not found");
   if (!tab.notes) tab.notes = [];
   const now = new Date().toISOString();
-  let note = tab.notes.find((n) => n.slug === slug);
+  let note = tab.notes.find((n) => n.id === id);
   if (!note) {
     note = {
-      slug,
-      title: title || slug,
+      id,
+      title: title || id,
       body: body || "",
       createdAt: now,
       updatedAt: now,
     };
     tab.notes.push(note);
   } else {
-    if (title != null) note.title = String(title).trim() || note.title || slug;
+    if (title != null) note.title = String(title).trim() || note.title || id;
     if (body != null) note.body = String(body);
     if (!note.createdAt) note.createdAt = note.updatedAt || now;
     note.updatedAt = now;
   }
-  return slug;
+  return id;
 }
 
-function deleteNote(projectSlug, notesTabSlug, noteSlug) {
-  if (!softDeleteNote(projectSlug, notesTabSlug, noteSlug)) {
+function deleteNote(projectId, notesTabId, noteId) {
+  if (!softDeleteNote(projectId, notesTabId, noteId)) {
     return { ok: false, error: "note not found" };
   }
   return { ok: true };
 }
 
-function moveNote(fromProjectSlug, fromTabSlug, noteSlug, toProjectSlug, toTabSlug) {
-  if (projectIsArchived(fromProjectSlug) || projectIsArchived(toProjectSlug)) {
+function moveNote(fromProjectId, fromTabId, noteId, toProjectId, toTabId) {
+  if (projectIsArchived(fromProjectId) || projectIsArchived(toProjectId)) {
     return { ok: false, error: "project is archived" };
   }
   if (
-    fromProjectSlug === toProjectSlug &&
-    fromTabSlug === toTabSlug
+    fromProjectId === toProjectId &&
+    fromTabId === toTabId
   ) {
     return { ok: false, error: "same destination" };
   }
-  const fromProject = findProject(fromProjectSlug);
-  const fromTab = findNotesTab(fromProject, fromTabSlug);
-  const toProject = findProject(toProjectSlug);
-  const toTab = findNotesTab(toProject, toTabSlug);
+  const fromProject = findProject(fromProjectId);
+  const fromTab = findNotesTab(fromProject, fromTabId);
+  const toProject = findProject(toProjectId);
+  const toTab = findNotesTab(toProject, toTabId);
   if (!fromProject || !fromTab) return { ok: false, error: "note not found" };
   if (!toProject || !toTab) return { ok: false, error: "destination not found" };
   if (!fromTab.notes) return { ok: false, error: "note not found" };
-  const idx = fromTab.notes.findIndex((n) => n.slug === noteSlug);
+  const idx = fromTab.notes.findIndex((n) => n.id === noteId);
   if (idx < 0) return { ok: false, error: "note not found" };
   const [note] = fromTab.notes.splice(idx, 1);
   if (!toTab.notes) toTab.notes = [];
-  let slug = note.slug || slugify(note.title || "note") || "note";
-  if (toTab.notes.some((n) => n.slug === slug)) {
-    slug = uniqueNoteSlug(toTab, note.title || slug);
+  let id = note.id || newId() || "note";
+  if (toTab.notes.some((n) => n.id === id)) {
+    id = uniqueNoteId();
   }
   const now = new Date().toISOString();
   toTab.notes.push({
-    slug,
-    title: note.title || slug,
+    id,
+    title: note.title || id,
     body: note.body || "",
     createdAt: note.createdAt || note.updatedAt || now,
     updatedAt: now,
   });
   return {
     ok: true,
-    slug,
-    project: toProjectSlug,
-    notesTab: toTabSlug,
+    id,
+    project: toProjectId,
+    notesTab: toTabId,
   };
 }
 
-function writeItem(projectSlug, databaseSlug, item, columns) {
-  const project = findProject(projectSlug);
-  const db = findDatabase(project, databaseSlug);
+function writeItem(projectId, databaseId, item, columns) {
+  const project = findProject(projectId);
+  const db = findDatabase(project, databaseId);
   if (!project || !db) throw new Error("database not found");
   if (!db.items) db.items = [];
   const cols = columns || DEFAULT_DB_COLS;
   const fieldsIn = item.fields || {};
-  const title = fieldsIn.n || fieldsIn.title || item.slug || "item";
-  const slug = item.slug || slugify(title);
-  let existing = db.items.find((it) => it.slug === slug);
+  const title = fieldsIn.n || fieldsIn.title || item.id || "item";
+  const id = item.id || newId();
+  let existing = db.items.find((it) => it.id === id);
   if (!existing) {
-    existing = { slug, fields: {}, body: "" };
+    existing = { id, fields: {}, body: "" };
     db.items.push(existing);
   }
   const fields = {};
@@ -1886,12 +1848,12 @@ function writeItem(projectSlug, databaseSlug, item, columns) {
   Object.keys(fieldsIn).forEach((k) => { if (fields[k] === undefined) fields[k] = fieldsIn[k]; });
   existing.fields = fields;
   existing.body = item.body || "";
-  return slug;
+  return id;
 }
 
 function readTimelogs() {
   const entries = (store.timelogs || []).map((t) => ({
-    slug: t.slug,
+    id: t.id,
     project: t.project || "",
     board: t.board || "",
     card: t.card || "",
@@ -1914,16 +1876,9 @@ function writeTimelog(entry) {
   const startedAt = entry.startedAt || new Date().toISOString();
   const endedAt = entry.endedAt || new Date().toISOString();
   const durationSec = Math.max(0, parseInt(entry.durationSec, 10) || 0);
-  const base = slugify(
-    [
-      String(startedAt).slice(0, 10),
-      entry.project || "project",
-      entry.card || entry.title || "session",
-    ].join("-")
-  );
-  const slug = uniqueTimelogSlug(base);
+  const id = uniqueTimelogId();
   const data = {
-    slug,
+    id,
     project: entry.project || "",
     board: entry.board || "",
     card: entry.card || "",
@@ -1941,9 +1896,9 @@ function writeTimelog(entry) {
   return { ...data };
 }
 
-function updateTimelog(slug, patch) {
+function updateTimelog(id, patch) {
   if (!store.timelogs) store.timelogs = [];
-  const idx = store.timelogs.findIndex((t) => t.slug === slug);
+  const idx = store.timelogs.findIndex((t) => t.id === id);
   if (idx < 0) return null;
   const cur = store.timelogs[idx];
   if (!patch || typeof patch !== "object") return { ...cur };
@@ -1972,10 +1927,10 @@ function updateTimelog(slug, patch) {
   return { ...cur };
 }
 
-function deleteTimelog(slug) {
+function deleteTimelog(id) {
   if (!store.timelogs) store.timelogs = [];
   const before = store.timelogs.length;
-  store.timelogs = store.timelogs.filter((t) => t.slug !== slug);
+  store.timelogs = store.timelogs.filter((t) => t.id !== id);
   return store.timelogs.length < before;
 }
 
@@ -2017,38 +1972,38 @@ function revealUserDataDir() {
   return revealPath(dir);
 }
 
-function revealUploadedFile(projectSlug, filesTabSlug, fileSlug) {
+function revealUploadedFile(projectId, filesTabId, fileId) {
   if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  const result = readUploadedFile(projectSlug, filesTabSlug, fileSlug);
+  const result = readUploadedFile(projectId, filesTabId, fileId);
   if (!result.ok) return result;
-  const filePath = userData.uploadPath(projectSlug, filesTabSlug, fileSlug);
+  const filePath = userData.uploadPath(projectId, filesTabId, fileId);
   if (!filePath) return { ok: false, error: "file not found" };
   revealPath(filePath, { select: true });
   return { ok: true };
 }
 
-function revealCardFile(projectSlug, boardSlug, cardSlug, fileSlug) {
+function revealCardFile(projectId, boardId, cardId, fileId) {
   if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  const result = readCardFileBytes(projectSlug, boardSlug, cardSlug, fileSlug);
+  const result = readCardFileBytes(projectId, boardId, cardId, fileId);
   if (!result.ok) return result;
-  const filePath = userData.cardFilePath(projectSlug, fileSlug);
-  if (!filePath || !userData.cardFileExists(projectSlug, fileSlug)) {
+  const filePath = userData.cardFilePath(projectId, fileId);
+  if (!filePath || !userData.cardFileExists(projectId, fileId)) {
     return { ok: false, error: "file not found" };
   }
   revealPath(filePath, { select: true });
   return { ok: true };
 }
 
-function revealFilesTabDir(projectSlug, filesTabSlug) {
+function revealFilesTabDir(projectId, filesTabId) {
   if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  const project = findProject(projectSlug);
-  const tab = findFilesTab(project, filesTabSlug);
+  const project = findProject(projectId);
+  const tab = findFilesTab(project, filesTabId);
   if (!tab) return { ok: false, error: "files tab not found" };
-  if (!isSafePathSlug(projectSlug) || !isSafePathSlug(filesTabSlug)) {
+  if (!isSafePathId(projectId) || !isSafePathId(filesTabId)) {
     return { ok: false, error: "invalid path" };
   }
-  userData.ensureUploadDir(projectSlug, filesTabSlug);
-  const dir = userData.uploadDir(projectSlug, filesTabSlug);
+  userData.ensureUploadDir(projectId, filesTabId);
+  const dir = userData.uploadDir(projectId, filesTabId);
   revealPath(dir);
   return { ok: true, dir };
 }
@@ -2513,13 +2468,13 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const name = String(body.name || "").trim();
       if (!name) return json(res, 400, { error: "missing fields" });
-      const slug = createProject({
+      const id = createProject({
         name,
         color: body.color,
         cover: body.cover,
       });
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "PUT" && url.pathname === "/api/project") {
       const body = await readBody(req);
@@ -2563,9 +2518,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (!body.project || !body.board || !body.title) return json(res, 400, { error: "missing fields" });
       if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
-      const slug = writeCard(body.project, body.board, body);
+      const id = writeCard(body.project, body.board, body);
       saveStore();
-      return json(res, 200, { slug, ...readWorkspace() });
+      return json(res, 200, { id, ...readWorkspace() });
     }
     if (req.method === "PUT" && url.pathname === "/api/card-order") {
       const body = await readBody(req);
@@ -2576,9 +2531,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "DELETE" && url.pathname === "/api/card") {
       const body = await readBody(req);
-      if (!body.project || !body.board || !body.slug) return json(res, 400, { error: "missing fields" });
+      if (!body.project || !body.board || !body.id) return json(res, 400, { error: "missing fields" });
       if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
-      deleteCard(body.project, body.board, body.slug, {
+      deleteCard(body.project, body.board, body.id, {
         permanent: !!body.permanent,
         keepFiles: !!body.keepFiles,
       });
@@ -2590,14 +2545,14 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && url.pathname === "/api/trash/restore") {
       const body = await readBody(req);
-      if (!body.slug) return json(res, 400, { error: "missing fields" });
-      const result = restoreTrashItem(body.slug, { restoreParent: !!body.restoreParent });
+      if (!body.id) return json(res, 400, { error: "missing fields" });
+      const result = restoreTrashItem(body.id, { restoreParent: !!body.restoreParent });
       if (result.needsParent) {
         return json(res, 409, {
           needsParent: true,
           parentKind: result.parentKind,
           parentName: result.parentName,
-          parentTrashSlug: result.parentTrashSlug,
+          parentTrashId: result.parentTrashId,
           error: "parent container is in trash",
         });
       }
@@ -2607,7 +2562,7 @@ const server = http.createServer(async (req, res) => {
       }
       saveStore();
       return json(res, 200, {
-        slug: result.slug,
+        id: result.id,
         project: result.project,
         board: result.board || null,
         notesTab: result.notesTab || null,
@@ -2621,25 +2576,25 @@ const server = http.createServer(async (req, res) => {
       const project = findProject(body.project);
       const board = findBoard(project, body.board);
       if (!board) return json(res, 404, { error: "board not found" });
-      let slug =
-        body.slug && isSafePathSlug(String(body.slug))
-          ? String(body.slug)
-          : uniqueCardSlug(board, body.title);
-      if ((board.cards || []).some((c) => c.slug === slug)) {
-        slug = uniqueCardSlug(board, body.title);
+      let id =
+        body.id && isSafePathId(String(body.id))
+          ? String(body.id)
+          : uniqueCardId();
+      if ((board.cards || []).some((c) => c.id === id)) {
+        id = uniqueCardId();
       }
-      writeCard(body.project, body.board, { ...body, slug });
+      writeCard(body.project, body.board, { ...body, id });
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "POST" && url.pathname === "/api/board") {
       const body = await readBody(req);
       if (!body.project || !body.name) return json(res, 400, { error: "missing fields" });
       if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
       if (!findProject(body.project)) return json(res, 404, { error: "project not found" });
-      const slug = createBoard(body.project, body.name);
+      const id = createBoard(body.project, body.name);
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "PUT" && url.pathname === "/api/board") {
       const body = await readBody(req);
@@ -2671,26 +2626,26 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (!body.project || !body.name) return json(res, 400, { error: "missing fields" });
       if (!findProject(body.project)) return json(res, 404, { error: "project not found" });
-      const slug = createDatabase(body.project, body.name);
+      const id = createDatabase(body.project, body.name);
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "POST" && url.pathname === "/api/notes-tab") {
       const body = await readBody(req);
       if (!body.project || !body.name) return json(res, 400, { error: "missing fields" });
       if (!findProject(body.project)) return json(res, 404, { error: "project not found" });
-      const slug = createNotesTab(body.project, body.name);
+      const id = createNotesTab(body.project, body.name);
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "POST" && url.pathname === "/api/files-tab") {
       const body = await readBody(req);
       if (!body.project || !body.name) return json(res, 400, { error: "missing fields" });
       if (!findProject(body.project)) return json(res, 404, { error: "project not found" });
       if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
-      const slug = createFilesTab(body.project, body.name);
+      const id = createFilesTab(body.project, body.name);
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "POST" && url.pathname === "/api/file/reveal") {
       const body = await readBody(req);
@@ -2751,7 +2706,7 @@ const server = http.createServer(async (req, res) => {
       }
       saveStore();
       return json(res, 200, {
-        slug: result.slug,
+        id: result.id,
         project: result.project,
         filesTab: result.filesTab,
         ...readWorkspace(),
@@ -2814,7 +2769,7 @@ const server = http.createServer(async (req, res) => {
       }
       saveStore();
       return json(res, 201, {
-        slug: result.file.slug,
+        id: result.file.id,
         file: result.file,
         files: result.files,
         ...readWorkspace(),
@@ -2884,7 +2839,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, status, { error: result.error });
       }
       saveStore();
-      return json(res, 201, { slug: result.slug, ...readWorkspace() });
+      return json(res, 201, { id: result.id, ...readWorkspace() });
     }
     if (req.method === "PUT" && url.pathname === "/api/file") {
       const body = await readBody(req);
@@ -2916,11 +2871,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "PUT" && url.pathname === "/api/tab") {
       const body = await readBody(req);
-      if (!body.project || !body.type || !body.slug || body.name == null) {
+      if (!body.project || !body.type || !body.id || body.name == null) {
         return json(res, 400, { error: "missing fields" });
       }
       if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
-      const result = renameTab(body.project, body.type, body.slug, body.name);
+      const result = renameTab(body.project, body.type, body.id, body.name);
       if (!result.ok) {
         const status = result.error === "project not found" || result.error === "tab not found" ? 404 : 400;
         return json(res, status, { error: result.error });
@@ -2930,11 +2885,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "DELETE" && url.pathname === "/api/tab") {
       const body = await readBody(req);
-      if (!body.project || !body.type || !body.slug) {
+      if (!body.project || !body.type || !body.id) {
         return json(res, 400, { error: "missing fields" });
       }
       if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
-      const result = deleteTab(body.project, body.type, body.slug);
+      const result = deleteTab(body.project, body.type, body.id);
       if (!result.ok) {
         const status = result.error === "project not found" || result.error === "tab not found" ? 404 : 400;
         return json(res, status, { error: result.error });
@@ -2962,12 +2917,12 @@ const server = http.createServer(async (req, res) => {
       const tab = findNotesTab(findProject(body.project), body.notesTab);
       if (!tab) return json(res, 404, { error: "notes tab not found" });
       const title = String(body.title || "").trim() || "Untitled";
-      const slug = uniqueNoteSlug(tab, title);
+      const id = uniqueNoteId();
       const noteBody =
         body.body != null ? String(body.body) : "<h1></h1>";
-      writeNote(body.project, body.notesTab, { slug, title, body: noteBody });
+      writeNote(body.project, body.notesTab, { id, title, body: noteBody });
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "PUT" && url.pathname === "/api/note") {
       const body = await readBody(req);
@@ -2975,11 +2930,11 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: "missing fields" });
       }
       const tab = findNotesTab(findProject(body.project), body.notesTab);
-      if (!tab || !(tab.notes || []).some((n) => n.slug === body.note)) {
+      if (!tab || !(tab.notes || []).some((n) => n.id === body.note)) {
         return json(res, 404, { error: "note not found" });
       }
       writeNote(body.project, body.notesTab, {
-        slug: body.note,
+        id: body.note,
         title: body.title,
         body: body.body,
       });
@@ -3015,7 +2970,7 @@ const server = http.createServer(async (req, res) => {
       }
       saveStore();
       return json(res, 200, {
-        slug: result.slug,
+        id: result.id,
         project: result.project,
         notesTab: result.notesTab,
         ...readWorkspace(),
@@ -3056,9 +3011,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (!body.project || !body.database || !body.fields) return json(res, 400, { error: "missing fields" });
       const cols = loadDbColumns(body.project, body.database);
-      const slug = writeItem(body.project, body.database, body, cols);
+      const id = writeItem(body.project, body.database, body, cols);
       saveStore();
-      return json(res, 200, { slug, ...readWorkspace() });
+      return json(res, 200, { id, ...readWorkspace() });
     }
     if (req.method === "POST" && url.pathname === "/api/item") {
       const body = await readBody(req);
@@ -3071,10 +3026,10 @@ const server = http.createServer(async (req, res) => {
       cols.forEach((c) => {
         if (fields[c.id] == null) fields[c.id] = c.type === "stage" ? "Applied" : "";
       });
-      const slug = uniqueItemSlug(db, fields.n || fields.title || "item");
-      writeItem(body.project, body.database, { slug, fields, body: body.body || "" }, cols);
+      const id = uniqueItemId();
+      writeItem(body.project, body.database, { id, fields, body: body.body || "" }, cols);
       saveStore();
-      return json(res, 201, { slug, ...readWorkspace() });
+      return json(res, 201, { id, ...readWorkspace() });
     }
     if (req.method === "GET" && url.pathname === "/api/timelogs") {
       return json(res, 200, { timelogs: readTimelogs() });
@@ -3090,17 +3045,17 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "PUT" && url.pathname === "/api/timelog") {
       const body = await readBody(req);
-      if (!body.slug) return json(res, 400, { error: "missing fields" });
-      const { slug, ...patch } = body;
-      const entry = updateTimelog(slug, patch);
+      if (!body.id) return json(res, 400, { error: "missing fields" });
+      const { id, ...patch } = body;
+      const entry = updateTimelog(id, patch);
       if (!entry) return json(res, 404, { error: "timelog not found" });
       saveStore();
       return json(res, 200, { entry, timelogs: readTimelogs() });
     }
     if (req.method === "DELETE" && url.pathname === "/api/timelog") {
       const body = await readBody(req);
-      if (!body.slug) return json(res, 400, { error: "missing fields" });
-      if (!deleteTimelog(body.slug)) return json(res, 404, { error: "timelog not found" });
+      if (!body.id) return json(res, 400, { error: "missing fields" });
+      if (!deleteTimelog(body.id)) return json(res, 404, { error: "timelog not found" });
       saveStore();
       return json(res, 200, { timelogs: readTimelogs() });
     }

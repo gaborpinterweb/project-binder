@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import { Icon, IC } from "../icons.jsx";
-import { TYPES } from "../utils.js";
+import { COVER_TAB_ID, TYPES } from "../utils.js";
 
-function findTabEl(tabsEl, slug) {
-  if (!tabsEl || !slug) return null;
+function findTabEl(tabsEl, id) {
+  if (!tabsEl || !id) return null;
   return [...tabsEl.querySelectorAll(":scope > .tab")].find(
-    (el) => el.dataset.tabSlug === slug
+    (el) => el.dataset.tabId === id
   );
 }
 
 /** FLIP-animate two tabs after applyOrder reorders the DOM. */
-function flipSwapTabs(tabsEl, leftSlug, rightSlug, applyOrder) {
+function flipSwapTabs(tabsEl, leftId, rightId, applyOrder) {
   flipSwapHorizontal(
-    (slug) => findTabEl(tabsEl, slug),
-    leftSlug,
-    rightSlug,
+    (id) => findTabEl(tabsEl, id),
+    leftId,
+    rightId,
     applyOrder,
     "tab-swapping"
   );
@@ -216,7 +216,7 @@ function TabBtn({
   c,
   on,
   type,
-  slug,
+  id,
   onClick,
   disabled,
   showMenu,
@@ -275,7 +275,7 @@ function TabBtn({
         tabIndex={disabled ? -1 : 0}
         className={className}
         style={{ ["--c"]: c }}
-        data-tab-slug={slug}
+        data-tab-id={id}
         aria-disabled={disabled || undefined}
         onClick={(e) => {
           if (disabled) return;
@@ -300,7 +300,7 @@ function TabBtn({
       type="button"
       className={className}
       style={{ ["--c"]: c }}
-      data-tab-slug={slug}
+      data-tab-id={id}
       disabled={disabled}
       aria-disabled={disabled || undefined}
       onClick={onClick}
@@ -338,11 +338,11 @@ export default function TabBar({
     if (swappingRef.current || archived || boardEdit) return;
     const j = index + dir;
     if (index < 1 || j < 1 || j >= mods.length) return;
-    const leftSlug = dir > 0 ? mods[index][2]?.slug : mods[j][2]?.slug;
-    const rightSlug = dir > 0 ? mods[j][2]?.slug : mods[index][2]?.slug;
-    if (!leftSlug || !rightSlug) return;
+    const leftId = dir > 0 ? mods[index][2]?.id : mods[j][2]?.id;
+    const rightId = dir > 0 ? mods[j][2]?.id : mods[index][2]?.id;
+    if (!leftId || !rightId) return;
     swappingRef.current = true;
-    flipSwapTabs(tabsRef.current, leftSlug, rightSlug, () => {
+    flipSwapTabs(tabsRef.current, leftId, rightId, () => {
       onMoveTab?.(index, dir);
     });
     window.setTimeout(() => {
@@ -355,7 +355,7 @@ export default function TabBar({
     return (
       <div id="bar" style={{ ["--tab"]: c }}>
         <div id="tabs">
-          <TabBtn label="Cover" c={c} on type="Cover" slug="cover" />
+          <TabBtn label="Cover" c={c} on type="Cover" id={COVER_TAB_ID} />
         </div>
       </div>
     );
@@ -374,15 +374,15 @@ export default function TabBar({
           {mods.map((mod, i) => {
             const active = i === m;
             const locked = boardEdit && !active;
-            const slug = mod[2]?.slug || mod[1] + i;
+            const id = mod[2]?.id || mod[1] + i;
             return (
               <TabBtn
-                key={slug}
+                key={id}
                 label={mod[1]}
                 c={tabC}
                 on={active}
                 type={mod[0]}
-                slug={slug}
+                id={id}
                 disabled={locked}
                 showMenu={!archived}
                 menuKind={mod[0] === "Cover" ? "cover" : "tab"}

@@ -98,7 +98,7 @@ export default function TimelogDialog({
   onSave,
   onClose,
 }) {
-  const isEdit = !!entry?.slug;
+  const isEdit = !!entry?.id;
   const options = useMemo(
     () => buildTaskOptions(folders, entry),
     [folders, entry]
@@ -167,7 +167,7 @@ export default function TimelogDialog({
         entry?.endedAt || null
       );
       await onSave?.({
-        ...(isEdit ? { slug: entry.slug } : { kind: "manual" }),
+        ...(isEdit ? { id: entry.id } : { kind: "manual" }),
         project: task.project,
         board: task.board,
         card: task.card,

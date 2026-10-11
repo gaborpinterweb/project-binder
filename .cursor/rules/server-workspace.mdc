@@ -20,7 +20,8 @@ alwaysApply: false
 
 ## Alignment with client
 
-- Slugify, DB column normalize, and custom-view normalize exist on both server and client (`src/db*` / `utils`).
+- Entity identity is UUID `id` (`newId()` / `crypto.randomUUID()`). Path segments must be UUIDs (or `__cardfiles__` for card attachments).
+- DB column normalize and custom-view normalize exist on both server and client (`src/db*` / `utils`).
 - Changing behavior on one side requires checking the other so API and UI stay consistent.
 
 ## Routes

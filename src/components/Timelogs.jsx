@@ -97,11 +97,11 @@ function exportFilename(period, ext) {
   const y = stamp.getFullYear();
   const m = String(stamp.getMonth() + 1).padStart(2, "0");
   const d = String(stamp.getDate()).padStart(2, "0");
-  const slug = String(period || "timelogs")
+  const id = String(period || "timelogs")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  return `timelogs-${slug}-${y}${m}${d}.${ext}`;
+  return `timelogs-${id}-${y}${m}${d}.${ext}`;
 }
 
 function exportTimelogsCsv(entries, period, folders = []) {
@@ -317,14 +317,14 @@ function TimelogMoreMenu({ disabled, onEdit, onDelete }) {
 function TimelogRow({
   entry,
   folders = [],
-  busySlug,
+  busyId,
   onOpenCard,
   onEdit,
   onDelete,
 }) {
   const color = entry.color || GACC;
   const note = entry.note || "";
-  const busy = busySlug === entry.slug;
+  const busy = busyId === entry.id;
   const stamp = entry.endedAt || entry.startedAt || "";
   const title = entryCardTitle(folders, entry);
 
@@ -381,7 +381,7 @@ export default function Timelogs({
   );
   const [groupBy, setGroupBy] = useState("Day");
   const [boardOff, setBoardOff] = useState(() => new Set());
-  const [busySlug, setBusySlug] = useState(null);
+  const [busyId, setBusyId] = useState(null);
   const [dialog, setDialog] = useState(null); // null | { mode: "add" } | { mode: "edit", entry }
 
   const boards = useMemo(
@@ -421,7 +421,7 @@ export default function Timelogs({
     }
     const first = allBoardTasks(folders)[0];
     if (!first) return "";
-    return taskKey(first.folder.slug, first.mod[2]?.slug, first.row.slug);
+    return taskKey(first.folder.id, first.mod[2]?.id, first.row.id);
   }, [folders, filter]);
   const baseFiltered = useMemo(() => {
     if (!entries) return null;
@@ -460,7 +460,7 @@ export default function Timelogs({
   };
 
   const openEditDialog = (entry) => {
-    if (busySlug) return;
+    if (busyId) return;
     setDialog({ mode: "edit", entry });
   };
 
@@ -481,7 +481,7 @@ export default function Timelogs({
   };
 
   const handleDelete = async (entry) => {
-    if (busySlug) return;
+    if (busyId) return;
     const label = entryCardTitle(folders, entry);
     const ok = await askConfirm({
       title: `Delete timelog for "${label}"?`,
@@ -489,26 +489,26 @@ export default function Timelogs({
       danger: true,
     });
     if (!ok) return;
-    setBusySlug(entry.slug);
-    if (dialog?.mode === "edit" && dialog.entry?.slug === entry.slug) {
+    setBusyId(entry.id);
+    if (dialog?.mode === "edit" && dialog.entry?.id === entry.id) {
       closeDialog();
     }
     try {
-      const data = await deleteTimelogApi({ slug: entry.slug });
+      const data = await deleteTimelogApi({ id: entry.id });
       setEntries(data.timelogs || []);
     } catch {
       alert("Could not delete timelog.");
     } finally {
-      setBusySlug(null);
+      setBusyId(null);
     }
   };
 
   const renderTimelogRow = (entry) => (
     <TimelogRow
-      key={entry.slug}
+      key={entry.id}
       entry={entry}
       folders={folders}
-      busySlug={busySlug}
+      busyId={busyId}
       onOpenCard={onOpenCard}
       onEdit={openEditDialog}
       onDelete={handleDelete}

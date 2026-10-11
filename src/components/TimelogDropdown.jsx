@@ -25,7 +25,7 @@ export async function runTimelogAction(
   value,
   { folder, mod, row, onStartPomo, onAddManualTimelog, onOpenTimelogs }
 ) {
-  if (!folder || !mod?.[2]?.slug || !row?.slug) return;
+  if (!folder || !mod?.[2]?.id || !row?.id) return;
   const task = timelogTaskFromCard(folder, mod, row);
 
   if (value === "pomo" || value === "stoptimer") {

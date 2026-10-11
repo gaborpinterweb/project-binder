@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { PC } from "./utils.js";
 import {
   AlignLeft,
   AppWindow,
@@ -12,6 +13,7 @@ import {
   ArrowUpNarrowWide,
   Asterisk,
   Bold,
+  Italic,
   Calendar,
   Check,
   ChevronsUpDown,
@@ -30,7 +32,9 @@ import {
   EllipsisVertical,
   ExternalLink,
   Eye,
+  FileCode,
   FileText,
+  FileType,
   Filter,
   Flag,
   Folder,
@@ -43,7 +47,7 @@ import {
   Highlighter,
   Info,
   Kanban,
-  LayoutTemplate,
+  BookMarked,
   LifeBuoy,
   Link,
   List,
@@ -54,6 +58,7 @@ import {
   Maximize2,
   MessageSquare,
   PanelLeft,
+  PanelTop,
   Sparkles,
   Pencil,
   Plus,
@@ -63,21 +68,82 @@ import {
   Rows4,
   ScrollText,
   Settings,
+  Share,
   SquareCheck,
   SquareCheckBig,
-  StickyNote,
+  NotebookText,
   Table,
   Table2,
   Timer,
   Trash2,
   Type,
+  Undo2,
+  Redo2,
   Workflow,
   X,
 } from "lucide-react";
 
+/** PC cover hues are muted for white-on-fill contrast; lift for thin strokes on dark UI. */
+function vibrantStroke(hex) {
+  const n = parseInt(String(hex).slice(1), 16);
+  let r = (n >> 16) & 255,
+    g = (n >> 8) & 255,
+    b = n & 255;
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0,
+    s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  // Vivid mid-lights so the spectrum reads on --side / charcoal pills.
+  s = Math.min(0.95, s * 1.2 + 0.2);
+  const l2 = Math.min(0.66, Math.max(0.58, l + 0.22));
+  const hue = h * 6;
+  const c = (1 - Math.abs(2 * l2 - 1)) * s;
+  const x = c * (1 - Math.abs((hue % 2) - 1));
+  const m = l2 - c / 2;
+  let rp = 0,
+    gp = 0,
+    bp = 0;
+  if (hue < 1) [rp, gp, bp] = [c, x, 0];
+  else if (hue < 2) [rp, gp, bp] = [x, c, 0];
+  else if (hue < 3) [rp, gp, bp] = [0, c, x];
+  else if (hue < 4) [rp, gp, bp] = [0, x, c];
+  else if (hue < 5) [rp, gp, bp] = [x, 0, c];
+  else [rp, gp, bp] = [c, 0, x];
+  const toHex = (v) =>
+    Math.round((v + m) * 255)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${toHex(rp)}${toHex(gp)}${toHex(bp)}`;
+}
+
+/** One dominant from each PC hue pair — spectrum for Master board selected state. */
+const RAINBOW_STOPS = [
+  PC[0], // Cherry
+  PC[2], // Pumpkin
+  PC[3], // Honey
+  PC[6], // Leaf
+  PC[9], // Teal
+  PC[10], // Sky
+  PC[12], // Plum
+  PC[14], // Candy
+].map(vibrantStroke);
+
 /** Spectrum stroke for Master board selected state — Lucide asterisk paths. */
-function RainbowAsterisk({ size = 16, strokeWidth = 1.75, className, ...rest }) {
+function RainbowAsterisk({ size = 16, strokeWidth = 2, className, ...rest }) {
   const gid = `asterisk-rainbow-${useId().replace(/:/g, "")}`;
+  const last = RAINBOW_STOPS.length - 1;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -95,12 +161,9 @@ function RainbowAsterisk({ size = 16, strokeWidth = 1.75, className, ...rest }) 
     >
       <defs>
         <linearGradient id={gid} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="20%" stopColor="#4ade80" />
-          <stop offset="40%" stopColor="#facc15" />
-          <stop offset="60%" stopColor="#fb923c" />
-          <stop offset="80%" stopColor="#f43f5e" />
-          <stop offset="100%" stopColor="#a855f7" />
+          {RAINBOW_STOPS.map((c, i) => (
+            <stop key={c} offset={`${(i / last) * 100}%`} stopColor={c} />
+          ))}
         </linearGradient>
       </defs>
       <path d="M12 5v14" />
@@ -172,13 +235,17 @@ export const IC = {
   Task: SquareCheckBig,
   Files: Folder,
   Docs: FileText,
-  Notes: StickyNote,
+  fileMd: FileText,
+  fileHtml: FileCode,
+  fileTxt: Type,
+  fileRich: FileType,
+  Notes: NotebookText,
   Links: Link,
   Chat: MessageSquare,
   Iframe: AppWindow,
   Changelog: ScrollText,
   Workflows: Workflow,
-  Cover: LayoutTemplate,
+  Cover: BookMarked,
   Masterboard: Asterisk,
   Timelogs: Timer,
   Calendar,
@@ -207,6 +274,7 @@ export const IC = {
   check: Check,
   flag: Flag,
   export: Download,
+  share: Share,
   move: FolderInput,
   more: EllipsisVertical,
   ellipsis: Ellipsis,
@@ -223,7 +291,10 @@ export const IC = {
   GitHub: GitBranch,
   Developer: CodeXml,
   Archive,
+  undo: Undo2,
+  redo: Redo2,
   bold: Bold,
+  italic: Italic,
   list: List,
   listOrdered: ListOrdered,
   checklist: ListChecks,
@@ -241,6 +312,8 @@ export const IC = {
   rows3: Rows3,
   rows4: Rows4,
   tableRow: Rows3,
+  tableHeaderRow: PanelTop,
+  tableHeaderCol: PanelLeft,
   tableDelete: Table2,
   fieldText: Type,
   fieldLongText: AlignLeft,
@@ -254,7 +327,7 @@ export const IC = {
 
 export function Icon({ name, size = 16, filled = false, rainbow = false }) {
   if (rainbow) {
-    return <RainbowAsterisk size={size} strokeWidth={filled ? 2.25 : 1.75} />;
+    return <RainbowAsterisk size={size} strokeWidth={filled ? 2.5 : 2} />;
   }
   const Comp = IC[name] || IC.folder;
   return (

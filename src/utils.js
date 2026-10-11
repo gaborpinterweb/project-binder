@@ -33,6 +33,8 @@ const STOPTIMER_MAX_KEY = `${STORAGE_PREFIX}stoptimerMaxMin`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
 const MENU_BAR_TIMER_KEY = `${STORAGE_PREFIX}menuBarTimer`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
+const NOTES_UNLOCKED_KEY = `${STORAGE_PREFIX}notesUnlocked`;
+const NOTES_SELECTED_KEY = `${STORAGE_PREFIX}notesSelected`;
 const DEFAULT_UI_SOUNDS = true;
 const DEFAULT_MENU_BAR_TIMER = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
@@ -309,6 +311,18 @@ export function slugifyClient(s) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || "item"
   );
+}
+
+/** Trigger a browser file download from a Blob. */
+export function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Plain-text title from the first block of note HTML (h1/p/li/…). */
@@ -942,6 +956,48 @@ export function saveFilesSort(tabKey, sort) {
 export function loadCompletedViews() {
   const stored = readStorageJson(COMPLETED_VIEW_KEY, {});
   return stored && typeof stored === "object" ? stored : {};
+}
+
+/** Map of unlock keys → true for notes currently unlocked for editing. */
+export function loadNotesUnlocked() {
+  const stored = readStorageJson(NOTES_UNLOCKED_KEY, {});
+  return stored && typeof stored === "object" && !Array.isArray(stored)
+    ? stored
+    : {};
+}
+
+export function saveNotesUnlocked(map) {
+  writeStorageJson(
+    NOTES_UNLOCKED_KEY,
+    map && typeof map === "object" && !Array.isArray(map) ? map : {}
+  );
+}
+
+export function notesTabKey(projectSlug, notesTabSlug) {
+  if (!projectSlug || !notesTabSlug) return "";
+  return `${projectSlug}/${notesTabSlug}`;
+}
+
+export function noteUnlockKey(projectSlug, notesTabSlug, noteSlug) {
+  if (!noteSlug) return "";
+  const tab = notesTabKey(projectSlug, notesTabSlug);
+  return tab ? `${tab}/${noteSlug}` : "";
+}
+
+/** Map of notes-tab keys → last viewed note slug. */
+export function loadNotesSelected() {
+  const stored = readStorageJson(NOTES_SELECTED_KEY, {});
+  return stored && typeof stored === "object" && !Array.isArray(stored)
+    ? stored
+    : {};
+}
+
+export function saveNotesSelected(tabKey, noteSlug) {
+  if (!tabKey) return;
+  const map = loadNotesSelected();
+  if (noteSlug) map[tabKey] = String(noteSlug);
+  else delete map[tabKey];
+  writeStorageJson(NOTES_SELECTED_KEY, map);
 }
 
 /** Defaults: project name on for Masterboard only; time spent off. */

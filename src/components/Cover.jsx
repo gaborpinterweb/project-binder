@@ -38,9 +38,12 @@ function patchDraft(onChange, draft, patch) {
   onChange((prev) => ({ ...(prev || draft), ...patch }));
 }
 
-function CoverDock({ children }) {
+function CoverDock({ open, children }) {
   return (
-    <div className="cover-dock">
+    <div
+      className={"cover-dock" + (open ? " is-open" : "")}
+      aria-hidden={!open}
+    >
       <div className="cover-dock-inner">{children}</div>
     </div>
   );
@@ -177,9 +180,14 @@ export default function Cover({
           )}
         </div>
       </div>
-      {editing && (
-        <CoverDock>
-          <button type="button" className="cover-done" onClick={saveEdit}>
+      {!archived && (
+        <CoverDock open={editing}>
+          <button
+            type="button"
+            className="cover-done"
+            tabIndex={editing ? undefined : -1}
+            onClick={saveEdit}
+          >
             <Icon name="check" size={16} />
             Done
           </button>
@@ -216,7 +224,7 @@ function DraftCover({ draft, onChange, onCommit }) {
           />
         </div>
       </div>
-      <CoverDock>
+      <CoverDock open>
         <button
           type="button"
           className="cover-done"

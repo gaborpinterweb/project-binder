@@ -7,8 +7,16 @@ import {
   noteListTitle,
   noteListPreview,
   isEmptyNoteBody,
+  loadNotesUnlocked,
+  saveNotesUnlocked,
+  loadNotesSelected,
+  saveNotesSelected,
+  notesTabKey,
+  noteUnlockKey,
 } from "../utils.js";
+import { copyNoteAs, exportNoteAs } from "../noteExport.js";
 import { askConfirm } from "../confirmDialog.js";
+import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 import RichTextEditor, { RteToolbar } from "./RichTextEditor.jsx";
 
@@ -327,7 +335,188 @@ function NoteContextMenu({
   );
 }
 
-/** ⋮ menu next to Lock/Unlock — same actions as the list context menu. */
+const NOTE_EXPORT_OPTS = [
+  { value: "md", label: "Markdown", icon: "fileMd" },
+  { value: "html", label: "HTML", icon: "fileHtml" },
+  { value: "txt", label: "Plain text", icon: "fileTxt" },
+];
+
+const NOTE_COPY_OPTS = [
+  { value: "md", label: "Markdown", icon: "fileMd" },
+  { value: "rich", label: "Rich text", icon: "fileRich" },
+  { value: "txt", label: "Plain text", icon: "fileTxt" },
+];
+
+/** Nested Export as… / Copy as… flyout row (same hover pattern as Move). */
+function NoteShareFlyout({ label, icon, options, onPick }) {
+  const leaveTimer = useRef(0);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+
+  const show = () => {
+    window.clearTimeout(leaveTimer.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
+  return (
+    <div
+      className={"notes-ctx-move" + (open ? " open" : "")}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        className="notes-ctx-move-btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          window.clearTimeout(leaveTimer.current);
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name={icon} size={14} />
+        <span className="notes-ctx-move-lab">{label}</span>
+        <span className="notes-ctx-move-caret" aria-hidden="true">
+          <Icon name="arrow" size={12} />
+        </span>
+      </button>
+      {open ? (
+        <div className="pop notes-ctx-move-pop" role="menu" aria-label={label}>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPick?.(opt.value);
+              }}
+            >
+              {opt.icon ? <Icon name={opt.icon} size={14} /> : null}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Share — export/copy the selected note (before Organise). */
+function NoteShareMenu({ disabled, body }) {
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const place = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onReposition = () => place();
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  const runExport = (format) => {
+    exportNoteAs(body, format);
+    close();
+  };
+
+  const runCopy = async (format) => {
+    close();
+    try {
+      const label = await copyNoteAs(body, format);
+      showSnackbar({ message: `Copied as ${label}`, durationMs: 2500 });
+    } catch {
+      showSnackbar({ message: "Could not copy to clipboard", durationMs: 3000 });
+    }
+  };
+
+  return (
+    <div
+      className={"notes-more" + (open ? " open" : "")}
+      ref={wrapRef}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        ref={btnRef}
+        className="mod-act"
+        title="Share"
+        aria-label="Share"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (disabled) return;
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="share" size={18} />
+        <span className="mod-act-lab">Share</span>
+      </button>
+      {open && pos ? (
+        <div
+          className="pop dd-menu notes-ctx-menu"
+          role="menu"
+          aria-label="Share"
+          style={{
+            display: "block",
+            top: pos.top,
+            right: pos.right,
+            left: "auto",
+          }}
+        >
+          <NoteShareFlyout
+            label="Export as…"
+            icon="export"
+            options={NOTE_EXPORT_OPTS}
+            onPick={runExport}
+          />
+          <NoteShareFlyout
+            label="Copy as…"
+            icon="copy"
+            options={NOTE_COPY_OPTS}
+            onPick={runCopy}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Organise — Move / Duplicate / Delete (same actions as the list context menu). */
 function NoteMoreMenu({
   disabled,
   moveOptions = [],
@@ -468,8 +657,9 @@ export default function Notes({
     () => sortNotes(filterNotes(d.notes, filter), sort),
     [d.notes, filter, sort]
   );
-  const [selectedSlug, setSelectedSlug] = useState(notes[0]?.slug || null);
-  const [unlocked, setUnlocked] = useState({});
+  const tabKey = notesTabKey(folder?.slug, d.slug);
+  const [selectedByTab, setSelectedByTab] = useState(() => loadNotesSelected());
+  const [unlocked, setUnlocked] = useState(() => loadNotesUnlocked());
   const [editor, setEditor] = useState(null);
   const [toolbarMounted, setToolbarMounted] = useState(false);
   const [toolbarIn, setToolbarIn] = useState(false);
@@ -488,12 +678,37 @@ export default function Notes({
       }));
   }, [folders, folder?.slug, d.slug]);
 
-  const unlockKey = (noteSlug) => `${d.slug}:${noteSlug}`;
+  const rememberedSlug = (tabKey && selectedByTab[tabKey]) || null;
+  const selectedSlug =
+    rememberedSlug && notes.some((n) => n.slug === rememberedSlug)
+      ? rememberedSlug
+      : notes[0]?.slug || null;
+
+  const setSelectedSlug = (slug) => {
+    if (!tabKey) return;
+    const nextSlug = slug || null;
+    setSelectedByTab((prev) => {
+      if ((prev[tabKey] || null) === nextSlug) return prev;
+      const next = { ...prev };
+      if (nextSlug) next[tabKey] = nextSlug;
+      else delete next[tabKey];
+      return next;
+    });
+    saveNotesSelected(tabKey, nextSlug);
+  };
+
+  const unlockKey = (noteSlug) =>
+    noteUnlockKey(folder?.slug, d.slug, noteSlug);
   const locked = !selectedSlug || !unlocked[unlockKey(selectedSlug)];
 
-  const setLocked = (next) => {
-    if (!selectedSlug) return;
-    const key = unlockKey(selectedSlug);
+  useEffect(() => {
+    saveNotesUnlocked(unlocked);
+  }, [unlocked]);
+
+  const setNoteLocked = (noteSlug, next) => {
+    if (!noteSlug) return;
+    const key = unlockKey(noteSlug);
+    if (!key) return;
     setUnlocked((prev) => {
       if (next) {
         if (!prev[key]) return prev;
@@ -506,10 +721,21 @@ export default function Notes({
     });
   };
 
+  const setLocked = (next) => setNoteLocked(selectedSlug, next);
+
+  const toggleNoteLock = (noteSlug) => {
+    if (!noteSlug || readonly) return;
+    const key = unlockKey(noteSlug);
+    setNoteLocked(noteSlug, !!unlocked[key]);
+  };
+
+  // Drop remembered selection only when that note was deleted/moved away.
   useEffect(() => {
-    if (selectedSlug && notes.some((n) => n.slug === selectedSlug)) return;
+    if (!tabKey || !rememberedSlug) return;
+    const all = Array.isArray(d.notes) ? d.notes : [];
+    if (all.some((n) => n.slug === rememberedSlug)) return;
     setSelectedSlug(notes[0]?.slug || null);
-  }, [notes, selectedSlug]);
+  }, [tabKey, d.notes, rememberedSlug, notes]);
 
   useEffect(() => {
     let raf1 = 0;
@@ -570,6 +796,7 @@ export default function Notes({
 
   const clearNoteUnlock = (noteSlug) => {
     const key = unlockKey(noteSlug);
+    if (!key) return;
     setUnlocked((prev) => {
       if (!prev[key]) return prev;
       const copy = { ...prev };
@@ -735,6 +962,9 @@ export default function Notes({
           </Dropdown>
         </div>
         <div className="modbar-end">
+          {selected ? (
+            <NoteShareMenu disabled={!selected} body={selected.body} />
+          ) : null}
           {selected && !readonly && (
             <>
               <NoteMoreMenu
@@ -790,6 +1020,10 @@ export default function Notes({
                     type="button"
                     className={"notes-item" + (n.slug === selectedSlug ? " on" : "")}
                     onClick={() => selectNote(n.slug)}
+                    onDoubleClick={() => {
+                      setSelectedSlug(n.slug);
+                      toggleNoteLock(n.slug);
+                    }}
                     onContextMenu={(e) => openNoteCtx(e, n)}
                   >
                     <span className={"notes-item-head" + (isEditing ? " editing" : "")}>
@@ -833,7 +1067,11 @@ export default function Notes({
                 >
                   <div className="notes-rte-toolbar-clip">
                     <div className="notes-rte-toolbar-inner">
-                      <RteToolbar editor={editor} variant="full" />
+                      <RteToolbar
+                        editor={editor}
+                        variant="full"
+                        hasRaisedIslands
+                      />
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import {
   TIMELOG_PERIODS,
   allBoardTasks,
   allBoards,
+  downloadBlob,
   formatClock,
   formatDuration,
   groupTimelogsByPeriodAndProject,
@@ -89,17 +90,6 @@ function timelogExportRows(entries, folders = []) {
       entry.note || "",
     ];
   });
-}
-
-function downloadBlob(filename, blob) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 function exportFilename(period, ext) {

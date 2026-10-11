@@ -13,8 +13,30 @@ import {
   TableCell,
   TableHeader,
 } from "@tiptap/extension-table";
+import {
+  columnIsHeader,
+  isInTable,
+  rowIsHeader,
+  selectedRect,
+} from "@tiptap/pm/tables";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
+
+/** First-row / first-column header flags for the table under the caret. */
+function tableHeaderFlags(editor) {
+  if (!editor || editor.isDestroyed || !isInTable(editor.state)) {
+    return { row: false, col: false };
+  }
+  try {
+    const rect = selectedRect(editor.state);
+    return {
+      row: rowIsHeader(rect.map, rect.table, 0),
+      col: columnIsHeader(rect.map, rect.table, 0),
+    };
+  } catch {
+    return { row: false, col: false };
+  }
+}
 
 function toEditorContent(body) {
   if (!body) return "";
@@ -158,6 +180,8 @@ function TableFloat({ editor }) {
 
   if (!coords || typeof document === "undefined") return null;
 
+  const headers = tableHeaderFlags(editor);
+
   return createPortal(
     <div
       className="rte-table-float"
@@ -166,7 +190,7 @@ function TableFloat({ editor }) {
       aria-label="Table"
     >
       <ToolbarBtn
-        title="Add row below"
+        title="Add row"
         disabled={!editor.can().addRowAfter()}
         onClick={() => editor.chain().focus().addRowAfter().run()}
       >
@@ -175,17 +199,6 @@ function TableFloat({ editor }) {
         </span>
         <Icon name="tableRow" size={15} />
       </ToolbarBtn>
-      <ToolbarBtn
-        title="Add column after"
-        disabled={!editor.can().addColumnAfter()}
-        onClick={() => editor.chain().focus().addColumnAfter().run()}
-      >
-        <span className="rte-table-float-act" aria-hidden="true">
-          +
-        </span>
-        <Icon name="tableCol" size={15} />
-      </ToolbarBtn>
-      <span className="rte-table-float-sep" aria-hidden="true" />
       <ToolbarBtn
         title="Delete row"
         disabled={!editor.can().deleteRow()}
@@ -197,6 +210,16 @@ function TableFloat({ editor }) {
         <Icon name="tableRow" size={15} />
       </ToolbarBtn>
       <ToolbarBtn
+        title="Add column"
+        disabled={!editor.can().addColumnAfter()}
+        onClick={() => editor.chain().focus().addColumnAfter().run()}
+      >
+        <span className="rte-table-float-act" aria-hidden="true">
+          +
+        </span>
+        <Icon name="tableCol" size={15} />
+      </ToolbarBtn>
+      <ToolbarBtn
         title="Delete column"
         disabled={!editor.can().deleteColumn()}
         onClick={() => editor.chain().focus().deleteColumn().run()}
@@ -206,6 +229,24 @@ function TableFloat({ editor }) {
         </span>
         <Icon name="tableCol" size={15} />
       </ToolbarBtn>
+      <span className="rte-table-float-sep" aria-hidden="true" />
+      <ToolbarBtn
+        title="Header row"
+        active={headers.row}
+        disabled={!editor.can().toggleHeaderRow()}
+        onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+      >
+        <Icon name="tableHeaderRow" size={15} />
+      </ToolbarBtn>
+      <ToolbarBtn
+        title="Header column"
+        active={headers.col}
+        disabled={!editor.can().toggleHeaderColumn()}
+        onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
+      >
+        <Icon name="tableHeaderCol" size={15} />
+      </ToolbarBtn>
+      <span className="rte-table-float-sep" aria-hidden="true" />
       <ToolbarBtn
         title="Delete table"
         disabled={!editor.can().deleteTable()}
@@ -225,7 +266,7 @@ function rteFeatures(variant = "mini") {
   return {
     full,
     levels: full ? [1, 2, 3, 4] : [1, 2],
-    paragraph: full,
+    paragraph: true,
     quote: full,
     codeBlock: true,
     highlight: full,
@@ -233,7 +274,11 @@ function rteFeatures(variant = "mini") {
   };
 }
 
-export function RteToolbar({ editor, variant = "mini" }) {
+export function RteToolbar({
+  editor,
+  variant = "mini",
+  hasRaisedIslands = false,
+}) {
   const [, bump] = useState(0);
   useEffect(() => {
     if (!editor) return;
@@ -250,8 +295,32 @@ export function RteToolbar({ editor, variant = "mini" }) {
   const feat = rteFeatures(variant);
   const inTable = feat.table && editor.isActive("table");
   return (
-    <div className={"rte-toolbar" + (feat.full ? " rte-toolbar-full" : " rte-toolbar-mini")}>
-      <div className="rte-group" role="group" aria-label="Blocks">
+    <div
+      className={
+        "rte-toolbar" +
+        (feat.full ? " rte-toolbar-full" : " rte-toolbar-mini") +
+        (hasRaisedIslands ? " rte-toolbar-raised" : "")
+      }
+    >
+      {feat.full && (
+        <div className="rte-group" role="group" aria-label="History">
+          <ToolbarBtn
+            title="Undo"
+            disabled={!editor.can().undo()}
+            onClick={() => editor.chain().focus().undo().run()}
+          >
+            <Icon name="undo" size={15} />
+          </ToolbarBtn>
+          <ToolbarBtn
+            title="Redo"
+            disabled={!editor.can().redo()}
+            onClick={() => editor.chain().focus().redo().run()}
+          >
+            <Icon name="redo" size={15} />
+          </ToolbarBtn>
+        </div>
+      )}
+      <div className="rte-group" role="group" aria-label="Headings">
         {feat.levels.map((level) => (
           <ToolbarBtn
             key={level}
@@ -283,12 +352,30 @@ export function RteToolbar({ editor, variant = "mini" }) {
           <Icon name="bold" size={15} />
         </ToolbarBtn>
         <ToolbarBtn
+          title="Italic"
+          active={editor.isActive("italic")}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        >
+          <Icon name="italic" size={15} />
+        </ToolbarBtn>
+        {feat.highlight && (
+          <ToolbarBtn
+            title="Highlight"
+            active={editor.isActive("highlight")}
+            onClick={() => editor.chain().focus().toggleHighlight().run()}
+          >
+            <Icon name="highlight" size={15} />
+          </ToolbarBtn>
+        )}
+        <ToolbarBtn
           title="Link"
           active={editor.isActive("link")}
           onClick={() => editLink(editor)}
         >
           <Icon name="link" size={15} />
         </ToolbarBtn>
+      </div>
+      <div className="rte-group" role="group" aria-label="Lists">
         <ToolbarBtn
           title="List"
           active={editor.isActive("bulletList")}
@@ -310,34 +397,29 @@ export function RteToolbar({ editor, variant = "mini" }) {
         >
           <Icon name="checklist" size={15} />
         </ToolbarBtn>
-        {feat.quote && (
-          <ToolbarBtn
-            title="Quote"
-            active={editor.isActive("blockquote")}
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          >
-            <Icon name="blockquote" size={15} />
-          </ToolbarBtn>
-        )}
-        {feat.codeBlock && (
-          <ToolbarBtn
-            title="Code block"
-            active={editor.isActive("codeBlock")}
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          >
-            <Icon name="codeBlock" size={15} />
-          </ToolbarBtn>
-        )}
-        {feat.highlight && (
-          <ToolbarBtn
-            title="Highlight"
-            active={editor.isActive("highlight")}
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-          >
-            <Icon name="highlight" size={15} />
-          </ToolbarBtn>
-        )}
       </div>
+      {(feat.quote || feat.codeBlock) && (
+        <div className="rte-group" role="group" aria-label="Blocks">
+          {feat.quote && (
+            <ToolbarBtn
+              title="Quote"
+              active={editor.isActive("blockquote")}
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            >
+              <Icon name="blockquote" size={15} />
+            </ToolbarBtn>
+          )}
+          {feat.codeBlock && (
+            <ToolbarBtn
+              title="Code block"
+              active={editor.isActive("codeBlock")}
+              onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            >
+              <Icon name="codeBlock" size={15} />
+            </ToolbarBtn>
+          )}
+        </div>
+      )}
       {feat.table && (
         <div className="rte-group" role="group" aria-label="Table">
           <ToolbarBtn
@@ -371,6 +453,7 @@ export default function RichTextEditor({
   autofocus = false,
   startInHeading = false,
   variant = "mini",
+  hasRaisedIslands = false,
   onEditor,
 }) {
   const feat = rteFeatures(variant);
@@ -468,11 +551,19 @@ export default function RichTextEditor({
         (showLabel ? (
           <div className="dlg-desc-head">
             <span className="dlg-desc-label">{label}</span>
-            <RteToolbar editor={editor} variant={variant} />
+            <RteToolbar
+              editor={editor}
+              variant={variant}
+              hasRaisedIslands={hasRaisedIslands}
+            />
           </div>
         ) : (
           <div className="dlg-desc-head notes-rte-head">
-            <RteToolbar editor={editor} variant={variant} />
+            <RteToolbar
+              editor={editor}
+              variant={variant}
+              hasRaisedIslands={hasRaisedIslands}
+            />
           </div>
         ))}
       <EditorContent editor={editor} />

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "../icons.jsx";
 import {
   GACC,
+  MIN_TIMELOG_SEC,
   PC,
   formatTimer,
   globalLabel,
@@ -340,12 +341,17 @@ export default function Sidebar({
   );
 }
 
+const POMO_NOTE_LINE = 1.35;
+const POMO_NOTE_PAD_Y = 28;
+const POMO_NOTE_MAX_LINES = 5;
+
 function PomoBlock({ folders = [], activePomo, onStop, onNoteChange, onOpenCard }) {
   const stopwatch = isStoptimerSession(activePomo);
-  const shown = stopwatch
-    ? pomoElapsedSec(activePomo)
-    : pomoRemainingSec(activePomo);
+  const elapsed = pomoElapsedSec(activePomo);
+  const shown = stopwatch ? elapsed : pomoRemainingSec(activePomo);
+  const canSave = elapsed >= MIN_TIMELOG_SEC;
   const color = activePomo.color || GACC;
+  const noteRef = useRef(null);
   const cardTitle = liveCardTitle(
     folders,
     activePomo.project,
@@ -353,42 +359,63 @@ function PomoBlock({ folders = [], activePomo, onStop, onNoteChange, onOpenCard 
     activePomo.card,
     activePomo.title || "Untitled"
   );
+
+  const resizeNote = useCallback(() => {
+    const el = noteRef.current;
+    if (!el) return;
+    const fs = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const maxH = POMO_NOTE_MAX_LINES * POMO_NOTE_LINE * fs + POMO_NOTE_PAD_Y;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, maxH);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > maxH + 1 ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => {
+    resizeNote();
+  }, [activePomo.note, resizeNote]);
+
   return (
-    <div className="pomo-block" id="pomo-block">
-      <div className="pomo-time" id="pomo-time">
-        {formatTimer(shown)}
+    <div
+      className="pomo-block"
+      id="pomo-block"
+      style={{ ["--pc"]: color }}
+    >
+      <div className="pomo-body">
+        <button
+          type="button"
+          className="pomo-mini"
+          id="pomo-mini"
+          title="Open card"
+          onClick={onOpenCard}
+        >
+          <div className="pomo-time" id="pomo-time">
+            {formatTimer(shown)}
+          </div>
+          <b className="pomo-card-title" id="pomo-card-title">
+            {cardTitle}
+          </b>
+        </button>
+        <textarea
+          ref={noteRef}
+          className="pomo-note"
+          id="pomo-note"
+          rows={1}
+          placeholder="Add notes…"
+          value={activePomo.note || ""}
+          onChange={(e) => {
+            onNoteChange?.(e.target.value);
+            requestAnimationFrame(resizeNote);
+          }}
+        />
       </div>
       <button
         type="button"
-        className="pomo-mini"
-        id="pomo-mini"
-        title="Open card"
-        style={{ ["--pc"]: color }}
-        onClick={onOpenCard}
+        className={"pomo-stop" + (canSave ? "" : " is-cancel")}
+        id="pomo-stop"
+        onClick={onStop}
       >
-        <b id="pomo-card-title">{cardTitle}</b>
-        <span className="meta">
-          <span className="dot" id="pomo-card-dot" style={{ background: color }} />
-          <span id="pomo-card-meta">
-            {(activePomo.projectName || "Project") +
-              " · " +
-              (activePomo.boardName || "Board")}
-          </span>
-        </span>
-      </button>
-      <textarea
-        className="pomo-note"
-        id="pomo-note"
-        rows={2}
-        placeholder="Add notes for this timelog..."
-        value={activePomo.note || ""}
-        onChange={(e) => onNoteChange?.(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.preventDefault();
-        }}
-      />
-      <button type="button" className="pomo-stop" id="pomo-stop" onClick={onStop}>
-        {stopwatch ? "Stop stoptimer" : "Stop countdown"}
+        {canSave ? "Stop and save" : "Cancel"}
       </button>
     </div>
   );

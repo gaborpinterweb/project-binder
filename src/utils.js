@@ -31,8 +31,10 @@ const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 const COUNTDOWN_DURATION_KEY = `${STORAGE_PREFIX}countdownDurationMin`;
 const STOPTIMER_MAX_KEY = `${STORAGE_PREFIX}stoptimerMaxMin`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
+const MENU_BAR_TIMER_KEY = `${STORAGE_PREFIX}menuBarTimer`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
 const DEFAULT_UI_SOUNDS = true;
+const DEFAULT_MENU_BAR_TIMER = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 export const DEFAULT_COUNTDOWN_DURATION_MIN = 25;
 export const COUNTDOWN_DURATION_OPTIONS = [10, 15, 20, 25, 30, 45, 50, 60];
@@ -40,6 +42,8 @@ export const COUNTDOWN_DURATION_OPTIONS = [10, 15, 20, 25, 30, 45, 50, 60];
 export const DEFAULT_STOPTIMER_MAX_MIN = 240;
 export const STOPTIMER_MAX_OPTIONS_MIN = [60, 120, 240, 480, 0];
 export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
+/** Timelogs shorter than this are discarded on stop. */
+export const MIN_TIMELOG_SEC = 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const GACC = "#9a5b2e";
 export const PC = [
@@ -389,15 +393,21 @@ export function formatSpent(sec) {
   return formatDuration(sec);
 }
 
-/** Live countdown/stopwatch — same units, includes seconds. */
+/** Live countdown/stopwatch — mm:ss (or h:mm:ss). */
 export function formatTimer(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  if (h) return h + "h " + m + "m " + r + "s";
-  if (m) return m + "m " + r + "s";
-  return r + "s";
+  const mm = String(m).padStart(2, "0");
+  const ss = String(r).padStart(2, "0");
+  if (h) return h + ":" + mm + ":" + ss;
+  return mm + ":" + ss;
+}
+
+/** Compact mm:ss (or h:mm:ss) for the macOS menu bar. */
+export function formatMenuBarTimer(sec) {
+  return formatTimer(sec);
 }
 
 export function formatClock(iso) {
@@ -716,6 +726,23 @@ export function saveUiSounds(enabled) {
   const next = !!enabled;
   try {
     localStorage.setItem(UI_SOUNDS_KEY, next ? "1" : "0");
+  } catch {}
+  return next;
+}
+
+export function loadMenuBarTimer() {
+  try {
+    const stored = localStorage.getItem(MENU_BAR_TIMER_KEY);
+    if (stored === "0") return false;
+    if (stored === "1") return true;
+  } catch {}
+  return DEFAULT_MENU_BAR_TIMER;
+}
+
+export function saveMenuBarTimer(enabled) {
+  const next = !!enabled;
+  try {
+    localStorage.setItem(MENU_BAR_TIMER_KEY, next ? "1" : "0");
   } catch {}
   return next;
 }

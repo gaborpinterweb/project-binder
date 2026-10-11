@@ -2176,8 +2176,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/app") {
+      const desktop = isDesktopApp();
       return json(res, 200, {
-        desktop: isDesktopApp(),
+        desktop,
+        platform: process.platform,
+        menuBar: desktop && process.platform === "darwin",
         persistentUserData: userData.persistent,
         autoBackupFilename: AUTO_BACKUP_FILENAME_PATTERN,
         autoBackupKeepDays: AUTO_BACKUP_KEEP_DAYS,

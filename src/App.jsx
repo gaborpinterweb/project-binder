@@ -30,6 +30,7 @@ import {
   COMPLETED_VIEW_KEY,
   BOARD_SHOW_KEY,
   POMO_DURATION_SEC,
+  MIN_TIMELOG_SEC,
   WORKSPACE_ITEMS,
   fromApi,
   normalizeFolders,
@@ -61,6 +62,9 @@ import {
   saveStoptimerMaxMin,
   loadUiSounds,
   saveUiSounds,
+  loadMenuBarTimer,
+  saveMenuBarTimer,
+  formatMenuBarTimer,
   playSound,
   playTaskCompleteSound,
   playTimerCompleteSound,
@@ -92,8 +96,6 @@ import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
-
-const MIN_TIMELOG_SEC = 60;
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -142,6 +144,7 @@ export default function App() {
     loadStoptimerMaxMin()
   );
   const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
+  const [menuBarTimer, setMenuBarTimer] = useState(() => loadMenuBarTimer());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -356,6 +359,30 @@ export default function App() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!activePomo]);
+
+  useEffect(() => {
+    window.desktop?.setTrayVisible?.(menuBarTimer);
+  }, [menuBarTimer]);
+
+  useEffect(() => {
+    if (!menuBarTimer) return;
+    const syncTitle = () => {
+      const cur = activePomoRef.current;
+      if (!cur) {
+        window.desktop?.setTrayTitle?.("No timer");
+        return;
+      }
+      const sec = isStoptimerSession(cur)
+        ? pomoElapsedSec(cur)
+        : pomoRemainingSec(cur);
+      window.desktop?.setTrayTitle?.(formatMenuBarTimer(sec));
+    };
+    syncTitle();
+    if (!activePomo) return;
+    const id = setInterval(syncTitle, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuBarTimer, !!activePomo]);
 
   useEffect(() => {
     const closeMenus = () => {
@@ -1583,6 +1610,10 @@ export default function App() {
           }
           uiSounds={uiSounds}
           onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
+          menuBarTimer={menuBarTimer}
+          onMenuBarTimerChange={(enabled) =>
+            setMenuBarTimer(saveMenuBarTimer(enabled))
+          }
           onReactivate={confirmUnarchiveProject}
           onClose={() => setSettingsOpen(false)}
           onResetSeed={async () => {

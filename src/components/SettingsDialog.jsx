@@ -61,6 +61,8 @@ export default function SettingsDialog({
   onStoptimerMaxChange,
   uiSounds,
   onUiSoundsChange,
+  menuBarTimer,
+  onMenuBarTimerChange,
   onReactivate,
   onClose,
   onResetSeed,
@@ -90,6 +92,7 @@ export default function SettingsDialog({
   const [tab, setTab] = useState("experience");
   const [resetting, setResetting] = useState(null);
   const [desktop, setDesktop] = useState(false);
+  const [menuBarSupported, setMenuBarSupported] = useState(false);
   const [backup, setBackup] = useState({
     enabled: false,
     folderPath: "",
@@ -107,6 +110,7 @@ export default function SettingsDialog({
         const info = await fetchAppInfo();
         if (cancelled) return;
         setDesktop(!!info.desktop);
+        setMenuBarSupported(!!info.menuBar);
         if (info.backup) {
           setBackup((prev) => ({
             ...prev,
@@ -119,7 +123,10 @@ export default function SettingsDialog({
           }));
         }
       } catch {
-        if (!cancelled) setDesktop(false);
+        if (!cancelled) {
+          setDesktop(false);
+          setMenuBarSupported(false);
+        }
       }
     })();
     return () => {
@@ -369,6 +376,22 @@ export default function SettingsDialog({
                     <span className="settings-toggle-ui" aria-hidden="true" />
                   </label>
                 </div>
+                {menuBarSupported && (
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Menu bar timer</b>
+                    </div>
+                    <label className="settings-toggle">
+                      <input
+                        type="checkbox"
+                        checked={!!menuBarTimer}
+                        onChange={(e) => onMenuBarTimerChange?.(e.target.checked)}
+                        aria-label="Menu bar timer"
+                      />
+                      <span className="settings-toggle-ui" aria-hidden="true" />
+                    </label>
+                  </div>
+                )}
               </div>
             </section>
           )}

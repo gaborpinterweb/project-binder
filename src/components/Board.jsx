@@ -271,9 +271,7 @@ function DragPreview({ preview, previewElRef }) {
     <div
       ref={previewElRef}
       className={
-        "card tint drag-preview" +
-        (preview.done ? " done" : "") +
-        (preview.timerActive ? " timer-active" : "")
+        "card tint drag-preview" + (preview.done ? " done" : "")
       }
       style={{
         ["--pc"]: pc,
@@ -287,6 +285,11 @@ function DragPreview({ preview, previewElRef }) {
       <b>
         <span className="card-check drag-preview-check" aria-hidden="true" />
         <span className="card-name">{preview.title}</span>
+        {preview.timerActive ? (
+          <span className="card-timer-ico" title="Timer active">
+            <Icon name="runningClock" size={20} />
+          </span>
+        ) : null}
       </b>
       {preview.src ? <span className="src">{preview.src}</span> : null}
     </div>,
@@ -358,11 +361,9 @@ function TaskCard({
       className={
         "card tint" +
         (done ? " done" : "") +
-        (dragging ? " dragging" : "") +
-        (timerActive ? " timer-active" : "")
+        (dragging ? " dragging" : "")
       }
       style={{ ["--pc"]: pc, background: pastel(pc) }}
-      title={timerActive ? "Timer active" : undefined}
       onClick={() => {
         if (boardEdit) return;
         if (consumeDragClick?.()) return;
@@ -397,6 +398,11 @@ function TaskCard({
           }}
         />
         <span className="card-name">{row.n || "Untitled"}</span>
+        {timerActive ? (
+          <span className="card-timer-ico" title="Timer active">
+            <Icon name="runningClock" size={20} />
+          </span>
+        ) : null}
       </b>
       {src ? <span className="src">{src}</span> : null}
       {showTimeSpent ? (

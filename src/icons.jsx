@@ -120,6 +120,22 @@ function TomatoIcon({ size = 16, color = "currentColor", strokeWidth = 2, classN
   );
 }
 
+/** Animated stopwatch APNG (public/icons/stopwatch-running.png). */
+function RunningClockIcon({ size = 18, className, strokeWidth, fill, ...rest }) {
+  return (
+    <img
+      src="/icons/stopwatch-running.png"
+      alt=""
+      width={size}
+      height={size}
+      className={["card-timer-clock", className].filter(Boolean).join(" ")}
+      draggable={false}
+      aria-hidden="true"
+      {...rest}
+    />
+  );
+}
+
 export const IC = {
   table: Table,
   board: Kanban,
@@ -144,6 +160,7 @@ export const IC = {
   pencil: Pencil,
   tomato: TomatoIcon,
   stopwatch: Timer,
+  runningClock: RunningClockIcon,
   plus: Plus,
   asterisk: Asterisk,
   eye: Eye,
@@ -185,6 +202,7 @@ export const IC = {
   tableDelete: Table2,
   fieldText: Type,
   fieldLongText: AlignLeft,
+  fieldUrl: Link,
   fieldSelect: ChevronsUpDown,
   fieldMultiSelect: ListChecks,
   fieldCheckbox: SquareCheck,

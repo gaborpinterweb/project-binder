@@ -3,6 +3,7 @@
 export const FIELD_TYPES = [
   { value: "text", label: "Text", icon: "fieldText" },
   { value: "longtext", label: "Rich text", icon: "fieldLongText" },
+  { value: "url", label: "URL", icon: "fieldUrl" },
   { value: "select", label: "Single select", icon: "fieldSelect" },
   { value: "multiselect", label: "Multi select", icon: "fieldMultiSelect" },
   { value: "checkbox", label: "Checkbox", icon: "fieldCheckbox" },
@@ -139,6 +140,14 @@ export function formatNumberValue(value, decimal) {
         maximumFractionDigits: 6,
       })
     : Math.round(n).toLocaleString();
+}
+
+/** Safe href for a URL field value (adds https:// when scheme is missing). */
+export function hrefForUrlField(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (/^(https?:|mailto:|tel:|#|\/)/i.test(s)) return s;
+  return "https://" + s;
 }
 
 /** Dropdown-ready options: `{ value, label, color }`. */

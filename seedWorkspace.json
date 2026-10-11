@@ -9,8 +9,8 @@
   ],
   "projects": [
     {
-      "slug": "internal-business",
-      "name": "Internal business",
+      "slug": "freelancing",
+      "name": "Freelancing",
       "color": "#2f7a6e",
       "description": "<p>The non-billable backbone of the studio: cashflow, contracts, CRM hygiene, and a thin marketing rhythm so client work never stalls for lack of ops.</p><h2>This quarter’s rhythm</h2><table><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Lane</p></th><th colspan=\"1\" rowspan=\"1\"><p>Ritual</p></th><th colspan=\"1\" rowspan=\"1\"><p>Cadence</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Finance</p></td><td colspan=\"1\" rowspan=\"1\"><p>Invoice template + tax packet</p></td><td colspan=\"1\" rowspan=\"1\"><p>Monthly</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Admin</p></td><td colspan=\"1\" rowspan=\"1\"><p>CRM cleanup + contracts</p></td><td colspan=\"1\" rowspan=\"1\"><p>Biweekly</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Marketing</p></td><td colspan=\"1\" rowspan=\"1\"><p>LinkedIn batch + portfolio</p></td><td colspan=\"1\" rowspan=\"1\"><p>Weekly</p></td></tr></tbody></table><h2>Tool stack</h2><ul><li><p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://stripe.com/dashboard\">Stripe</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://docs.google.com/spreadsheets\">Cashflow sheet</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://www.notion.so\">Ops wiki</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://www.linkedin.com/company\">Studio page</a></p></li></ul><blockquote><p>Protect Fridays for deep work — invoices and outreach can wait until Monday.</p></blockquote><h2>How to close the books</h2><ol><li><p>Export Stripe payouts and match every invoice</p></li><li><p>Drop receipts into the accountant folder</p></li><li><p>Mark stale CRM leads and log wins</p></li></ol>",
       "isDemo": true,
@@ -149,8 +149,174 @@
       ],
       "databases": [
         {
-          "slug": "ops-tracker",
-          "name": "Ops tracker",
+          "slug": "upwork-proposals",
+          "name": "Upwork jobs",
+          "columns": [
+            {
+              "id": "n",
+              "label": "Job title",
+              "type": "text",
+              "required": true
+            },
+            {
+              "id": "link",
+              "label": "Link",
+              "type": "url"
+            },
+            {
+              "id": "description",
+              "label": "Description",
+              "type": "longtext"
+            },
+            {
+              "id": "proposal",
+              "label": "Proposal text",
+              "type": "longtext"
+            },
+            {
+              "id": "applied",
+              "label": "Applied",
+              "type": "checkbox"
+            },
+            {
+              "id": "viewed",
+              "label": "Viewed",
+              "type": "checkbox"
+            },
+            {
+              "id": "replied",
+              "label": "Replied",
+              "type": "checkbox"
+            },
+            {
+              "id": "booked",
+              "label": "Booked",
+              "type": "checkbox"
+            },
+            {
+              "id": "date",
+              "label": "Date",
+              "type": "date"
+            }
+          ],
+          "customViews": [
+            {
+              "id": "applied",
+              "name": "Applied",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "applied",
+                    "op": "is_checked",
+                    "value": ""
+                  }
+                ]
+              },
+              "hiddenCols": [],
+              "sorts": {
+                "rules": [
+                  {
+                    "id": "s0",
+                    "fieldId": "",
+                    "dir": "asc"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "viewed",
+              "name": "Viewed",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "viewed",
+                    "op": "is_checked",
+                    "value": ""
+                  }
+                ]
+              },
+              "hiddenCols": [],
+              "sorts": {
+                "rules": [
+                  {
+                    "id": "s0",
+                    "fieldId": "",
+                    "dir": "asc"
+                  }
+                ]
+              }
+            }
+          ],
+          "items": [
+            {
+              "slug": "react-dashboard-redesign",
+              "fields": {
+                "n": "React dashboard redesign for SaaS ops team",
+                "link": "https://www.upwork.com/jobs/~react-dashboard-demo",
+                "description": "<p>Need a designer-developer to refresh an internal ops dashboard: clearer hierarchy, denser tables, and a calmer color system.</p>",
+                "proposal": "<p>Hi — I ship product UI end-to-end. Happy to audit the current dashboard, propose a tighter information architecture, then implement the first two screens in React.</p>",
+                "applied": true,
+                "viewed": true,
+                "replied": false,
+                "booked": false,
+                "date": "2026-10-06"
+              },
+              "body": ""
+            },
+            {
+              "slug": "landing-page-figma-to-code",
+              "fields": {
+                "n": "Figma landing page → Next.js build",
+                "link": "https://www.upwork.com/jobs/~landing-figma-demo",
+                "description": "<p>Convert an approved Figma marketing page into a fast Next.js site with CMS-ready copy blocks.</p>",
+                "proposal": "<p>I routinely turn Figma into production Next.js pages with clean section components and sensible defaults for SEO and performance.</p>",
+                "applied": true,
+                "viewed": false,
+                "replied": false,
+                "booked": false,
+                "date": "2026-10-08"
+              },
+              "body": ""
+            },
+            {
+              "slug": "design-system-audit",
+              "fields": {
+                "n": "Design system audit for B2B product",
+                "link": "https://www.upwork.com/jobs/~design-system-audit-demo",
+                "description": "<p>Looking for someone to review our component library, document gaps, and propose a migration path without a full rewrite.</p>",
+                "proposal": "<p>I’ve run design-system audits for product teams — inventory, inconsistency map, and a prioritized fix list your eng can ship in sprints.</p>",
+                "applied": true,
+                "viewed": true,
+                "replied": true,
+                "booked": false,
+                "date": "2026-10-09"
+              },
+              "body": ""
+            },
+            {
+              "slug": "framer-marketing-site",
+              "fields": {
+                "n": "Framer marketing site for AI startup",
+                "link": "https://www.upwork.com/jobs/~framer-ai-startup-demo",
+                "description": "<p>Need a polished Framer site (home + pricing + blog list) launched in two weeks with CMS-connected blog posts.</p>",
+                "proposal": "<p>I can take your brand kit into Framer, build responsive sections, wire CMS collections, and hand off an editable site before the two-week mark.</p>",
+                "applied": false,
+                "viewed": false,
+                "replied": false,
+                "booked": false,
+                "date": "2026-10-10"
+              },
+              "body": ""
+            }
+          ]
+        },
+        {
+          "slug": "video-software-research",
+          "name": "Video software research",
           "columns": [
             {
               "id": "n",
@@ -159,121 +325,120 @@
               "required": true
             },
             {
-              "id": "notes",
-              "label": "Notes",
-              "type": "longtext"
+              "id": "url",
+              "label": "URL",
+              "type": "url"
             },
             {
-              "id": "priority",
-              "label": "Priority",
-              "type": "select",
-              "options": [
-                {
-                  "label": "High",
-                  "color": "red"
-                },
-                {
-                  "label": "Medium",
-                  "color": "orange"
-                },
-                {
-                  "label": "Low",
-                  "color": "green"
-                }
-              ]
-            },
-            {
-              "id": "tags",
-              "label": "Tags",
-              "type": "multiselect",
-              "options": [
-                {
-                  "label": "Client",
-                  "color": "blue"
-                },
-                {
-                  "label": "Internal",
-                  "color": "purple"
-                },
-                {
-                  "label": "Blocked",
-                  "color": "pink"
-                },
-                {
-                  "label": "Launch",
-                  "color": "yellow"
-                }
-              ]
-            },
-            {
-              "id": "done",
-              "label": "Done",
+              "id": "free",
+              "label": "Free",
               "type": "checkbox"
             },
             {
-              "id": "estimate",
-              "label": "Estimate (h)",
-              "type": "number",
-              "decimal": true
+              "id": "autoCaptions",
+              "label": "Auto-captions",
+              "type": "checkbox"
             },
             {
-              "id": "due",
-              "label": "Due",
-              "type": "date"
+              "id": "editor",
+              "label": "Editor",
+              "type": "checkbox"
+            }
+          ],
+          "customViews": [
+            {
+              "id": "free",
+              "name": "Free",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "free",
+                    "op": "is_checked",
+                    "value": ""
+                  }
+                ]
+              },
+              "hiddenCols": [],
+              "sorts": {
+                "rules": [
+                  {
+                    "id": "s0",
+                    "fieldId": "",
+                    "dir": "asc"
+                  }
+                ]
+              }
             },
             {
-              "id": "s",
-              "label": "Stage",
-              "type": "stage"
+              "id": "editor",
+              "name": "Editor",
+              "filters": {
+                "junction": "and",
+                "rules": [
+                  {
+                    "id": "f0",
+                    "fieldId": "editor",
+                    "op": "is_checked",
+                    "value": ""
+                  }
+                ]
+              },
+              "hiddenCols": [],
+              "sorts": {
+                "rules": [
+                  {
+                    "id": "s0",
+                    "fieldId": "",
+                    "dir": "asc"
+                  }
+                ]
+              }
             }
           ],
           "items": [
             {
-              "slug": "invoice-template-row",
+              "slug": "capcut",
               "fields": {
-                "n": "Invoice template",
-                "notes": "<p>New PDF layout with bank details and late-fee note.</p>",
-                "priority": "High",
-                "tags": [
-                  "Internal"
-                ],
-                "done": false,
-                "estimate": 3,
-                "due": "2026-10-08",
-                "s": "Today"
+                "n": "CapCut",
+                "url": "https://www.capcut.com",
+                "free": true,
+                "autoCaptions": true,
+                "editor": true
               },
               "body": ""
             },
             {
-              "slug": "linkedin-batch",
+              "slug": "descript",
               "fields": {
-                "n": "LinkedIn batch",
-                "notes": "<p>Four posts scheduled for October.</p>",
-                "priority": "Medium",
-                "tags": [
-                  "Internal",
-                  "Launch"
-                ],
-                "done": false,
-                "estimate": 4,
-                "due": "2026-10-10",
-                "s": "This week"
+                "n": "Descript",
+                "url": "https://www.descript.com",
+                "free": false,
+                "autoCaptions": true,
+                "editor": true
               },
               "body": ""
             },
             {
-              "slug": "contract-pack",
+              "slug": "davinci-resolve",
               "fields": {
-                "n": "Contract pack",
-                "notes": "<p>MSA + SOW appendix archived for reuse.</p>",
-                "priority": "Low",
-                "tags": [
-                  "Internal"
-                ],
-                "done": true,
-                "estimate": 2.5,
-                "due": "2026-09-28",
-                "s": "This week"
+                "n": "DaVinci Resolve",
+                "url": "https://www.blackmagicdesign.com/products/davinciresolve",
+                "free": true,
+                "autoCaptions": true,
+                "editor": true
+              },
+              "body": ""
+            },
+            {
+              "slug": "opus-clip",
+              "fields": {
+                "n": "Opus Clip",
+                "url": "https://www.opus.pro",
+                "free": false,
+                "autoCaptions": true,
+                "editor": false
               },
               "body": ""
             }
@@ -964,11 +1129,11 @@
   "timelogs": [
     {
       "slug": "2026-09-30-internal-invoice-template",
-      "project": "internal-business",
+      "project": "freelancing",
       "board": "ops",
       "card": "invoice-template",
       "title": "Update invoice template",
-      "projectName": "Internal business",
+      "projectName": "Freelancing",
       "boardName": "Ops",
       "color": "#2f7a6e",
       "kind": "pomodoro",
@@ -979,11 +1144,11 @@
     },
     {
       "slug": "2026-09-30-internal-linkedin",
-      "project": "internal-business",
+      "project": "freelancing",
       "board": "ops",
       "card": "linkedin-cadence",
       "title": "LinkedIn post cadence",
-      "projectName": "Internal business",
+      "projectName": "Freelancing",
       "boardName": "Ops",
       "color": "#2f7a6e",
       "kind": "stoptimer",
@@ -1084,11 +1249,11 @@
     },
     {
       "slug": "2026-09-27-internal-taxes",
-      "project": "internal-business",
+      "project": "freelancing",
       "board": "ops",
       "card": "quarterly-taxes",
       "title": "Quarterly tax checklist",
-      "projectName": "Internal business",
+      "projectName": "Freelancing",
       "boardName": "Ops",
       "color": "#2f7a6e",
       "kind": "pomodoro",

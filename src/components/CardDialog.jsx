@@ -269,13 +269,8 @@ export default function CardDialog({
       }}
     >
       <div
-        className={
-          "dlg" +
-          (curLoc && !isDb ? " tint" : "") +
-          (timerActive ? " timer-active" : "")
-        }
+        className={"dlg" + (curLoc && !isDb ? " tint" : "")}
         style={tintStyle}
-        title={timerActive ? "Timer active" : undefined}
       >
         <div className="dlg-content">
           {isDb ? null : (
@@ -320,6 +315,11 @@ export default function CardDialog({
                   close(isDraft);
                 }}
               />
+              {timerActive ? (
+                <span className="card-timer-ico" title="Timer active">
+                  <Icon name="runningClock" size={20} />
+                </span>
+              ) : null}
               {!readonly &&
                 !isDraft &&
                 curLoc?.mod[0] === "Board" &&
@@ -508,6 +508,7 @@ export default function CardDialog({
                         ariaLabel="Timelog actions"
                         title="Timelog actions"
                         onAfterAction={async (v) => {
+                          if (v === "pomo" || v === "stoptimer") return;
                           if (v === "manual") {
                             await reloadCardLogs();
                             return;

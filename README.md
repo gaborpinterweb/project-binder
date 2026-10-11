@@ -74,11 +74,11 @@ Master board stages:
 
 | Project slug | Name | Color | Tab (slug) | Tab columns |
 |---|---|---|---|---|
-| `internal-business` | Internal business | `#2f7a6e` | Ops (`ops`) | Admin, Marketing, Finance |
+| `freelancing` | Freelancing | `#2f7a6e` | Ops (`ops`) | Admin, Marketing, Finance |
 | `client-project-a` | Client project A | `#b45a3c` | Delivery (`delivery`) | Design, Frontend, Content |
 | `client-project-b` | Client project B | `#6b4f8c` | Launch (`launch`) | Design, Development, Content |
 
-### Internal business — Ops
+### Freelancing — Ops
 
 | Card slug | Title | Task board column | Master board column | Done |
 |---|---|---|---|---|

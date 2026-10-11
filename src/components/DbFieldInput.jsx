@@ -3,6 +3,7 @@ import {
   coerceFieldValue,
   findSelectOption,
   formatNumberValue,
+  hrefForUrlField,
   plainFromHtml,
   selectColor,
   selectOptions,
@@ -279,6 +280,36 @@ export default function DbFieldInput({
       <div className="db-cell-text db-rich-preview" title={preview}>
         {preview || <span className="db-chip-placeholder">Empty</span>}
       </div>
+    );
+  }
+
+  if (col.type === "url") {
+    if (variant === "prop") {
+      return (
+        <input
+          value={coerced || ""}
+          placeholder={placeholder || "https://"}
+          autoFocus={autoFocus}
+          onChange={(e) => onChange?.(e.target.value)}
+          onBlur={(e) => onCommit?.(e.target.value)}
+        />
+      );
+    }
+    const raw = String(coerced || "").trim();
+    if (!raw) {
+      return <span className="db-chip-placeholder">Empty</span>;
+    }
+    return (
+      <a
+        className="db-url-link"
+        href={hrefForUrlField(raw)}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={raw}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {raw}
+      </a>
     );
   }
 

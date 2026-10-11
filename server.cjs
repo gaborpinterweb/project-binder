@@ -171,6 +171,7 @@ function resolveCustomViewId(viewId, views) {
 const DB_FIELD_TYPES = new Set([
   "text",
   "longtext",
+  "url",
   "select",
   "multiselect",
   "checkbox",

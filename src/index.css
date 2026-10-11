@@ -20,7 +20,7 @@ aside button{display:block;width:100%;text-align:left;padding:8px;border-radius:
 aside button:focus-visible{outline-color:var(--side-ink)}
 aside button.on{background:var(--side-sel)}
 aside .side-scroll{flex:1;min-height:0;overflow:auto}
-.side-foot{margin-top:auto;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--side-ink) 10%,transparent)}
+.side-foot{margin-top:auto;padding-top:8px;}
 #globals .bm.side-update{font-weight:600}
 .pomo-block{display:block;padding:10px 8px;border-radius:calc(var(--radius) - 4px);background:var(--side-sel)}
 .pomo-time{font-size:28px;font-weight:650;letter-spacing:.02em;text-align:center;font-variant-numeric:tabular-nums;color:var(--side-ink);line-height:1.15;margin-bottom:8px}
@@ -582,8 +582,8 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .col.collapsed .col-name{order:2;writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.08em;text-transform:uppercase;font-size:12px;padding:14px 0 8px;color:var(--mute)}
 .col.collapsed .col-body{display:none}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:opacity .12s ease,box-shadow .12s ease}
-.card-timelog-menu.pop.dd-menu{position:fixed;top:auto;left:auto;z-index:90;width:max-content;min-width:180px;max-width:min(280px,calc(100vw - 16px));padding:6px}
-.card-timelog-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
+.card-timelog-menu.pop.dd-menu{position:fixed;top:auto;left:auto;z-index:90;width:max-content;min-width:220px;max-width:min(320px,calc(100vw - 16px));padding:6px}
+.card-timelog-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink);white-space:nowrap}
 .card-timelog-menu button:hover{background:var(--sel)}
 .card-timelog-menu button svg{flex:none;opacity:.75}
 .timelog-row .timelog-card{margin:0;padding:5px 10px}
@@ -596,9 +596,9 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .card b,.card span{display:block}.card span{color:var(--mute);font-size:13px}
 .card b{display:flex;align-items:center;gap:8px;min-width:0;width:100%}
 .card .card-check{flex:none;width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
-.card.timer-active,.dlg.timer-active{border-width:2px;border-style:dashed;border-color:#d92d20}
-.card.tint.timer-active,.dlg.tint.timer-active{border-color:#d92d20}
 .card .card-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-size:inherit;font-weight:inherit}
+.card .card-timer-ico{flex:none;display:block;line-height:0}
+.card-timer-clock{display:block;flex:none;object-fit:contain;pointer-events:none}
 .card.done .card-name{text-decoration:line-through;opacity:.72}
 .card .src,.card .card-spent{font-size:12px;color:var(--mute);margin-top:4px}
 .card .src+.card-spent{margin-top:2px}
@@ -758,8 +758,8 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .dlg-timelog-more-btn svg{display:block}
 .dlg .dlg-timelog-more-btn:hover,.dlg .dlg-timelog-more.open .dlg-timelog-more-btn{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .dlg.tint .dlg-timelog-more-btn:hover,.dlg.tint .dlg-timelog-more.open .dlg-timelog-more-btn{background:color-mix(in srgb,#fff 55%,transparent)}
-.dlg .dlg-timelog-more .pop{right:0;left:auto;min-width:180px;z-index:60;padding:6px}
-.dlg .dlg-timelog-more .pop button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink)}
+.dlg .dlg-timelog-more .pop{right:0;left:auto;min-width:220px;width:max-content;z-index:60;padding:6px}
+.dlg .dlg-timelog-more .pop button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink);white-space:nowrap}
 .dlg .dlg-timelog-more .pop button:hover{background:var(--sel)}
 .dlg .dlg-timelog-more .pop button svg{flex:none;opacity:.75}
 .dlg.tint .dlg-timelog-more .pop{background:color-mix(in srgb,var(--pc) 12%,#fff)}
@@ -826,6 +826,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .title-row{display:flex;align-items:center;gap:10px;width:100%}
 .dlg .title-row .card-check{flex:none;width:18px;height:18px;margin:0;accent-color:var(--acc);cursor:pointer}
 .dlg .title-row input.title{flex:1;min-width:0}
+.dlg .title-row .card-timer-ico{flex:none;display:block;line-height:0}
 .dlg .card-dlg-more{position:relative;flex:none;z-index:5}
 .dlg .card-dlg-more-btn{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
 .dlg .card-dlg-more-btn svg{display:block}
@@ -1007,6 +1008,8 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .db-td-checkbox{width:48px;text-align:center}
 .db-cell-text{min-height:1.2em;outline:none;white-space:nowrap}
 .db-cell-text.multiline{white-space:pre-wrap;word-break:break-word}
+.db-url-link{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--acc);text-decoration:underline;text-underline-offset:2px}
+.db-url-link:hover{opacity:.85}
 .db-check{display:inline-grid;place-items:center;margin:0;cursor:pointer}
 .db-check input{width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
 .db-num,.db-date{font:inherit;color:inherit;background:transparent;border:0;border-radius:4px;padding:2px 4px;width:100%;box-sizing:border-box}

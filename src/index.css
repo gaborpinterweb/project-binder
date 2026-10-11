@@ -565,7 +565,7 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .board{display:flex;gap:0;padding:0;overflow-x:auto;overflow-y:hidden;flex:1;align-items:stretch;background:#fff;min-height:0;width:100%}
 .mb{flex:1;min-height:0;display:flex;flex-direction:column}
 .mb-foot{display:flex;flex:none}
-.mb-foot button{flex:1;min-width:0;padding:10px;font-size:13px;text-align:center;border-radius:0;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid color-mix(in srgb,var(--pc) 25%,var(--line));margin-left:-1px;-webkit-tap-highlight-color:transparent}
+.mb-foot button{flex:1;min-width:0;padding:8px;font-size:13px;text-align:center;border-radius:0;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid color-mix(in srgb,var(--pc) 25%,var(--line));margin-left:-1px;-webkit-tap-highlight-color:transparent}
 .mb-foot button:first-child{margin-left:0}
 .mb-foot button.off{text-decoration:line-through;color:var(--mute)}
 .card.tint{border-color:color-mix(in srgb,var(--pc) 25%,var(--line))}

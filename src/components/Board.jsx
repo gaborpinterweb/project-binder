@@ -60,6 +60,7 @@ import {
   loadDbViewsSidebar,
   saveDbViewsSidebar,
 } from "../utils.js";
+import CardTitleIcons, { firstCardFile } from "./CardTitleIcons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
@@ -206,6 +207,8 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             height: session.height,
             color,
             done: isDone(row),
+            priority: !!payload.priority || !!row.priority,
+            file: payload.file || firstCardFile(row.files),
             timerActive: !!payload.timerActive,
             title: row.n || "Untitled",
             src,
@@ -285,11 +288,11 @@ function DragPreview({ preview, previewElRef }) {
       <b>
         <span className="card-check drag-preview-check" aria-hidden="true" />
         <span className="card-name">{preview.title}</span>
-        {preview.timerActive ? (
-          <span className="card-timer-ico" title="Timer active">
-            <Icon name="runningClock" size={20} />
-          </span>
-        ) : null}
+        <CardTitleIcons
+          priority={!!preview.priority}
+          file={preview.file}
+          timerActive={!!preview.timerActive}
+        />
       </b>
       {preview.src ? <span className="src">{preview.src}</span> : null}
     </div>,
@@ -379,7 +382,12 @@ function TaskCard({
         if (!canDrag) return;
         onArmDrag?.(
           e,
-          { ...(dragPayload || { row, folder, mod }), timerActive },
+          {
+            ...(dragPayload || { row, folder, mod }),
+            priority: !!row.priority,
+            file: firstCardFile(row.files),
+            timerActive,
+          },
           key
         );
       }}
@@ -398,11 +406,11 @@ function TaskCard({
           }}
         />
         <span className="card-name">{row.n || "Untitled"}</span>
-        {timerActive ? (
-          <span className="card-timer-ico" title="Timer active">
-            <Icon name="runningClock" size={20} />
-          </span>
-        ) : null}
+        <CardTitleIcons
+          priority={!!row.priority}
+          files={row.files}
+          timerActive={timerActive}
+        />
       </b>
       {src ? <span className="src">{src}</span> : null}
       {showTimeSpent ? (

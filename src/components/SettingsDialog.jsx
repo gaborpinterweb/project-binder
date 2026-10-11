@@ -621,6 +621,35 @@ export default function SettingsDialog({
                     </a>
                   </p>
                 </div>
+                <div className="settings-about-credits">
+                  <b>Credits</b>
+                  <p>
+                    <a
+                      href="https://icons8.com/icon/zHqriwlFOo3J/high-priority"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Priority
+                    </a>{" "}
+                    icon by{" "}
+                    <a href="https://icons8.com" target="_blank" rel="noopener noreferrer">
+                      Icons8
+                    </a>
+                  </p>
+                  <p>
+                    <a
+                      href="https://icons8.com/icon/vj8GRDfKf8Ac/stopwatch"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Stopwatch
+                    </a>{" "}
+                    icon by{" "}
+                    <a href="https://icons8.com" target="_blank" rel="noopener noreferrer">
+                      Icons8
+                    </a>
+                  </p>
+                </div>
               </div>
               <div className="settings-bmc-wrap">
                 <a

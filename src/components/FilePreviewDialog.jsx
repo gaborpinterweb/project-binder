@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { fileDownloadUrl, revealFile } from "../api.js";
+import { fileDownloadUrl, revealCardFile, revealFile } from "../api.js";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 import pdfiumWasmUrl from "@embedpdf/pdfium/pdfium.wasm?url";
 
@@ -246,6 +246,10 @@ export default function FilePreviewDialog({
   file,
   project,
   filesTab,
+  board,
+  card,
+  downloadUrl,
+  showReveal = true,
   onClose,
 }) {
   const hostRef = useRef(null);
@@ -258,7 +262,7 @@ export default function FilePreviewDialog({
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(0);
   const [paged, setPaged] = useState(false);
-  const url = fileDownloadUrl(project, filesTab, file.slug);
+  const url = downloadUrl || fileDownloadUrl(project, filesTab, file.slug);
   const format = formatFromName(file.name);
   const fit = fitsContent(format);
 
@@ -370,7 +374,16 @@ export default function FilePreviewDialog({
 
   const showInFolder = async () => {
     try {
-      await revealFile({ project, filesTab, file: file.slug });
+      if (board && card) {
+        await revealCardFile({
+          project,
+          board,
+          card,
+          file: file.slug,
+        });
+      } else {
+        await revealFile({ project, filesTab, file: file.slug });
+      }
     } catch (err) {
       window.alert(err.message || "Could not show the file");
     }
@@ -438,13 +451,15 @@ export default function FilePreviewDialog({
               </button>
             </div>
           ) : null}
-          <button
-            type="button"
-            className="file-preview-finder"
-            onClick={showInFolder}
-          >
-            {showInFolderLabel()}
-          </button>
+          {showReveal ? (
+            <button
+              type="button"
+              className="file-preview-finder"
+              onClick={showInFolder}
+            >
+              {showInFolderLabel()}
+            </button>
+          ) : null}
         </div>
         <div className="file-preview-stage">
           {status === "loading" ? (

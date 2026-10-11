@@ -140,6 +140,35 @@ export async function postFile(body) {
   return apiOkData("/api/file", { method: "POST", body }, "Could not upload file");
 }
 
+export async function postCardFile(body) {
+  return apiOkData("/api/card-file", { method: "POST", body }, "Could not upload file");
+}
+
+export async function deleteCardFileApi(body) {
+  return apiOkData("/api/card-file", { method: "DELETE", body }, "Could not delete file");
+}
+
+export function cardFileDownloadUrl(project, board, card, file) {
+  const q = new URLSearchParams({ project, board, card, file });
+  return `/api/card-file?${q.toString()}`;
+}
+
+export async function moveCardFilesApi(body) {
+  return apiOkData(
+    "/api/card-file/move",
+    { method: "POST", body },
+    "Could not move files"
+  );
+}
+
+export async function revealCardFile(body) {
+  return apiOkData(
+    "/api/card-file/reveal",
+    { method: "POST", body },
+    "Could not show file"
+  );
+}
+
 export async function putFile(body) {
   return apiOkData("/api/file", { method: "PUT", body }, "Could not rename file");
 }

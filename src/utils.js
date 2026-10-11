@@ -93,6 +93,16 @@ export function fromApi(data, loadStagesFn) {
             if (c.ord != null && c.ord !== "" && !Number.isNaN(Number(c.ord))) {
               row.ord = Number(c.ord);
             }
+            if (c.priority) row.priority = true;
+            if (Array.isArray(c.files) && c.files.length) {
+              row.files = c.files.map((f) => ({
+                slug: f.slug,
+                name: f.name || f.slug,
+                mime: f.mime || "application/octet-stream",
+                size: Number(f.size) || 0,
+                createdAt: f.createdAt || "",
+              }));
+            }
             return row;
           }),
         },

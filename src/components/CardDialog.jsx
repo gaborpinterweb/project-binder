@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchCardTimelogs } from "../api.js";
+import {
+  cardFileDownloadUrl,
+  deleteCardFileApi,
+  fetchCardTimelogs,
+  postCardFile,
+} from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
   PC,
@@ -15,6 +20,9 @@ import {
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
 import DbFieldInput from "./DbFieldInput.jsx";
+import CardTitleIcons from "./CardTitleIcons.jsx";
+import FilePreviewDialog from "./FilePreviewDialog.jsx";
+import FileTypeIcon from "./FileTypeIcon.jsx";
 import PropDropdown, { closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 import TimelogDropdown, {
@@ -23,6 +31,19 @@ import TimelogDropdown, {
   timelogOptions,
 } from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 function formatCardTimelogDate(iso) {
   const d = new Date(iso);
@@ -96,12 +117,16 @@ function CardMoreMenu({ onDuplicate, onDelete }) {
 
 function CardAddChip({
   canAddDescription,
+  canAddPriority,
   canTimelog,
+  canAddFile,
   showTimers,
   folder,
   mod,
   row,
   onAddDescription,
+  onAddPriority,
+  onAddFile,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -120,7 +145,8 @@ function CardAddChip({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  if (!canAddDescription && !canTimelog) return null;
+  if (!canAddDescription && !canAddPriority && !canTimelog && !canAddFile)
+    return null;
 
   return (
     <div
@@ -157,6 +183,38 @@ function CardAddChip({
               <span className="dd-opt">
                 <Icon name="Notes" size={14} />
                 Description
+              </span>
+            </button>
+          ) : null}
+          {canAddPriority ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onAddPriority?.();
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="priority" size={14} />
+                Priority
+              </span>
+            </button>
+          ) : null}
+          {canAddFile ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onAddFile?.();
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="Files" size={14} />
+                File
               </span>
             </button>
           ) : null}
@@ -219,6 +277,8 @@ export default function CardDialog({
   onOpenTimelogs,
   onMoveCard,
   onSaveItem,
+  onApplyWorkspace,
+  keepNav,
   showMasterColumn = true,
   showTimelogs = true,
   activeTimerKey = null,
@@ -231,19 +291,30 @@ export default function CardDialog({
         : null
   );
   const [originLoc, setOriginLoc] = useState(loc);
-  const [draft, setDraft] = useState(() => ({ ...row }));
+  const [draft, setDraft] = useState(() => ({
+    ...row,
+    files: Array.isArray(row?.files) ? row.files.map((f) => ({ ...f })) : [],
+  }));
   const [showDescription, setShowDescription] = useState(
     () => !isEmptyNoteBody(row?.body)
   );
   const [spent, setSpent] = useState(0);
   const [cardLogs, setCardLogs] = useState([]);
+  const [previewFile, setPreviewFile] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [fileBusy, setFileBusy] = useState(false);
+  const [fileDragOver, setFileDragOver] = useState(false);
+  const fileInputRef = useRef(null);
+  const fileDragDepth = useRef(0);
   const persistTimer = useRef(null);
   const draftRef = useRef(draft);
   const curLocRef = useRef(curLoc);
   const originLocRef = useRef(originLoc);
+  const confirmingRef = useRef(false);
   draftRef.current = draft;
   curLocRef.current = curLoc;
   originLocRef.current = originLoc;
+  confirmingRef.current = confirming;
 
   const isDb = !isDraft && originLoc?.mod?.[0] === "Database";
   const timerActive =
@@ -295,7 +366,9 @@ export default function CardDialog({
 
   useEffect(() => {
     const esc = (e) => {
-      if (e.key === "Escape") close(false);
+      if (e.key !== "Escape") return;
+      if (confirmingRef.current) return;
+      close(false);
     };
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
@@ -376,19 +449,150 @@ export default function CardDialog({
   const canTimelogCard =
     !isDraft && curLoc?.mod[0] === "Board" && !!draft.slug;
   const showTimelogSection = canTimelogCard && cardLogs.length > 0;
+  const canAddFile =
+    !readonly &&
+    !!curLoc?.folder?.slug &&
+    curLoc?.mod?.[0] === "Board" &&
+    !!draft.slug;
+  const cardFiles = Array.isArray(draft.files) ? draft.files : [];
+
+  const setDraftFiles = (files) => {
+    setDraft((d) => {
+      const next = { ...d, files };
+      draftRef.current = next;
+      return next;
+    });
+  };
+
+  const uploadCardFiles = async (fileList) => {
+    const list = Array.from(fileList || []).filter(Boolean);
+    if (!list.length || !canAddFile || fileBusy) return;
+    setFileBusy(true);
+    try {
+      let files = cardFiles;
+      for (const file of list) {
+        const data = await readFileAsBase64(file);
+        const res = await postCardFile({
+          project: curLoc.folder.slug,
+          board: curLoc.mod[2].slug,
+          card: draft.slug,
+          name: file.name,
+          mime: file.type || "application/octet-stream",
+          data,
+        });
+        files = res.files || [];
+        setDraftFiles(files);
+        onApplyWorkspace?.(res, keepNav?.(curLoc.folder.slug, curLoc.mod[2].slug));
+      }
+    } catch (err) {
+      window.alert(err.message || "Could not upload file");
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
+  const removeCardFile = async (file) => {
+    if (!canAddFile || !file?.slug || fileBusy) return;
+    setConfirming(true);
+    const ok = await askConfirm({
+      title: `Delete "${file.name || "file"}"?`,
+      message: "This permanently deletes the file from the card.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    setConfirming(false);
+    if (!ok) return;
+    setFileBusy(true);
+    try {
+      const res = await deleteCardFileApi({
+        project: curLoc.folder.slug,
+        board: curLoc.mod[2].slug,
+        card: draft.slug,
+        file: file.slug,
+      });
+      setDraftFiles(res.files || []);
+      onApplyWorkspace?.(res, keepNav?.(curLoc.folder.slug, curLoc.mod[2].slug));
+    } catch (err) {
+      window.alert(err.message || "Could not delete file");
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
+  const clearFileDrag = () => {
+    fileDragDepth.current = 0;
+    setFileDragOver(false);
+  };
+
+  const isFileDrag = (ev) =>
+    Array.from(ev.dataTransfer?.types || []).includes("Files");
+
+  const onFileDragEnter = (ev) => {
+    if (!canAddFile || fileBusy || confirming || !isFileDrag(ev)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    fileDragDepth.current += 1;
+    setFileDragOver(true);
+  };
+
+  const onFileDragLeave = (ev) => {
+    if (!canAddFile || fileBusy || confirming) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    fileDragDepth.current -= 1;
+    if (fileDragDepth.current <= 0) clearFileDrag();
+  };
+
+  const onFileDragOver = (ev) => {
+    if (!canAddFile || fileBusy || confirming || !isFileDrag(ev)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.dataTransfer.dropEffect = "copy";
+  };
+
+  const onFileDrop = async (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    clearFileDrag();
+    if (!canAddFile || fileBusy || confirming) return;
+    await uploadCardFiles(ev.dataTransfer?.files);
+  };
 
   return (
+    <>
     <div
-      className="ov ov-top"
+      className={"ov ov-top" + (confirming ? " is-confirm-hidden" : "")}
+      aria-hidden={confirming || undefined}
       onMouseDown={(e) => {
+        if (confirming) return;
         if (e.target === e.currentTarget) close(false);
         else if (!e.target.closest?.(".prop-dd")) closePropDrops();
       }}
     >
       <div
-        className={"dlg" + (curLoc && !isDb ? " tint" : "")}
+        className={
+          "dlg" +
+          (curLoc && !isDb ? " tint" : "") +
+          (fileDragOver ? " is-file-dragover" : "")
+        }
         style={tintStyle}
+        onDragEnter={onFileDragEnter}
+        onDragLeave={onFileDragLeave}
+        onDragOver={onFileDragOver}
+        onDrop={onFileDrop}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="files-input"
+          multiple
+          disabled={!canAddFile || fileBusy}
+          onChange={async (ev) => {
+            const list = Array.from(ev.target.files || []);
+            ev.target.value = "";
+            await uploadCardFiles(list);
+          }}
+        />
         <div className="dlg-content">
           {isDb ? null : (
             <div className="title-row">
@@ -432,11 +636,11 @@ export default function CardDialog({
                   close(isDraft);
                 }}
               />
-              {timerActive ? (
-                <span className="card-timer-ico" title="Timer active">
-                  <Icon name="runningClock" size={20} />
-                </span>
-              ) : null}
+              <CardTitleIcons
+                priority={!!draft.priority}
+                files={draft.files}
+                timerActive={timerActive}
+              />
               {!readonly &&
                 !isDraft &&
                 curLoc?.mod[0] === "Board" &&
@@ -588,15 +792,83 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
+                  {draft.priority ? (
+                    <div className="prop-chip card-file-chip">
+                      <span className="card-file-chip-lab">
+                        <Icon name="priority" size={14} />
+                        <span className="lab">Priority</span>
+                      </span>
+                      {!readonly ? (
+                        <button
+                          type="button"
+                          className="card-file-chip-del"
+                          title="Remove priority"
+                          aria-label="Remove priority"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            patch({ priority: false });
+                            clearTimeout(persistTimer.current);
+                            draftRef.current = {
+                              ...draftRef.current,
+                              priority: false,
+                            };
+                            persist();
+                          }}
+                        >
+                          <Icon name="close" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {cardFiles.map((file) => (
+                    <div key={file.slug} className="prop-chip card-file-chip">
+                      <button
+                        type="button"
+                        className="card-file-chip-open"
+                        title={file.name}
+                        onClick={() => setPreviewFile(file)}
+                      >
+                        <FileTypeIcon name={file.name} mime={file.mime} size={14} />
+                        <span className="lab">{file.name}</span>
+                      </button>
+                      {!readonly ? (
+                        <button
+                          type="button"
+                          className="card-file-chip-del"
+                          title="Delete file"
+                          aria-label={`Delete ${file.name}`}
+                          disabled={fileBusy}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeCardFile(file);
+                          }}
+                        >
+                          <Icon name="close" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
                   {!readonly ? (
                     <CardAddChip
                       canAddDescription={!showDescription}
+                      canAddPriority={!draft.priority}
+                      canAddFile={canAddFile}
                       canTimelog={canTimelogCard && !showTimelogSection}
                       showTimers={showTimelogs}
                       folder={curLoc?.folder}
                       mod={curLoc?.mod}
                       row={draft}
                       onAddDescription={() => setShowDescription(true)}
+                      onAddPriority={() => {
+                        patch({ priority: true });
+                        clearTimeout(persistTimer.current);
+                        draftRef.current = {
+                          ...draftRef.current,
+                          priority: true,
+                        };
+                        persist();
+                      }}
+                      onAddFile={() => fileInputRef.current?.click()}
                       onStartPomo={onStartPomo}
                       onAddManualTimelog={onAddManualTimelog}
                       onOpenTimelogs={onOpenTimelogs}
@@ -719,8 +991,29 @@ export default function CardDialog({
             </div>
           </div>
         ) : null}
+        {fileDragOver && canAddFile ? (
+          <div className="card-file-drop-overlay" aria-hidden="true">
+            Drop file to add…
+          </div>
+        ) : null}
       </div>
     </div>
+    {previewFile && curLoc?.folder?.slug && curLoc?.mod?.[2]?.slug && draft.slug ? (
+      <FilePreviewDialog
+        file={previewFile}
+        project={curLoc.folder.slug}
+        board={curLoc.mod[2].slug}
+        card={draft.slug}
+        downloadUrl={cardFileDownloadUrl(
+          curLoc.folder.slug,
+          curLoc.mod[2].slug,
+          draft.slug,
+          previewFile.slug
+        )}
+        onClose={() => setPreviewFile(null)}
+      />
+    ) : null}
+    </>
   );
 }
 

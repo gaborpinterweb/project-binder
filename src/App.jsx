@@ -4,6 +4,7 @@ import {
   putCard,
   deleteCardApi,
   postCard,
+  moveCardFilesApi,
   putProject,
   postProject,
   deleteProjectApi,
@@ -117,9 +118,12 @@ export default function App() {
   const [cardDraft, setCardDraft] = useState({
     n: "",
     body: "",
+    slug: "",
+    files: [],
     s: "",
     ms: "",
     doneAt: "",
+    priority: false,
     project: "",
     board: "",
   });
@@ -561,7 +565,9 @@ export default function App() {
         master: row.ms || stagesRef.current[0],
         doneAt: row.doneAt || "",
         body: row.body || "",
+        priority: !!row.priority,
         ord: row.ord,
+        ...(Array.isArray(row.files) ? { files: row.files } : {}),
       });
       applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
       const cur = activePomoRef.current;
@@ -634,12 +640,24 @@ export default function App() {
       from.mod[2].rows = (from.mod[2].rows || []).filter((r) => r !== row);
       if (!to.mod[2].rows) to.mod[2].rows = [];
       if (!to.mod[2].rows.includes(row)) to.mod[2].rows.push(row);
+      if (
+        from.folder.slug !== to.folder.slug &&
+        Array.isArray(row.files) &&
+        row.files.length
+      ) {
+        await moveCardFilesApi({
+          fromProject: from.folder.slug,
+          toProject: to.folder.slug,
+          files: row.files,
+        });
+      }
       await saveCard(row, to.folder, to.mod);
       const data = await deleteCardApi({
         project: from.folder.slug,
         board: from.mod[2].slug,
         slug: oldSlug,
         permanent: true,
+        keepFiles: true,
       });
       applyWorkspace(data, keepNav(to.folder.slug, to.mod[2].slug));
     },
@@ -647,7 +665,11 @@ export default function App() {
   );
 
   const createCard = useCallback(
-    async (folder, mod, { title, status, master, body, doneAt } = {}) => {
+    async (
+      folder,
+      mod,
+      { title, status, master, body, doneAt, priority, slug, files } = {}
+    ) => {
       if (isProjectArchived(folder)) return;
       const boardCol = status || (mod[2].columns || stagesRef.current)[0];
       const masterCol =
@@ -663,6 +685,9 @@ export default function App() {
         master: masterCol,
         body: body || "",
         doneAt: doneAt || "",
+        priority: !!priority,
+        ...(slug ? { slug } : {}),
+        ...(Array.isArray(files) ? { files } : {}),
       });
       applyWorkspace(data, keepNav(folder.slug, mod[2].slug));
       return data.slug;
@@ -688,6 +713,8 @@ export default function App() {
       if (isProjectArchived(folder)) return;
       const cols = mod[2].columns || stagesRef.current;
       const cd = cardDraft;
+      const sameLoc =
+        cd.project === folder.slug && cd.board === mod[2].slug && cd.slug;
       const row = {
         n: cd.n || "",
         body: cd.body || "",
@@ -696,7 +723,9 @@ export default function App() {
           master ||
           (stagesRef.current.includes(cd.ms) ? cd.ms : stagesRef.current[0]),
         doneAt: cd.doneAt || "",
-        slug: null,
+        priority: !!cd.priority,
+        slug: sameLoc ? cd.slug : `c-${Date.now().toString(36)}`,
+        files: sameLoc && Array.isArray(cd.files) ? cd.files : [],
       };
       openItem(row, { draft: true, folder, mod });
     },
@@ -1210,6 +1239,7 @@ export default function App() {
                     body: entry.body || "",
                     slug: entry.card || entry.slug,
                     doneAt: entry.doneAt || "",
+                    priority: !!entry.priority,
                   },
                   loc: {
                     folder: {
@@ -1481,9 +1511,14 @@ export default function App() {
               setCardDraft({
                 n: result.draftRemember.n || "",
                 body: result.draftRemember.body || "",
+                slug: result.draftRemember.slug || "",
+                files: Array.isArray(result.draftRemember.files)
+                  ? result.draftRemember.files
+                  : [],
                 s: result.draftRemember.s || "",
                 ms: result.draftRemember.ms || "",
                 doneAt: result.draftRemember.doneAt || "",
+                priority: !!result.draftRemember.priority,
                 project: result.loc?.folder?.slug || "",
                 board: result.loc?.mod?.[2]?.slug || "",
               });
@@ -1499,13 +1534,18 @@ export default function App() {
               master: r.ms,
               body: r.body || "",
               doneAt: r.doneAt || "",
+              priority: !!r.priority,
+              slug: r.slug || "",
             });
             setCardDraft({
               n: "",
               body: "",
+              slug: "",
+              files: [],
               s: "",
               ms: "",
               doneAt: "",
+              priority: false,
               project: "",
               board: "",
             });
@@ -1521,6 +1561,7 @@ export default function App() {
               master: r.ms,
               body: r.body || "",
               doneAt: r.doneAt || "",
+              priority: !!r.priority,
             });
             setDialog(null);
             const hit = findCardBySlugs(foldersRef.current, projectSlug, boardSlug, slug);
@@ -1531,6 +1572,8 @@ export default function App() {
           onEditTimelog={editTimelog}
           onOpenTimelogs={openTimelogs}
           onMoveCard={moveCard}
+          onApplyWorkspace={applyWorkspace}
+          keepNav={keepNav}
           onSaveItem={async (r, folder, mod) => {
             const fields = {};
             (mod[2].cols || []).forEach((c) => {

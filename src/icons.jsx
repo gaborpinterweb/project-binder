@@ -20,6 +20,7 @@ import {
   Columns2,
   Copy,
   Database,
+  Diamond,
   Download,
   EllipsisVertical,
   ExternalLink,
@@ -136,6 +137,22 @@ function RunningClockIcon({ size = 18, className, strokeWidth, fill, ...rest }) 
   );
 }
 
+/** Animated priority APNG (public/icons/priority.png) — title badge only. */
+function RunningPriorityIcon({ size = 18, className, strokeWidth, fill, ...rest }) {
+  return (
+    <img
+      src="/icons/priority.png"
+      alt=""
+      width={size}
+      height={size}
+      className={["card-timer-clock", className].filter(Boolean).join(" ")}
+      draggable={false}
+      aria-hidden="true"
+      {...rest}
+    />
+  );
+}
+
 export const IC = {
   table: Table,
   board: Kanban,
@@ -161,6 +178,8 @@ export const IC = {
   tomato: TomatoIcon,
   stopwatch: Timer,
   runningClock: RunningClockIcon,
+  priority: Diamond,
+  runningPriority: RunningPriorityIcon,
   plus: Plus,
   asterisk: Asterisk,
   eye: Eye,

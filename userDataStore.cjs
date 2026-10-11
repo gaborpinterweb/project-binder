@@ -95,6 +95,13 @@ function uploadKey(projectSlug, tabSlug, fileSlug) {
   return `${projectSlug}/${tabSlug}/${fileSlug}`;
 }
 
+/** Reserved folder under each project for board-card attachments (not a Files tab). */
+const CARD_FILES_DIR = "__cardfiles__";
+
+function cardFileKey(projectSlug, fileSlug) {
+  return `${projectSlug}/${CARD_FILES_DIR}/${fileSlug}`;
+}
+
 function createDiskStore(userDataDir, seedUploadsDir) {
   fs.mkdirSync(userDataDir, { recursive: true });
   const workspacePath = path.join(userDataDir, "userWorkspace.json");
@@ -151,6 +158,50 @@ function createDiskStore(userDataDir, seedUploadsDir) {
       } catch {
         /* may already be gone */
       }
+    },
+    cardFilePath(projectSlug, fileSlug) {
+      return path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug);
+    },
+    writeCardFile(projectSlug, fileSlug, buf) {
+      const dir = path.join(uploadsRoot, projectSlug, CARD_FILES_DIR);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, fileSlug), buf);
+    },
+    readCardFile(projectSlug, fileSlug) {
+      const filePath = path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug);
+      if (!fs.existsSync(filePath)) return null;
+      return fs.readFileSync(filePath);
+    },
+    cardFileExists(projectSlug, fileSlug) {
+      return fs.existsSync(path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug));
+    },
+    unlinkCardFile(projectSlug, fileSlug) {
+      try {
+        fs.unlinkSync(path.join(uploadsRoot, projectSlug, CARD_FILES_DIR, fileSlug));
+      } catch {
+        /* may already be gone */
+      }
+    },
+    moveCardFile(fromProject, fileSlug, toProject, toSlug) {
+      const fromPath = path.join(uploadsRoot, fromProject, CARD_FILES_DIR, fileSlug);
+      const toDir = path.join(uploadsRoot, toProject, CARD_FILES_DIR);
+      const toPath = path.join(toDir, toSlug);
+      if (!fs.existsSync(fromPath)) return { ok: false, error: "file not found" };
+      fs.mkdirSync(toDir, { recursive: true });
+      try {
+        fs.renameSync(fromPath, toPath);
+      } catch (err) {
+        if (!err || err.code !== "EXDEV") {
+          return { ok: false, error: "could not move file" };
+        }
+        try {
+          fs.copyFileSync(fromPath, toPath);
+          fs.unlinkSync(fromPath);
+        } catch {
+          return { ok: false, error: "could not move file" };
+        }
+      }
+      return { ok: true };
     },
     moveUpload(fromProject, fromTab, fileSlug, toProject, toTab, toSlug) {
       const fromPath = path.join(uploadsRoot, fromProject, fromTab, fileSlug);
@@ -256,6 +307,30 @@ function createMemoryStore(seedUploadsDir) {
     },
     unlinkUpload(projectSlug, tabSlug, fileSlug) {
       uploads.delete(uploadKey(projectSlug, tabSlug, fileSlug));
+    },
+    cardFilePath() {
+      return null;
+    },
+    writeCardFile(projectSlug, fileSlug, buf) {
+      uploads.set(cardFileKey(projectSlug, fileSlug), Buffer.from(buf));
+    },
+    readCardFile(projectSlug, fileSlug) {
+      const buf = uploads.get(cardFileKey(projectSlug, fileSlug));
+      return buf ? Buffer.from(buf) : null;
+    },
+    cardFileExists(projectSlug, fileSlug) {
+      return uploads.has(cardFileKey(projectSlug, fileSlug));
+    },
+    unlinkCardFile(projectSlug, fileSlug) {
+      uploads.delete(cardFileKey(projectSlug, fileSlug));
+    },
+    moveCardFile(fromProject, fileSlug, toProject, toSlug) {
+      const fromKey = cardFileKey(fromProject, fileSlug);
+      const buf = uploads.get(fromKey);
+      if (!buf) return { ok: false, error: "file not found" };
+      uploads.set(cardFileKey(toProject, toSlug), buf);
+      uploads.delete(fromKey);
+      return { ok: true };
     },
     moveUpload(fromProject, fromTab, fileSlug, toProject, toTab, toSlug) {
       const fromKey = uploadKey(fromProject, fromTab, fileSlug);

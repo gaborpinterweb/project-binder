@@ -865,23 +865,38 @@ export function coverColorChoices(current) {
   return colors;
 }
 
+/** Next default project color: least hue-crowded PC slot (circular), so neighbors stay free. */
 export function nextUnusedProjectColor(folders) {
-  const counts = new Map(PC.map((c) => [c.toLowerCase(), 0]));
+  const n = PC.length;
+  const counts = Array(n).fill(0);
   for (const folder of folders || []) {
     const color = String(folder?.color || "").trim().toLowerCase();
     if (!color) continue;
-    counts.set(color, (counts.get(color) || 0) + 1);
+    const idx = PC.findIndex((c) => c.toLowerCase() === color);
+    if (idx >= 0) counts[idx] += 1;
   }
-  let best = PC[0];
-  let bestCount = Infinity;
-  for (const color of PC) {
-    const n = counts.get(color.toLowerCase()) || 0;
-    if (n < bestCount) {
-      best = color;
-      bestCount = n;
+
+  const crowding = (i) => {
+    let score = 0;
+    for (let j = 0; j < n; j++) {
+      if (!counts[j]) continue;
+      const d = Math.abs(i - j);
+      // Nearer used hues weigh more; opposite side of the wheel is cheapest.
+      score += counts[j] / (1 + Math.min(d, n - d));
+    }
+    return score;
+  };
+
+  let best = 0;
+  let bestScore = crowding(0);
+  for (let i = 1; i < n; i++) {
+    const score = crowding(i);
+    if (score < bestScore) {
+      best = i;
+      bestScore = score;
     }
   }
-  return best;
+  return PC[best];
 }
 
 export function loadLastTabs() {

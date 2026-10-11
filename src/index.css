@@ -760,14 +760,14 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .prop-dd.prop-chip .dd-btn.prop-dd-btn{width:auto}
 .dlg .prop-dd .dd-menu{min-width:100%}
 .dlg .prop-dd.prop-chip .dd-menu{min-width:max(100%,160px)}
-.dlg{position:relative;background:var(--card);border:1px solid var(--line);border-radius:calc(var(--radius) + 4px);width:min(560px,100%);padding:0;display:flex;flex-direction:column;box-shadow:0 16px 48px #00000033;transition:background .15s ease,border-color .15s ease;--props-border:color-mix(in srgb,#000 12%,var(--card))}
-.dlg.tint{background:color-mix(in srgb,var(--pc) 32%,#fff);border-color:color-mix(in srgb,var(--pc) 25%,var(--line));--props-border:color-mix(in srgb,#000 14%,color-mix(in srgb,var(--pc) 32%,#fff));--ink:color-mix(in srgb,var(--pc) 42%,#1a1520);--mute:color-mix(in srgb,var(--pc) 22%,#5c5666);--acc:var(--pc);--sel:color-mix(in srgb,var(--pc) 16%,#fff)}
+.dlg{position:relative;background:var(--card);border:1px solid color-mix(in srgb,var(--ink) 8%,transparent);border-radius:12px;width:min(560px,100%);padding:0;display:flex;flex-direction:column;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 55%,transparent),0 4px 16px #00000018,0 20px 56px #0000002a;transition:background .15s ease,border-color .15s ease;--props-border:color-mix(in srgb,#000 10%,var(--card))}
+.dlg.tint{background:color-mix(in srgb,var(--pc) 32%,#fff);border-color:color-mix(in srgb,var(--pc) 16%,transparent);--props-border:color-mix(in srgb,#000 12%,color-mix(in srgb,var(--pc) 32%,#fff));--ink:color-mix(in srgb,var(--pc) 18%,#121018);--mute:color-mix(in srgb,var(--pc) 10%,#3d3a42);--acc:var(--pc);--sel:color-mix(in srgb,var(--pc) 16%,#fff)}
 .dlg .card-file-drop-overlay{position:absolute;inset:0;z-index:80;display:grid;place-items:center;pointer-events:none;border-radius:inherit;background:color-mix(in srgb,var(--pc,var(--acc)) 42%,transparent);color:#fff;font-size:15px;font-weight:650;letter-spacing:.02em;text-shadow:0 1px 2px #0004}
 .dlg:not(.tint) .card-file-drop-overlay{background:color-mix(in srgb,var(--acc) 38%,transparent)}
 .dlg.is-file-dragover{outline:2px solid color-mix(in srgb,var(--pc,var(--acc)) 55%,transparent);outline-offset:-2px}
 .dlg .dlg-content{display:flex;flex-direction:column;gap:12px;padding:16px;min-width:0}
-.dlg .dlg-description,.dlg .dlg-timelogs,.dlg .dlg-fields:has(.props){min-width:0;border-radius:calc(var(--radius) - 2px);background:color-mix(in srgb,#fff 38%,transparent);border:1px solid color-mix(in srgb,var(--ink) 7%,transparent);overflow:visible}
-.dlg.tint .dlg-description,.dlg.tint .dlg-timelogs,.dlg.tint .dlg-fields:has(.props){background:color-mix(in srgb,#fff 42%,transparent);border-color:color-mix(in srgb,#000 7%,transparent)}
+.dlg .dlg-description,.dlg .dlg-timelogs,.dlg .dlg-fields:has(.props){min-width:0;border-radius:10px;background:color-mix(in srgb,#fff 52%,transparent);border:1px solid color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent),0 1px 2px #0000000a;overflow:visible}
+.dlg.tint .dlg-description,.dlg.tint .dlg-timelogs,.dlg.tint .dlg-fields:has(.props){background:color-mix(in srgb,#fff 58%,transparent);border-color:color-mix(in srgb,#000 6%,transparent)}
 .dlg .dlg-fields:has(.prop-chips){min-width:0;padding:0;background:transparent;border:0;border-radius:0;overflow:visible}
 .dlg .dlg-timelogs{padding:0;--dlg-timelog-cols:minmax(0,1fr) 7.5rem 4.25rem 28px;--dlg-timelog-gap:10px}
 .dlg .dlg-timelogs .dlg-desc-head{display:grid;grid-template-columns:var(--dlg-timelog-cols);gap:var(--dlg-timelog-gap);align-items:center;padding:10px 14px 8px}

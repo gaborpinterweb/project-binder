@@ -961,13 +961,10 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-about-brand{display:flex;flex-direction:column;align-items:center;gap:6px}
 .settings-about-icon{display:block;width:72px;height:72px;border-radius:16px;object-fit:cover;box-shadow:0 1px 2px #0001}
 .settings-about-brand b{font-size:18px;font-weight:650;color:var(--ink);letter-spacing:.01em}
-.settings-about-brand span{font-size:13px;color:var(--mute)}
 .settings-about-byline{margin:2px 0 0;font-size:13px;line-height:1.4;color:var(--mute)}
 .settings-about-byline a{color:var(--acc);font-weight:600;text-decoration:none}
 .settings-about-byline a:hover{text-decoration:underline}
 .settings-bmc-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;flex:none}
-.settings-bmc-copy{margin:0;font-size:13px;line-height:1.4;color:var(--mute)}
-.settings-bmc-line{white-space:nowrap}
 .settings-bmc{line-height:0;border-radius:8px;overflow:hidden}
 .settings-bmc img{display:block;height:48px;width:auto}
 .settings-bmc:hover{opacity:.92}

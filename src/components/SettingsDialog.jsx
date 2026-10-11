@@ -611,10 +611,11 @@ export default function SettingsDialog({
                     height={72}
                     draggable={false}
                   />
-                  <b>{APP_NAME}</b>
-                  <span>v{APP_VERSION}</span>
+                  <b>
+                    {APP_NAME} v{APP_VERSION}
+                  </b>
                   <p className="settings-about-byline">
-                    Created by{" "}
+                    Created and maintained by{" "}
                     <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
                       Gábor Pintér
                     </a>
@@ -622,13 +623,6 @@ export default function SettingsDialog({
                 </div>
               </div>
               <div className="settings-bmc-wrap">
-                <p className="settings-bmc-copy">
-                  Enjoying {APP_NAME}?
-                  <br />
-                  <span className="settings-bmc-line">
-                    Consider showing your appreciation ↓
-                  </span>
-                </p>
                 <a
                   className="settings-bmc"
                   href={BMC_URL}

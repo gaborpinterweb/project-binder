@@ -800,6 +800,22 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .prop-chip .prop-dd-btn > svg,.dlg .prop-chip.prop-chip-ro > svg{flex:none;color:var(--mute)}
 .dlg.tint .prop-chip .prop-dd-btn,.dlg.tint .prop-chip.prop-chip-ro{background:color-mix(in srgb,#fff 42%,transparent);border-color:color-mix(in srgb,#000 7%,transparent)}
 .dlg.tint .prop-chip .prop-dd-btn:hover,.dlg.tint .prop-chip .prop-dd-btn:focus{background:color-mix(in srgb,#fff 58%,transparent)}
+.dlg .card-add-chip .prop-dd-btn{padding-left:10px;padding-right:10px}
+.dlg .card-add-chip .prop-dd-btn .lab{flex:none;font-size:15px;font-weight:650;line-height:1}
+.dlg .card-add-chip .card-add-menu{display:block;min-width:168px;z-index:60;padding:6px}
+.dlg .card-add-chip .card-add-menu > button,.dlg .card-add-chip .card-add-sub-trigger{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink);white-space:nowrap}
+.dlg .card-add-chip .card-add-menu > button:hover,.dlg .card-add-chip .card-add-sub:hover > .card-add-sub-trigger,.dlg .card-add-chip .card-add-sub:focus-within > .card-add-sub-trigger{background:var(--sel)}
+.dlg .card-add-chip .card-add-sub-trigger{justify-content:space-between}
+.dlg .card-add-chip .card-add-sub-trigger > svg{flex:none;opacity:.55}
+.dlg .card-add-chip .dd-opt{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.dlg .card-add-chip .dd-opt > svg{flex:none;opacity:.75}
+.dlg .card-add-chip .card-add-sub{position:relative}
+.dlg .card-add-chip .card-add-sub-menu{display:none;top:0;left:calc(100% - 4px);min-width:220px;width:max-content;z-index:70;padding:6px}
+.dlg .card-add-chip .card-add-sub:hover > .card-add-sub-menu,.dlg .card-add-chip .card-add-sub:focus-within > .card-add-sub-menu{display:block}
+.dlg .card-add-chip .card-add-sub-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink);white-space:nowrap}
+.dlg .card-add-chip .card-add-sub-menu button:hover{background:var(--sel)}
+.dlg .card-add-chip .card-add-sub-menu button svg{flex:none;opacity:.75}
+.dlg.tint .card-add-chip .card-add-menu,.dlg.tint .card-add-chip .card-add-sub-menu{background:color-mix(in srgb,var(--pc) 12%,#fff)}
 .dlg .dlg-desc-head{display:flex;align-items:center;gap:8px;padding:10px 10px 8px 14px;min-width:0;border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
 .dlg .dlg-desc-label{font-size:13px;font-weight:650;letter-spacing:.02em;color:var(--ink)}
 .dlg .rte-toolbar{display:flex;align-items:center;gap:2px;margin-left:auto}

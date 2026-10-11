@@ -8,6 +8,7 @@ import {
   boardLabel,
   formatDuration,
   isDone,
+  isEmptyNoteBody,
   pastel,
   playTaskCompleteSound,
   taskKey,
@@ -16,7 +17,11 @@ import { fieldTypeIcon } from "../dbFields.js";
 import DbFieldInput from "./DbFieldInput.jsx";
 import PropDropdown, { closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
-import TimelogDropdown from "./TimelogDropdown.jsx";
+import TimelogDropdown, {
+  TimelogMenuButtons,
+  runTimelogAction,
+  timelogOptions,
+} from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
 
 function formatCardTimelogDate(iso) {
@@ -89,6 +94,112 @@ function CardMoreMenu({ onDuplicate, onDelete }) {
   );
 }
 
+function CardAddChip({
+  canAddDescription,
+  canTimelog,
+  showTimers,
+  folder,
+  mod,
+  row,
+  onAddDescription,
+  onStartPomo,
+  onAddManualTimelog,
+  onOpenTimelogs,
+  onAfterTimelogAction,
+}) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const options = timelogOptions({ showTimers });
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  if (!canAddDescription && !canTimelog) return null;
+
+  return (
+    <div
+      className={"prop-chip card-add-chip" + (open ? " open" : "")}
+      ref={wrapRef}
+    >
+      <button
+        type="button"
+        className="prop-dd-btn"
+        title="Add to card"
+        aria-label="Add to card"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+      >
+        <span className="lab">+</span>
+      </button>
+      {open ? (
+        <div className="pop card-add-menu" role="menu">
+          {canAddDescription ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onAddDescription?.();
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="Notes" size={14} />
+                Description
+              </span>
+            </button>
+          ) : null}
+          {canTimelog ? (
+            <div className="card-add-sub">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                className="card-add-sub-trigger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="dd-opt">
+                  <Icon name="Timelogs" size={14} />
+                  Timelogs
+                </span>
+                <Icon name="arrow" size={12} />
+              </button>
+              <div className="pop card-add-sub-menu" role="menu">
+                <TimelogMenuButtons
+                  options={options}
+                  onPick={async (v) => {
+                    setOpen(false);
+                    await runTimelogAction(v, {
+                      folder,
+                      mod,
+                      row,
+                      onStartPomo,
+                      onAddManualTimelog,
+                      onOpenTimelogs,
+                    });
+                    await onAfterTimelogAction?.(v);
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function CardDialog({
   row,
   isDraft,
@@ -121,6 +232,9 @@ export default function CardDialog({
   );
   const [originLoc, setOriginLoc] = useState(loc);
   const [draft, setDraft] = useState(() => ({ ...row }));
+  const [showDescription, setShowDescription] = useState(
+    () => !isEmptyNoteBody(row?.body)
+  );
   const [spent, setSpent] = useState(0);
   const [cardLogs, setCardLogs] = useState([]);
   const persistTimer = useRef(null);
@@ -259,6 +373,9 @@ export default function CardDialog({
   };
 
   const boards = allBoards(folders);
+  const canTimelogCard =
+    !isDraft && curLoc?.mod[0] === "Board" && !!draft.slug;
+  const showTimelogSection = canTimelogCard && cardLogs.length > 0;
 
   return (
     <div
@@ -471,21 +588,45 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
+                  {!readonly ? (
+                    <CardAddChip
+                      canAddDescription={!showDescription}
+                      canTimelog={canTimelogCard && !showTimelogSection}
+                      showTimers={showTimelogs}
+                      folder={curLoc?.folder}
+                      mod={curLoc?.mod}
+                      row={draft}
+                      onAddDescription={() => setShowDescription(true)}
+                      onStartPomo={onStartPomo}
+                      onAddManualTimelog={onAddManualTimelog}
+                      onOpenTimelogs={onOpenTimelogs}
+                      onAfterTimelogAction={async (v) => {
+                        if (v === "pomo" || v === "stoptimer") return;
+                        if (v === "manual") {
+                          await reloadCardLogs();
+                          return;
+                        }
+                        await close(false);
+                      }}
+                    />
+                  ) : null}
                 </div>
               </div>
-              <div className="dlg-description">
-                <RichTextEditor
-                  value={draft.body || ""}
-                  placeholder="Write something…"
-                  editable={!readonly}
-                  showToolbar={!readonly}
-                  onChange={(html) => {
-                    if (readonly) return;
-                    patch({ body: html });
-                  }}
-                />
-              </div>
-              {!isDraft && curLoc?.mod[0] === "Board" && draft.slug ? (
+              {showDescription ? (
+                <div className="dlg-description">
+                  <RichTextEditor
+                    value={draft.body || ""}
+                    placeholder="Write something…"
+                    editable={!readonly}
+                    showToolbar={!readonly}
+                    onChange={(html) => {
+                      if (readonly) return;
+                      patch({ body: html });
+                    }}
+                  />
+                </div>
+              ) : null}
+              {showTimelogSection ? (
                 <section className="dlg-timelogs">
                   <div className="dlg-desc-head">
                     <span className="dlg-desc-label">Timelogs</span>
@@ -520,50 +661,46 @@ export default function CardDialog({
                       </TimelogDropdown>
                     ) : null}
                   </div>
-                  {cardLogs.length > 0 ? (
-                    <ul className="dlg-timelog-list">
-                      {cardLogs.map((entry) => {
-                        const stamp = entry.endedAt || entry.startedAt || "";
-                        return (
-                          <li key={entry.slug} className="dlg-timelog-item">
-                            <span
-                              className={
-                                "dlg-timelog-note" +
-                                (entry.note ? "" : " is-empty")
-                              }
+                  <ul className="dlg-timelog-list">
+                    {cardLogs.map((entry) => {
+                      const stamp = entry.endedAt || entry.startedAt || "";
+                      return (
+                        <li key={entry.slug} className="dlg-timelog-item">
+                          <span
+                            className={
+                              "dlg-timelog-note" +
+                              (entry.note ? "" : " is-empty")
+                            }
+                          >
+                            {entry.note || "No notes…"}
+                          </span>
+                          <time
+                            className="dlg-timelog-date"
+                            dateTime={stamp}
+                          >
+                            {formatCardTimelogDate(stamp)}
+                          </time>
+                          <span className="dlg-timelog-dur">
+                            {formatDuration(entry.durationSec)}
+                          </span>
+                          {!readonly ? (
+                            <button
+                              type="button"
+                              className="dlg-timelog-edit-btn"
+                              title="Edit timelog"
+                              aria-label="Edit timelog"
+                              onClick={async () => {
+                                await onEditTimelog?.(entry);
+                                await reloadCardLogs();
+                              }}
                             >
-                              {entry.note || "No notes…"}
-                            </span>
-                            <time
-                              className="dlg-timelog-date"
-                              dateTime={stamp}
-                            >
-                              {formatCardTimelogDate(stamp)}
-                            </time>
-                            <span className="dlg-timelog-dur">
-                              {formatDuration(entry.durationSec)}
-                            </span>
-                            {!readonly ? (
-                              <button
-                                type="button"
-                                className="dlg-timelog-edit-btn"
-                                title="Edit timelog"
-                                aria-label="Edit timelog"
-                                onClick={async () => {
-                                  await onEditTimelog?.(entry);
-                                  await reloadCardLogs();
-                                }}
-                              >
-                                <Icon name="pencil" size={14} />
-                              </button>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="dlg-timelog-empty">No timelogs yet.</p>
-                  )}
+                              <Icon name="pencil" size={14} />
+                            </button>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </section>
               ) : null}
             </>
@@ -577,7 +714,7 @@ export default function CardDialog({
                 className="dlg-create"
                 onClick={() => close(true)}
               >
-                Create
+                Add task
               </button>
             </div>
           </div>

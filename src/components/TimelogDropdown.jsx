@@ -3,7 +3,7 @@ import { Icon } from "../icons.jsx";
 import { loadCountdownDurationMin, timelogTaskFromCard } from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 
-function timelogOptions({ showTimers = true } = {}) {
+export function timelogOptions({ showTimers = true } = {}) {
   const mins = loadCountdownDurationMin();
   return [
     ...(showTimers
@@ -21,7 +21,7 @@ function timelogOptions({ showTimers = true } = {}) {
   ];
 }
 
-async function runTimelogAction(
+export async function runTimelogAction(
   value,
   { folder, mod, row, onStartPomo, onAddManualTimelog, onOpenTimelogs }
 ) {
@@ -44,7 +44,7 @@ async function runTimelogAction(
   }
 }
 
-function MenuButtons({ options, onPick }) {
+export function TimelogMenuButtons({ options, onPick }) {
   return options.map((o) => (
     <button
       key={o.value}
@@ -167,7 +167,7 @@ export function TimelogContextMenu({
         e.stopPropagation();
       }}
     >
-      <MenuButtons
+      <TimelogMenuButtons
         options={options}
         onPick={async (v) => {
           onClose?.();

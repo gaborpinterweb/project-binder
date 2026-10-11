@@ -282,7 +282,10 @@ export function noteListTitle(body) {
     const first =
       doc.body.querySelector("h1, h2, h3, p, li, blockquote") ||
       doc.body.firstElementChild;
-    const text = (first?.textContent || "").replace(/\s+/g, " ").trim();
+    // Plain-text bodies have no element children — fall back to body text.
+    const text = (first?.textContent || doc.body?.textContent || "")
+      .replace(/\s+/g, " ")
+      .trim();
     return text || "New note...";
   } catch {
     return "New note...";

@@ -544,7 +544,7 @@ function CompletedViewBtn({
 }
 
 function BoardEditBtn({ boardEdit, onToggle }) {
-  const label = boardEdit ? "Save columns" : "Edit columns";
+  const label = boardEdit ? "Save board" : "Edit board";
   return (
     <button
       type="button"

@@ -61,6 +61,25 @@ export const PC = [
   "#c2410c",
 ];
 
+const PC_NAMES = {
+  "#8b5cf6": "Plum",
+  "#14b8a6": "Sea",
+  "#f97316": "Pumpkin",
+  "#d97706": "Honey",
+  "#3b82f6": "Sky",
+  "#ec4899": "Candy",
+  "#65a30d": "Leaf",
+  "#eab308": "Banana",
+  "#6366f1": "Ink",
+  "#ef4444": "Cherry",
+  "#0ea5e9": "Glacier",
+  "#c2410c": "Brick",
+};
+
+export function coverColorName(color) {
+  return PC_NAMES[String(color || "").trim().toLowerCase()] || "Custom";
+}
+
 export function loadStages(list, setStages) {
   if (!list || !list.length) return;
   const next = list.filter((s) => typeof s === "string" && s);

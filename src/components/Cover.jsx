@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { PC, coverColorChoices } from "../utils.js";
+import { PC, coverColorChoices, coverColorName } from "../utils.js";
+import { Icon } from "../icons.jsx";
+import Dropdown from "./Dropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 
 const DESC_PLACEHOLDER = "Project description with goals, deadlines, links and more...";
@@ -38,72 +39,98 @@ function patchDraft(onChange, draft, patch) {
   onChange((prev) => ({ ...(prev || draft), ...patch }));
 }
 
-function ColorSwatches({ draft, onChange }) {
+function ColorDropdown({ draft, onChange }) {
+  const color = draft.color || PC[0];
+  const name = coverColorName(color);
+  const options = coverColorChoices(color).map((c) => ({
+    value: c,
+    label: coverColorName(c),
+  }));
   return (
-    <div className="cover-swatches">
-      {coverColorChoices(draft.color).map((c) => (
-        <button
-          key={c}
-          type="button"
-          className={"cover-swatch" + (c === draft.color ? " on" : "")}
-          title={c}
-          style={{ background: c }}
-          onClick={() => patchDraft(onChange, draft, { color: c })}
-        />
-      ))}
+    <Dropdown
+      className="cover-color-dd"
+      align="right"
+      options={options}
+      value={color}
+      onChange={(c) => patchDraft(onChange, draft, { color: c })}
+      ariaLabel={name}
+      title={name}
+      renderOption={(o) => (
+        <span className="cover-color-opt">
+          <span className="cover-color-opt-dot" style={{ background: o.value }} />
+          <span className="cover-color-opt-lab">{o.label}</span>
+          {o.value === color ? <Icon name="check" size={14} /> : null}
+        </span>
+      )}
+    >
+      <span className="cover-color-dd-dot" style={{ background: color }} />
+      <span className="cover-color-dd-lab">{name}</span>
+    </Dropdown>
+  );
+}
+
+function CoverDock({ children }) {
+  return (
+    <div className="cover-dock">
+      <div className="cover-dock-inner">{children}</div>
     </div>
   );
 }
 
-function CoverMoreMenu({ onArchive, onDelete }) {
-  const wrapRef = useRef(null);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  const run = (fn) => {
-    setOpen(false);
-    fn?.();
-  };
-
+function CoverActions({ editing, draft, folder, onStartEdit, onSave, onArchive, onDelete }) {
+  const label = editing ? "Save project" : "Edit project";
   return (
-    <div className={"cover-more" + (open ? " open" : "")} ref={wrapRef}>
+    <CoverDock>
       <button
         type="button"
-        className="cover-more-btn"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        className={"cover-dock-btn" + (editing ? " primary" : "")}
+        title={label}
+        aria-label={label}
+        onClick={() => {
+          if (editing) {
+            const name = (draft.name || "").trim() || folder.name || "Untitled";
+            onSave({
+              name,
+              description: draft.description || "",
+              color: draft.color || folder.color,
+            });
+            return;
+          }
+          onStartEdit({
+            name: folder.name || "",
+            description: draft.description || "",
+            color: draft.color || folder.color || PC[0],
+          });
+        }}
       >
-        More
+        <Icon name={editing ? "check" : "pencil"} size={18} />
+        <span>{label}</span>
       </button>
-      {open && (
-        <div className="pop" role="menu" style={{ display: "block" }}>
+      {editing && (
+        <>
           <button
             type="button"
-            role="menuitem"
-            onClick={() => run(onArchive)}
+            className="cover-dock-btn"
+            title="Archive"
+            aria-label="Archive"
+            onClick={onArchive}
           >
-            Archive
+            <Icon name="Archive" size={18} />
+            <span>Archive</span>
           </button>
           <button
             type="button"
-            role="menuitem"
-            className="danger"
-            onClick={() => run(onDelete)}
+            className="cover-dock-btn"
+            title="Delete"
+            aria-label="Delete"
+            onClick={onDelete}
           >
-            Delete
+            <Icon name="Trash" size={18} />
+            <span>Delete</span>
           </button>
-        </div>
+        </>
       )}
-    </div>
+    </CoverDock>
   );
 }
 
@@ -147,79 +174,64 @@ export default function Cover({
   const viewName = editing ? draft.name || "" : folder.name || "";
   const viewDesc = editing ? draft.description || "" : values.description || "";
 
-  if (editing) {
-    return (
-      <div id="view" className="mod cover-view" style={{ ["--tab"]: viewColor }}>
-        <div className="cover-page">
-          <div className="cover-fields">
-            <input
-              className="cover-title"
-              type="text"
-              value={viewName}
-              placeholder="Project name..."
-              onChange={(e) =>
-                patchDraft(onCoverDraftChange, draft, { name: e.target.value })
-              }
-            />
-            <CoverDescription
-              key="edit"
-              value={viewDesc}
-              editable
-              onChange={(html) =>
-                patchDraft(onCoverDraftChange, draft, { description: html })
-              }
-            />
-            <ColorSwatches draft={draft} onChange={onCoverDraftChange} />
-            <div className="cover-actions">
-              <button
-                type="button"
-                className="cover-save"
-                onClick={() => {
-                  const name = (draft.name || "").trim() || folder.name || "Untitled";
-                  onSave({
-                    name,
-                    description: draft.description || "",
-                    color: draft.color || folder.color,
-                  });
-                }}
-              >
-                Save
-              </button>
-              <CoverMoreMenu onArchive={onArchive} onDelete={onDelete} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div id="view" className="mod cover-view" style={{ ["--tab"]: viewColor }}>
       <div className="cover-page">
         <div className="cover-fields">
-          <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
-          {isEmptyDescription(viewDesc) ? (
-            <p className="cover-desc-display is-empty">No description yet.</p>
+          {editing ? (
+            <>
+              <div className="cover-title-row">
+                <input
+                  className="cover-title"
+                  type="text"
+                  value={viewName}
+                  placeholder="Project name..."
+                  onChange={(e) =>
+                    patchDraft(onCoverDraftChange, draft, { name: e.target.value })
+                  }
+                />
+                <ColorDropdown draft={draft} onChange={onCoverDraftChange} />
+              </div>
+              <CoverDescription
+                key="edit"
+                value={viewDesc}
+                editable
+                onChange={(html) =>
+                  patchDraft(onCoverDraftChange, draft, { description: html })
+                }
+              />
+            </>
           ) : (
-            <CoverDescription key="view" value={viewDesc} editable={false} />
-          )}
-          {!archived && (
-            <button
-              type="button"
-              className="cover-edit"
-              onClick={() =>
-                onStartEdit({
-                  name: folder.name || "",
-                  description: values.description || "",
-                  color: folder.color || tabC || PC[0],
-                })
-              }
-            >
-              Edit
-            </button>
+            <>
+              <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
+              {isEmptyDescription(viewDesc) ? (
+                <p className="cover-desc-display is-empty">No description yet.</p>
+              ) : (
+                <CoverDescription key="view" value={viewDesc} editable={false} />
+              )}
+            </>
           )}
         </div>
       </div>
+      {!archived && (
+        <CoverActions
+          editing={editing}
+          draft={
+            editing
+              ? draft
+              : {
+                  name: folder.name || "",
+                  description: values.description || "",
+                  color: folder.color || tabC || PC[0],
+                }
+          }
+          folder={folder}
+          onStartEdit={onStartEdit}
+          onSave={onSave}
+          onArchive={onArchive}
+          onDelete={onDelete}
+        />
+      )}
     </div>
   );
 }
@@ -231,14 +243,17 @@ function DraftCover({ draft, onChange, onCommit }) {
     <div id="view" className="mod cover-view" style={{ ["--tab"]: tabC }}>
       <div className="cover-page">
         <div className="cover-fields">
-          <input
-            className="cover-title"
-            type="text"
-            value={draft.name || ""}
-            placeholder="Project name..."
-            autoFocus
-            onChange={(e) => patchDraft(onChange, draft, { name: e.target.value })}
-          />
+          <div className="cover-title-row">
+            <input
+              className="cover-title"
+              type="text"
+              value={draft.name || ""}
+              placeholder="Project name..."
+              autoFocus
+              onChange={(e) => patchDraft(onChange, draft, { name: e.target.value })}
+            />
+            <ColorDropdown draft={draft} onChange={onChange} />
+          </div>
           <CoverDescription
             value={draft.description || ""}
             editable
@@ -246,17 +261,21 @@ function DraftCover({ draft, onChange, onCommit }) {
               patchDraft(onChange, draft, { description: html })
             }
           />
-          <ColorSwatches draft={draft} onChange={onChange} />
-          <button
-            type="button"
-            className="cover-create"
-            disabled={!canCreate}
-            onClick={onCommit}
-          >
-            Create
-          </button>
         </div>
       </div>
+      <CoverDock>
+        <button
+          type="button"
+          className="cover-dock-btn primary"
+          title="Create project"
+          aria-label="Create project"
+          disabled={!canCreate}
+          onClick={onCommit}
+        >
+          <Icon name="check" size={18} />
+          <span>Create project</span>
+        </button>
+      </CoverDock>
     </div>
   );
 }

@@ -230,7 +230,7 @@ export default function Sidebar({
                 className={"bm" + (on ? " on" : "")}
                 onClick={() => onSelectGlobal(n)}
               >
-                <span style={rainbow ? undefined : { color: GACC }}>
+                <span style={rainbow ? undefined : { color: "var(--side-mute)" }}>
                   <Icon name={n} rainbow={rainbow} />
                 </span>
                 <span>{globalLabel(n)}</span>
@@ -247,7 +247,7 @@ export default function Sidebar({
               onOpenSettings?.();
             }}
           >
-            <span style={{ color: GACC }}>
+            <span style={{ color: "var(--side-mute)" }}>
               <Icon name="settings" />
             </span>
             <span>Settings</span>
@@ -263,7 +263,7 @@ export default function Sidebar({
                 onOpenUpdate?.();
               }}
             >
-              <span style={{ color: GACC }}>
+              <span style={{ color: "var(--side-mute)" }}>
                 <Icon name="arrow" />
               </span>
               <span>Update available</span>

@@ -45,20 +45,20 @@ export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
 /** Timelogs shorter than this are discarded on stop. */
 export const MIN_TIMELOG_SEC = 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
-export const GACC = "#9a5b2e";
+export const GACC = "#3c3c40";
 export const PC = [
-  "#6b4f8c",
-  "#2f7a6e",
-  "#b45a3c",
-  "#8a5c2e",
-  "#3d6a8c",
-  "#9a4568",
-  "#5a7a38",
-  "#b08a2a",
-  "#4f4d8c",
-  "#a63d3d",
-  "#2d5f7a",
-  "#7a5230",
+  "#8b5cf6",
+  "#14b8a6",
+  "#f97316",
+  "#d97706",
+  "#3b82f6",
+  "#ec4899",
+  "#65a30d",
+  "#eab308",
+  "#6366f1",
+  "#ef4444",
+  "#0ea5e9",
+  "#c2410c",
 ];
 
 export function loadStages(list, setStages) {
@@ -204,7 +204,7 @@ export function fromApi(data, loadStagesFn) {
     return {
       slug: pr.slug,
       name: pr.name,
-      color: pr.color || "#9a5b2e",
+      color: pr.color || GACC,
       archived: !!pr.archived,
       isDemo: !!pr.isDemo,
       mods,

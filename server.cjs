@@ -547,7 +547,7 @@ function projectToApi(p) {
   const out = {
     slug: p.slug,
     name: p.name || p.slug,
-    color: p.color || "#9a5b2e",
+    color: p.color || "#3c3c40",
     cover: { values: { description: p.description || "" } },
     boards: (p.boards || []).map((b) => {
       const board = {
@@ -693,7 +693,7 @@ function createProject({ name, color, cover }) {
   const project = {
     slug,
     name: title,
-    color: color || "#9a5b2e",
+    color: color || "#3c3c40",
     description,
     boards: [],
     databases: [],
@@ -718,7 +718,7 @@ function softDeleteProject(projectSlug) {
     deletedAt: new Date().toISOString(),
     project: project.slug,
     projectName: project.name || project.slug,
-    color: project.color || "#9a5b2e",
+    color: project.color || "#3c3c40",
     title: project.name || project.slug,
     snapshot: deepClone(project),
   };
@@ -1042,7 +1042,7 @@ function softDeleteCard(projectSlug, boardSlug, cardSlug) {
     doneAt: card.doneAt || "",
     projectName: project.name || projectSlug,
     boardName: board.name || boardSlug,
-    color: project.color || "#9a5b2e",
+    color: project.color || "#3c3c40",
   };
   if (card.priority) entry.priority = true;
   const files = normalizeCardFiles(card.files);
@@ -1073,7 +1073,7 @@ function softDeleteNote(projectSlug, notesTabSlug, noteSlug) {
     updatedAt: note.updatedAt || "",
     projectName: project.name || projectSlug,
     notesTabName: tab.name || notesTabSlug,
-    color: project.color || "#9a5b2e",
+    color: project.color || "#3c3c40",
   });
   return true;
 }
@@ -1099,7 +1099,7 @@ function softDeleteBoard(projectSlug, boardSlug) {
       ? board.columns.slice()
       : DEFAULT_BOARD_COLS.slice(),
     projectName: project.name || projectSlug,
-    color: project.color || "#9a5b2e",
+    color: project.color || "#3c3c40",
     title: board.name || board.slug,
   });
   if (isDemoValue(board.isDemo)) store.trash[store.trash.length - 1].isDemo = true;
@@ -1126,7 +1126,7 @@ function softDeleteNotesTab(projectSlug, notesTabSlug) {
     notesTab: tab.slug,
     notesTabName: tab.name || tab.slug,
     projectName: project.name || projectSlug,
-    color: project.color || "#9a5b2e",
+    color: project.color || "#3c3c40",
     title: tab.name || tab.slug,
   });
   project.notesTabs.splice(idx, 1);
@@ -1410,7 +1410,7 @@ function readTrash() {
         deletedAt: t.deletedAt || "",
         project: t.project || "",
         projectName: t.projectName || t.project || "",
-        color: t.color || "#9a5b2e",
+        color: t.color || "#3c3c40",
         isDemo: isDemoValue(t.isDemo) || undefined,
       };
       if (kind === "note") {
@@ -1898,7 +1898,7 @@ function readTimelogs() {
     title: t.title || t.card || "Untitled",
     projectName: t.projectName || t.project || "",
     boardName: t.boardName || t.board || "",
-    color: t.color || "#9a5b2e",
+    color: t.color || "#3c3c40",
     kind: t.kind || "pomodoro",
     note: typeof t.note === "string" ? t.note : "",
     startedAt: t.startedAt || "",
@@ -1930,7 +1930,7 @@ function writeTimelog(entry) {
     title: entry.title || entry.card || "Untitled",
     projectName: entry.projectName || entry.project || "",
     boardName: entry.boardName || entry.board || "",
-    color: entry.color || "#9a5b2e",
+    color: entry.color || "#3c3c40",
     kind: entry.kind || "pomodoro",
     note: typeof entry.note === "string" ? entry.note : "",
     startedAt,

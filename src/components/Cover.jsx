@@ -24,6 +24,7 @@ function CoverDescription({ value, onChange, editable }) {
         showToolbar={editable}
         headingLevels={[1, 2]}
         showTable
+        showQuote
         onChange={(html) => {
           if (!editable) return;
           onChange(html);

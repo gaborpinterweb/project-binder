@@ -670,6 +670,8 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .cover-description .rte .tiptap .selectedCell:after{content:"";position:absolute;inset:0;background:color-mix(in srgb,#fff 14%,transparent);pointer-events:none;z-index:2}
 .cover-description .rte .tiptap .column-resize-handle{position:absolute;right:-2px;top:0;bottom:0;width:4px;background:#fff;pointer-events:none}
 .cover-description .rte .tiptap.resize-cursor{cursor:col-resize}
+.cover-description .rte .tiptap blockquote{margin:.5em 0;padding:.35em 0 .35em 14px;border-left:3px solid color-mix(in srgb,#fff 55%,transparent);color:color-mix(in srgb,#fff 78%,transparent)}
+.cover-description .rte .tiptap blockquote p:last-child{margin-bottom:0}
 .cover-swatches{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px;width:100%}
 .cover-swatch{width:100%;aspect-ratio:1;border-radius:999px;border:2px solid color-mix(in srgb,#fff 28%,transparent);cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px #0003}
 .cover-swatch.on{border-color:#fff;box-shadow:0 0 0 2px color-mix(in srgb,#000 35%,transparent)}

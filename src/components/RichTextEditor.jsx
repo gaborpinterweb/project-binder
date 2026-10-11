@@ -93,6 +93,7 @@ export function RteToolbar({
   forNotes = false,
   headingLevels = [],
   showTable = false,
+  showQuote = false,
   onDelete,
   moveOptions = [],
   onMove,
@@ -112,6 +113,7 @@ export function RteToolbar({
   if (!editor) return null;
   const levels = forNotes ? [1, 2, 3, 4] : headingLevels;
   const tables = forNotes || showTable;
+  const quotes = forNotes || showQuote;
   const inTable = tables && editor.isActive("table");
   const canMove = typeof onMove === "function" && moveOptions.length > 0;
   return (
@@ -170,15 +172,17 @@ export function RteToolbar({
         >
           <Icon name="checklist" size={15} />
         </ToolbarBtn>
+        {quotes && (
+          <ToolbarBtn
+            title="Quote"
+            active={editor.isActive("blockquote")}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          >
+            <Icon name="blockquote" size={15} />
+          </ToolbarBtn>
+        )}
         {forNotes && (
           <>
-            <ToolbarBtn
-              title="Quote"
-              active={editor.isActive("blockquote")}
-              onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            >
-              <Icon name="blockquote" size={15} />
-            </ToolbarBtn>
             <ToolbarBtn
               title="Code block"
               active={editor.isActive("codeBlock")}
@@ -344,6 +348,7 @@ export default function RichTextEditor({
   forNotes = false,
   headingLevels = [],
   showTable = false,
+  showQuote = false,
   onEditor,
 }) {
   const levels = forNotes
@@ -352,6 +357,7 @@ export default function RichTextEditor({
       ? headingLevels
       : [1];
   const tables = forNotes || showTable;
+  const quotes = forNotes || showQuote;
 
   const initialContent = (() => {
     const html = toEditorContent(value);
@@ -368,7 +374,7 @@ export default function RichTextEditor({
       StarterKit.configure({
         heading: { levels },
         codeBlock: forNotes ? undefined : false,
-        blockquote: forNotes ? undefined : false,
+        blockquote: quotes ? undefined : false,
         horizontalRule: false,
       }),
       Placeholder.configure({
@@ -451,6 +457,7 @@ export default function RichTextEditor({
               forNotes={forNotes}
               headingLevels={headingLevels}
               showTable={showTable}
+              showQuote={showQuote}
             />
           </div>
         ) : (
@@ -460,6 +467,7 @@ export default function RichTextEditor({
               forNotes={forNotes}
               headingLevels={headingLevels}
               showTable={showTable}
+              showQuote={showQuote}
             />
           </div>
         ))}

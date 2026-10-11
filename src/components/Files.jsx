@@ -20,6 +20,7 @@ import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
 import FilePreviewDialog from "./FilePreviewDialog.jsx";
 import FileTypeIcon, { fileKindLabel } from "./FileTypeIcon.jsx";
+import SortHeader from "./SortHeader.jsx";
 
 function formatFileSize(bytes) {
   const n = Number(bytes) || 0;
@@ -74,32 +75,6 @@ function sortFiles(list, sort) {
     return cmp * dir;
   });
   return files;
-}
-
-function SortHeader({ col, label, sort, onSort }) {
-  const active = sort.key === col;
-  return (
-    <button
-      type="button"
-      className={"files-sort" + (active ? " on" : "")}
-      onClick={() => onSort(col)}
-      aria-label={
-        active
-          ? `${label}, sorted ${sort.dir === "asc" ? "ascending" : "descending"}`
-          : `Sort by ${label}`
-      }
-    >
-      {label}
-      {active ? (
-        <span
-          className={"files-sort-caret" + (sort.dir === "asc" ? " up" : "")}
-          aria-hidden="true"
-        >
-          <Icon name="caret" size={12} />
-        </span>
-      ) : null}
-    </button>
-  );
 }
 
 function readFileAsBase64(file) {

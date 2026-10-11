@@ -531,9 +531,25 @@ main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;backgroun
 .log-filter .clear{flex:none;margin-left:auto;padding:4px 10px;border-radius:calc(var(--radius) - 6px);font-size:12px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
 .log-filter .clear:hover{background:color-mix(in srgb,var(--acc) 20%,transparent)}
 .log.timelogs{gap:22px}
-.log.trash{gap:0;padding:14px 18px 22px}
-.log.trash .log-period-head{padding:0 2px 10px}
-.log.trash .trash-list{flex:none;border:1px solid color-mix(in srgb,var(--ink) 9%,transparent);border-radius:calc(var(--radius) - 2px);background:var(--card);box-shadow:0 1px 2px #0000000a,0 4px 14px #0000000c;overflow:hidden}
+.log-note.trash-note{flex:none;padding:9px 20px;border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent);background:color-mix(in srgb,var(--ink) 3.5%,#fff);font-size:12px;letter-spacing:.01em;line-height:1.4;color:var(--mute)}
+.trash-view .files-row{cursor:default}
+.trash-view .files-name.is-static{cursor:default}
+.trash-view .files-name.is-static:hover{text-decoration:none}
+.trash-kind-icon{flex:none;display:inline-grid;place-items:center;width:22px;color:var(--mute)}
+.trash-kind-icon svg{display:block}
+.trash-col-type,.trash-col-project,.trash-col-deleted{flex:none;color:var(--mute);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trash-col-type{width:100px;text-align:left}
+.trash-col-project{display:inline-flex;align-items:center;gap:7px;width:140px;text-align:left;min-width:0}
+.trash-project-dot{flex:none;width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1px #0002}
+.trash-project-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.trash-col-deleted{width:110px;font-variant-numeric:tabular-nums;text-align:right}
+.trash-col-type .files-sort,.trash-col-project .files-sort{justify-content:flex-start;width:100%}
+.trash-col-deleted .files-sort{justify-content:flex-end;width:100%}
+.trash-col-restore{flex:none;width:88px}
+.trash-view .trash-restore{flex:none;width:88px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:calc(var(--radius) - 6px);font:inherit;font-size:12px;font-weight:600;letter-spacing:.01em;color:var(--ink);background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--ink) 3.5%,#fff));box-shadow:0 1px 1px #0000000d,inset 0 1px 0 #ffffffcc;cursor:pointer}
+.trash-view .trash-restore:hover:not(:disabled){background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--ink) 7%,#fff));border-color:color-mix(in srgb,var(--ink) 18%,transparent)}
+.trash-view .trash-restore:active:not(:disabled){background:color-mix(in srgb,var(--ink) 6%,#fff);box-shadow:inset 0 1px 2px #00000014}
+.trash-view .trash-restore:disabled{opacity:.55;cursor:default}
 .log-period{flex:none;display:flex;flex-direction:column;gap:2px;padding:0;border:0;background:transparent}
 .log-period-head{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0;padding:0 2px 8px;background:transparent;border:0}
 .log-period-head h3{margin:0;font-size:13px;font-weight:650;letter-spacing:.01em;color:var(--mute)}
@@ -596,19 +612,6 @@ main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;backgroun
 .log .entry .dur{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);padding-top:2px;white-space:nowrap}
 .log .entry .dur.muted{font-weight:500;color:var(--mute)}
 .log .entry .who > b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.log .trash-entry{align-items:center;grid-template-columns:64px 36px 1fr auto;gap:12px;margin:0;padding:12px 14px;border:0;border-bottom:1px solid color-mix(in srgb,var(--ink) 7%,transparent);border-radius:0;background:transparent;box-shadow:none;transition:background .12s ease}
-.log .trash-entry:last-child{border-bottom:0}
-.log .trash-entry:hover{background:color-mix(in srgb,var(--ink) 2.5%,transparent)}
-.log .trash-entry time{padding-top:0;font-size:12px;font-weight:500;color:var(--mute)}
-.log .trash-kind{display:grid;place-items:center;width:36px;height:36px;border-radius:9px;color:color-mix(in srgb,var(--ink) 62%,var(--mute));background:color-mix(in srgb,var(--ink) 5.5%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent);flex:none}
-.log .trash-kind svg{display:block;stroke-width:1.75}
-.log .trash-restore{flex:none;padding:6px 13px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:calc(var(--radius) - 6px);font:inherit;font-size:12px;font-weight:600;letter-spacing:.01em;color:var(--ink);background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--ink) 3.5%,#fff));box-shadow:0 1px 1px #0000000d,inset 0 1px 0 #ffffffcc}
-.log .trash-restore:hover:not(:disabled){background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--ink) 7%,#fff));border-color:color-mix(in srgb,var(--ink) 18%,transparent)}
-.log .trash-restore:active:not(:disabled){background:color-mix(in srgb,var(--ink) 6%,#fff);box-shadow:inset 0 1px 2px #00000014}
-.log .trash-restore:disabled{opacity:.55;cursor:default}
-.log.trash .empty-log{margin:4px 0 0;padding:36px 24px;border:1px solid color-mix(in srgb,var(--ink) 9%,transparent);border-radius:calc(var(--radius) - 2px);background:var(--card);box-shadow:0 1px 2px #0000000a,0 4px 14px #0000000c;color:var(--mute)}
-.log.trash .who b{font-weight:650;letter-spacing:-.01em}
-.log.trash .meta{margin-top:3px}
 .dlg .actions{display:flex;flex-direction:row;align-items:stretch;gap:8px;width:100%}
 .dlg .actions button,.dlg .actions .dlg-create,.dlg .actions .dlg-delete{flex:1;min-width:0}
 .dlg-create,.dlg-delete{padding:8px 14px;border-radius:calc(var(--radius) - 4px);font:inherit;font-weight:600;text-align:center;border:0;cursor:pointer}

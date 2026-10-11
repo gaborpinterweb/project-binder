@@ -167,7 +167,7 @@ export default function Cover({
             <>
               <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
               {isEmptyDescription(viewDesc) ? (
-                <p className="cover-desc-display is-empty">No description yet.</p>
+                <p className="cover-desc-display is-empty">{DESC_PLACEHOLDER}</p>
               ) : (
                 <CoverDescription key="view" value={viewDesc} editable={false} />
               )}

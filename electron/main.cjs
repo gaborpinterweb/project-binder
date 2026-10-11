@@ -13,9 +13,9 @@ let mainWindow = null;
 let tray = null;
 let trayTitle = "No timer";
 // macOS draws the title flush against the icon; leading spaces add a gap.
-// Monospaced keeps hh:mm:ss / "No timer" from shifting neighboring menu-bar items.
-const TRAY_TITLE_OPTS = { fontType: "monospaced" };
-const TRAY_TITLE_GAP = "  ";
+// monospacedDigit = system menu-bar face with tabular digits (like the clock).
+const TRAY_TITLE_OPTS = { fontType: "monospacedDigit" };
+const TRAY_TITLE_GAP = " ";
 
 function waitForServer(url, attempts = 40) {
   return new Promise((resolve, reject) => {

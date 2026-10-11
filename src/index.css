@@ -7,7 +7,8 @@ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:en
 *{box-sizing:border-box}
 html,body,#root{height:100%;margin:0}
 #root{display:flex;min-height:100%;}
-body{display:block;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:block;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-user-select:none;user-select:none}
+input,textarea,select,[contenteditable="true"],.ProseMirror{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible{outline:2px solid var(--acc)}
 aside{width:var(--aside-w);flex:none;background:var(--side);color:var(--side-ink);padding:10px;display:flex;flex-direction:column;min-height:0}

@@ -73,8 +73,8 @@ export default function SettingsDialog({
   const tabs = useMemo(() => {
     const list = [
       { id: "experience", label: "Experience", icon: "Experience" },
-      { id: "archive", label: "Archive", icon: "Archive" },
       { id: "data", label: "Backup", icon: "Workspace" },
+      { id: "archive", label: "Archive", icon: "Archive" },
       { id: "help", label: "Help", icon: "Help" },
       { id: "about", label: "About", icon: "About" },
     ];
@@ -339,6 +339,7 @@ export default function SettingsDialog({
                 <div className="settings-row">
                   <div className="settings-row-copy">
                     <b>Countdown duration</b>
+                    <span>Default length for focus sessions</span>
                   </div>
                   <Dropdown
                     className="settings-pref-dd"
@@ -352,6 +353,7 @@ export default function SettingsDialog({
                 <div className="settings-row">
                   <div className="settings-row-copy">
                     <b>Stopwatch maximum</b>
+                    <span>Cap how long an open run can last</span>
                   </div>
                   <Dropdown
                     className="settings-pref-dd"
@@ -365,6 +367,7 @@ export default function SettingsDialog({
                 <div className="settings-row">
                   <div className="settings-row-copy">
                     <b>UI sounds</b>
+                    <span>Play clicks and completion chimes</span>
                   </div>
                   <label className="settings-toggle">
                     <input
@@ -380,6 +383,7 @@ export default function SettingsDialog({
                   <div className="settings-row">
                     <div className="settings-row-copy">
                       <b>Menu bar timer</b>
+                      <span>Show the active session in the system tray</span>
                     </div>
                     <label className="settings-toggle">
                       <input
@@ -410,7 +414,7 @@ export default function SettingsDialog({
                           style={{ color: pr.color || PC[i % PC.length] }}
                           aria-hidden="true"
                         >
-                          <Icon name="folder" size={18} />
+                          <Icon name="folder" size={18} filled />
                         </span>
                         <b>{pr.name}</b>
                       </div>
@@ -431,7 +435,6 @@ export default function SettingsDialog({
           {tab === "data" && (
             <>
               <section className="settings-section">
-                <h3 className="settings-heading">Backup</h3>
                 <div className="settings-rows">
                   <div className="settings-row">
                     <div className="settings-row-copy">

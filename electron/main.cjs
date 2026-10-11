@@ -12,6 +12,10 @@ app.setName("Project Binder");
 let mainWindow = null;
 let tray = null;
 let trayTitle = "No timer";
+// macOS draws the title flush against the icon; leading spaces add a gap.
+// Monospaced keeps hh:mm:ss / "No timer" from shifting neighboring menu-bar items.
+const TRAY_TITLE_OPTS = { fontType: "monospaced" };
+const TRAY_TITLE_GAP = "  ";
 
 function waitForServer(url, attempts = 40) {
   return new Promise((resolve, reject) => {
@@ -71,8 +75,13 @@ function ensureTray() {
   if (icon.isEmpty()) return;
   tray = new Tray(icon);
   tray.setToolTip("Project Binder");
-  tray.setTitle(trayTitle);
+  applyTrayTitle();
   tray.on("click", focusMainWindow);
+}
+
+function applyTrayTitle() {
+  if (!tray) return;
+  tray.setTitle(TRAY_TITLE_GAP + trayTitle, TRAY_TITLE_OPTS);
 }
 
 function setTrayVisible(visible) {
@@ -83,7 +92,7 @@ function setTrayVisible(visible) {
 
 function setTrayTitle(title) {
   trayTitle = title == null || title === "" ? "No timer" : String(title);
-  if (tray) tray.setTitle(trayTitle);
+  applyTrayTitle();
 }
 
 function createWindow(appUrl) {

@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { GACC, allBoardTasks, taskKey, timelogTaskFromCard } from "../utils.js";
+import {
+  GACC,
+  allBoardTasks,
+  pastel,
+  taskKey,
+  timelogTaskFromCard,
+} from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 
 function pad2(n) {
@@ -134,6 +140,7 @@ export default function TimelogDialog({
   }, [onClose, saving]);
 
   const selected = options.find((o) => o.value === taskValue) || options[0];
+  const pc = selected?.color || entry?.color || GACC;
 
   const submit = async () => {
     if (saving) return;
@@ -185,7 +192,8 @@ export default function TimelogDialog({
       }}
     >
       <div
-        className="dlg prompt-dlg timelog-dlg"
+        className="dlg prompt-dlg timelog-dlg tint"
+        style={{ ["--pc"]: pc, background: pastel(pc) }}
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? "Edit timelog" : "Add timelog"}
@@ -193,16 +201,16 @@ export default function TimelogDialog({
         <div className="dlg-content prompt-body">
           <h2 className="prompt-title">{isEdit ? "Edit timelog" : "Add timelog"}</h2>
           <form
-            className="prompt-form field-edit-form timelog-dlg-form"
+            className="prompt-form timelog-dlg-form"
             onSubmit={(e) => {
               e.preventDefault();
               submit();
             }}
           >
-            <div className="field-edit-row">
-              <span className="field-edit-lab">Task</span>
+            <div className="timelog-dlg-field">
+              <span className="timelog-dlg-lab">Task</span>
               <Dropdown
-                className="field-type-dd timelog-task-dd"
+                className="timelog-task-dd"
                 value={selected?.value || ""}
                 options={options}
                 disabled={!options.length || saving}
@@ -228,14 +236,7 @@ export default function TimelogDialog({
                       className="dot"
                       style={{ background: selected.color || GACC }}
                     />
-                    <span className="timelog-task-opt-text">
-                      <span className="dd-lab">{selected.label}</span>
-                      {selected.src ? (
-                        <span className="timelog-task-opt-src">
-                          {selected.src}
-                        </span>
-                      ) : null}
-                    </span>
+                    <span className="dd-lab">{selected.label}</span>
                   </span>
                 ) : (
                   <span className="dd-lab">No tasks</span>
@@ -243,22 +244,22 @@ export default function TimelogDialog({
               </Dropdown>
             </div>
 
-            <label className="field-edit-row">
-              <span className="field-edit-lab">Note</span>
+            <label className="timelog-dlg-field">
+              <span className="timelog-dlg-lab">Note</span>
               <textarea
                 ref={noteRef}
                 className="prompt-input timelog-dlg-note"
-                rows={3}
+                rows={2}
                 value={note}
                 disabled={saving}
-                placeholder="Add a note…"
+                placeholder="Optional note…"
                 onChange={(e) => setNote(e.target.value)}
               />
             </label>
 
             <div className="timelog-dlg-grid">
-              <label className="field-edit-row">
-                <span className="field-edit-lab">Date</span>
+              <label className="timelog-dlg-field">
+                <span className="timelog-dlg-lab">Date</span>
                 <input
                   className="prompt-input"
                   type="date"
@@ -267,8 +268,8 @@ export default function TimelogDialog({
                   onChange={(e) => setDate(e.target.value)}
                 />
               </label>
-              <label className="field-edit-row">
-                <span className="field-edit-lab">Duration (minutes)</span>
+              <label className="timelog-dlg-field">
+                <span className="timelog-dlg-lab">Minutes</span>
                 <input
                   className="prompt-input"
                   type="text"
@@ -287,7 +288,7 @@ export default function TimelogDialog({
               <p className="prompt-msg">Create a task board with a card first.</p>
             ) : null}
 
-            <div className="actions prompt-actions field-edit-actions">
+            <div className="actions prompt-actions">
               <button
                 type="button"
                 className="dlg-delete"

@@ -405,9 +405,19 @@ export function formatTimer(sec) {
   return mm + ":" + ss;
 }
 
-/** Compact mm:ss (or h:mm:ss) for the macOS menu bar. */
+/** Fixed-width hh:mm:ss for the macOS menu bar (avoids tray width jumps). */
 export function formatMenuBarTimer(sec) {
-  return formatTimer(sec);
+  const s = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  return (
+    String(h).padStart(2, "0") +
+    ":" +
+    String(m).padStart(2, "0") +
+    ":" +
+    String(r).padStart(2, "0")
+  );
 }
 
 export function formatClock(iso) {

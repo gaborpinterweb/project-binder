@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktop", {
   platform: process.platform,
+  arch: process.arch,
   setTrayTitle(title) {
     ipcRenderer.send("tray:set-title", title == null ? "" : String(title));
   },

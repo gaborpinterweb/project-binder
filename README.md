@@ -122,15 +122,27 @@ Each project also has matching Notes, Files, and Database demo tabs. Description
 - Database tabs are available in the UI (`Database` tab type).
 - New task boards default to columns `Design, Frontend dev, Backend dev, Content` until customized.
 
+## Release assets
+
+Desktop update downloads match GitHub Release assets by filename:
+
+```text
+Project-Binder-<version>-<os>-<arch>.zip
+```
+
+Examples: `Project-Binder-0.1.0-mac-arm64.zip`, `Project-Binder-0.2.0-win-x64.zip`.
+
+`<os>` is `mac` | `win` | `linux`; `<arch>` is `arm64` | `x64`. Tag releases as `v<version>`. Keep this naming stable — the in-app updater picks the asset for the running platform/arch and otherwise opens the release page.
+
 ## Should polish (pre-/post-publish)
 
 Tracked polish items — not blockers for a honest 0.1.0, but worth doing soon:
 
-- **Releases:** publish GitHub Release artifacts for macOS and Windows (or soft-claim “mac first” until both exist); optional CI for `build:desktop`
+- **Releases:** add Windows (and Intel Mac) zips using the naming above; optional CI for `build:desktop`
 - **Version sync:** one source of truth for version (`package.json` ↔ `APP_VERSION` in `src/utils.js` ↔ server log string)
 - **Desktop networking:** bind the API to `127.0.0.1` by default (don’t listen on all interfaces)
 - **Electron UX:** clearer load/error copy for packaged app users (avoid `npm start` / localhost-only messaging)
 - **Onboarding visuals:** real screenshots or product images in the launch flow (placeholders removed)
 - **Error UX:** replace widespread `alert()` with in-app confirm/prompt dialogs where it matters
 - **Demo cleanup:** “Remove demo data” button that deletes `isDemo: true` entities only (see Demo data above)
-- **Auto-update:** current flow (check GitHub Releases → sidebar “Update available” → open releases page) is enough for MVP; full `electron-updater` + signing/notarization is later
+- **Auto-update:** direct asset download when the platform matches is enough for MVP; full `electron-updater` + signing/notarization is later

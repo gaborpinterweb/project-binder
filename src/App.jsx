@@ -1678,6 +1678,8 @@ export default function App() {
         <UpdateDialog
           notes={updateInfo.notes}
           url={updateInfo.url}
+          releasesUrl={updateInfo.releasesUrl}
+          matched={updateInfo.matched}
           onClose={() => setUpdateOpen(false)}
         />
       )}

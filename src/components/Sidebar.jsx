@@ -264,7 +264,7 @@ export default function Sidebar({
               }}
             >
               <span style={{ color: "var(--side-mute)" }}>
-                <Icon name="arrow" />
+                <Icon name="gift" />
               </span>
               <span>Update available</span>
             </button>

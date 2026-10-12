@@ -1,13 +1,30 @@
 import { useEffect, useRef } from "react";
+import { marked } from "marked";
 import { Icon } from "../icons.jsx";
 import { UPDATE_DOWNLOAD_URL } from "../checkUpdate.js";
 
-const INSTALL_GUIDE =
-  "Download the latest version and install it over your current app. Your workspace data is kept across updates.";
+const INSTALL_STEPS = [
+  "Download the latest version and install it over your current app.",
+  "Quit Project Binder before replacing the app.",
+  "Your workspace data is kept across updates.",
+];
 
-export default function UpdateDialog({ notes, url, onClose }) {
+function notesHtml(notes) {
+  if (!notes) return "";
+  return marked.parse(notes, { async: false });
+}
+
+export default function UpdateDialog({
+  notes,
+  url,
+  releasesUrl,
+  matched,
+  onClose,
+}) {
   const ctaRef = useRef(null);
-  const downloadUrl = url || UPDATE_DOWNLOAD_URL;
+  const downloadUrl = url || releasesUrl || UPDATE_DOWNLOAD_URL;
+  const browseUrl = releasesUrl || UPDATE_DOWNLOAD_URL;
+  const html = notesHtml(notes);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => ctaRef.current?.focus());
@@ -40,17 +57,23 @@ export default function UpdateDialog({ notes, url, onClose }) {
         aria-describedby="update-guide"
       >
         <div className="dlg-content prompt-body">
-          <h2 id="update-title" className="prompt-title">
+          <h2 id="update-title" className="prompt-title update-title">
+            <Icon name="gift" size={18} />
             Update available
           </h2>
-          {notes ? (
+          {html ? (
             <div className="update-notes" aria-label="Release notes">
-              <pre className="update-notes-body">{notes}</pre>
+              <div
+                className="update-notes-body"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
             </div>
           ) : null}
-          <p id="update-guide" className="prompt-msg">
-            {INSTALL_GUIDE}
-          </p>
+          <ul id="update-guide" className="update-guide">
+            {INSTALL_STEPS.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
           <div className="actions prompt-actions">
             <button type="button" className="dlg-delete" onClick={onClose}>
               Close
@@ -62,10 +85,18 @@ export default function UpdateDialog({ notes, url, onClose }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span>Download update</span>
+              <span>{matched ? "Download update" : "View releases"}</span>
               <Icon name="external" size={14} />
             </a>
           </div>
+          {matched ? (
+            <p className="update-meta">
+              …or{" "}
+              <a href={browseUrl} target="_blank" rel="noopener noreferrer">
+                visit the releases page
+              </a>
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

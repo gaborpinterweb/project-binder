@@ -128,12 +128,15 @@ export function TimelogContextMenu({
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
+  onDuplicate,
+  onDelete,
   showTimers = true,
   onClose,
 }) {
   const wrapRef = useRef(null);
   const [pos, setPos] = useState({ left, top });
   const options = timelogOptions({ showTimers });
+  const canOrganise = !!(onDuplicate || onDelete);
 
   useEffect(() => {
     setPos(clampMenuPos(left, top, wrapRef.current));
@@ -154,12 +157,17 @@ export function TimelogContextMenu({
     };
   }, [onClose]);
 
+  const run = async (fn) => {
+    onClose?.();
+    await fn?.();
+  };
+
   return (
     <div
       ref={wrapRef}
       className="pop dd-menu card-timelog-menu"
       role="menu"
-      aria-label="Timelog"
+      aria-label="Task options"
       style={{ display: "block", left: pos.left, top: pos.top }}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => {
@@ -167,20 +175,60 @@ export function TimelogContextMenu({
         e.stopPropagation();
       }}
     >
-      <TimelogMenuButtons
-        options={options}
-        onPick={async (v) => {
-          onClose?.();
-          await runTimelogAction(v, {
-            folder,
-            mod,
-            row,
-            onStartPomo,
-            onAddManualTimelog,
-            onOpenTimelogs,
-          });
-        }}
-      />
+      <div className="dd-section" role="group" aria-label="Timelogs">
+        <div className="dd-heading">Timelogs</div>
+        <TimelogMenuButtons
+          options={options}
+          onPick={(v) =>
+            run(() =>
+              runTimelogAction(v, {
+                folder,
+                mod,
+                row,
+                onStartPomo,
+                onAddManualTimelog,
+                onOpenTimelogs,
+              })
+            )
+          }
+        />
+      </div>
+      {canOrganise ? (
+        <div className="dd-section" role="group" aria-label="Organise">
+          <div className="dd-heading">Organise</div>
+          {onDuplicate ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                run(onDuplicate);
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="copy" size={14} />
+                Duplicate task
+              </span>
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                run(onDelete);
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="Trash" size={14} />
+                Delete task
+              </span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

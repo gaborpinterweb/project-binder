@@ -689,6 +689,22 @@ export default function App() {
     [applyWorkspace, keepNav]
   );
 
+  const duplicateCard = useCallback(
+    async (row, folder, mod) => {
+      if (!folder || !mod || mod[0] !== "Board" || !row) return;
+      const base = (row.n || "").trim() || "Untitled";
+      return createCard(folder, mod, {
+        title: "Duplicate of " + base,
+        status: row.s,
+        master: row.ms,
+        body: row.body || "",
+        doneAt: row.doneAt || "",
+        priority: !!row.priority,
+      });
+    },
+    [createCard]
+  );
+
   const openItem = useCallback(
     (r, opts) => {
       const isDraft = !!(opts && opts.draft);
@@ -1215,6 +1231,8 @@ export default function App() {
               onStartPomo={startPomodoro}
               onAddManualTimelog={addManualTimelog}
               onOpenTimelogs={openTimelogs}
+              onDuplicateCard={duplicateCard}
+              onDeleteCard={deleteCard}
             />
           )}
           {loaded && !loadError && !draftProject && g === "Timelogs" && (
@@ -1402,6 +1420,8 @@ export default function App() {
                 onStartPomo={startPomodoro}
                 onAddManualTimelog={addManualTimelog}
                 onOpenTimelogs={openTimelogs}
+                onDuplicateCard={duplicateCard}
+                onDeleteCard={deleteCard}
               />
             )}
           {loaded &&
@@ -1562,15 +1582,7 @@ export default function App() {
           onDuplicate={async (r, curLoc) => {
             const projectId = curLoc.folder.id;
             const boardId = curLoc.mod[2].id;
-            const base = (r.n || "").trim() || "Untitled";
-            const id = await createCard(curLoc.folder, curLoc.mod, {
-              title: "Duplicate of " + base,
-              status: r.s,
-              master: r.ms,
-              body: r.body || "",
-              doneAt: r.doneAt || "",
-              priority: !!r.priority,
-            });
+            const id = await duplicateCard(r, curLoc.folder, curLoc.mod);
             setDialog(null);
             const hit = findCardByIds(foldersRef.current, projectId, boardId, id);
             if (hit) openItem(hit.row);

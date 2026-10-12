@@ -345,6 +345,8 @@ function TaskCard({
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
+  onDuplicateCard,
+  onDeleteCard,
   readonly = false,
 }) {
   const pc = color || folder?.color || PC[0];
@@ -352,7 +354,7 @@ function TaskCard({
   const canDrag = !boardEdit && !noDrag;
   const key = cardKey || cardDragKey(row, folder, mod);
   const dragging = dragKey === key;
-  const canTimelog =
+  const canCtxMenu =
     !boardEdit && !readonly && folder && mod?.[2]?.id && row?.id;
   const timerActive =
     !!activeTimerKey &&
@@ -375,7 +377,7 @@ function TaskCard({
         onOpen(row);
       }}
       onContextMenu={(e) => {
-        if (!canTimelog) return;
+        if (!canCtxMenu) return;
         e.preventDefault();
         e.stopPropagation();
         setTimelogMenu({ left: e.clientX, top: e.clientY });
@@ -429,6 +431,25 @@ function TaskCard({
               onStartPomo={onStartPomo}
               onAddManualTimelog={onAddManualTimelog}
               onOpenTimelogs={onOpenTimelogs}
+              onDuplicate={
+                onDuplicateCard
+                  ? () => onDuplicateCard(row, folder, mod)
+                  : undefined
+              }
+              onDelete={
+                onDeleteCard
+                  ? async () => {
+                      const label = (row.n || "").trim() || "Untitled";
+                      const ok = await askConfirm({
+                        title: `Delete "${label}"?`,
+                        confirmLabel: "Delete",
+                        danger: true,
+                      });
+                      if (!ok) return;
+                      await onDeleteCard(folder, mod, row.id);
+                    }
+                  : undefined
+              }
               onClose={() => setTimelogMenu(null)}
             />,
             document.body
@@ -813,6 +834,8 @@ function ProjectBoard({
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
+  onDuplicateCard,
+  onDeleteCard,
   readonly = false,
 }) {
   const scope = boardKey(folder, mod);
@@ -885,6 +908,8 @@ function ProjectBoard({
     onStartPomo,
     onAddManualTimelog,
     onOpenTimelogs,
+    onDuplicateCard,
+    onDeleteCard,
     readonly,
     showTimeSpent: show.timeSpent,
     activeTimerKey,
@@ -1157,6 +1182,8 @@ function MasterBoard({
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
+  onDuplicateCard,
+  onDeleteCard,
 }) {
   const tasks = allBoardTasks(folders).filter(
     (t) => !masterOff.has(boardKey(t.folder, t.mod))
@@ -1234,6 +1261,8 @@ function MasterBoard({
     onStartPomo,
     onAddManualTimelog,
     onOpenTimelogs,
+    onDuplicateCard,
+    onDeleteCard,
     showTimeSpent: show.timeSpent,
     activeTimerKey,
   };
@@ -2226,6 +2255,8 @@ export default function Board({
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
+  onDuplicateCard,
+  onDeleteCard,
 }) {
   if (mode === "master") {
     const addMasterTask = () => {
@@ -2292,6 +2323,8 @@ export default function Board({
           onStartPomo={onStartPomo}
           onAddManualTimelog={onAddManualTimelog}
           onOpenTimelogs={onOpenTimelogs}
+          onDuplicateCard={onDuplicateCard}
+          onDeleteCard={onDeleteCard}
         />
       </div>
     );
@@ -2381,6 +2414,8 @@ export default function Board({
         onStartPomo={onStartPomo}
         onAddManualTimelog={onAddManualTimelog}
         onOpenTimelogs={onOpenTimelogs}
+        onDuplicateCard={onDuplicateCard}
+        onDeleteCard={onDeleteCard}
         readonly={readonly}
       />
     </div>

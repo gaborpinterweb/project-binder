@@ -665,6 +665,8 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .card-timelog-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:calc(var(--radius) - 6px);font-size:13px;font-weight:500;text-align:left;color:var(--ink);white-space:nowrap}
 .card-timelog-menu button:hover{background:var(--sel)}
 .card-timelog-menu button svg{flex:none;opacity:.75}
+.card-timelog-menu button.danger{color:#b42318}
+.card-timelog-menu button.danger:hover{background:color-mix(in srgb,#b42318 10%,transparent)}
 .timelog-row .timelog-card{margin:0;padding:5px 10px}
 .board .card{cursor:grab;touch-action:none;user-select:none}
 .board .card:active,.board .card.dragging,.is-card-dragging{cursor:grabbing}

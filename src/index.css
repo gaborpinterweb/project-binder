@@ -843,9 +843,10 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .cover-description .rte [data-resize-wrapper] > img[style*="width"],
 .cover-description .rte .tiptap img[width]{max-width:none;height:auto}
 .cover-description .rte [data-resize-handle="bottom-right"]{width:28px;height:28px;right:0;bottom:0;transform:translate(50%,50%);border-radius:50%;border:1px solid color-mix(in srgb,#fff 22%,transparent);background:color-mix(in srgb,#000 55%,transparent) center/14px 14px no-repeat;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cpolyline points='9 21 3 21 3 15'/%3E%3Cline x1='21' y1='3' x2='14' y2='10'/%3E%3Cline x1='3' y1='21' x2='10' y2='14'/%3E%3C/svg%3E");box-shadow:0 2px 8px #00000055;cursor:nwse-resize;opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:3;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.cover-description .rte [data-resize-wrapper]:hover [data-resize-handle="bottom-right"],
-.cover-description .rte [data-resize-container].ProseMirror-selectednode [data-resize-handle="bottom-right"],
-.cover-description .rte [data-resize-container][data-resize-state="true"] [data-resize-handle="bottom-right"]{opacity:1;pointer-events:auto}
+.cover-description.is-edit .rte [data-resize-wrapper]:hover [data-resize-handle="bottom-right"],
+.cover-description.is-edit .rte [data-resize-container].ProseMirror-selectednode [data-resize-handle="bottom-right"],
+.cover-description.is-edit .rte [data-resize-container][data-resize-state="true"] [data-resize-handle="bottom-right"]{opacity:1;pointer-events:auto}
+.cover-description:not(.is-edit) .rte [data-resize-handle]{display:none!important;pointer-events:none!important}
 .cover-description .rte .tiptap img.ProseMirror-selectednode,
 .cover-description .rte [data-resize-container].ProseMirror-selectednode [data-resize-wrapper] > img{outline:2px solid #fff;outline-offset:2px}
 .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px 24px;text-align:center}

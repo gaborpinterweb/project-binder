@@ -736,13 +736,17 @@ export default function RichTextEditor({
               inline: false,
               allowBase64: false,
               HTMLAttributes: { class: "rte-image" },
-              resize: {
-                enabled: true,
-                directions: ["bottom-right"],
-                alwaysPreserveAspectRatio: true,
-                minWidth: 48,
-                minHeight: 48,
-              },
+              // TipTap attaches handles on mount and only strips them when
+              // editable flips; keep resize off entirely for read-only views.
+              resize: editable
+                ? {
+                    enabled: true,
+                    directions: ["bottom-right"],
+                    alwaysPreserveAspectRatio: true,
+                    minWidth: 48,
+                    minHeight: 48,
+                  }
+                : false,
             }),
           ]
         : []),

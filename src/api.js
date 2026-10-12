@@ -144,6 +144,24 @@ export async function postCardFile(body) {
   return apiOkData("/api/card-file", { method: "POST", body }, "Could not upload file");
 }
 
+export async function postRteImage(body) {
+  return apiOkData("/api/rte-image", { method: "POST", body }, "Could not upload image");
+}
+
+export async function deleteRteImageApi(body) {
+  return apiOkData("/api/rte-image", { method: "DELETE", body }, "Could not delete image");
+}
+
+/** scope: "note" | "cover". note scope needs notesTab + note. */
+export function rteImageUrl({ scope, project, notesTab, note, file }) {
+  const q = new URLSearchParams({ scope, project, file });
+  if (scope === "note") {
+    q.set("notesTab", notesTab);
+    q.set("note", note);
+  }
+  return `/api/rte-image?${q.toString()}`;
+}
+
 export async function deleteCardFileApi(body) {
   return apiOkData("/api/card-file", { method: "DELETE", body }, "Could not delete file");
 }

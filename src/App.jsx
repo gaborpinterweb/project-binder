@@ -1392,6 +1392,7 @@ export default function App() {
               coverDraft={coverDraft}
               onCoverDraftChange={setCoverDraft}
               onSave={(patch) => saveCover(folder, x, patch)}
+              onApplyWorkspace={applyWorkspace}
             />
           )}
           {loaded &&

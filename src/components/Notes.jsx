@@ -768,6 +768,17 @@ export default function Notes({
 
   const selected = notes.find((n) => n.id === selectedId) || null;
 
+  const imageUpload =
+    selected && folder?.id && d.id && !readonly
+      ? {
+          scope: "note",
+          project: folder.id,
+          notesTab: d.id,
+          note: selected.id,
+          onApplyWorkspace,
+        }
+      : null;
+
   const saveBody = async (body) => {
     if (!selected || readonly) return;
     const data = await putNote({
@@ -1091,6 +1102,7 @@ export default function Notes({
                         editor={editor}
                         variant="full"
                         hasRaisedIslands
+                        imageUpload={imageUpload}
                       />
                     </div>
                   </div>
@@ -1105,6 +1117,7 @@ export default function Notes({
                 variant="full"
                 autofocus
                 startInHeading
+                imageUpload={imageUpload}
                 onEditor={setEditor}
                 placeholder={NOTE_PLACEHOLDER}
               />

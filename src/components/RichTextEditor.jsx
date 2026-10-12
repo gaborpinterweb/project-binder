@@ -1,5 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -7,6 +7,7 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import {
   Table,
   TableRow,
@@ -19,8 +20,77 @@ import {
   rowIsHeader,
   selectedRect,
 } from "@tiptap/pm/tables";
+import { postRteImage, rteImageUrl } from "../api.js";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isImageFile(file) {
+  if (!file) return false;
+  if (String(file.type || "").toLowerCase().startsWith("image/")) return true;
+  const ext = String(file.name || "").split(".").pop()?.toLowerCase() || "";
+  return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"].includes(ext);
+}
+
+function imageFilesFromList(list) {
+  return Array.from(list || []).filter(isImageFile);
+}
+
+async function uploadRteImageFile(imageUpload, file) {
+  if (!imageUpload?.project || !imageUpload?.scope || !file) {
+    throw new Error("Missing upload context");
+  }
+  const data = await readFileAsBase64(file);
+  const body = {
+    scope: imageUpload.scope,
+    project: imageUpload.project,
+    name: file.name || "image",
+    mime: file.type || "application/octet-stream",
+    data,
+  };
+  if (imageUpload.scope === "note") {
+    body.notesTab = imageUpload.notesTab;
+    body.note = imageUpload.note;
+  }
+  const res = await postRteImage(body);
+  const fileId = res.file?.id || res.id;
+  if (!fileId) throw new Error("Upload failed");
+  const src = rteImageUrl({
+    scope: imageUpload.scope,
+    project: imageUpload.project,
+    notesTab: imageUpload.notesTab,
+    note: imageUpload.note,
+    file: fileId,
+  });
+  return { src, res };
+}
+
+/** Block images can't sit inside headings/paragraphs — place after the top-level block when needed. */
+function insertRteImage(editor, src) {
+  if (!editor || editor.isDestroyed || !src) return false;
+  if (editor.can().setImage({ src })) {
+    return editor.chain().focus().setImage({ src }).run();
+  }
+  const { $from } = editor.state.selection;
+  const pos = $from.after(1);
+  return editor
+    .chain()
+    .focus()
+    .insertContentAt(pos, { type: "image", attrs: { src } })
+    .run();
+}
 
 /** First-row / first-column header flags for the table under the caret. */
 function tableHeaderFlags(editor) {
@@ -271,6 +341,7 @@ function rteFeatures(variant = "mini") {
     codeBlock: true,
     highlight: full,
     table: full,
+    image: full,
   };
 }
 
@@ -278,6 +349,7 @@ export function RteToolbar({
   editor,
   variant = "mini",
   hasRaisedIslands = false,
+  imageUpload = null,
 }) {
   const [, bump] = useState(0);
   useEffect(() => {
@@ -291,9 +363,39 @@ export function RteToolbar({
     };
   }, [editor]);
 
+  const fileRef = useRef(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const imageBusyRef = useRef(false);
+
+  const insertImageFiles = useCallback(
+    async (files) => {
+      if (!editor || editor.isDestroyed || !imageUpload || imageBusyRef.current) return;
+      const list = imageFilesFromList(files);
+      if (!list.length) return;
+      imageBusyRef.current = true;
+      setImageBusy(true);
+      try {
+        for (const file of list) {
+          const { src, res } = await uploadRteImageFile(imageUpload, file);
+          if (editor.isDestroyed) return;
+          const ok = insertRteImage(editor, src);
+          if (!ok) throw new Error("Could not insert image");
+          imageUpload.onApplyWorkspace?.(res);
+        }
+      } catch (err) {
+        window.alert(err.message || "Could not upload image");
+      } finally {
+        imageBusyRef.current = false;
+        setImageBusy(false);
+      }
+    },
+    [editor, imageUpload]
+  );
+
   if (!editor) return null;
   const feat = rteFeatures(variant);
   const inTable = feat.table && editor.isActive("table");
+  const canImage = feat.image && !!imageUpload;
   return (
     <div
       className={
@@ -420,22 +522,49 @@ export function RteToolbar({
           )}
         </div>
       )}
-      {feat.table && (
-        <div className="rte-group" role="group" aria-label="Table">
-          <ToolbarBtn
-            title="Insert table"
-            active={inTable}
-            onClick={() => {
-              if (inTable) return;
-              editor
-                .chain()
-                .focus()
-                .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-                .run();
-            }}
-          >
-            <Icon name="table" size={15} />
-          </ToolbarBtn>
+      {(feat.table || canImage) && (
+        <div className="rte-group" role="group" aria-label="Insert">
+          {feat.table && (
+            <ToolbarBtn
+              title="Insert table"
+              active={inTable}
+              onClick={() => {
+                if (inTable) return;
+                editor
+                  .chain()
+                  .focus()
+                  .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                  .run();
+              }}
+            >
+              <Icon name="table" size={15} />
+            </ToolbarBtn>
+          )}
+          {canImage && (
+            <>
+              <ToolbarBtn
+                title="Insert image"
+                disabled={imageBusy}
+                active={editor.isActive("image")}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Icon name="image" size={15} />
+              </ToolbarBtn>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => {
+                  // Snapshot before clearing — input FileList is live and empties on reset.
+                  const files = Array.from(e.target.files || []);
+                  e.target.value = "";
+                  void insertImageFiles(files);
+                }}
+              />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -454,9 +583,16 @@ export default function RichTextEditor({
   startInHeading = false,
   variant = "mini",
   hasRaisedIslands = false,
+  imageUpload = null,
   onEditor,
 }) {
   const feat = rteFeatures(variant);
+  const imageUploadRef = useRef(imageUpload);
+  imageUploadRef.current = imageUpload;
+  const uploadBusyRef = useRef(false);
+  const editorRef = useRef(null);
+  const editableRef = useRef(editable);
+  editableRef.current = editable;
 
   const initialContent = (() => {
     const html = toEditorContent(value);
@@ -465,6 +601,28 @@ export default function RichTextEditor({
     }
     return html || "";
   })();
+
+  const insertUploadedImages = useCallback(async (ed, files) => {
+    const ctx = imageUploadRef.current;
+    if (!ed || ed.isDestroyed || !ctx || uploadBusyRef.current) return false;
+    const list = imageFilesFromList(files);
+    if (!list.length) return false;
+    uploadBusyRef.current = true;
+    try {
+      for (const file of list) {
+        const { src, res } = await uploadRteImageFile(ctx, file);
+        if (ed.isDestroyed) return true;
+        const ok = insertRteImage(ed, src);
+        if (!ok) throw new Error("Could not insert image");
+        ctx.onApplyWorkspace?.(res);
+      }
+    } catch (err) {
+      window.alert(err.message || "Could not upload image");
+    } finally {
+      uploadBusyRef.current = false;
+    }
+    return true;
+  }, []);
 
   const editor = useEditor({
     editable,
@@ -501,11 +659,36 @@ export default function RichTextEditor({
             TableCell,
           ]
         : []),
+      ...(feat.image
+        ? [
+            Image.configure({
+              inline: false,
+              allowBase64: false,
+              HTMLAttributes: { class: "rte-image" },
+            }),
+          ]
+        : []),
     ],
     content: initialContent,
     editorProps: {
       attributes: {
         class: "rte-content",
+      },
+      handlePaste: (_view, event) => {
+        if (!feat.image || !imageUploadRef.current || !editableRef.current) return false;
+        const files = imageFilesFromList(event.clipboardData?.files);
+        if (!files.length) return false;
+        event.preventDefault();
+        void insertUploadedImages(editorRef.current, files);
+        return true;
+      },
+      handleDrop: (_view, event) => {
+        if (!feat.image || !imageUploadRef.current || !editableRef.current) return false;
+        const files = imageFilesFromList(event.dataTransfer?.files);
+        if (!files.length) return false;
+        event.preventDefault();
+        void insertUploadedImages(editorRef.current, files);
+        return true;
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -517,6 +700,10 @@ export default function RichTextEditor({
       onChange(ed.getHTML());
     },
   });
+
+  useEffect(() => {
+    editorRef.current = editor || null;
+  }, [editor]);
 
   useEffect(() => {
     onEditor?.(editor || null);
@@ -555,6 +742,7 @@ export default function RichTextEditor({
               editor={editor}
               variant={variant}
               hasRaisedIslands={hasRaisedIslands}
+              imageUpload={imageUpload}
             />
           </div>
         ) : (
@@ -563,6 +751,7 @@ export default function RichTextEditor({
               editor={editor}
               variant={variant}
               hasRaisedIslands={hasRaisedIslands}
+              imageUpload={imageUpload}
             />
           </div>
         ))}

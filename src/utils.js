@@ -7,9 +7,9 @@ export const APP_NAME = "Project Binder";
 export const APP_VERSION = "0.1.0";
 
 export const TYPES = [
-  { t: "Board", title: "Tasks", sub: "Kanban columns with cards" },
-  { t: "Notes", title: "Notes", sub: "Rich text editor with notes list" },
-  { t: "Files", title: "Files", sub: "Documents, assets, and other uploads" },
+  { t: "Board", title: "Tasks", sub: "Board with cards and columns" },
+  { t: "Notes", title: "Notes", sub: "Rich text editor with list view and filters" },
+  { t: "Files", title: "Files", sub: "Documents for quick reach and preview" },
   { t: "Database", title: "Database", sub: "Structured records for data analysis" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
@@ -162,13 +162,25 @@ export function fromApi(data, loadStagesFn) {
         nt.name,
         {
           id: nt.id,
-          notes: (nt.notes || []).map((n) => ({
-            id: n.id,
-            title: n.title || n.id,
-            body: n.body || "",
-            createdAt: n.createdAt || n.updatedAt || "",
-            updatedAt: n.updatedAt || "",
-          })),
+          notes: (nt.notes || []).map((n) => {
+            const note = {
+              id: n.id,
+              title: n.title || n.id,
+              body: n.body || "",
+              createdAt: n.createdAt || n.updatedAt || "",
+              updatedAt: n.updatedAt || "",
+            };
+            if (Array.isArray(n.images) && n.images.length) {
+              note.images = n.images.map((f) => ({
+                id: f.id,
+                name: f.name || f.id,
+                mime: f.mime || "application/octet-stream",
+                size: Number(f.size) || 0,
+                createdAt: f.createdAt || "",
+              }));
+            }
+            return note;
+          }),
         },
       ]);
     });
@@ -230,6 +242,17 @@ export function fromApi(data, loadStagesFn) {
         {
           id: COVER_TAB_ID,
           values: { description: (cover.values && cover.values.description) || "" },
+          ...(Array.isArray(cover.images) && cover.images.length
+            ? {
+                images: cover.images.map((f) => ({
+                  id: f.id,
+                  name: f.name || f.id,
+                  mime: f.mime || "application/octet-stream",
+                  size: Number(f.size) || 0,
+                  createdAt: f.createdAt || "",
+                })),
+              }
+            : {}),
         },
       ],
     ];

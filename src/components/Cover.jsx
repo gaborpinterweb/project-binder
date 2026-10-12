@@ -16,7 +16,7 @@ function isEmptyDescription(html) {
   return !text;
 }
 
-function CoverDescription({ value, onChange, editable }) {
+function CoverDescription({ value, onChange, editable, imageUpload = null }) {
   return (
     <div className={"cover-description" + (editable ? " is-edit" : "")}>
       <RichTextEditor
@@ -25,6 +25,7 @@ function CoverDescription({ value, onChange, editable }) {
         editable={editable}
         showToolbar={editable}
         variant="full"
+        imageUpload={editable ? imageUpload : null}
         onChange={(html) => {
           if (!editable) return;
           onChange(html);
@@ -106,6 +107,7 @@ export default function Cover({
   onCoverDraftChange,
   onSave,
   onCommitDraft,
+  onApplyWorkspace,
 }) {
   if (draftProject) {
     return (
@@ -121,6 +123,14 @@ export default function Cover({
   const editing = coverEdit && !archived;
   const d = mod[2] || { values: { description: "" } };
   const values = d.values || { description: "" };
+  const imageUpload =
+    editing && folder?.id
+      ? {
+          scope: "cover",
+          project: folder.id,
+          onApplyWorkspace,
+        }
+      : null;
 
   const draft = coverDraft || {
     name: folder.name || "",
@@ -163,6 +173,7 @@ export default function Cover({
                 key="edit"
                 value={viewDesc}
                 editable
+                imageUpload={imageUpload}
                 onChange={(html) =>
                   patchDraft(onCoverDraftChange, draft, { description: html })
                 }

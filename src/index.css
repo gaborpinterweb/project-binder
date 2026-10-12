@@ -424,6 +424,12 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .notes-rte-wrap .ProseMirror mark{background:color-mix(in srgb,var(--tab,var(--acc)) 32%,#fff);color:inherit;border-radius:2px;padding:.05em .15em}
 .notes-rte-wrap .tiptap a,
 .notes-rte-wrap .ProseMirror a{color:var(--tab,var(--acc));text-decoration:underline;text-underline-offset:2px}
+.notes-rte-wrap .tiptap img.rte-image,
+.notes-rte-wrap .ProseMirror img.rte-image,
+.notes-rte-wrap .tiptap img,
+.notes-rte-wrap .ProseMirror img{display:block;max-width:100%;height:auto;margin:1.15em 0;border-radius:calc(var(--radius) - 6px);border:1px solid var(--line)}
+.notes-rte-wrap .tiptap img.ProseMirror-selectednode,
+.notes-rte-wrap .ProseMirror img.ProseMirror-selectednode{outline:2px solid var(--tab,var(--acc));outline-offset:2px}
 .modbar{position:relative;z-index:2;color:#fff;background-color:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);background-image:var(--leather),linear-gradient(180deg,transparent 50%,color-mix(in srgb,#000 22%,transparent));background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;background-clip:padding-box;display:flex;align-items:center;gap:4px;padding:4px 12px 8px;min-height:56px;border-bottom:none;box-shadow:inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
 main:not(.global-view) .modbar{margin-top:-2px;padding-top:6px}
 main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;background-image:var(--leather),linear-gradient(180deg,color-mix(in srgb,#fff 12%,transparent),transparent 36%,color-mix(in srgb,#000 22%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 18%,transparent),inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
@@ -816,6 +822,9 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .cover-description .rte .tiptap pre{margin:1.15em 0;padding:12px 14px;border-radius:calc(var(--radius) - 4px);background:color-mix(in srgb,#000 22%,transparent);border:1px solid color-mix(in srgb,#fff 18%,transparent);overflow:auto}
 .cover-description .rte .tiptap pre code{padding:0;background:none;font-size:12.5px;line-height:1.55;color:#fff}
 .cover-description .rte .tiptap mark{background:color-mix(in srgb,#e8c547 55%,#fff);color:var(--ink);border-radius:2px;padding:.05em .15em}
+.cover-description .rte .tiptap img.rte-image,
+.cover-description .rte .tiptap img{display:block;max-width:100%;height:auto;margin:1.15em 0;border-radius:calc(var(--radius) - 6px);border:1px solid color-mix(in srgb,#fff 28%,transparent)}
+.cover-description .rte .tiptap img.ProseMirror-selectednode{outline:2px solid #fff;outline-offset:2px}
 .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px 24px;text-align:center}
 .empty h2{margin:0;font-size:20px;font-weight:600;color:var(--ink)}
 .empty p{margin:0 0 12px;font-size:14px;color:var(--mute);max-width:340px;line-height:1.45}

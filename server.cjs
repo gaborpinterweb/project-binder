@@ -513,6 +513,8 @@ function findFilesTab(project, tabId) {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Same fixed id as client COVER_TAB_ID — cover RTE images live under this upload folder. */
+const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
 
 function isSafePathId(s) {
   return typeof s === "string" && UUID_RE.test(s);
@@ -695,7 +697,12 @@ function projectToApi(p) {
     id: p.id,
     name: p.name || p.id,
     color: p.color || "#3c3c40",
-    cover: { values: { description: p.description || "" } },
+    cover: (() => {
+      const coverImages = normalizeCardFiles(p.coverImages);
+      const cover = { values: { description: p.description || "" } };
+      if (coverImages.length) cover.images = coverImages;
+      return cover;
+    })(),
     boards: (p.boards || []).map((b) => {
       const board = {
         id: b.id,
@@ -741,13 +748,18 @@ function projectToApi(p) {
     notesTabs: (p.notesTabs || []).map((t) => ({
       id: t.id,
       name: t.name || t.id,
-      notes: (t.notes || []).map((n) => ({
-        id: n.id,
-        title: n.title || n.id,
-        body: n.body || "",
-        createdAt: n.createdAt || n.updatedAt || "",
-        updatedAt: n.updatedAt || "",
-      })),
+      notes: (t.notes || []).map((n) => {
+        const note = {
+          id: n.id,
+          title: n.title || n.id,
+          body: n.body || "",
+          createdAt: n.createdAt || n.updatedAt || "",
+          updatedAt: n.updatedAt || "",
+        };
+        const images = normalizeCardFiles(n.images);
+        if (images.length) note.images = images;
+        return note;
+      }),
     })),
     filesTabs: (p.filesTabs || []).map((t) => ({
       id: t.id,
@@ -1067,6 +1079,244 @@ function moveCardFileBlobs(fromProject, fromBoard, toProject, toBoard, files) {
   return { ok: true };
 }
 
+function isAllowedRteImageMime(mime, name) {
+  const m = String(mime || "").toLowerCase();
+  if (m.startsWith("image/")) return true;
+  const ext = String(name || "").split(".").pop()?.toLowerCase() || "";
+  return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"].includes(ext);
+}
+
+function findNoteRecord(projectId, notesTabId, noteId) {
+  const project = findProject(projectId);
+  const tab = findNotesTab(project, notesTabId);
+  if (!project || !tab || !tab.notes) return null;
+  return tab.notes.find((n) => n.id === noteId) || null;
+}
+
+function listNoteImages(projectId, notesTabId, noteId) {
+  const note = findNoteRecord(projectId, notesTabId, noteId);
+  return normalizeCardFiles(note && note.images);
+}
+
+function setNoteImagesList(projectId, notesTabId, noteId, files) {
+  const note = findNoteRecord(projectId, notesTabId, noteId);
+  if (!note) return null;
+  const next = normalizeCardFiles(files);
+  if (next.length) note.images = next;
+  else delete note.images;
+  return next;
+}
+
+function listCoverImages(projectId) {
+  const project = findProject(projectId);
+  return normalizeCardFiles(project && project.coverImages);
+}
+
+function setCoverImagesList(projectId, files) {
+  const project = findProject(projectId);
+  if (!project) return null;
+  const next = normalizeCardFiles(files);
+  if (next.length) project.coverImages = next;
+  else delete project.coverImages;
+  return next;
+}
+
+function purgeRteImageBlobs(projectId, tabId, files) {
+  if (!isSafePathId(projectId) || !isSafePathId(tabId)) return;
+  for (const f of normalizeCardFiles(files)) {
+    userData.unlinkUpload(projectId, tabId, f.id);
+  }
+}
+
+function moveRteImageBlobs(fromProject, fromTab, toProject, toTab, files) {
+  if (fromProject === toProject && fromTab === toTab) return { ok: true };
+  if (
+    !isSafePathId(fromProject) ||
+    !isSafePathId(fromTab) ||
+    !isSafePathId(toProject) ||
+    !isSafePathId(toTab)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  for (const f of normalizeCardFiles(files)) {
+    const moved = userData.moveUpload(
+      fromProject,
+      fromTab,
+      f.id,
+      toProject,
+      toTab,
+      f.id
+    );
+    if (!moved.ok) return moved;
+  }
+  return { ok: true };
+}
+
+function rewriteNoteRteImageUrls(
+  html,
+  { fromProject, fromTab, fromNote, toProject, toTab, toNote }
+) {
+  if (!html) return html || "";
+  return String(html).replace(/\/api\/rte-image\?([^"'>\s]+)/g, (full, qs) => {
+    let params;
+    try {
+      params = new URLSearchParams(qs);
+    } catch {
+      return full;
+    }
+    if (params.get("scope") !== "note") return full;
+    if (params.get("project") !== fromProject) return full;
+    if (params.get("notesTab") !== fromTab) return full;
+    if (params.get("note") !== fromNote) return full;
+    params.set("project", toProject);
+    params.set("notesTab", toTab);
+    params.set("note", toNote);
+    return `/api/rte-image?${params.toString()}`;
+  });
+}
+
+function addNoteRteImage(projectId, notesTabId, noteId, { name, mime, data }) {
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(notesTabId) ||
+    !isSafePathId(noteId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const note = findNoteRecord(projectId, notesTabId, noteId);
+  if (!note) return { ok: false, error: "note not found" };
+  const fileName = String(name || "").trim();
+  if (!fileName) return { ok: false, error: "missing fields" };
+  if (!isAllowedRteImageMime(mime, fileName)) {
+    return { ok: false, error: "not an image" };
+  }
+  if (typeof data !== "string" || !data) return { ok: false, error: "missing fields" };
+  let buf;
+  try {
+    buf = Buffer.from(data, "base64");
+  } catch {
+    return { ok: false, error: "invalid data" };
+  }
+  if (!buf.length) return { ok: false, error: "empty file" };
+  if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: "file too large" };
+  const id = newId();
+  if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
+  userData.writeUpload(projectId, notesTabId, id, buf);
+  const meta = {
+    id,
+    name: fileName,
+    mime: String(mime || "application/octet-stream").slice(0, 200),
+    size: buf.length,
+    createdAt: new Date().toISOString(),
+  };
+  const images = listNoteImages(projectId, notesTabId, noteId);
+  images.push(meta);
+  setNoteImagesList(projectId, notesTabId, noteId, images);
+  return { ok: true, file: meta, images, tabId: notesTabId };
+}
+
+function addCoverRteImage(projectId, { name, mime, data }) {
+  if (!isSafePathId(projectId)) return { ok: false, error: "invalid path" };
+  const project = findProject(projectId);
+  if (!project) return { ok: false, error: "project not found" };
+  const fileName = String(name || "").trim();
+  if (!fileName) return { ok: false, error: "missing fields" };
+  if (!isAllowedRteImageMime(mime, fileName)) {
+    return { ok: false, error: "not an image" };
+  }
+  if (typeof data !== "string" || !data) return { ok: false, error: "missing fields" };
+  let buf;
+  try {
+    buf = Buffer.from(data, "base64");
+  } catch {
+    return { ok: false, error: "invalid data" };
+  }
+  if (!buf.length) return { ok: false, error: "empty file" };
+  if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: "file too large" };
+  const id = newId();
+  if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
+  userData.writeUpload(projectId, COVER_TAB_ID, id, buf);
+  const meta = {
+    id,
+    name: fileName,
+    mime: String(mime || "application/octet-stream").slice(0, 200),
+    size: buf.length,
+    createdAt: new Date().toISOString(),
+  };
+  const images = listCoverImages(projectId);
+  images.push(meta);
+  setCoverImagesList(projectId, images);
+  return { ok: true, file: meta, images, tabId: COVER_TAB_ID };
+}
+
+function readNoteRteImage(projectId, notesTabId, noteId, fileId) {
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(notesTabId) ||
+    !isSafePathId(noteId) ||
+    !isSafePathId(fileId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const meta = listNoteImages(projectId, notesTabId, noteId).find((f) => f.id === fileId);
+  if (!meta) return { ok: false, error: "file not found" };
+  const body = userData.readUpload(projectId, notesTabId, fileId);
+  if (!body) return { ok: false, error: "file not found" };
+  return {
+    ok: true,
+    name: meta.name || fileId,
+    mime: meta.mime || "application/octet-stream",
+    body,
+  };
+}
+
+function readCoverRteImage(projectId, fileId) {
+  if (!isSafePathId(projectId) || !isSafePathId(fileId)) {
+    return { ok: false, error: "invalid path" };
+  }
+  const meta = listCoverImages(projectId).find((f) => f.id === fileId);
+  if (!meta) return { ok: false, error: "file not found" };
+  const body = userData.readUpload(projectId, COVER_TAB_ID, fileId);
+  if (!body) return { ok: false, error: "file not found" };
+  return {
+    ok: true,
+    name: meta.name || fileId,
+    mime: meta.mime || "application/octet-stream",
+    body,
+  };
+}
+
+function deleteNoteRteImage(projectId, notesTabId, noteId, fileId) {
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(notesTabId) ||
+    !isSafePathId(noteId) ||
+    !isSafePathId(fileId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const images = listNoteImages(projectId, notesTabId, noteId);
+  const idx = images.findIndex((f) => f.id === fileId);
+  if (idx < 0) return { ok: false, error: "file not found" };
+  images.splice(idx, 1);
+  setNoteImagesList(projectId, notesTabId, noteId, images);
+  userData.unlinkUpload(projectId, notesTabId, fileId);
+  return { ok: true, images };
+}
+
+function deleteCoverRteImage(projectId, fileId) {
+  if (!isSafePathId(projectId) || !isSafePathId(fileId)) {
+    return { ok: false, error: "invalid path" };
+  }
+  const images = listCoverImages(projectId);
+  const idx = images.findIndex((f) => f.id === fileId);
+  if (idx < 0) return { ok: false, error: "file not found" };
+  images.splice(idx, 1);
+  setCoverImagesList(projectId, images);
+  userData.unlinkUpload(projectId, COVER_TAB_ID, fileId);
+  return { ok: true, images };
+}
+
 function writeCard(projectId, boardId, card) {
   const project = findProject(projectId);
   const board = findBoard(project, boardId);
@@ -1193,7 +1443,7 @@ function softDeleteNote(projectId, notesTabId, noteId) {
   if (idx < 0) return false;
   const [note] = tab.notes.splice(idx, 1);
   ensureTrash();
-  store.trash.push({
+  const entry = {
     kind: "note",
     id: uniqueTrashId(),
     deletedAt: new Date().toISOString(),
@@ -1207,7 +1457,10 @@ function softDeleteNote(projectId, notesTabId, noteId) {
     projectName: project.name || projectId,
     notesTabName: tab.name || notesTabId,
     color: project.color || "#3c3c40",
-  });
+  };
+  const images = normalizeCardFiles(note.images);
+  if (images.length) entry.images = images;
+  store.trash.push(entry);
   return true;
 }
 
@@ -1588,13 +1841,16 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
   let id = item.note || newId() || "note";
   if (tab.notes.some((n) => n.id === id)) id = uniqueNoteId();
   const now = new Date().toISOString();
-  tab.notes.push({
+  const restored = {
     id,
     title: item.title || id,
     body: item.body || "",
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
-  });
+  };
+  const images = normalizeCardFiles(item.images);
+  if (images.length) restored.images = images;
+  tab.notes.push(restored);
   return { ok: true, project: project.id, notesTab: tab.id || item.notesTab, id };
 }
 
@@ -1828,6 +2084,15 @@ function purgeExpiredTrash() {
     }
     if (item && item.kind === "card") {
       purgeCardFileBlobs(item.project, item.board, item.files);
+    } else if (item && item.kind === "note") {
+      purgeRteImageBlobs(item.project, item.notesTab, item.images);
+    } else if (item && item.kind === "project" && item.snapshot) {
+      purgeRteImageBlobs(item.project, COVER_TAB_ID, item.snapshot.coverImages);
+      for (const tab of item.snapshot.notesTabs || []) {
+        for (const note of tab.notes || []) {
+          purgeRteImageBlobs(item.project, tab.id, note.images);
+        }
+      }
     } else if (
       item &&
       item.kind === "file" &&
@@ -2151,14 +2416,38 @@ function moveNote(fromProjectId, fromTabId, noteId, toProjectId, toTabId) {
   if (toTab.notes.some((n) => n.id === id)) {
     id = uniqueNoteId();
   }
+  const images = normalizeCardFiles(note.images);
+  if (images.length) {
+    const moved = moveRteImageBlobs(
+      fromProjectId,
+      fromTabId,
+      toProjectId,
+      toTabId,
+      images
+    );
+    if (!moved.ok) {
+      fromTab.notes.splice(idx, 0, note);
+      return moved;
+    }
+  }
   const now = new Date().toISOString();
-  toTab.notes.push({
+  const body = rewriteNoteRteImageUrls(note.body || "", {
+    fromProject: fromProjectId,
+    fromTab: fromTabId,
+    fromNote: note.id || noteId,
+    toProject: toProjectId,
+    toTab: toTabId,
+    toNote: id,
+  });
+  const movedNote = {
     id,
     title: note.title || id,
-    body: note.body || "",
+    body,
     createdAt: note.createdAt || note.updatedAt || now,
     updatedAt: now,
-  });
+  };
+  if (images.length) movedNote.images = images;
+  toTab.notes.push(movedNote);
   return {
     ok: true,
     id,
@@ -3166,6 +3455,103 @@ const server = http.createServer(async (req, res) => {
       }
       saveStore();
       return json(res, 200, { files: result.files, ...readWorkspace() });
+    }
+    if (req.method === "GET" && url.pathname === "/api/rte-image") {
+      const scope = url.searchParams.get("scope") || "";
+      const project = url.searchParams.get("project") || "";
+      const file = url.searchParams.get("file") || "";
+      let result;
+      if (scope === "cover") {
+        result = readCoverRteImage(project, file);
+      } else if (scope === "note") {
+        result = readNoteRteImage(
+          project,
+          url.searchParams.get("notesTab") || "",
+          url.searchParams.get("note") || "",
+          file
+        );
+      } else {
+        return json(res, 400, { error: "invalid scope" });
+      }
+      if (!result.ok) {
+        const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      const safeName = String(result.name).replace(/[\r\n"]/g, "_");
+      res.writeHead(200, {
+        "Content-Type": result.mime,
+        "Content-Length": result.body.length,
+        "Content-Disposition": `inline; filename="${safeName}"`,
+        "Cache-Control": "no-store",
+      });
+      res.end(result.body);
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/rte-image") {
+      const body = await readBody(req);
+      if (!body.project || !body.scope || !body.name || body.data == null) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
+      let result;
+      if (body.scope === "cover") {
+        result = addCoverRteImage(body.project, {
+          name: body.name,
+          mime: body.mime,
+          data: body.data,
+        });
+      } else if (body.scope === "note") {
+        if (!body.notesTab || !body.note) {
+          return json(res, 400, { error: "missing fields" });
+        }
+        result = addNoteRteImage(body.project, body.notesTab, body.note, {
+          name: body.name,
+          mime: body.mime,
+          data: body.data,
+        });
+      } else {
+        return json(res, 400, { error: "invalid scope" });
+      }
+      if (!result.ok) {
+        const status =
+          result.error === "note not found" || result.error === "project not found"
+            ? 404
+            : result.error === "file too large"
+              ? 413
+              : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 201, {
+        id: result.file.id,
+        file: result.file,
+        images: result.images,
+        ...readWorkspace(),
+      });
+    }
+    if (req.method === "DELETE" && url.pathname === "/api/rte-image") {
+      const body = await readBody(req);
+      if (!body.project || !body.scope || !body.file) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      if (projectIsArchived(body.project)) return json(res, 403, { error: "project is archived" });
+      let result;
+      if (body.scope === "cover") {
+        result = deleteCoverRteImage(body.project, body.file);
+      } else if (body.scope === "note") {
+        if (!body.notesTab || !body.note) {
+          return json(res, 400, { error: "missing fields" });
+        }
+        result = deleteNoteRteImage(body.project, body.notesTab, body.note, body.file);
+      } else {
+        return json(res, 400, { error: "invalid scope" });
+      }
+      if (!result.ok) {
+        const status = result.error === "file not found" ? 404 : 400;
+        return json(res, status, { error: result.error });
+      }
+      saveStore();
+      return json(res, 200, { images: result.images, ...readWorkspace() });
     }
     if (req.method === "GET" && url.pathname === "/api/file") {
       const project = url.searchParams.get("project") || "";

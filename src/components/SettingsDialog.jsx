@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../icons.jsx";
 import {
   exportWorkspace,
-  revealUserData,
   fetchAppInfo,
   saveBackupSettings,
   runBackupNow,
@@ -177,14 +176,6 @@ export default function SettingsDialog({
       await exportWorkspace();
     } catch {
       alert("Could not export workspace.");
-    }
-  };
-
-  const handleShowUserData = async () => {
-    try {
-      await revealUserData();
-    } catch {
-      alert("Could not open the user data folder.");
     }
   };
 
@@ -441,7 +432,7 @@ export default function SettingsDialog({
                     <div className="settings-row">
                       <div className="settings-row-copy">
                         <b>Enable backup</b>
-                        <span>Every 5 minutes and on launch</span>
+                        <span>Backs up your workspace every 5 minutes and on launch</span>
                       </div>
                       <label className="settings-toggle">
                         <input
@@ -509,15 +500,6 @@ export default function SettingsDialog({
               <section className="settings-section">
                 <h3 className="settings-heading">Workspace</h3>
                 <div className="settings-rows">
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Show workspace data</b>
-                      <span>Reveal userWorkspace.json in the data folder</span>
-                    </div>
-                    <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
-                      Show
-                    </button>
-                  </div>
                   <div className="settings-row">
                     <div className="settings-row-copy">
                       <b>Export workspace data</b>
@@ -621,15 +603,16 @@ export default function SettingsDialog({
                     height={72}
                     draggable={false}
                   />
-                  <b>
-                    {APP_NAME} v{APP_VERSION}
-                  </b>
-                  <p className="settings-about-byline">
-                    Designed, created & maintained by{" "}
-                    <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
-                      Gábor Pintér
-                    </a>
-                  </p>
+                  <div className="settings-about-copy">
+                    <b>{APP_NAME}</b>
+                    <p className="settings-about-byline">Version {APP_VERSION}</p>
+                    <p className="settings-about-byline">
+                      Created by{" "}
+                      <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
+                        Gábor Pintér
+                      </a>
+                    </p>
+                  </div>
                   <div className="settings-bmc-wrap">
                     <a
                       className="settings-bmc"

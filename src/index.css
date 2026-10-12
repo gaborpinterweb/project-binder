@@ -1182,10 +1182,11 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-toggle:has(input:disabled){opacity:.45;cursor:default}
 .settings-about{display:flex;flex-direction:column;align-items:center;gap:22px;flex:1;min-height:100%;text-align:center;padding:12px 8px 20px}
 .settings-about-main{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;flex:1;min-height:0}
-.settings-about-brand{display:flex;flex-direction:column;align-items:center;gap:6px}
+.settings-about-brand{display:flex;flex-direction:column;align-items:center;gap:16px}
 .settings-about-icon{display:block;width:72px;height:72px;border-radius:16px;object-fit:cover;box-shadow:0 1px 2px #0001}
-.settings-about-brand b{font-size:18px;font-weight:650;color:var(--ink);letter-spacing:.01em}
-.settings-about-byline{margin:2px 0 0;font-size:13px;line-height:1.4;color:var(--mute)}
+.settings-about-copy{display:flex;flex-direction:column;align-items:center;gap:2px}
+.settings-about-copy b{font-size:18px;font-weight:650;color:var(--ink);letter-spacing:.01em}
+.settings-about-byline{margin:0;font-size:13px;line-height:1.35;color:var(--mute)}
 .settings-about-byline a{color:inherit;font-weight:inherit;text-decoration:none}
 .settings-about-byline a:hover{text-decoration:underline}
 .settings-about-credits a{color:var(--acc);font-weight:600;text-decoration:none}
@@ -1193,7 +1194,6 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-about-credits{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;line-height:1.4;color:var(--mute)}
 .settings-about-credits b{font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
 .settings-about-credits p{margin:0}
-.settings-about-brand .settings-bmc-wrap{margin-top:10px}
 .settings-bmc-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;flex:none}
 .settings-bmc{line-height:0;border-radius:8px;overflow:hidden}
 .settings-bmc img{display:block;height:48px;width:auto}

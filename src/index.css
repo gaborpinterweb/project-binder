@@ -941,6 +941,8 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg input:focus,.dlg .prop-dd-btn:focus{outline:none;background-color:color-mix(in srgb,#fff 55%,transparent);border-color:color-mix(in srgb,var(--ink) 12%,transparent)}
 .dlg.tint input:focus,.dlg.tint .prop-dd-btn:focus{background-color:color-mix(in srgb,#fff 72%,transparent)}
 .dlg input.title{font-size:20px;font-weight:600;border:0;padding:0;background:transparent;width:100%}
+.dlg input::placeholder{color:var(--mute)}
+.dlg.tint input::placeholder{color:color-mix(in srgb,var(--pc) 52%,transparent)}
 .dlg.tint input.title,.dlg input.title:hover,.dlg input.title:focus{background:transparent;border-color:transparent}
 .dlg input.title:focus{outline:none}
 .dlg input.title.done{text-decoration:line-through;opacity:.72}

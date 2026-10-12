@@ -737,17 +737,18 @@ export default function CardDialog({
                             clearTimeout(persistTimer.current);
                             persist();
                           },
-                          renderOption: (o) => (
-                            <>
-                              <span
-                                className="dot"
-                                style={{
-                                  background: o.folder.color || PC[0],
-                                }}
-                              />
-                              {o.label}
-                            </>
-                          ),
+                          renderOption: (o) => {
+                            const c = o.folder.color || PC[0];
+                            return (
+                              <>
+                                <span
+                                  className="dot"
+                                  style={{ background: c }}
+                                />
+                                <span style={{ color: c }}>{o.label}</span>
+                              </>
+                            );
+                          },
                         };
                       })}
                     >

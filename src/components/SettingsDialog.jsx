@@ -615,7 +615,7 @@ export default function SettingsDialog({
                     {APP_NAME} v{APP_VERSION}
                   </b>
                   <p className="settings-about-byline">
-                    Created and maintained by{" "}
+                    Designed, created & maintained by{" "}
                     <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
                       Gábor Pintér
                     </a>

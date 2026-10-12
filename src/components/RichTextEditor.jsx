@@ -24,6 +24,77 @@ import { postRteImage, rteImageUrl } from "../api.js";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
 
+const RTE_IMAGE_MAX_W = 400;
+
+/** Keep resize chrome sized to the img and pin the handle to its bottom-right corner. */
+function syncRteImageBox(img) {
+  if (!(img instanceof HTMLElement)) return;
+  const wrapper = img.closest("[data-resize-wrapper]");
+  const container = img.closest("[data-resize-container]");
+  if (!wrapper || !container) return;
+  // Once TipTap assigns an explicit size, drop the default max-width cap so
+  // proportional resize isn't clipped (width stuck, height grows).
+  if (img.style.width || img.getAttribute("width")) {
+    img.style.maxWidth = "";
+  }
+  const w = Math.round(img.offsetWidth || img.getBoundingClientRect().width);
+  const h = Math.round(img.offsetHeight || img.getBoundingClientRect().height);
+  if (!(w > 0) || !(h > 0)) return;
+  // Block (not flex/inline-flex) so vertical margins collapse like locked preview <img>s.
+  container.style.setProperty("display", "block", "important");
+  container.style.setProperty("width", `${w}px`, "important");
+  container.style.setProperty("max-width", "100%", "important");
+  wrapper.style.setProperty("width", `${w}px`, "important");
+  wrapper.style.setProperty("height", `${h}px`, "important");
+  const handle = wrapper.querySelector("[data-resize-handle]");
+  if (handle instanceof HTMLElement) {
+    // Center on the image corner (Bear-style), not on a stretched wrapper edge.
+    const cornerX = img.offsetLeft + w;
+    const cornerY = img.offsetTop + h;
+    handle.style.setProperty("top", `${cornerY}px`, "important");
+    handle.style.setProperty("left", `${cornerX}px`, "important");
+    handle.style.setProperty("right", "auto", "important");
+    handle.style.setProperty("bottom", "auto", "important");
+    handle.style.setProperty("transform", "translate(-50%, -50%)", "important");
+  }
+}
+
+/** TipTap Image + resize, with box sync so the handle stays on the image corner. */
+const RteImage = Image.extend({
+  addNodeView() {
+    const parent = this.parent?.();
+    if (!parent) return null;
+    return (props) => {
+      const view = parent(props);
+      if (!view?.dom) return view;
+      const img =
+        view.dom.querySelector?.("img") ||
+        (view.dom instanceof HTMLImageElement ? view.dom : null);
+      if (!img) return view;
+
+      const sync = () => syncRteImageBox(img);
+      const ro =
+        typeof ResizeObserver !== "undefined" ? new ResizeObserver(sync) : null;
+      ro?.observe(img);
+      img.addEventListener("load", sync);
+      // Default cap before first explicit resize.
+      if (!img.style.width && !img.getAttribute("width")) {
+        img.style.maxWidth = `${RTE_IMAGE_MAX_W}px`;
+      }
+      sync();
+      requestAnimationFrame(sync);
+
+      const origDestroy = view.destroy?.bind(view);
+      view.destroy = () => {
+        ro?.disconnect();
+        img.removeEventListener("load", sync);
+        origDestroy?.();
+      };
+      return view;
+    };
+  },
+});
+
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -661,10 +732,17 @@ export default function RichTextEditor({
         : []),
       ...(feat.image
         ? [
-            Image.configure({
+            RteImage.configure({
               inline: false,
               allowBase64: false,
               HTMLAttributes: { class: "rte-image" },
+              resize: {
+                enabled: true,
+                directions: ["bottom-right"],
+                alwaysPreserveAspectRatio: true,
+                minWidth: 48,
+                minHeight: 48,
+              },
             }),
           ]
         : []),

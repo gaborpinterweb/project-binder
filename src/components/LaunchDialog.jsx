@@ -20,21 +20,21 @@ const STEPS = [
     title: "Select a backup folder",
     points: [
       { icon: "lock", text: "Your data stays offline on your machine." },
-      { icon: "folder", text: "Pick a folder to back up your workspace." },
-      { icon: "cloud", text: "Tip: use Google Drive, iCloud, or Dropbox." },
+      { icon: "folder", text: "Pick a folder to periodically create backups." },
+      { icon: "cloud", text: "Tip: use Google Drive, iCloud, or other cloud storage." },
     ],
   },
   {
     icon: "check",
     title: "Your binder is ready",
     points: [
-      { icon: "Workspace", text: "Demo projects are ready to explore." },
-      { icon: "Trash", text: "Delete them whenever you like." },
+      { icon: "Workspace", text: "Demo projects are now ready to explore." },
+      { icon: "Trash", text: "Delete them whenever you like and create new ones." },
       {
         icon: "external",
         text: (
           <>
-            Feedback at{" "}
+            Submit feedback at{" "}
             <a
               className="launch-link"
               href={FEEDBACK_URL}

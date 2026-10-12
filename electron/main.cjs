@@ -100,6 +100,14 @@ function createWindow(appUrl) {
     width: 1200,
     height: 800,
     icon: ICON_PATH,
+    backgroundColor: "#1c1c1e",
+    ...(IS_DARWIN
+      ? {
+          titleBarStyle: "hiddenInset",
+          // Sit in the sidebar’s titlebar pad (see --desktop-titlebar in CSS).
+          trafficLightPosition: { x: 14, y: 16 },
+        }
+      : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

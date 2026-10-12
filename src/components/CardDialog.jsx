@@ -1040,26 +1040,6 @@ function activeDbHiddenCols(modData) {
   return normalizeHiddenCols(active?.hiddenCols);
 }
 
-function groupDbFields(cols) {
-  const groups = [];
-  let meta = [];
-  const flush = () => {
-    if (!meta.length) return;
-    groups.push({ kind: "meta", cols: meta });
-    meta = [];
-  };
-  for (const c of cols) {
-    if (c.type === "longtext") {
-      flush();
-      groups.push({ kind: "rich", col: c });
-    } else {
-      meta.push(c);
-    }
-  }
-  flush();
-  return groups;
-}
-
 function DbFieldGroups({
   cols,
   row,
@@ -1070,32 +1050,16 @@ function DbFieldGroups({
   onPersist,
 }) {
   if (!cols.length) return null;
-  return groupDbFields(cols).map((g, i) => {
-    if (g.kind === "rich") {
-      const c = g.col;
-      return (
-        <div key={c.id} className="dlg-description db-entry-notes">
-          <RichTextEditor
-            value={row[c.id] || ""}
-            label={c.label || "Notes"}
-            showLabel
-            placeholder="Write something…"
-            editable={!readonly}
-            showToolbar={!readonly}
-            variant="mini"
-            onChange={(html) => {
-              if (readonly) return;
-              onPatch({ [c.id]: html });
-            }}
-          />
-        </div>
-      );
-    }
-    return (
-      <div key={"meta-" + i + "-" + g.cols[0].id} className="dlg-fields">
-        <div className="db-entry-rows">
-          {g.cols.map((c) => (
-            <div key={c.id} className="db-entry-row">
+  return (
+    <div className="dlg-fields db-entry-fields">
+      <div className="db-entry-rows">
+        {cols.map((c) => {
+          const rich = c.type === "longtext";
+          return (
+            <div
+              key={c.id}
+              className={"db-entry-row" + (rich ? " is-rich" : "")}
+            >
               <span className="db-entry-lab">
                 <Icon name={fieldTypeIcon(c.type)} size={14} />
                 <span className="db-entry-lab-text">
@@ -1104,22 +1068,38 @@ function DbFieldGroups({
                 </span>
               </span>
               <div className="db-entry-val">
-                <DbFieldInput
-                  col={c}
-                  value={row[c.id]}
-                  stages={stages}
-                  variant="prop"
-                  autoFocus={!readonly && c.id === focusId}
-                  onChange={(next) => onPatch({ [c.id]: next })}
-                  onCommit={() => onPersist()}
-                />
+                {rich ? (
+                  <RichTextEditor
+                    value={row[c.id] || ""}
+                    label={c.label || "Notes"}
+                    showLabel={false}
+                    placeholder="Write something…"
+                    editable={!readonly}
+                    showToolbar={!readonly}
+                    variant="mini"
+                    onChange={(html) => {
+                      if (readonly) return;
+                      onPatch({ [c.id]: html });
+                    }}
+                  />
+                ) : (
+                  <DbFieldInput
+                    col={c}
+                    value={row[c.id]}
+                    stages={stages}
+                    variant="prop"
+                    autoFocus={!readonly && c.id === focusId}
+                    onChange={(next) => onPatch({ [c.id]: next })}
+                    onCommit={() => onPersist()}
+                  />
+                )}
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
-    );
-  });
+    </div>
+  );
 }
 
 function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {

@@ -14,7 +14,10 @@ import {
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
   emptyFieldValue,
+  ensureNameColumn,
   fieldTypeIcon,
+  isNameCol,
+  NAME_COL_ID,
   normalizeDbCol,
   serializeDbCol,
 } from "../dbFields.js";
@@ -1554,15 +1557,16 @@ function DbColHeader({
 }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const locked = isNameCol(col);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || locked) return;
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  }, [open, locked]);
 
   const run = (fn) => {
     setOpen(false);
@@ -1571,9 +1575,13 @@ function DbColHeader({
 
   return (
     <th
-      className={"db-col-th" + (open ? " open" : "")}
+      className={
+        "db-col-th" +
+        (locked ? " db-name-col locked" : "") +
+        (open ? " open" : "")
+      }
       ref={wrapRef}
-      onClick={() => setOpen((o) => !o)}
+      onClick={locked ? undefined : () => setOpen((o) => !o)}
     >
       <span className="db-col-lab">
         <Icon name={fieldTypeIcon(col.type)} size={14} />
@@ -1584,7 +1592,7 @@ function DbColHeader({
           </span>
         ) : null}
       </span>
-      {open ? (
+      {!locked && open ? (
         <div
           className="pop db-col-menu"
           role="menu"
@@ -1619,7 +1627,7 @@ function DbColHeader({
 }
 
 async function persistDbColumns(folder, mod, cols) {
-  const columns = cols.map(serializeDbCol).filter(Boolean);
+  const columns = ensureNameColumn(cols).map(serializeDbCol).filter(Boolean);
   await putDatabase({
     project: folder.id,
     database: mod[2].id,
@@ -1635,7 +1643,9 @@ async function persistDbCustomViews(folder, mod) {
     project: folder.id,
     database: mod[2].id,
     name: mod[1],
-    columns: (mod[2].cols || []).map(serializeDbCol).filter(Boolean),
+    columns: ensureNameColumn(mod[2].cols || [])
+      .map(serializeDbCol)
+      .filter(Boolean),
     customViews: normalizeCustomViews(mod[2].customViews),
     customViewId: resolveCustomViewId(mod[2].customViewId, mod[2].customViews),
   });
@@ -1669,38 +1679,46 @@ function DbTable({
   const [editIsNew, setEditIsNew] = useState(false);
   const [, bump] = useState(0);
   const rows = displayRows || d.rows;
-  const cols = visibleDbCols(d.cols, hiddenCols);
+  const allCols = ensureNameColumn(d.cols);
+  const cols = visibleDbCols(allCols, hiddenCols);
 
   const refresh = async () => {
     onApplyWorkspace(await fetchWorkspace());
   };
 
   const moveCol = async (index, dir) => {
+    const list = ensureNameColumn(d.cols);
+    const item = list[index];
+    if (!item || isNameCol(item)) return;
     const next = index + dir;
-    if (next < 0 || next >= d.cols.length) return;
-    const list = d.cols.slice();
-    const [item] = list.splice(index, 1);
-    list.splice(next, 0, item);
-    d.cols = list;
-    await persistDbColumns(folder, mod, list);
+    // Index 0 is always Name — never move into or past it.
+    if (next < 1 || next >= list.length) return;
+    const [moved] = list.splice(index, 1);
+    list.splice(next, 0, moved);
+    d.cols = ensureNameColumn(list);
+    await persistDbColumns(folder, mod, d.cols);
     await refresh();
   };
 
   const saveCol = async (saved) => {
-    const list = d.cols.slice();
+    if (isNameCol(saved) && !editIsNew) return;
+    const list = ensureNameColumn(d.cols);
     const idx = list.findIndex((c) => c.id === saved.id);
     if (editIsNew || idx < 0) {
+      if (saved.id === NAME_COL_ID) return;
       list.push(normalizeDbCol(saved));
       d.rows.forEach((r) => {
         if (r[saved.id] == null) r[saved.id] = emptyFieldValue(saved, stages);
       });
+    } else if (isNameCol(list[idx])) {
+      return;
     } else {
       list[idx] = normalizeDbCol(saved);
     }
-    d.cols = list;
-    await persistDbColumns(folder, mod, list);
+    d.cols = ensureNameColumn(list);
+    await persistDbColumns(folder, mod, d.cols);
     for (const r of d.rows) {
-      await persistDbRow(folder, mod, r, list);
+      await persistDbRow(folder, mod, r, d.cols);
     }
     setEditCol(null);
     setEditIsNew(false);
@@ -1708,8 +1726,8 @@ function DbTable({
   };
 
   const deleteCol = async (col) => {
-    if (d.cols.length <= 1) return;
-    const list = d.cols.filter((c) => c.id !== col.id);
+    if (isNameCol(col) || allCols.length <= 1) return;
+    const list = ensureNameColumn(d.cols.filter((c) => c.id !== col.id));
     d.cols = list;
     d.rows.forEach((r) => {
       delete r[col.id];
@@ -1726,26 +1744,27 @@ function DbTable({
   const setCell = async (row, col, next) => {
     row[col.id] = next;
     bump((n) => n + 1);
-    await persistDbRow(folder, mod, row, d.cols);
+    await persistDbRow(folder, mod, row, allCols);
   };
 
   return (
-    <div className="scroll">
-      <table>
+    <div className="scroll db-scroll">
+      <table className="db-table">
         <thead>
           <tr>
             <th className="db-enlarge-col" aria-hidden="true" />
             {cols.map((c) => {
-              const i = d.cols.findIndex((col) => col.id === c.id);
+              const i = allCols.findIndex((col) => col.id === c.id);
               return (
                 <DbColHeader
                   key={c.id}
                   col={c}
-                  canLeft={i > 0}
-                  canRight={i >= 0 && i < d.cols.length - 1}
+                  canLeft={i > 1}
+                  canRight={i >= 1 && i < allCols.length - 1}
                   onMoveLeft={() => moveCol(i, -1)}
                   onMoveRight={() => moveCol(i, 1)}
                   onEdit={() => {
+                    if (isNameCol(c)) return;
                     setEditIsNew(false);
                     setEditCol(c);
                   }}
@@ -1783,7 +1802,14 @@ function DbTable({
                 </button>
               </td>
               {cols.map((c) => (
-                <td key={c.id} className={"db-td db-td-" + (c.type || "text")}>
+                <td
+                  key={c.id}
+                  className={
+                    "db-td db-td-" +
+                    (c.type || "text") +
+                    (isNameCol(c) ? " db-name-col" : "")
+                  }
+                >
                   <DbFieldInput
                     col={c}
                     value={r[c.id]}
@@ -1793,7 +1819,7 @@ function DbTable({
                   />
                 </td>
               ))}
-              <td />
+              <td className="db-td-trail" />
             </tr>
           ))}
           <tr className="new">
@@ -1801,7 +1827,7 @@ function DbTable({
               colSpan={cols.length + 2}
               onClick={async () => {
                 const fields = {};
-                d.cols.forEach((c) => {
+                ensureNameColumn(d.cols).forEach((c) => {
                   fields[c.id] = emptyFieldValue(c, stages);
                 });
                 const data = await postItem({
@@ -1824,7 +1850,9 @@ function DbTable({
         <FieldEditDialog
           col={editCol}
           isNew={editIsNew}
-          canDelete={d.cols.length > 1 && !editIsNew}
+          canDelete={
+            !editIsNew && !isNameCol(editCol) && allCols.length > 1
+          }
           onClose={() => {
             setEditCol(null);
             setEditIsNew(false);
@@ -1972,10 +2000,12 @@ export function DatabaseView({
   };
   if (!d.cols) {
     d.cols = [
-      { id: "n", label: "Name", type: "text" },
+      { id: NAME_COL_ID, label: "Name", type: "text" },
       { id: "r", label: "Role", type: "text" },
       { id: "s", label: "Stage", type: "stage" },
     ];
+  } else {
+    d.cols = ensureNameColumn(d.cols);
   }
   if (!d.views) d.views = [{ n: "Table", t: "table" }, { n: "Gallery", t: "gallery" }];
   if (d.cur >= d.views.length) d.cur = 0;

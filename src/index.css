@@ -105,7 +105,7 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 #menu .mt span{font-size:12px;color:var(--mute);font-weight:400}
 #view{flex:1;min-height:0}
 #view.db,#view.mod{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;font-size:15px;color:var(--ink);flex:1;min-height:0;margin:0;border-radius:0 var(--radius) var(--radius) var(--radius);overflow:hidden;background:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000)}
-.db-layout{display:flex;flex:1;min-height:0;background:var(--bg)}
+.db-layout{display:flex;flex:1;min-height:0;background:#fff}
 .db-sidebar{width:260px;flex:none;display:flex;flex-direction:column;gap:8px;padding:10px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));min-height:0}
 .db-views-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:4px}
 .db-view-item{display:flex;align-items:center;gap:2px;min-width:0;border-radius:calc(var(--radius) - 6px)}
@@ -127,7 +127,41 @@ aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;
 .db-view-more .pop button.danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 10%,transparent)}
 .db-views-add{flex:none;display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
 .db-views-add:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
-.db-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+.db-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:#fff}
+.db-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+.db-table thead th{position:sticky;top:0;z-index:3;height:32px;padding:0 12px;border:0;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);background:#fff;color:var(--mute);font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;text-align:left;white-space:nowrap;vertical-align:middle}
+.db-table thead th.db-enlarge-col,.db-table thead th.db-name-col{z-index:4;background:#fff}
+.db-table tbody td{border:0;border-bottom:0;padding:8px 12px;vertical-align:middle;background:#fff;color:var(--ink);font-size:14px;white-space:nowrap}
+.db-table tbody tr:nth-child(even):not(.new) td{background:color-mix(in srgb,var(--tab,var(--acc)) 10%,#fff)}
+.db-table tbody tr:not(.new):hover td{background:color-mix(in srgb,var(--tab,var(--acc)) 16%,#fff)}
+.db-table tbody tr:nth-child(odd):not(.new):hover td{background:color-mix(in srgb,var(--ink) 4%,#fff)}
+.db-table .db-td:focus-within{outline:2px solid var(--acc);outline-offset:-2px;background:#fff!important;position:relative;z-index:1}
+.db-table .db-enlarge-col{position:sticky;left:0;z-index:2;width:44px;min-width:44px;max-width:44px;padding:8px 6px 8px 12px;box-sizing:border-box}
+.db-table thead th.db-enlarge-col{padding:0 6px 0 12px}
+.db-table .db-name-col{position:sticky;left:44px;z-index:2;min-width:200px;width:240px;box-shadow:1px 0 0 color-mix(in srgb,var(--ink) 8%,transparent)}
+.db-table thead th.db-name-col,.db-table tbody td.db-name-col{background:#fff}
+.db-table tbody tr:nth-child(even):not(.new) td.db-enlarge-col,
+.db-table tbody tr:nth-child(even):not(.new) td.db-name-col{background:color-mix(in srgb,var(--tab,var(--acc)) 10%,#fff)}
+.db-table tbody tr:not(.new):hover td.db-enlarge-col,
+.db-table tbody tr:not(.new):hover td.db-name-col{background:color-mix(in srgb,var(--tab,var(--acc)) 16%,#fff)}
+.db-table tbody tr:nth-child(odd):not(.new):hover td.db-enlarge-col,
+.db-table tbody tr:nth-child(odd):not(.new):hover td.db-name-col{background:color-mix(in srgb,var(--ink) 4%,#fff)}
+.db-table .db-col-th{cursor:pointer;user-select:none}
+.db-table .db-col-th.locked{cursor:default}
+.db-table .db-col-th:not(.locked):hover,.db-table .db-col-th.open{color:var(--ink);background:color-mix(in srgb,var(--ink) 4%,#fff)}
+.db-table .db-col-lab{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;text-transform:uppercase}
+.db-table .db-col-lab>svg{flex:none;opacity:.7}
+.db-table .db-name-col .db-cell-text{font-size:15px;font-weight:500}
+.db-table th.addcol{cursor:pointer;color:var(--mute);font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;padding:0 16px;white-space:nowrap}
+.db-table th.addcol:hover{color:var(--ink)}
+.db-table .db-td-trail{padding:0;min-width:16px;border:0}
+.db-table tr.new td{padding:14px 16px 14px 56px;color:var(--mute);cursor:pointer;background:#fff;border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent);font-size:13px;font-weight:500}
+.db-table tr.new:hover td{background:color-mix(in srgb,var(--ink) 4%,#fff);color:var(--ink)}
+.db-table .db-col-th,.db-table .db-td{min-width:140px}
+.db-table .db-td-checkbox{min-width:64px;width:64px;text-align:center}
+.db-table .db-chip-row{flex-wrap:nowrap}
+.db-cols-item.locked{opacity:.72;cursor:default}
+.db-cols-item.locked input{cursor:default}
 #view.mod{place-items:unset}
 #view.cover-view{position:relative;background-color:color-mix(in srgb,var(--tab) 68%,#000);background-image:var(--leather),var(--leather-on);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light}
 /* Viewport-locked leather so Cover tab + page share one texture (no seam). */
@@ -628,15 +662,17 @@ main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;backgroun
 .pop{display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);padding:4px;box-shadow:0 4px 16px #0002}
 .pop button{display:block;width:100%;text-align:left;color:var(--ink)}
 .scroll{overflow-x:auto;overflow-y:auto;padding:12px;flex:1;min-width:0;min-height:0;width:100%}
+.scroll.db-scroll{padding:0;background:#fff}
 table{border-collapse:collapse;width:100%;min-width:480px}
-.scroll table{width:max-content;min-width:100%}
+.scroll table:not(.db-table){width:max-content;min-width:100%}
 th{font-weight:500;color:var(--mute);text-align:left;font-size:13px}
 th.addcol{cursor:pointer;white-space:nowrap;color:var(--acc)}
 th.addcol:hover{color:var(--ink)}
 th,td{border-bottom:1px solid var(--line);padding:6px 8px}
-.scroll .db-col-th,.scroll .db-td{min-width:160px;white-space:nowrap}
-.scroll .db-chip-row{flex-wrap:nowrap}
+.scroll table:not(.db-table) .db-col-th,.scroll table:not(.db-table) .db-td{min-width:160px;white-space:nowrap}
+.scroll table:not(.db-table) .db-chip-row{flex-wrap:nowrap}
 td+td,th+th{border-left:1px solid var(--line)}
+.db-table td+td,.db-table th+th{border-left:0}
 td:focus{outline:2px solid var(--acc);outline-offset:-2px}
 .new{color:var(--mute);cursor:pointer}.new:hover{background:var(--sel)}
 select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4px;padding:2px 6px}
@@ -844,9 +880,9 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg:not(.tint) .card-file-drop-overlay{background:color-mix(in srgb,var(--acc) 38%,transparent)}
 .dlg.is-file-dragover{outline:2px solid color-mix(in srgb,var(--pc,var(--acc)) 55%,transparent);outline-offset:-2px}
 .dlg .dlg-content{display:flex;flex-direction:column;gap:12px;padding:16px;min-width:0}
-.dlg .dlg-description,.dlg .dlg-timelogs,.dlg .dlg-fields:has(.db-entry-rows){min-width:0;border-radius:10px;background:color-mix(in srgb,#fff 52%,transparent);border:1px solid color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent),0 1px 2px #0000000a;overflow:visible}
-.dlg.tint .dlg-description,.dlg.tint .dlg-timelogs,.dlg.tint .dlg-fields:has(.db-entry-rows){background:color-mix(in srgb,#fff 58%,transparent);border-color:color-mix(in srgb,#000 6%,transparent)}
-.dlg .dlg-fields:has(.prop-chips){min-width:0;padding:0;background:transparent;border:0;border-radius:0;overflow:visible}
+.dlg .dlg-description,.dlg .dlg-timelogs{min-width:0;border-radius:10px;background:color-mix(in srgb,#fff 52%,transparent);border:1px solid color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent),0 1px 2px #0000000a;overflow:visible}
+.dlg.tint .dlg-description,.dlg.tint .dlg-timelogs{background:color-mix(in srgb,#fff 58%,transparent);border-color:color-mix(in srgb,#000 6%,transparent)}
+.dlg .dlg-fields:has(.prop-chips),.dlg .dlg-fields.db-entry-fields{min-width:0;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
 .dlg .dlg-timelogs{padding:0;--dlg-timelog-cols:minmax(0,1fr) 7.5rem 4.25rem 28px;--dlg-timelog-gap:10px}
 .dlg .dlg-timelogs .dlg-desc-head{display:grid;grid-template-columns:var(--dlg-timelog-cols);gap:var(--dlg-timelog-gap);align-items:center;padding:10px 14px 8px}
 .dlg .dlg-timelog-total{grid-column:3;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap;text-align:right}
@@ -923,17 +959,25 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .dlg-controls .actions{flex:1;min-width:0}
 .dlg .db-entry-hidden{display:flex;flex-direction:column;gap:12px;min-width:0;margin-top:4px}
 .dlg .db-entry-section-lab{margin:2px 4px 0;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
-.dlg .db-entry-rows{display:flex;flex-direction:column;gap:2px;padding:8px;min-width:0}
-.dlg .db-entry-row{display:grid;grid-template-columns:132px minmax(0,1fr);gap:12px;align-items:center;padding:8px 10px;border-radius:calc(var(--radius) - 4px);min-width:0}
-.dlg .db-entry-row:hover{background:color-mix(in srgb,#fff 40%,transparent)}
-.dlg.tint .db-entry-row:hover{background:color-mix(in srgb,#fff 48%,transparent)}
+.dlg .db-entry-rows{display:flex;flex-direction:column;gap:10px;padding:0;min-width:0}
+.dlg .db-entry-row{display:grid;grid-template-columns:132px minmax(0,1fr);gap:12px;align-items:center;padding:0;border-radius:0;min-width:0;background:transparent}
+.dlg .db-entry-row:hover{background:transparent}
+.dlg .db-entry-row.is-rich{align-items:start}
 .dlg .db-entry-lab{display:inline-flex;align-items:center;gap:7px;min-width:0;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--mute)}
+.dlg .db-entry-row.is-rich .db-entry-lab{padding-top:12px}
 .dlg .db-entry-lab>svg{flex:none;opacity:.65}
 .dlg .db-entry-lab-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dlg .db-entry-lab-text .db-req{margin-left:3px}
-.dlg .db-entry-val{min-width:0;display:flex;align-items:center}
+.dlg .db-entry-val{min-width:0;display:flex;align-items:center;padding:6px 10px;border-radius:10px;background:color-mix(in srgb,#fff 52%,transparent);border:1px solid color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 70%,transparent),0 1px 2px #0000000a}
+.dlg.tint .db-entry-val{background:color-mix(in srgb,#fff 58%,transparent);border-color:color-mix(in srgb,#000 6%,transparent)}
+.dlg .db-entry-row.is-rich .db-entry-val{display:block;padding:0;overflow:hidden}
 .dlg .db-entry-val .prop-dd,.dlg .db-entry-val .db-multi-dd{width:100%}
 .dlg .db-entry-val .db-check.prop{padding:2px 0}
+.dlg .db-entry-val .rte{min-width:0}
+.dlg .db-entry-val .dlg-desc-head{padding:8px 10px;border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+.dlg .db-entry-val .rte-toolbar{margin-left:0;flex-wrap:wrap}
+.dlg .db-entry-val .rte .tiptap,
+.dlg .db-entry-val .rte .ProseMirror{min-height:100px;padding:10px 12px}
 .dlg .title-row,.dlg .dlg-content > input.title{padding:2px 2px 2px;box-sizing:border-box}
 .dlg .dlg-content > input.title{width:100%}
 .dlg input,.dlg .prop-dd-btn{font:inherit;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px);padding:6px 8px;width:100%;box-sizing:border-box}
@@ -1120,7 +1164,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .launch-cta-secondary:hover:not(:disabled){color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
 .launch-cta-secondary:disabled{opacity:.55;cursor:default}
 td.open{width:1%}.open button{color:var(--acc);font-size:13px}
-th.db-enlarge-col,td.db-enlarge-col{width:1%;padding:4px 2px 4px 4px;border-left:0;vertical-align:middle}
+th.db-enlarge-col,td.db-enlarge-col{border-left:0;vertical-align:middle}
 td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .db-enlarge{display:grid;place-items:center;width:28px;height:28px;padding:0;border-radius:calc(var(--radius) - 4px);color:var(--mute)}
 .db-enlarge:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
@@ -1186,8 +1230,6 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .field-opt-add .prompt-input{flex:1;min-width:0;padding:8px 10px}
 .field-opt-add .dlg-create{flex:none;padding:8px 12px}
 .field-edit-actions{margin-top:4px}
-.dlg .db-entry-notes .rte .tiptap,
-.dlg .db-entry-notes .rte .ProseMirror{min-height:100px}
 .db-rich-preview{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
 .dlg .db-multi-dd .dd-btn{padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px)}
 .dlg .db-multi-dd .dd-btn:hover{background-color:color-mix(in srgb,var(--ink) 5%,transparent)}

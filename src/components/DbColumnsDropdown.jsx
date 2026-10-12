@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fieldTypeIcon } from "../dbFields.js";
+import { fieldTypeIcon, isNameCol } from "../dbFields.js";
 import { normalizeHiddenCols } from "../dbViews.js";
 import { Icon } from "../icons.jsx";
 
@@ -21,6 +21,7 @@ export default function DbColumnsDropdown({ cols = [], hiddenCols = [], onChange
   }, [open]);
 
   const toggleCol = (id) => {
+    if (isNameCol({ id })) return;
     if (hiddenSet.has(id)) {
       onChange(hidden.filter((h) => h !== id));
       return;
@@ -48,12 +49,18 @@ export default function DbColumnsDropdown({ cols = [], hiddenCols = [], onChange
         <div className="pop db-cols-menu" role="dialog" aria-label="Visible columns">
           <div className="db-cols-list">
             {cols.map((col) => {
-              const checked = !hiddenSet.has(col.id);
+              const locked = isNameCol(col);
+              const checked = locked || !hiddenSet.has(col.id);
               return (
-                <label key={col.id} className="db-cols-item">
+                <label
+                  key={col.id}
+                  className={"db-cols-item" + (locked ? " locked" : "")}
+                  title={locked ? "Name is always visible" : undefined}
+                >
                   <input
                     type="checkbox"
                     checked={checked}
+                    disabled={locked}
                     onChange={() => toggleCol(col.id)}
                   />
                   <Icon name={fieldTypeIcon(col.type)} size={14} />

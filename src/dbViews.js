@@ -1,5 +1,6 @@
 /** Database custom view helpers. */
 
+import { NAME_COL_ID } from "./dbFields.js";
 import { createFilterRule, createFilterState } from "./dbFilters.js";
 import { createSortState, normalizeSorts } from "./dbSorts.js";
 
@@ -34,7 +35,7 @@ export function normalizeHiddenCols(hiddenCols) {
   const out = [];
   for (const id of hiddenCols) {
     const s = String(id || "");
-    if (!s || seen.has(s)) continue;
+    if (!s || s === NAME_COL_ID || seen.has(s)) continue;
     seen.add(s);
     out.push(s);
   }

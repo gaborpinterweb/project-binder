@@ -1,5 +1,5 @@
 import { askConfirm } from "./confirmDialog.js";
-import { normalizeDbCol } from "./dbFields.js";
+import { ensureNameColumn, normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
@@ -196,7 +196,9 @@ export function fromApi(data, loadStagesFn) {
         db.name,
         {
           id: db.id,
-          cols: (db.columns || []).map(normalizeDbCol).filter(Boolean),
+          cols: ensureNameColumn(
+            (db.columns || []).map(normalizeDbCol).filter(Boolean),
+          ),
           rows: (db.items || []).map((item) => ({
             id: item.id,
             body: item.body || "",

@@ -50,8 +50,9 @@ const MIME = {
 };
 const DEFAULT_STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 const DEFAULT_BOARD_COLS = ["Design", "Frontend dev", "Backend dev", "Content"];
+const NAME_COL_ID = "n";
 const DEFAULT_DB_COLS = [
-  { id: "n", label: "Name", type: "text" },
+  { id: NAME_COL_ID, label: "Name", type: "text" },
   { id: "r", label: "Role", type: "text" },
   { id: "s", label: "Stage", type: "stage" },
 ];
@@ -91,7 +92,7 @@ function normalizeHiddenCols(hiddenCols) {
   const out = [];
   for (const id of hiddenCols) {
     const s = String(id || "");
-    if (!s || seen.has(s)) continue;
+    if (!s || s === NAME_COL_ID || seen.has(s)) continue;
     seen.add(s);
     out.push(s);
   }
@@ -211,8 +212,13 @@ function normalizeSelectOption(o, index) {
   return { label, color };
 }
 
+function nameColumn() {
+  return { id: NAME_COL_ID, label: "Name", type: "text" };
+}
+
 function normalizeDbColumn(c) {
   if (!c || !c.id) return null;
+  if (String(c.id) === NAME_COL_ID) return nameColumn();
   const type = DB_FIELD_TYPES.has(c.type) ? c.type : "text";
   const out = { id: String(c.id), label: c.label || String(c.id), type };
   if (c.required) out.required = true;
@@ -229,8 +235,10 @@ function normalizeDbColumns(columns) {
   if (!Array.isArray(columns) || !columns.length) {
     return DEFAULT_DB_COLS.map((c) => ({ ...c }));
   }
-  const mapped = columns.map(normalizeDbColumn).filter(Boolean);
-  return mapped.length ? mapped : DEFAULT_DB_COLS.map((c) => ({ ...c }));
+  const rest = columns
+    .map(normalizeDbColumn)
+    .filter((c) => c && c.id !== NAME_COL_ID);
+  return [nameColumn(), ...rest];
 }
 
 /** @type {object|null} */

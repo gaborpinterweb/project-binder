@@ -1,5 +1,8 @@
 /** Database field type definitions and helpers. */
 
+/** System primary column — always first; label/type locked. */
+export const NAME_COL_ID = "n";
+
 export const FIELD_TYPES = [
   { value: "text", label: "Text", icon: "fieldText" },
   { value: "longtext", label: "Rich text", icon: "fieldLongText" },
@@ -68,8 +71,17 @@ function normalizeSelectOption(o, index = 0) {
   return { label, color };
 }
 
+export function isNameCol(col) {
+  return !!(col && col.id === NAME_COL_ID);
+}
+
+export function nameColumn() {
+  return { id: NAME_COL_ID, label: "Name", type: "text" };
+}
+
 export function normalizeDbCol(c) {
   if (!c || !c.id) return null;
+  if (c.id === NAME_COL_ID) return nameColumn();
   const type = TYPE_SET.has(c.type) || c.type === "stage" ? c.type : "text";
   const col = {
     id: c.id,
@@ -86,9 +98,20 @@ export function normalizeDbCol(c) {
   return col;
 }
 
+/** Ensure Name exists and is first; strips duplicate Name ids. */
+export function ensureNameColumn(cols) {
+  const rest = (Array.isArray(cols) ? cols : [])
+    .map(normalizeDbCol)
+    .filter((c) => c && c.id !== NAME_COL_ID);
+  return [nameColumn(), ...rest];
+}
+
 export function serializeDbCol(c) {
   const col = normalizeDbCol(c);
   if (!col) return null;
+  if (col.id === NAME_COL_ID) {
+    return { id: NAME_COL_ID, label: "Name", type: "text" };
+  }
   const out = { id: col.id, label: col.label, type: col.type };
   if (col.required) out.required = true;
   if (col.type === "number" && col.decimal) out.decimal = true;
@@ -106,7 +129,7 @@ export function emptyFieldValue(col, stages = []) {
   if (col.type === "checkbox") return false;
   if (col.type === "multiselect") return [];
   if (col.type === "stage") return stages[0] || "";
-  if (col.id === "n") return "New entry";
+  if (col.id === NAME_COL_ID) return "New entry";
   return "";
 }
 

@@ -1139,6 +1139,20 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-check:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .settings-check input{flex:none;width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
 .settings-rows{display:flex;flex-direction:column;gap:8px}
+.settings-backup-block{display:flex;flex-direction:column}
+/* Height animates so Workspace below is pushed / pulled with Enable backup */
+.settings-backup-details{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s ease;pointer-events:none}
+.settings-backup-details.in{grid-template-rows:1fr;pointer-events:auto}
+.settings-backup-details-clip{overflow:hidden;min-height:0}
+.settings-backup-details-inner{display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.settings-backup-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;padding:0 4px 2px;font-size:12px;line-height:1.35;color:var(--mute)}
+.settings-text-btn{margin:0;padding:0;border:0;border-radius:0;background:none;font:inherit;font-size:inherit;line-height:inherit;color:inherit;text-decoration:underline;cursor:pointer}
+.settings-text-btn:hover:not(:disabled){color:var(--ink)}
+.settings-text-btn:disabled{opacity:.45;cursor:default;text-decoration:none}
+.settings-text-btn:focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 55%,transparent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  .settings-backup-details{transition:none}
+}
 .settings-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:calc(var(--radius) - 2px);background:color-mix(in srgb,var(--ink) 2%,transparent)}
 .settings-row-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .settings-row-copy b{font-size:14px;font-weight:600;color:var(--ink)}

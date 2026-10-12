@@ -281,10 +281,13 @@ export async function exportWorkspace() {
   const r = await fetch("/api/export");
   if (!r.ok) throw new Error("export failed");
   const blob = await r.blob();
+  const cd = r.headers.get("Content-Disposition") || "";
+  const match = /filename="([^"]+)"/i.exec(cd);
+  const filename = match ? match[1] : "project-binder-backup.zip";
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "userWorkspace.json";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();

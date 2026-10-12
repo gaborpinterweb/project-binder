@@ -2595,6 +2595,10 @@ function revealUserDataDir() {
   if (!userData.persistent) {
     return Promise.reject(new Error("no on-disk user data in this mode"));
   }
+  // Prefer selecting the live workspace JSON so Finder/Explorer highlights it.
+  if (USER_WORKSPACE && fs.existsSync(USER_WORKSPACE)) {
+    return revealPath(USER_WORKSPACE, { select: true });
+  }
   const dir = userData.ensureUserDataDir();
   return revealPath(dir);
 }
@@ -2991,16 +2995,33 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: "no on-disk user data in this mode" });
       }
       await revealUserDataDir();
-      return json(res, 200, { ok: true, dir: USER_DATA_DIR });
+      return json(res, 200, {
+        ok: true,
+        dir: USER_DATA_DIR,
+        file: USER_WORKSPACE,
+      });
     }
     if (req.method === "GET" && url.pathname === "/api/export") {
-      const body = JSON.stringify(store, null, 2) + "\n";
-      res.writeHead(200, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="userWorkspace.json"',
-        "Cache-Control": "no-store",
-      });
-      res.end(body);
+      const filename = backupZipFilenameForDay();
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pb-export-"));
+      const tmpZip = path.join(tmpDir, filename);
+      try {
+        writeWorkspaceZip(tmpZip);
+        const body = fs.readFileSync(tmpZip);
+        res.writeHead(200, {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Content-Length": body.length,
+          "Cache-Control": "no-store",
+        });
+        res.end(body);
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+      }
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/app") {

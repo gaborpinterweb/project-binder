@@ -73,7 +73,7 @@ export default function SettingsDialog({
   const tabs = useMemo(() => {
     const list = [
       { id: "experience", label: "Experience", icon: "Experience" },
-      { id: "data", label: "Backup", icon: "Workspace" },
+      { id: "data", label: "Data", icon: "Workspace" },
       { id: "archive", label: "Archive", icon: "Archive" },
       { id: "help", label: "Help", icon: "Help" },
       { id: "about", label: "About", icon: "About" },
@@ -238,11 +238,11 @@ export default function SettingsDialog({
 
   const handleImport = async () => {
     const choice = await askConfirm({
-      title: "Import workspace?",
+      title: "Import workspace data?",
       message:
-        "Importing a zip replaces your current workspace and uploaded files. Export your current data first if you might need it.",
+        "Importing a .zip replaces your current workspace and uploaded files. Export a .zip of your current data first if you might need it.",
       confirmLabel: "Continue without exporting",
-      altLabel: "Export current workspace",
+      altLabel: "Export current workspace data",
       cancelLabel: "Cancel",
       danger: true,
     });
@@ -437,10 +437,10 @@ export default function SettingsDialog({
               {desktop && (
                 <section className="settings-section">
                   <h3 className="settings-heading">Backup</h3>
-                  <div className="settings-rows">
+                  <div className="settings-backup-block">
                     <div className="settings-row">
                       <div className="settings-row-copy">
-                        <b>Auto backup</b>
+                        <b>Enable backup</b>
                         <span>Every 5 minutes and on launch</span>
                       </div>
                       <label className="settings-toggle">
@@ -449,49 +449,58 @@ export default function SettingsDialog({
                           checked={!!backup.enabled}
                           disabled={backupDisabled}
                           onChange={(e) => handleToggleAutoBackup(e.target.checked)}
-                          aria-label="Auto backup"
+                          aria-label="Enable backup"
                         />
                         <span className="settings-toggle-ui" aria-hidden="true" />
                       </label>
                     </div>
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Backup folder</b>
-                        {backup.folderPath ? (
-                          <span className="settings-path" title={backup.folderPath}>
-                            {backup.folderPath}
-                          </span>
-                        ) : (
-                          <span>No folder selected</span>
-                        )}
+                    <div
+                      className={`settings-backup-details${backup.enabled ? " in" : ""}`}
+                      aria-hidden={!backup.enabled}
+                    >
+                      <div className="settings-backup-details-clip">
+                        <div className="settings-backup-details-inner">
+                          <div className="settings-row">
+                            <div className="settings-row-copy">
+                              <b>Set backup folder</b>
+                              {backup.folderPath ? (
+                                <span className="settings-path" title={backup.folderPath}>
+                                  {backup.folderPath}
+                                </span>
+                              ) : (
+                                <span>No folder selected</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="settings-row-btn"
+                              disabled={backupDisabled || !backup.enabled}
+                              tabIndex={backup.enabled ? undefined : -1}
+                              onClick={handleBrowseFolder}
+                            >
+                              {backupBusy === "folder" ? "…" : "Browse"}
+                            </button>
+                          </div>
+                          <div className="settings-backup-meta">
+                            <span>
+                              Last backup {lastBackupLabel || "not yet"}
+                              {backup.lastError ? ` · Error: ${backup.lastError}` : ""}
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            <button
+                              type="button"
+                              className="settings-text-btn"
+                              disabled={
+                                backupDisabled || !backup.enabled || !backup.folderPath
+                              }
+                              tabIndex={backup.enabled ? undefined : -1}
+                              onClick={handleBackupNow}
+                            >
+                              {backupBusy === "now" ? "…" : "Backup now"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        className="settings-row-btn"
-                        disabled={backupDisabled}
-                        onClick={handleBrowseFolder}
-                      >
-                        {backupBusy === "folder" ? "…" : "Browse"}
-                      </button>
-                    </div>
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Last backup</b>
-                        <span>
-                          {lastBackupLabel || "Not yet backed up"}
-                          {backup.lastError ? ` · Error: ${backup.lastError}` : ""}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="settings-row-btn"
-                        disabled={
-                          backupDisabled || !backup.enabled || !backup.folderPath
-                        }
-                        onClick={handleBackupNow}
-                      >
-                        {backupBusy === "now" ? "…" : "Backup now"}
-                      </button>
                     </div>
                   </div>
                 </section>
@@ -502,8 +511,8 @@ export default function SettingsDialog({
                 <div className="settings-rows">
                   <div className="settings-row">
                     <div className="settings-row-copy">
-                      <b>Show workspace in Finder</b>
-                      <span>Open the folder where your workspace is stored</span>
+                      <b>Show workspace data</b>
+                      <span>Reveal userWorkspace.json in the data folder</span>
                     </div>
                     <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
                       Show
@@ -511,8 +520,8 @@ export default function SettingsDialog({
                   </div>
                   <div className="settings-row">
                     <div className="settings-row-copy">
-                      <b>Export workspace</b>
-                      <span>Download your userWorkspace.json backup</span>
+                      <b>Export workspace data</b>
+                      <span>Download a .zip of your workspace and files</span>
                     </div>
                     <button type="button" className="settings-row-btn" onClick={handleExport}>
                       Export
@@ -521,7 +530,7 @@ export default function SettingsDialog({
                   {desktop && (
                     <div className="settings-row">
                       <div className="settings-row-copy">
-                        <b>Import workspace</b>
+                        <b>Import workspace data</b>
                         <span>Replace this workspace from a backup .zip</span>
                       </div>
                       <button

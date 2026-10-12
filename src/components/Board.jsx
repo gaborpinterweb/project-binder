@@ -460,9 +460,9 @@ function TaskCard({
 }
 
 const COMPLETED_VIEW_OPTIONS = [
-  { value: "hide", label: "Hide completed" },
-  { value: "inplace", label: "Show completed tasks" },
-  { value: "virtual", label: "Show completed column" },
+  { value: "hide", label: "Hide completed", icon: "eyeOff" },
+  { value: "inplace", label: "Show completed tasks", icon: "checklist" },
+  { value: "virtual", label: "Show completed column", icon: "board" },
 ];
 
 const BOARD_SHOW_OPTIONS = [

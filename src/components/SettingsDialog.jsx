@@ -25,7 +25,8 @@ const AUTO_BACKUP_KEEP_DAYS = 3;
 const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
 const BMC_BTN = "/bmc-button.png";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
-const SITE_URL = "https://gaborpinter.com";
+const SITE_URL =
+  "https://gaborpinter.com/?utm_source=project-binder&utm_medium=app&utm_campaign=settings-about";
 const LEARN_URL = "https://projectbinder.app/learn";
 const FEEDBACK_URL = "https://projectbinder.app/feedback";
 
@@ -240,8 +241,8 @@ export default function SettingsDialog({
       title: "Import workspace?",
       message:
         "Importing a zip replaces your current workspace and uploaded files. Export your current data first if you might need it.",
-      confirmLabel: "Import new without exporting current",
-      altLabel: "Export current",
+      confirmLabel: "Continue without exporting",
+      altLabel: "Export current workspace",
       cancelLabel: "Cancel",
       danger: true,
     });
@@ -433,54 +434,29 @@ export default function SettingsDialog({
 
           {tab === "data" && (
             <>
-              <section className="settings-section">
-                <div className="settings-rows">
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Show user data</b>
-                      <span>Open the folder where your workspace is stored</span>
-                    </div>
-                    <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
-                      Show
-                    </button>
-                  </div>
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Export data</b>
-                      <span>Download your userWorkspace.json backup</span>
-                    </div>
-                    <button type="button" className="settings-row-btn" onClick={handleExport}>
-                      Export
-                    </button>
-                  </div>
-                </div>
-              </section>
-
               {desktop && (
                 <section className="settings-section">
-                  <h3 className="settings-heading">Auto backup</h3>
-                  <ul className="settings-checks">
-                    <li>
-                      <label className="settings-check">
+                  <h3 className="settings-heading">Backup</h3>
+                  <div className="settings-rows">
+                    <div className="settings-row">
+                      <div className="settings-row-copy">
+                        <b>Auto backup</b>
+                        <span>Every 5 minutes and on launch</span>
+                      </div>
+                      <label className="settings-toggle">
                         <input
                           type="checkbox"
                           checked={!!backup.enabled}
                           disabled={backupDisabled}
                           onChange={(e) => handleToggleAutoBackup(e.target.checked)}
+                          aria-label="Auto backup"
                         />
-                        <span>Back up automatically every 5 minutes and on launch</span>
+                        <span className="settings-toggle-ui" aria-hidden="true" />
                       </label>
-                    </li>
-                  </ul>
-                  <div className="settings-rows">
-                    <div className="settings-row settings-row-stack">
+                    </div>
+                    <div className="settings-row">
                       <div className="settings-row-copy">
                         <b>Backup folder</b>
-                        <span>
-                          Day copies: {backup.filename || AUTO_BACKUP_FILENAME_PATTERN}{" "}
-                          (keeps {backup.keepDays || AUTO_BACKUP_KEEP_DAYS} days · workspace +
-                          files)
-                        </span>
                         {backup.folderPath ? (
                           <span className="settings-path" title={backup.folderPath}>
                             {backup.folderPath}
@@ -517,6 +493,32 @@ export default function SettingsDialog({
                         {backupBusy === "now" ? "…" : "Backup now"}
                       </button>
                     </div>
+                  </div>
+                </section>
+              )}
+
+              <section className="settings-section">
+                <h3 className="settings-heading">Workspace</h3>
+                <div className="settings-rows">
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Show workspace in Finder</b>
+                      <span>Open the folder where your workspace is stored</span>
+                    </div>
+                    <button type="button" className="settings-row-btn" onClick={handleShowUserData}>
+                      Show
+                    </button>
+                  </div>
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Export workspace</b>
+                      <span>Download your userWorkspace.json backup</span>
+                    </div>
+                    <button type="button" className="settings-row-btn" onClick={handleExport}>
+                      Export
+                    </button>
+                  </div>
+                  {desktop && (
                     <div className="settings-row">
                       <div className="settings-row-copy">
                         <b>Import workspace</b>
@@ -531,9 +533,9 @@ export default function SettingsDialog({
                         {backupBusy === "import" ? "…" : "Import"}
                       </button>
                     </div>
-                  </div>
-                </section>
-              )}
+                  )}
+                </div>
+              </section>
             </>
           )}
 

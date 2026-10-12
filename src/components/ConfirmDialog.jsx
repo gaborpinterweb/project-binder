@@ -62,27 +62,54 @@ export default function ConfirmDialog() {
               "actions prompt-actions" + (req.stackActions ? " prompt-actions-stack" : "")
             }
           >
-            <button type="button" className="dlg-delete" onClick={cancel}>
-              {req.cancelLabel}
-            </button>
-            {req.altLabel ? (
-              <button type="button" className="dlg-create" onClick={() => settleConfirm("alt")}>
-                {req.altLabel}
-              </button>
-            ) : null}
-            <button
-              ref={confirmRef}
-              type="button"
-              className={
-                "dlg-create" +
-                (req.danger ? " prompt-danger" : "") +
-                (req.confirmIcon ? " dlg-create-icon" : "")
-              }
-              onClick={accept}
-            >
-              {req.confirmIcon ? <Icon name={req.confirmIcon} size={16} /> : null}
-              {req.confirmLabel}
-            </button>
+            {req.stackActions ? (
+              <>
+                {req.altLabel ? (
+                  <button
+                    type="button"
+                    className="dlg-create"
+                    onClick={() => settleConfirm("alt")}
+                  >
+                    {req.altLabel}
+                  </button>
+                ) : null}
+                <button
+                  ref={confirmRef}
+                  type="button"
+                  className={
+                    "dlg-create" +
+                    (req.danger ? " prompt-danger" : "") +
+                    (req.confirmIcon ? " dlg-create-icon" : "")
+                  }
+                  onClick={accept}
+                >
+                  {req.confirmIcon ? <Icon name={req.confirmIcon} size={16} /> : null}
+                  {req.confirmLabel}
+                </button>
+                <button type="button" className="dlg-delete" onClick={cancel}>
+                  {req.cancelLabel}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="dlg-delete" onClick={cancel}>
+                  {req.cancelLabel}
+                </button>
+                <button
+                  ref={confirmRef}
+                  type="button"
+                  className={
+                    "dlg-create" +
+                    (req.danger ? " prompt-danger" : "") +
+                    (req.confirmIcon ? " dlg-create-icon" : "")
+                  }
+                  onClick={accept}
+                >
+                  {req.confirmIcon ? <Icon name={req.confirmIcon} size={16} /> : null}
+                  {req.confirmLabel}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

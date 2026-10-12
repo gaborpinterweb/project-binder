@@ -234,7 +234,10 @@ function TabBtn({
   onCoverDelete,
 }) {
   const className =
-    "tab" + (on ? " on" : "") + (disabled ? " locked" : "");
+    "tab" +
+    (on ? " on" : "") +
+    (disabled ? " locked" : "") +
+    (type === "Cover" ? " tab-cover" : "");
 
   const body = (
     <>

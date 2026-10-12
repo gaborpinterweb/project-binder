@@ -58,7 +58,9 @@ main.board-editing .stage{margin-left:calc(6px - var(--aside-w));border-radius:v
 main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;background:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);flex:1;min-height:0}
 #bar{--tab:var(--bar);background:var(--side);display:flex;align-items:flex-end;gap:0;padding:8px 12px 0 0;overflow-x:auto;min-height:40px;flex:none;position:relative;z-index:4}
 #tabs{display:flex;align-items:flex-end;gap:6px;min-width:0;flex:1;padding-right:8px}
-#bar .tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;flex:none;margin:0;padding:8px 14px 9px;min-height:39px;white-space:nowrap;color:color-mix(in srgb,#fff 78%,transparent);font:inherit;font-size:13px;font-weight:500;letter-spacing:.01em;background-color:color-mix(in srgb,var(--c) 32%,#0a0a0b);background-image:var(--leather),var(--leather-shade);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 22%,transparent);border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease}
+#bar .tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;flex:none;margin:0;padding:8px 14px 9px;min-height:39px;white-space:nowrap;color:color-mix(in srgb,#fff 78%,transparent);font:inherit;font-size:13px;font-weight:500;letter-spacing:.01em;background-color:color-mix(in srgb,var(--c) 32%,#0a0a0b);background-image:var(--leather),var(--leather-shade);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 22%,transparent);border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease,opacity .2s ease}
+/* macOS Electron only: hide Cover under traffic lights but keep its width as a spacer. */
+html.desktop-mac #bar.board-editing .tab.tab-cover,html.desktop-mac #bar.board-editing .tab.tab-cover.locked,html.desktop-mac #bar.board-editing .tab.tab-cover.locked:hover,html.desktop-mac #bar.board-editing .tab.tab-cover.locked:focus-visible{opacity:0;pointer-events:none;cursor:default}
 #bar .tab svg{flex:none;opacity:.85}
 #bar .tab:hover{z-index:2;color:#fff;background-color:color-mix(in srgb,var(--c) 48%,#0a0a0b)}
 #bar .tab.on{z-index:3;color:#fff;background-color:color-mix(in srgb,var(--c) 68%,#000);background-image:var(--leather),var(--leather-on);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;padding-bottom:10px;margin-bottom:0;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 18%,transparent)}
@@ -881,9 +883,10 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .prompt-input{font:inherit;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);padding:10px 12px;width:100%;box-sizing:border-box}
 .prompt-input:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 45%,var(--line));background:#fff}
 .prompt-actions{margin:0}
-.prompt-actions-stack{flex-direction:column;align-items:stretch;gap:8px}
-.prompt-actions-stack .dlg-delete,
-.prompt-actions-stack .dlg-create{width:100%;justify-content:center}
+/* Beat `.dlg .actions` row flex so stacked confirms actually stack. */
+.dlg .actions.prompt-actions-stack{flex-direction:column;align-items:stretch;gap:8px}
+.dlg .actions.prompt-actions-stack .dlg-delete,
+.dlg .actions.prompt-actions-stack .dlg-create{flex:none;width:100%;justify-content:center}
 .prompt-dlg:has(.prompt-actions-stack){width:min(440px,100%)}
 .prompt-danger{background:color-mix(in srgb,#b42318 88%,#000)!important;color:#fff!important}
 .prompt-danger:hover{background:#b42318!important}
@@ -1150,7 +1153,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-empty{margin:0;padding:8px 2px;font-size:14px;color:var(--mute)}
 .settings-archive-item{flex-direction:row;align-items:center;gap:10px}
 .settings-archive-icon{flex:none;display:inline-flex;line-height:0}
-.settings-path{display:block;margin-top:4px;font-size:12px;color:var(--ink);word-break:break-all}
+.settings-path{display:block;margin-top:2px;font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .settings-pref-dd{flex:none;width:120px}
 .settings-pref-dd .dd-btn{width:100%;justify-content:space-between;padding:7px 10px;border-radius:calc(var(--radius) - 6px);background:var(--sel);font:inherit;font-size:13px;font-weight:500;color:var(--ink)}
 .settings-pref-dd .dd-btn:hover{background:color-mix(in srgb,var(--ink) 12%,var(--sel))}
@@ -1162,6 +1165,7 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .settings-toggle input:checked + .settings-toggle-ui{background:var(--acc)}
 .settings-toggle input:checked + .settings-toggle-ui::after{transform:translateX(16px)}
 .settings-toggle input:focus-visible + .settings-toggle-ui{outline:2px solid color-mix(in srgb,var(--acc) 55%,transparent);outline-offset:2px}
+.settings-toggle:has(input:disabled){opacity:.45;cursor:default}
 .settings-about{display:flex;flex-direction:column;align-items:center;gap:22px;flex:1;min-height:100%;text-align:center;padding:12px 8px 20px}
 .settings-about-main{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;flex:1;min-height:0}
 .settings-about-brand{display:flex;flex-direction:column;align-items:center;gap:6px}

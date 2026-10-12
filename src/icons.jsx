@@ -129,22 +129,45 @@ function vibrantStroke(hex) {
   return `#${toHex(rp)}${toHex(gp)}${toHex(bp)}`;
 }
 
-/** One dominant from each PC hue pair — spectrum for Master board selected state. */
-const RAINBOW_STOPS = [
-  PC[0], // Cherry
-  PC[2], // Pumpkin
-  PC[3], // Honey
-  PC[6], // Leaf
-  PC[9], // Teal
-  PC[10], // Sky
-  PC[12], // Plum
-  PC[14], // Candy
-].map(vibrantStroke);
+/**
+ * Per-arm tip colors — clockwise from top, matching the app logo plate:
+ * red → brown/yellow → green → blue → indigo → purple.
+ * Each Lucide path is one diameter (tip → opposite tip).
+ */
+const RAINBOW_ARMS = [
+  {
+    d: "M12 5v14",
+    x1: 12,
+    y1: 5,
+    x2: 12,
+    y2: 19,
+    from: PC[0], // Cherry — top
+    to: PC[10], // Sky — bottom
+  },
+  {
+    d: "m18.065 8.496-12.125 7",
+    x1: 18.065,
+    y1: 8.496,
+    x2: 5.94,
+    y2: 15.496,
+    from: PC[2], // Pumpkin — top-right brown
+    mid: PC[3], // Honey — yellow just inward
+    to: PC[11], // Ink — bottom-left indigo
+  },
+  {
+    d: "m5.94 8.504 12.125 7",
+    x1: 5.94,
+    y1: 8.504,
+    x2: 18.065,
+    y2: 15.504,
+    from: PC[14], // Candy — top-left purple
+    to: PC[6], // Leaf — bottom-right green
+  },
+];
 
 /** Spectrum stroke for Master board selected state — Lucide asterisk paths. */
 function RainbowAsterisk({ size = 16, strokeWidth = 2, className, ...rest }) {
   const gid = `asterisk-rainbow-${useId().replace(/:/g, "")}`;
-  const last = RAINBOW_STOPS.length - 1;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -152,7 +175,6 @@ function RainbowAsterisk({ size = 16, strokeWidth = 2, className, ...rest }) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={`url(#${gid})`}
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -161,15 +183,32 @@ function RainbowAsterisk({ size = 16, strokeWidth = 2, className, ...rest }) {
       {...rest}
     >
       <defs>
-        <linearGradient id={gid} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-          {RAINBOW_STOPS.map((c, i) => (
-            <stop key={c} offset={`${(i / last) * 100}%`} stopColor={c} />
-          ))}
-        </linearGradient>
+        {RAINBOW_ARMS.map((arm, i) => {
+          const id = `${gid}-${i}`;
+          const from = vibrantStroke(arm.from);
+          const to = vibrantStroke(arm.to);
+          return (
+            <linearGradient
+              key={id}
+              id={id}
+              x1={arm.x1}
+              y1={arm.y1}
+              x2={arm.x2}
+              y2={arm.y2}
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor={from} />
+              {arm.mid ? (
+                <stop offset="28%" stopColor={vibrantStroke(arm.mid)} />
+              ) : null}
+              <stop offset="100%" stopColor={to} />
+            </linearGradient>
+          );
+        })}
       </defs>
-      <path d="M12 5v14" />
-      <path d="m18.065 8.496-12.125 7" />
-      <path d="m5.94 8.504 12.125 7" />
+      {RAINBOW_ARMS.map((arm, i) => (
+        <path key={arm.d} d={arm.d} stroke={`url(#${gid}-${i})`} />
+      ))}
     </svg>
   );
 }

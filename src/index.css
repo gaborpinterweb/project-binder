@@ -12,13 +12,16 @@ body{display:block;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui
 input,textarea,select,[contenteditable="true"],.ProseMirror{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible{outline:2px solid var(--acc)}
-/* Electron macOS hiddenInset: clearance for traffic lights + window drag. */
+/* Electron macOS hiddenInset: traffic-light pad + window drag regions. */
 html.desktop-mac{--desktop-titlebar:36px}
 html.desktop-mac aside{padding-top:calc(10px + var(--desktop-titlebar));-webkit-app-region:drag}
 html.desktop-mac aside .side-scroll,html.desktop-mac aside .side-foot{-webkit-app-region:no-drag}
-html.desktop-mac #bar{padding-top:calc(8px + var(--desktop-titlebar));-webkit-app-region:drag}
-html.desktop-mac #bar .tab,html.desktop-mac #bar button,html.desktop-mac #bar a,html.desktop-mac #bar .tab-more{-webkit-app-region:no-drag}
-html.desktop-mac main.global-view .stage{margin-top:calc(6px + var(--desktop-titlebar))}
+/* Project tab strip: empty chrome after tabs is drag; tabs stay clickable. */
+html.desktop-mac #bar,html.desktop-mac #tabs{-webkit-app-region:drag}
+html.desktop-mac #bar .tab{-webkit-app-region:no-drag}
+/* Workspace/global chrome: title strip is drag; right tools stay clickable. */
+html.desktop-mac .modbar.gbar{-webkit-app-region:drag}
+html.desktop-mac .modbar.gbar .gbar-tools{-webkit-app-region:no-drag}
 aside{width:var(--aside-w);flex:none;background:var(--side);color:var(--side-ink);padding:10px;display:flex;flex-direction:column;min-height:0}
 aside h2{font-size:13px;color:var(--side-mute);font-weight:600;margin:0 8px 8px}
 .side-head{display:flex;align-items:center;gap:4px;margin:20px 0 8px;padding:0 2px 0 8px}

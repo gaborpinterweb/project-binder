@@ -23,8 +23,7 @@ const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
 const AUTO_BACKUP_KEEP_DAYS = 3;
 
 const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
-const BMC_BTN =
-  "https://cdn.buymeacoffee.com/buttons/v2/default-black.png";
+const BMC_BTN = "/bmc-button.png";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL = "https://gaborpinter.com";
 const LEARN_URL = "https://projectbinder.app/learn";

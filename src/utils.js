@@ -10,7 +10,7 @@ export const TYPES = [
   { t: "Board", title: "Tasks", sub: "Kanban columns with cards" },
   { t: "Notes", title: "Notes", sub: "Rich text editor with notes list" },
   { t: "Files", title: "Files", sub: "Documents, assets, and other uploads" },
-  { t: "Database", title: "Database", sub: "Tables with custom schema" },
+  { t: "Database", title: "Database", sub: "Structured records for data analysis" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
   { t: "Chat", title: "Chat", sub: "Communication channels and threads", off: true },

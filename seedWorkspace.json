@@ -1261,6 +1261,21 @@
       "endedAt": "2026-09-27T09:40:00.000Z",
       "durationSec": 1500,
       "id": "baf67d95-eee6-4b94-ba2a-7917b60bcff9"
+    },
+    {
+      "project": "847cc8a6-b6c0-45a0-a6cf-41a58187329d",
+      "board": "62fd4264-82c5-4d80-8811-49de16ef73c8",
+      "card": "acdea98f-3331-492c-a587-ae58e4d8eac0",
+      "title": "CRM cleanup",
+      "projectName": "Freelancing",
+      "boardName": "Ops",
+      "color": "#198480",
+      "kind": "stoptimer",
+      "note": "Archived stale leads from last quarter.",
+      "startedAt": "2026-08-15T10:00:00.000Z",
+      "endedAt": "2026-08-15T10:45:00.000Z",
+      "durationSec": 2700,
+      "id": "c3e1a0f2-7b94-4d6a-9e11-2f8c5d0a1b77"
     }
   ]
 }

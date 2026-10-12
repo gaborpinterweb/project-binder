@@ -252,6 +252,132 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+/** Seed file treats this local calendar day as "today"; shifted on every seed load. */
+const SEED_ANCHOR_YMD = "2026-09-30";
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function startOfLocalDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addLocalDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+function parseLocalYmd(ymd) {
+  const [y, m, day] = String(ymd).split("-").map(Number);
+  return new Date(y, m - 1, day);
+}
+
+function formatLocalYmd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Monday-based local week start. */
+function startOfLocalWeek(d) {
+  const x = startOfLocalDay(d);
+  const day = x.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addLocalDays(x, diff);
+}
+
+function localDayDelta(fromYmd, toDate) {
+  const a = startOfLocalDay(parseLocalYmd(fromYmd));
+  const b = startOfLocalDay(toDate);
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+function shiftIsoByLocalDays(iso, days) {
+  if (!days) return iso;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+function shiftYmdByDays(ymd, days) {
+  if (!days) return ymd;
+  return formatLocalYmd(addLocalDays(parseLocalYmd(ymd), days));
+}
+
+function rebaseSeedDates(value, days) {
+  if (!days) return value;
+  if (typeof value === "string") {
+    if (ISO_DATETIME_RE.test(value)) return shiftIsoByLocalDays(value, days);
+    if (YMD_RE.test(value)) return shiftYmdByDays(value, days);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) value[i] = rebaseSeedDates(value[i], days);
+    return value;
+  }
+  if (value && typeof value === "object") {
+    for (const key of Object.keys(value)) value[key] = rebaseSeedDates(value[key], days);
+    return value;
+  }
+  return value;
+}
+
+function placeTimelogOnLocalDay(entry, dayStart) {
+  const prev = new Date(entry.startedAt || entry.endedAt || Date.now());
+  const start = new Date(dayStart);
+  if (!Number.isNaN(prev.getTime())) {
+    start.setHours(
+      prev.getHours(),
+      prev.getMinutes(),
+      prev.getSeconds(),
+      prev.getMilliseconds()
+    );
+  } else {
+    start.setHours(10, 0, 0, 0);
+  }
+  let dur = Number(entry.durationSec);
+  if (!Number.isFinite(dur) || dur < 0) {
+    const endPrev = new Date(entry.endedAt || 0);
+    dur =
+      !Number.isNaN(prev.getTime()) && !Number.isNaN(endPrev.getTime())
+        ? Math.max(0, Math.round((endPrev.getTime() - prev.getTime()) / 1000))
+        : 1500;
+  }
+  entry.startedAt = start.toISOString();
+  entry.endedAt = new Date(start.getTime() + dur * 1000).toISOString();
+  entry.durationSec = dur;
+}
+
+/**
+ * After calendar rebase, pin a couple of timelogs so Today / This week / Last week /
+ * Last month filters stay populated regardless of weekday or month length.
+ */
+function ensureSeedTimelogPeriods(doc, now = new Date()) {
+  const logs = doc.timelogs;
+  if (!Array.isArray(logs) || logs.length < 2) return;
+  const ordered = logs
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) =>
+      String(a.entry.startedAt || "").localeCompare(String(b.entry.startedAt || ""))
+    );
+  const today = startOfLocalDay(now);
+  const lastWeekDay = addLocalDays(startOfLocalWeek(today), -3); // last week's Wednesday
+  const lastMonthDay = new Date(today.getFullYear(), today.getMonth() - 1, 15);
+  placeTimelogOnLocalDay(ordered[0].entry, lastMonthDay);
+  placeTimelogOnLocalDay(ordered[1].entry, lastWeekDay);
+}
+
+function prepareSeedWorkspace(doc, now = new Date()) {
+  const days = localDayDelta(SEED_ANCHOR_YMD, now);
+  rebaseSeedDates(doc, days);
+  ensureSeedTimelogPeriods(doc, now);
+  return doc;
+}
+
 function readJsonFile(file) {
   if (!fs.existsSync(file)) return { ok: false, reason: "missing" };
   const raw = fs.readFileSync(file, "utf8");
@@ -271,7 +397,7 @@ function loadSeedWorkspace() {
     console.error(`Fatal: seedWorkspace.json is ${result.reason} (${SEED_WORKSPACE})`);
     process.exit(1);
   }
-  return deepClone(result.doc);
+  return prepareSeedWorkspace(deepClone(result.doc));
 }
 
 function saveStore() {

@@ -397,23 +397,29 @@ export default function App() {
     return () => document.removeEventListener("click", closeMenus);
   }, []);
 
-  async function stopPomodoroInner(session) {
+  async function stopPomodoroInner(session, opts = {}) {
     if (!session || pomoFinishing.current) return;
     pomoFinishing.current = true;
+    const fromTaskComplete = opts.reason === "taskCompleted";
     const elapsed = pomoElapsedSec(session);
     const maxSec = isStoptimerSession(session) ? stoptimerMaxSec() : null;
     const stoptimerDone = maxSec != null && elapsed >= maxSec;
     const pomoDone =
       !isStoptimerSession(session) && pomoRemainingSec(session) <= 0;
     const autoDone = pomoDone || stoptimerDone;
-    if (elapsed < MIN_TIMELOG_SEC) playTimerDiscardSound();
-    else playTimerCompleteSound();
+    // Task-complete path already plays the task sound — skip timer chimes.
+    if (!fromTaskComplete) {
+      if (elapsed < MIN_TIMELOG_SEC) playTimerDiscardSound();
+      else playTimerCompleteSound();
+    }
     setActivePomo(null);
     activePomoRef.current = null;
     savePomo(null);
     if (elapsed < MIN_TIMELOG_SEC) {
       showSnackbar({
-        message: "Timers under 1 minute aren't saved to timelogs.",
+        message: fromTaskComplete
+          ? "Timer stopped — under 1 minute, not saved (task completed)."
+          : "Timers under 1 minute aren't saved to timelogs.",
       });
       pomoFinishing.current = false;
       return;
@@ -449,12 +455,15 @@ export default function App() {
       });
       const entry = data?.entry;
       if (entry?.id) {
+        const savedMsg = stoptimerDone
+          ? `${title} · ${formatDuration(durationSec)} (max reached)`
+          : `${title} · ${formatDuration(durationSec)}`;
         showSnackbar({
-          message: stoptimerDone
-            ? `${title} · ${formatDuration(durationSec)} (max reached)`
-            : `${title} · ${formatDuration(durationSec)}`,
+          message: fromTaskComplete
+            ? `Timer stopped and saved — task completed · ${formatDuration(durationSec)}`
+            : savedMsg,
           durationMs: 7000,
-          persist: autoDone,
+          persist: autoDone && !fromTaskComplete,
           action: {
             label: note ? "Edit timelog" : "Add note",
             onClick: () => setTimelogDialog({ mode: "edit", entry }),
@@ -468,6 +477,18 @@ export default function App() {
 
   async function stopPomodoro() {
     await stopPomodoroInner(activePomoRef.current);
+  }
+
+  async function stopActiveTimerForCard(folder, mod, row) {
+    const cur = activePomoRef.current;
+    if (!cur || !folder?.id || !mod?.[2]?.id || !row?.id) return;
+    if (
+      taskKey(cur.project, cur.board, cur.card) !==
+      taskKey(folder.id, mod[2].id, row.id)
+    ) {
+      return;
+    }
+    await stopPomodoroInner(cur, { reason: "taskCompleted" });
   }
 
   function updatePomoNote(note) {
@@ -779,6 +800,7 @@ export default function App() {
       row.doneAt = checked ? new Date().toISOString() : "";
       if (checked) playTaskCompleteSound();
       await saveCard(row, folder, mod);
+      if (checked) await stopActiveTimerForCard(folder, mod, row);
     },
     [saveCard]
   );
@@ -1217,7 +1239,6 @@ export default function App() {
               onBump={bump}
               onSetCompletedView={setCompletedView}
               onSetBoardShow={setBoardShow}
-              onSaveCard={saveCard}
               onOpenCard={openItem}
               onToggleDone={onToggleDone}
               onStartNewCard={startNewCard}
@@ -1405,7 +1426,6 @@ export default function App() {
                 onBump={bump}
                 onSetCompletedView={setCompletedView}
                 onSetBoardShow={setBoardShow}
-                onSaveCard={saveCard}
                 onOpenCard={openItem}
                 onToggleDone={onToggleDone}
                 onStartNewCard={startNewCard}
@@ -1588,6 +1608,7 @@ export default function App() {
             if (hit) openItem(hit.row);
           }}
           onStartPomo={startPomodoro}
+          onStopActiveTimerForCard={stopActiveTimerForCard}
           onAddManualTimelog={addManualTimelog}
           onEditTimelog={editTimelog}
           onOpenTimelogs={openTimelogs}

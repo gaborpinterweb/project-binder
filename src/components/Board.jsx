@@ -57,7 +57,6 @@ import {
   groupByDoneDay,
   isDone,
   pastel,
-  playTaskCompleteSound,
   taskKey,
   COMPLETED_VIEWS,
   folderAppLabel,
@@ -828,7 +827,6 @@ function ProjectBoard({
   activeTimerKey = null,
   onBumpCollapse,
   onSetCompletedView,
-  onSaveCard,
   onOpenCard,
   onToggleDone,
   onStartNewCard,
@@ -854,10 +852,8 @@ function ProjectBoard({
 
       if (hint.done) {
         if (isDone(row)) return;
-        row.doneAt = new Date().toISOString();
-        playTaskCompleteSound();
         onBumpCollapse();
-        await onSaveCard(row, folder, mod);
+        await onToggleDone(row, folder, mod, true);
         return;
       }
 
@@ -893,7 +889,7 @@ function ProjectBoard({
       mod,
       onApplyWorkspace,
       onBumpCollapse,
-      onSaveCard,
+      onToggleDone,
       keepNav,
     ]
   );
@@ -1175,7 +1171,6 @@ function MasterBoard({
   activeTimerKey = null,
   onBump,
   onSetCompletedView,
-  onSaveCard,
   onOpenCard,
   onToggleDone,
   onStartNewCard,
@@ -1208,10 +1203,8 @@ function MasterBoard({
 
       if (hint.done) {
         if (isDone(row)) return;
-        row.doneAt = new Date().toISOString();
-        playTaskCompleteSound();
         onBump();
-        await onSaveCard(row, loc.folder, loc.mod);
+        await onToggleDone(row, loc.folder, loc.mod, true);
         return;
       }
 
@@ -1248,7 +1241,7 @@ function MasterBoard({
       const res = await putCardOrder({ items });
       onApplyWorkspace(res);
     },
-    [boardEdit, tasks, locateRow, onBump, onSaveCard, onApplyWorkspace]
+    [boardEdit, tasks, locateRow, onBump, onToggleDone, onApplyWorkspace]
   );
 
   const { dragKey, dragHeight, dragPreview, previewElRef, dropHint, armDrag, consumeDragClick } =
@@ -2274,7 +2267,6 @@ export default function Board({
   onBump,
   onSetCompletedView,
   onSetBoardShow,
-  onSaveCard,
   onOpenCard,
   onToggleDone,
   onStartNewCard,
@@ -2342,7 +2334,6 @@ export default function Board({
           uiTick={uiTick}
           onBump={onBump}
           onSetCompletedView={onSetCompletedView}
-          onSaveCard={onSaveCard}
           onOpenCard={onOpenCard}
           onToggleDone={onToggleDone}
           onStartNewCard={onStartNewCard}
@@ -2434,7 +2425,6 @@ export default function Board({
         uiTick={uiTick}
         onBumpCollapse={onBump}
         onSetCompletedView={onSetCompletedView}
-        onSaveCard={onSaveCard}
         onOpenCard={onOpenCard}
         onToggleDone={onToggleDone}
         onStartNewCard={onStartNewCard}

@@ -278,6 +278,7 @@ export default function CardDialog({
   onDelete,
   onDuplicate,
   onStartPomo,
+  onStopActiveTimerForCard,
   onAddManualTimelog,
   onEditTimelog,
   onOpenTimelogs,
@@ -617,14 +618,22 @@ export default function CardDialog({
                   }
                   onChange={(e) => {
                     if (readonly) return;
-                    const doneAt = e.target.checked
-                      ? new Date().toISOString()
-                      : "";
-                    if (e.target.checked) playTaskCompleteSound();
+                    const checked = e.target.checked;
+                    const doneAt = checked ? new Date().toISOString() : "";
+                    if (checked) playTaskCompleteSound();
                     patch({ doneAt });
                     clearTimeout(persistTimer.current);
                     draftRef.current = { ...draftRef.current, doneAt };
-                    persist();
+                    const loc = curLocRef.current;
+                    persist().then(() => {
+                      if (checked && loc?.folder && loc?.mod) {
+                        onStopActiveTimerForCard?.(
+                          loc.folder,
+                          loc.mod,
+                          draftRef.current
+                        );
+                      }
+                    });
                   }}
                 />
               ) : null}

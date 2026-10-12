@@ -24,7 +24,7 @@ const AUTO_BACKUP_KEEP_DAYS = 3;
 
 const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
 const BMC_BTN =
-  "https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png";
+  "https://cdn.buymeacoffee.com/buttons/v2/default-black.png";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL = "https://gaborpinter.com";
 const LEARN_URL = "https://projectbinder.app/learn";
@@ -620,6 +620,16 @@ export default function SettingsDialog({
                       Gábor Pintér
                     </a>
                   </p>
+                  <div className="settings-bmc-wrap">
+                    <a
+                      className="settings-bmc"
+                      href={BMC_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img src={BMC_BTN} alt="Buy me a coffee" width={217} height={60} />
+                    </a>
+                  </div>
                 </div>
                 <div className="settings-about-credits">
                   <b>Credits</b>
@@ -650,16 +660,6 @@ export default function SettingsDialog({
                     </a>
                   </p>
                 </div>
-              </div>
-              <div className="settings-bmc-wrap">
-                <a
-                  className="settings-bmc"
-                  href={BMC_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <img src={BMC_BTN} alt="Buy me a coffee" width={217} height={60} />
-                </a>
               </div>
             </section>
           )}

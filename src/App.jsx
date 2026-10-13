@@ -1171,8 +1171,15 @@ export default function App() {
                 if (boardEdit) return;
                 discardCoverEdit();
                 const r = e.currentTarget.getBoundingClientRect();
+                // #menu min-width is 240px — keep it inside the viewport.
+                const menuW = 240;
+                const pad = 8;
+                const maxLeft = window.innerWidth - menuW - pad;
+                let left = r.left;
+                if (left > maxLeft) left = r.right - menuW;
+                left = Math.max(pad, Math.min(left, maxLeft));
                 setMenuPos({
-                  left: Math.min(r.left, window.innerWidth - 160),
+                  left,
                   top: r.bottom + 4,
                 });
                 setMenuOpen(true);

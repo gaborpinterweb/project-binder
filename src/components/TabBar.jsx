@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import { Icon, IC } from "../icons.jsx";
 import { COVER_TAB_ID, TYPES } from "../utils.js";
+
+const TAB_GAP = 6;
 
 function findTabEl(tabsEl, id) {
   if (!tabsEl || !id) return null;
@@ -313,6 +315,214 @@ function TabBtn({
   );
 }
 
+/** Width of a contiguous non-cover window [L..R], including leading gaps after Cover. */
+function windowWidth(tabWidths, L, R) {
+  let w = 0;
+  for (let i = L; i <= R; i++) w += TAB_GAP + tabWidths[i];
+  return w;
+}
+
+/**
+ * Cover stays pinned. When content overflows, pick a contiguous window of other tabs
+ * (preferring left, always including the active tab) and park the rest + Add in "...".
+ * Add never sits beside "..." — if overflow is needed, Add is menu-only.
+ */
+function fitTabs({
+  tabWidths,
+  addWidth,
+  overflowWidth,
+  avail,
+  activeIndex,
+  showAdd,
+}) {
+  const n = tabWidths.length;
+  if (n === 0) {
+    return { visible: [], hidden: [], showAdd: false, showOverflow: false };
+  }
+
+  const coverW = tabWidths[0] || 0;
+  const allAfter =
+    windowWidth(tabWidths, 1, n - 1) +
+    (showAdd ? TAB_GAP + addWidth : 0);
+  if (coverW + allAfter <= avail) {
+    return {
+      visible: Array.from({ length: n }, (_, i) => i),
+      hidden: [],
+      showAdd,
+      showOverflow: false,
+    };
+  }
+
+  // Reserve "..." ; Add goes to the menu unless it still fits after the window.
+  let budget = avail - coverW - TAB_GAP - overflowWidth;
+  if (budget < 0) budget = 0;
+
+  let bestL = 1;
+  let bestR = 0; // empty window
+  let bestCount = -1;
+
+  if (n === 1) {
+    // Only Cover — Add (if any) is in the overflow menu.
+    return {
+      visible: [0],
+      hidden: [],
+      showAdd: false,
+      showOverflow: true,
+    };
+  }
+
+  const must = activeIndex > 0 && activeIndex < n ? activeIndex : 0;
+
+  for (let L = 1; L < n; L++) {
+    for (let R = L; R < n; R++) {
+      if (must > 0 && (must < L || must > R)) continue;
+      // When Cover is active, only consider left-aligned prefixes.
+      if (must === 0 && L !== 1) continue;
+      const w = windowWidth(tabWidths, L, R);
+      if (w > budget) continue;
+      const count = R - L + 1;
+      if (count > bestCount || (count === bestCount && L < bestL)) {
+        bestCount = count;
+        bestL = L;
+        bestR = R;
+      }
+    }
+  }
+
+  // If nothing fits (very narrow), still force-show the active non-cover tab.
+  if (bestCount < 0 && must > 0) {
+    bestL = must;
+    bestR = must;
+  }
+
+  const visible = [0];
+  if (bestCount > 0) {
+    for (let i = bestL; i <= bestR; i++) visible.push(i);
+  }
+  const visibleSet = new Set(visible);
+  const hidden = [];
+  for (let i = 1; i < n; i++) {
+    if (!visibleSet.has(i)) hidden.push(i);
+  }
+
+  // When "..." is shown, Add always lives in that menu — never beside it.
+  return {
+    visible,
+    hidden,
+    showAdd: false,
+    showOverflow: true,
+  };
+}
+
+function TabsOverflowMenu({
+  c,
+  items,
+  showAdd,
+  addLocked,
+  onSelect,
+  onOpenAdd,
+}) {
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const place = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({
+      top: r.bottom + 4,
+      left: Math.min(r.left, window.innerWidth - 200),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onReposition = () => place();
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  return (
+    <div
+      className={"tab-overflow-wrap" + (open ? " open" : "")}
+      ref={wrapRef}
+    >
+      <button
+        type="button"
+        ref={btnRef}
+        className={"tab tab-overflow" + (open ? " open" : "")}
+        style={{ ["--c"]: c }}
+        title="More tabs"
+        aria-label="More tabs"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="ellipsis" size={16} />
+      </button>
+      {open && pos && (
+        <div
+          className="pop tab-overflow-pop"
+          role="menu"
+          style={{ top: pos.top, left: pos.left }}
+        >
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              disabled={item.locked}
+              className={item.active ? "on" : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                if (!item.locked) onSelect?.(item.index);
+              }}
+            >
+              {item.type && IC[item.type] ? (
+                <Icon name={item.type} size={14} />
+              ) : null}
+              {item.label}
+            </button>
+          ))}
+          {showAdd ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!!addLocked}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (addLocked) return;
+                setOpen(false);
+                onOpenAdd?.({ currentTarget: btnRef.current });
+              }}
+            >
+              <span className="tab-overflow-add" aria-hidden="true">
+                +
+              </span>
+              Add tab
+            </button>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TabBar({
   folder,
   mods,
@@ -335,7 +545,14 @@ export default function TabBar({
   onCoverDelete,
 }) {
   const tabsRef = useRef(null);
+  const measureRef = useRef(null);
   const swappingRef = useRef(false);
+  const [fit, setFit] = useState({
+    visible: null,
+    hidden: [],
+    showAdd: true,
+    showOverflow: false,
+  });
 
   const moveAnimated = (index, dir) => {
     if (swappingRef.current || archived || boardEdit) return;
@@ -353,6 +570,70 @@ export default function TabBar({
     }, 320);
   };
 
+  const recompute = useCallback(() => {
+    const tabsEl = tabsRef.current;
+    const measureEl = measureRef.current;
+    if (!tabsEl || !measureEl || !mods?.length) return;
+
+    const style = getComputedStyle(tabsEl);
+    const avail =
+      tabsEl.clientWidth -
+      (parseFloat(style.paddingLeft) || 0) -
+      (parseFloat(style.paddingRight) || 0);
+
+    const measureTabs = [
+      ...measureEl.querySelectorAll(":scope > .tab[data-tab-id]"),
+    ];
+    const tabWidths = mods.map((mod, i) => {
+      const id = mod[2]?.id || mod[1] + i;
+      const el = measureTabs.find((node) => node.dataset.tabId === id);
+      return el?.offsetWidth || 0;
+    });
+    const addEl = measureEl.querySelector(":scope > .tab.add");
+    const overflowEl = measureEl.querySelector(":scope > .tab.tab-overflow");
+    const addWidth = addEl?.offsetWidth || 0;
+    const overflowWidth = overflowEl?.offsetWidth || 0;
+
+    const next = fitTabs({
+      tabWidths,
+      addWidth,
+      overflowWidth,
+      avail,
+      activeIndex: m,
+      showAdd: !archived,
+    });
+    setFit((prev) => {
+      const sameVisible =
+        prev.visible &&
+        prev.visible.length === next.visible.length &&
+        prev.visible.every((v, i) => v === next.visible[i]);
+      const sameHidden =
+        prev.hidden.length === next.hidden.length &&
+        prev.hidden.every((v, i) => v === next.hidden[i]);
+      if (
+        sameVisible &&
+        sameHidden &&
+        prev.showAdd === next.showAdd &&
+        prev.showOverflow === next.showOverflow
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [mods, m, archived]);
+
+  useLayoutEffect(() => {
+    recompute();
+  }, [recompute, tabC, boardEdit, coverEdit]);
+
+  useEffect(() => {
+    const tabsEl = tabsRef.current;
+    if (!tabsEl || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => recompute());
+    ro.observe(tabsEl);
+    return () => ro.disconnect();
+  }, [recompute]);
+
   if (draftProject) {
     const c = draftProject.color || tabC;
     return (
@@ -366,6 +647,60 @@ export default function TabBar({
 
   if (!folder) return <div id="bar" style={{ display: "none" }} />;
 
+  const visibleSet =
+    fit.visible == null ? null : new Set(fit.visible);
+  const showOverflow = !!fit.showOverflow;
+  const showAddInBar = fit.visible == null ? !archived : !!fit.showAdd;
+  const overflowItems = (fit.hidden || []).map((i) => {
+    const mod = mods[i];
+    const active = i === m;
+    const locked = boardEdit && !active;
+    const id = mod[2]?.id || mod[1] + i;
+    return {
+      index: i,
+      id,
+      label: mod[1],
+      type: mod[0],
+      active,
+      locked,
+    };
+  });
+  const addInOverflow = showOverflow && !archived && !showAddInBar;
+
+  const renderTab = (mod, i) => {
+    const active = i === m;
+    const locked = boardEdit && !active;
+    const id = mod[2]?.id || mod[1] + i;
+    return (
+      <TabBtn
+        key={id}
+        label={mod[1]}
+        c={tabC}
+        on={active}
+        type={mod[0]}
+        id={id}
+        disabled={locked}
+        showMenu={!archived}
+        menuKind={mod[0] === "Cover" ? "cover" : "tab"}
+        menuVisible={active}
+        canLeft={i > 1}
+        canRight={i < mods.length - 1}
+        coverEditing={!!coverEdit}
+        onClick={() => {
+          if (locked) return;
+          onSelectTab(i);
+        }}
+        onMoveLeft={() => moveAnimated(i, -1)}
+        onMoveRight={() => moveAnimated(i, 1)}
+        onRename={() => onRenameTab?.(i)}
+        onDelete={() => onDeleteTab?.(i)}
+        onCoverEdit={onCoverEdit}
+        onCoverArchive={onCoverArchive}
+        onCoverDelete={onCoverDelete}
+      />
+    );
+  };
+
   return (
     <>
       <div
@@ -375,39 +710,20 @@ export default function TabBar({
       >
         <div id="tabs" ref={tabsRef}>
           {mods.map((mod, i) => {
-            const active = i === m;
-            const locked = boardEdit && !active;
-            const id = mod[2]?.id || mod[1] + i;
-            return (
-              <TabBtn
-                key={id}
-                label={mod[1]}
-                c={tabC}
-                on={active}
-                type={mod[0]}
-                id={id}
-                disabled={locked}
-                showMenu={!archived}
-                menuKind={mod[0] === "Cover" ? "cover" : "tab"}
-                menuVisible={active}
-                canLeft={i > 1}
-                canRight={i < mods.length - 1}
-                coverEditing={!!coverEdit}
-                onClick={() => {
-                  if (locked) return;
-                  onSelectTab(i);
-                }}
-                onMoveLeft={() => moveAnimated(i, -1)}
-                onMoveRight={() => moveAnimated(i, 1)}
-                onRename={() => onRenameTab?.(i)}
-                onDelete={() => onDeleteTab?.(i)}
-                onCoverEdit={onCoverEdit}
-                onCoverArchive={onCoverArchive}
-                onCoverDelete={onCoverDelete}
-              />
-            );
+            if (visibleSet && !visibleSet.has(i)) return null;
+            return renderTab(mod, i);
           })}
-          {!archived && (
+          {showOverflow ? (
+            <TabsOverflowMenu
+              c={tabC}
+              items={overflowItems}
+              showAdd={addInOverflow}
+              addLocked={!!boardEdit}
+              onSelect={(i) => onSelectTab(i)}
+              onOpenAdd={onOpenAddMenu}
+            />
+          ) : null}
+          {showAddInBar ? (
             <button
               type="button"
               className={"tab add" + (boardEdit ? " locked" : "")}
@@ -423,7 +739,38 @@ export default function TabBar({
             >
               +
             </button>
-          )}
+          ) : null}
+        </div>
+        <div className="tabs-measure" ref={measureRef} aria-hidden="true">
+          {mods.map((mod, i) => {
+            const id = mod[2]?.id || mod[1] + i;
+            return (
+              <TabBtn
+                key={id}
+                label={mod[1]}
+                c={tabC}
+                on={i === m}
+                type={mod[0]}
+                id={id}
+                showMenu={!archived}
+                menuKind={mod[0] === "Cover" ? "cover" : "tab"}
+                menuVisible={false}
+              />
+            );
+          })}
+          {!archived ? (
+            <button type="button" className="tab add" tabIndex={-1}>
+              +
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="tab tab-overflow"
+            style={{ ["--c"]: tabC }}
+            tabIndex={-1}
+          >
+            <Icon name="ellipsis" size={16} />
+          </button>
         </div>
       </div>
       <div

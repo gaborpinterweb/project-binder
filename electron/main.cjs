@@ -99,6 +99,8 @@ function createWindow(appUrl) {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 900,
+    minHeight: 600,
     icon: ICON_PATH,
     backgroundColor: "#1c1c1e",
     ...(IS_DARWIN

@@ -198,12 +198,10 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
           movedRef.current = true;
           const row = payload.row || payload;
           const folder = payload.folder;
-          const mod = payload.mod;
           const color =
             payload.color || folder?.color || PC[0];
-          const src =
-            payload.src ||
-            (folder && mod ? boardLabel(folder, mod) : "");
+          // payload.src / showTimeSpent come from the card (View settings).
+          const src = payload.src || "";
           setDragKey(key);
           setDragHeight(session.height);
           setDragPreview({
@@ -216,6 +214,8 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             timerActive: !!payload.timerActive,
             title: row.n || "Untitled",
             src,
+            showTimeSpent: !!payload.showTimeSpent,
+            spentSec: payload.spentSec || 0,
             x: ev.clientX - session.offsetX,
             y: ev.clientY - session.offsetY,
           });
@@ -299,6 +299,9 @@ function DragPreview({ preview, previewElRef }) {
         />
       </b>
       {preview.src ? <span className="src">{preview.src}</span> : null}
+      {preview.showTimeSpent ? (
+        <span className="card-spent">{formatSpent(preview.spentSec || 0)}</span>
+      ) : null}
     </div>,
     document.body
   );
@@ -390,6 +393,9 @@ function TaskCard({
           e,
           {
             ...(dragPayload || { row, folder, mod }),
+            src,
+            showTimeSpent,
+            spentSec,
             priority: !!row.priority,
             file: firstCardFile(row.files),
             timerActive,

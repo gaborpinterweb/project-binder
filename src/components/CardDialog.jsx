@@ -289,6 +289,7 @@ export default function CardDialog({
   showMasterColumn = true,
   showTimelogs = true,
   activeTimerKey = null,
+  logsRefreshKey = 0,
 }) {
   const [curLoc, setCurLoc] = useState(
     isDraft && loc
@@ -369,7 +370,7 @@ export default function CardDialog({
     return () => {
       cancelled = true;
     };
-  }, [isDraft, curLoc, draft.id]);
+  }, [isDraft, curLoc, draft.id, logsRefreshKey]);
 
   useEffect(() => {
     const esc = (e) => {

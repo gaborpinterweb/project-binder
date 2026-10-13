@@ -456,6 +456,7 @@ export default function App() {
       });
       const entry = data?.entry;
       if (entry?.id) {
+        setTimelogRefresh((n) => n + 1);
         const savedMsg = stoptimerDone
           ? `${title} · ${formatDuration(durationSec)} (max reached)`
           : `${title} · ${formatDuration(durationSec)}`;
@@ -474,7 +475,6 @@ export default function App() {
       }
     } catch {}
     pomoFinishing.current = false;
-    if (gRef.current === "Timelogs") setTimelogRefresh((n) => n + 1);
   }
 
   async function stopPomodoro() {
@@ -1557,6 +1557,7 @@ export default function App() {
               ? taskKey(activePomo.project, activePomo.board, activePomo.card)
               : null
           }
+          logsRefreshKey={timelogRefresh}
           onClose={(result) => {
             if (result?.draftRemember) {
               setCardDraft({
@@ -1651,7 +1652,7 @@ export default function App() {
             }
             setTimelogDialog(null);
             settleTimelogDialog();
-            if (gRef.current === "Timelogs") setTimelogRefresh((n) => n + 1);
+            setTimelogRefresh((n) => n + 1);
           }}
           onClose={() => {
             setTimelogDialog(null);

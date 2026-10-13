@@ -456,9 +456,13 @@ function NoteShareMenu({ disabled, body }) {
     close();
     try {
       const label = await copyNoteAs(body, format);
-      showSnackbar({ message: `Copied as ${label}`, durationMs: 2500 });
+      showSnackbar({ icon: "check", message: `Copied as ${label}`, durationMs: 2500 });
     } catch {
-      showSnackbar({ message: "Could not copy to clipboard", durationMs: 3000 });
+      showSnackbar({
+        icon: "alert",
+        message: "Could not copy to clipboard",
+        durationMs: 3000,
+      });
     }
   };
 

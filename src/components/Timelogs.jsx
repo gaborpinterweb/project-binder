@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { deleteTimelogApi, fetchTimelogs, postTimelog, putTimelog } from "../api.js";
 import {
+  DEFAULT_TIMELOG_GROUP_BY,
   GACC,
   TIMELOG_GROUP_BYS,
   TIMELOG_PERIODS,
@@ -11,9 +12,11 @@ import {
   formatDuration,
   groupTimelogsByPeriodAndProject,
   liveCardTitle,
+  loadTimelogView,
   matchesTimelogFilter,
   matchesTimelogPeriod,
   pastel,
+  saveTimelogView,
   taskKey,
 } from "../utils.js";
 import { Icon } from "../icons.jsx";
@@ -182,9 +185,20 @@ function ExportDropdown({ entries, period, folders = [], disabled }) {
   );
 }
 
+function boardsButtonLabel(boards, boardOff) {
+  if (!boards.length) return "Boards";
+  const selected = boards.reduce(
+    (n, b) => n + (boardOff.has(b.key) ? 0 : 1),
+    0
+  );
+  if (selected === boards.length) return "Boards";
+  return `${selected} boards`;
+}
+
 function BoardFilterDropdown({ boards, boardOff, onToggle }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const label = boardsButtonLabel(boards, boardOff);
 
   useEffect(() => {
     if (!open) return;
@@ -203,14 +217,14 @@ function BoardFilterDropdown({ boards, boardOff, onToggle }) {
       <button
         type="button"
         className="mod-act board-filter-btn"
-        aria-label="Task boards"
-        title="Task boards"
+        aria-label={label}
+        title={label}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
         <Icon name="board" size={18} />
-        <span className="mod-act-lab">Boards</span>
+        <span className="mod-act-lab">{label}</span>
       </button>
       {open && (
         <div className="pop" role="listbox" aria-multiselectable="true">
@@ -376,11 +390,26 @@ export default function Timelogs({
   refreshKey,
 }) {
   const [entries, setEntries] = useState(null);
-  const [period, setPeriod] = useState(() =>
-    timelogFilter ? "All time" : "This week"
-  );
-  const [groupBy, setGroupBy] = useState("Day");
-  const [boardOff, setBoardOff] = useState(() => new Set());
+  const [view, setView] = useState(() => {
+    const saved = loadTimelogView();
+    if (timelogFilter) {
+      return {
+        period: "All time",
+        groupBy: DEFAULT_TIMELOG_GROUP_BY,
+        boardOff: new Set(),
+        savedPeriod: saved.period,
+        savedGroupBy: saved.groupBy,
+      };
+    }
+    return {
+      period: saved.period,
+      groupBy: saved.groupBy,
+      boardOff: new Set(saved.boardOff),
+      savedPeriod: saved.period,
+      savedGroupBy: saved.groupBy,
+    };
+  });
+  const { period, groupBy, boardOff } = view;
   const [busyId, setBusyId] = useState(null);
   const [dialog, setDialog] = useState(null); // null | { mode: "add" } | { mode: "edit", entry }
 
@@ -394,9 +423,68 @@ export default function Timelogs({
     [folders]
   );
 
+  const commitView = (patch) => {
+    setView((prev) => {
+      const next = {
+        period: patch.period !== undefined ? patch.period : prev.period,
+        groupBy: patch.groupBy !== undefined ? patch.groupBy : prev.groupBy,
+        boardOff:
+          patch.boardOff !== undefined ? patch.boardOff : prev.boardOff,
+        savedPeriod:
+          patch.period !== undefined ? patch.period : prev.savedPeriod,
+        savedGroupBy:
+          patch.groupBy !== undefined ? patch.groupBy : prev.savedGroupBy,
+      };
+      saveTimelogView({
+        period: next.savedPeriod,
+        groupBy: next.savedGroupBy,
+        boardOff: [...next.boardOff],
+      });
+      return next;
+    });
+  };
+
+  const changePeriod = (next) => commitView({ period: next });
+  const changeGroupBy = (next) => commitView({ groupBy: next });
+
+  // Identity only — title refreshes must not re-apply drill-down defaults.
+  const filterKey = timelogFilter
+    ? `${timelogFilter.project}/${timelogFilter.board}/${timelogFilter.card}`
+    : null;
+
   useEffect(() => {
-    if (timelogFilter) setPeriod("All time");
-  }, [timelogFilter]);
+    if (filterKey) {
+      // Card drill-down defaults; period/group are session-only, boards stick.
+      setView((prev) => {
+        const next = {
+          ...prev,
+          period: "All time",
+          groupBy: DEFAULT_TIMELOG_GROUP_BY,
+          boardOff: new Set(),
+        };
+        saveTimelogView({
+          period: next.savedPeriod,
+          groupBy: next.savedGroupBy,
+          boardOff: [],
+        });
+        return next;
+      });
+      return;
+    }
+    setView((prev) => {
+      if (
+        prev.period === prev.savedPeriod &&
+        prev.groupBy === prev.savedGroupBy
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        period: prev.savedPeriod,
+        groupBy: prev.savedGroupBy,
+      };
+    });
+  }, [filterKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -443,12 +531,10 @@ export default function Timelogs({
   );
 
   const toggleBoard = (key) => {
-    setBoardOff((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    const next = new Set(boardOff);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    commitView({ boardOff: next });
   };
 
   const openAddDialog = () => {
@@ -540,30 +626,30 @@ export default function Timelogs({
         <Dropdown
           className="mod-view-dd"
           buttonClassName="mod-act"
-          ariaLabel="Group by"
-          title="Group by"
+          ariaLabel={`Group by ${groupBy}`}
+          title={`Group by ${groupBy}`}
           align="right"
           caret={false}
           value={groupBy}
           options={TIMELOG_GROUP_BYS}
-          onChange={setGroupBy}
+          onChange={changeGroupBy}
         >
           <Icon name="list" size={18} />
-          <span className="mod-act-lab">Group</span>
+          <span className="mod-act-lab">{groupBy}</span>
         </Dropdown>
         <Dropdown
           className="mod-view-dd"
           buttonClassName="mod-act"
-          ariaLabel="Timelog period"
-          title="Timelog period"
+          ariaLabel={period}
+          title={period}
           align="right"
           caret={false}
           value={period}
           options={TIMELOG_PERIODS}
-          onChange={setPeriod}
+          onChange={changePeriod}
         >
           <Icon name="Calendar" size={18} />
-          <span className="mod-act-lab">Period</span>
+          <span className="mod-act-lab">{period}</span>
         </Dropdown>
         <ExportDropdown
           entries={shown || []}

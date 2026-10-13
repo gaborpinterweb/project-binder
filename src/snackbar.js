@@ -12,6 +12,7 @@ export function showSnackbar({
   durationMs = 4000,
   action = null,
   persist = false,
+  icon = "bell",
 } = {}) {
   if (!message || !setSnackbarState) return;
   window.clearTimeout(hideTimer);
@@ -24,6 +25,7 @@ export function showSnackbar({
     message: String(message),
     actionLabel,
     onAction,
+    icon: icon ? String(icon) : "bell",
   });
   if (persist) return;
   const ms = Math.max(1000, Number(durationMs) || 4000);

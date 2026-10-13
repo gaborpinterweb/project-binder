@@ -27,6 +27,7 @@ export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
 export const BOARD_SHOW_KEY = `${STORAGE_PREFIX}boardShow`;
 const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
+const TIMELOG_VIEW_KEY = `${STORAGE_PREFIX}timelogView`;
 const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 const COUNTDOWN_DURATION_KEY = `${STORAGE_PREFIX}countdownDurationMin`;
 const STOPTIMER_MAX_KEY = `${STORAGE_PREFIX}stoptimerMaxMin`;
@@ -590,6 +591,7 @@ function formatTimelogMonth(iso) {
 }
 
 export const TIMELOG_GROUP_BYS = ["None", "Day", "Week", "Month"];
+export const DEFAULT_TIMELOG_GROUP_BY = "Day";
 
 function timelogPeriodBucket(stamp, groupBy) {
   if (groupBy === "None") {
@@ -660,6 +662,38 @@ export const TIMELOG_PERIODS = [
   "Last year",
   "All time",
 ];
+export const DEFAULT_TIMELOG_PERIOD = "This week";
+
+export function loadTimelogView() {
+  const stored = readStorageJson(TIMELOG_VIEW_KEY, null);
+  const period =
+    stored && TIMELOG_PERIODS.includes(stored.period)
+      ? stored.period
+      : DEFAULT_TIMELOG_PERIOD;
+  const groupBy =
+    stored && TIMELOG_GROUP_BYS.includes(stored.groupBy)
+      ? stored.groupBy
+      : DEFAULT_TIMELOG_GROUP_BY;
+  const boardOff = Array.isArray(stored?.boardOff)
+    ? stored.boardOff.filter((k) => typeof k === "string" && k)
+    : [];
+  return { period, groupBy, boardOff };
+}
+
+export function saveTimelogView(view) {
+  const period = TIMELOG_PERIODS.includes(view?.period)
+    ? view.period
+    : DEFAULT_TIMELOG_PERIOD;
+  const groupBy = TIMELOG_GROUP_BYS.includes(view?.groupBy)
+    ? view.groupBy
+    : DEFAULT_TIMELOG_GROUP_BY;
+  const boardOff = Array.isArray(view?.boardOff)
+    ? [...new Set(view.boardOff.filter((k) => typeof k === "string" && k))]
+    : [];
+  const next = { period, groupBy, boardOff };
+  writeStorageJson(TIMELOG_VIEW_KEY, next);
+  return next;
+}
 
 function startOfLocalDay(d) {
   const x = new Date(d);

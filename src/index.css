@@ -1314,14 +1314,15 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .dlg .db-check.prop{justify-content:start}
 .dlg .prop-dd .lab.db-chip-row{display:inline-flex;flex-wrap:wrap;gap:4px}
 .gcard{cursor:pointer}
-.snackbar-host{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:50;width:min(420px,calc(100% - 24px));pointer-events:none}
-.snackbar{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;border-radius:calc(var(--radius) - 2px);background:var(--ink);color:var(--bar);box-shadow:0 10px 28px #0005;pointer-events:auto;animation:snackbar-in .22s ease}
+.snackbar-host{position:fixed;left:calc(var(--aside-w) + 16px);right:22px;bottom:56px;z-index:9;display:flex;justify-content:center;pointer-events:none}
+.snackbar{display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;padding:10px 10px 10px 16px;border-radius:999px;background:color-mix(in srgb,var(--mute) 15%,transparent);color:var(--ink);box-shadow:0 4px 18px #00000014,inset 0 0 0 1px color-mix(in srgb,#fff 45%,transparent);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);pointer-events:auto;animation:snackbar-in .22s ease}
+.snackbar-icon{flex:none;display:grid;place-items:center;width:18px;height:18px;color:var(--mute)}
 .snackbar-msg{flex:1;min-width:0;margin:0;font-size:13px;line-height:1.4;font-weight:500}
-.snackbar-action{flex:none;margin:0;padding:6px 10px;border:0;border-radius:calc(var(--radius) - 6px);background:color-mix(in srgb,#fff 14%,transparent);color:var(--bar);font:inherit;font-size:13px;font-weight:650;cursor:pointer}
-.snackbar-action:hover{background:color-mix(in srgb,#fff 22%,transparent)}
-.snackbar-action:focus-visible{outline:2px solid color-mix(in srgb,var(--bar) 70%,transparent);outline-offset:1px}
-.snackbar-dismiss{flex:none;width:28px;height:28px;margin:0 -4px 0 0;display:grid;place-items:center;border-radius:calc(var(--radius) - 6px);font-size:18px;line-height:1;color:color-mix(in srgb,var(--bar) 72%,transparent)}
-.snackbar-dismiss:hover{color:var(--bar);background:color-mix(in srgb,#fff 12%,transparent)}
-.snackbar-dismiss:focus-visible{outline:2px solid color-mix(in srgb,var(--bar) 70%,transparent);outline-offset:1px}
+.snackbar-action{flex:none;margin:0 0 0 28px;padding:5px 12px;border:0;border-radius:999px;background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.snackbar-action:hover{background:color-mix(in srgb,var(--ink) 16%,transparent)}
+.snackbar-action:focus-visible{outline:2px solid color-mix(in srgb,var(--ink) 40%,transparent);outline-offset:1px}
+.snackbar-dismiss{flex:none;width:28px;height:28px;margin:0;display:grid;place-items:center;border-radius:999px;font-size:18px;line-height:1;color:var(--mute)}
+.snackbar-dismiss:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.snackbar-dismiss:focus-visible{outline:2px solid color-mix(in srgb,var(--ink) 40%,transparent);outline-offset:1px}
 @keyframes snackbar-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:600px){aside{width:130px}}
+@media(max-width:600px){aside{width:130px}.snackbar-host{left:calc(130px + 12px);right:18px}}

@@ -16,6 +16,7 @@ import {
   PC,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
+import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 
 const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
@@ -658,53 +659,89 @@ export default function SettingsDialog({
           )}
 
           {import.meta.env.DEV && tab === "developer" && (
-            <section className="settings-section">
-              <h3 className="settings-heading">Workspace resets</h3>
-              <div className="settings-rows">
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Reset to seed workspace</b>
-                    <span>Replace all data with seedWorkspace.json</span>
+            <>
+              <section className="settings-section">
+                <h3 className="settings-heading">Feedback</h3>
+                <div className="settings-rows">
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Preview snackbar</b>
+                      <span>Bottom-center toast with an action button</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="settings-row-btn"
+                      onClick={() => {
+                        showSnackbar({
+                          icon: "stopwatch",
+                          message:
+                            "Timer stopped and saved — task completed · Deep work: Project Binder snackbar review · 25:00",
+                          persist: true,
+                          action: {
+                            label: "Add note",
+                            onClick: () => {
+                              showSnackbar({
+                                message: "CTA clicked",
+                                durationMs: 2500,
+                              });
+                            },
+                          },
+                        });
+                      }}
+                    >
+                      Show
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="settings-row-btn settings-row-btn-danger"
-                    disabled={!!resetting}
-                    onClick={handleResetSeed}
-                  >
-                    {resetting === "seed" ? "Resetting…" : "Reset"}
-                  </button>
                 </div>
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Reset to empty workspace</b>
-                    <span>Clear all projects, tasks, and timelogs</span>
+              </section>
+              <section className="settings-section">
+                <h3 className="settings-heading">Workspace resets</h3>
+                <div className="settings-rows">
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Reset to seed workspace</b>
+                      <span>Replace all data with seedWorkspace.json</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="settings-row-btn settings-row-btn-danger"
+                      disabled={!!resetting}
+                      onClick={handleResetSeed}
+                    >
+                      {resetting === "seed" ? "Resetting…" : "Reset"}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="settings-row-btn settings-row-btn-danger"
-                    disabled={!!resetting}
-                    onClick={handleResetEmpty}
-                  >
-                    {resetting === "empty" ? "Resetting…" : "Reset"}
-                  </button>
-                </div>
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Reset to first launch</b>
-                    <span>Restore seed data, clear UI state, and reload</span>
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Reset to empty workspace</b>
+                      <span>Clear all projects, tasks, and timelogs</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="settings-row-btn settings-row-btn-danger"
+                      disabled={!!resetting}
+                      onClick={handleResetEmpty}
+                    >
+                      {resetting === "empty" ? "Resetting…" : "Reset"}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="settings-row-btn settings-row-btn-danger"
-                    disabled={!!resetting}
-                    onClick={handleResetFirstLaunch}
-                  >
-                    {resetting === "first-launch" ? "Resetting…" : "Reset"}
-                  </button>
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Reset to first launch</b>
+                      <span>Restore seed data, clear UI state, and reload</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="settings-row-btn settings-row-btn-danger"
+                      disabled={!!resetting}
+                      onClick={handleResetFirstLaunch}
+                    >
+                      {resetting === "first-launch" ? "Resetting…" : "Reset"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            </>
           )}
         </div>
       </div>

@@ -417,6 +417,7 @@ export default function App() {
     savePomo(null);
     if (elapsed < MIN_TIMELOG_SEC) {
       showSnackbar({
+        icon: "stopwatch",
         message: fromTaskComplete
           ? "Timer stopped — under 1 minute, not saved (task completed)."
           : "Timers under 1 minute aren't saved to timelogs.",
@@ -459,6 +460,7 @@ export default function App() {
           ? `${title} · ${formatDuration(durationSec)} (max reached)`
           : `${title} · ${formatDuration(durationSec)}`;
         showSnackbar({
+          icon: "stopwatch",
           message: fromTaskComplete
             ? `Timer stopped and saved — task completed · ${formatDuration(durationSec)}`
             : savedMsg,

@@ -17,6 +17,8 @@ export function askConfirm({
   cancelLabel = "Cancel",
   altLabel = null,
   danger = false,
+  helpUrl = null,
+  helpLabel = "Learn more",
 } = {}) {
   return new Promise((resolve) => {
     if (resolveConfirm) {
@@ -29,6 +31,13 @@ export function askConfirm({
       resolveConfirm = null;
       return;
     }
+    const help =
+      helpUrl && String(helpUrl).trim()
+        ? {
+            url: String(helpUrl).trim(),
+            label: helpLabel ? String(helpLabel) : "Learn more",
+          }
+        : null;
     setConfirmState({
       title,
       message,
@@ -38,6 +47,7 @@ export function askConfirm({
       altLabel: altLabel ? String(altLabel) : null,
       danger: !!danger,
       stackActions: !!altLabel,
+      help,
     });
   });
 }

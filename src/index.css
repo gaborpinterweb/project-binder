@@ -891,6 +891,9 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .prompt-title{margin:0;font-size:16px;font-weight:650;color:var(--ink)}
 .prompt-msg{margin:0;font-size:13px;color:var(--mute);line-height:1.4}
 .prompt-msg-pre{white-space:pre-wrap}
+.prompt-help{margin:0}
+.prompt-help-link{font-size:13px;font-weight:600;color:var(--acc);text-decoration:underline dotted;text-underline-offset:2px}
+.prompt-help-link:hover{text-decoration-style:solid}
 .prompt-form{display:flex;flex-direction:column;gap:14px;min-width:0}
 .prompt-input{font:inherit;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);padding:10px 12px;width:100%;box-sizing:border-box}
 .prompt-input:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 45%,var(--line));background:#fff}

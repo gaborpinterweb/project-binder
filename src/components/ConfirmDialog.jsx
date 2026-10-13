@@ -57,6 +57,18 @@ export default function ConfirmDialog() {
               {req.message}
             </p>
           ) : null}
+          {req.help?.url ? (
+            <p className="prompt-help">
+              <a
+                className="prompt-help-link"
+                href={req.help.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {req.help.label || "Learn more"}
+              </a>
+            </p>
+          ) : null}
           <div
             className={
               "actions prompt-actions" + (req.stackActions ? " prompt-actions-stack" : "")

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { pickBackupFolder, saveBackupSettings } from "../api.js";
+import { askBackupFolderFailed } from "../backupFolderDialog.js";
 import { Icon } from "../icons.jsx";
 import { APP_NAME } from "../utils.js";
 
@@ -62,12 +63,18 @@ export default function LaunchDialog({ onStart }) {
     if (busy) return;
     setBusy(true);
     try {
-      const picked = await pickBackupFolder();
-      if (picked.cancelled || !picked.path) return;
-      await saveBackupSettings({ enabled: true, folderPath: picked.path });
-      goNext();
-    } catch (e) {
-      alert(e.message || "Could not choose folder.");
+      for (;;) {
+        const picked = await pickBackupFolder();
+        if (picked.cancelled || !picked.path) return;
+        try {
+          await saveBackupSettings({ enabled: true, folderPath: picked.path });
+          goNext();
+          return;
+        } catch {
+          const retry = await askBackupFolderFailed();
+          if (!retry) return;
+        }
+      }
     } finally {
       setBusy(false);
     }

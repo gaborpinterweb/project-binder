@@ -16,6 +16,7 @@ import {
   PC,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
+import { askBackupFolderFailed } from "../backupFolderDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 
@@ -165,8 +166,9 @@ export default function SettingsDialog({
     try {
       const data = await saveBackupSettings(patch);
       applyBackupState(data);
+      return { ok: true, data };
     } catch (e) {
-      alert(e.message || "Could not save backup settings.");
+      return { ok: false, error: e.message || "Could not save backup settings." };
     } finally {
       setBackupBusy(null);
     }
@@ -181,16 +183,24 @@ export default function SettingsDialog({
   };
 
   const handleBrowseFolder = async () => {
-    setBackupBusy("folder");
-    try {
-      const picked = await pickBackupFolder();
-      if (picked.cancelled || !picked.path) return;
-      const data = await saveBackupSettings({ enabled: true, folderPath: picked.path });
-      applyBackupState(data);
-    } catch (e) {
-      alert(e.message || "Could not choose folder.");
-    } finally {
-      setBackupBusy(null);
+    for (;;) {
+      setBackupBusy("folder");
+      try {
+        const picked = await pickBackupFolder();
+        if (picked.cancelled || !picked.path) return false;
+        const data = await saveBackupSettings({
+          enabled: true,
+          folderPath: picked.path,
+        });
+        applyBackupState(data);
+        return true;
+      } catch {
+        setBackupBusy(null);
+        const retry = await askBackupFolderFailed();
+        if (!retry) return false;
+      } finally {
+        setBackupBusy(null);
+      }
     }
   };
 
@@ -199,7 +209,17 @@ export default function SettingsDialog({
       await handleBrowseFolder();
       return;
     }
-    await persistBackup({ enabled: checked, folderPath: backup.folderPath });
+    const result = await persistBackup({
+      enabled: checked,
+      folderPath: backup.folderPath,
+    });
+    if (result.ok) return;
+    if (checked) {
+      const retry = await askBackupFolderFailed();
+      if (retry) await handleBrowseFolder();
+      return;
+    }
+    alert(result.error);
   };
 
   const handleBackupNow = async () => {
@@ -687,6 +707,21 @@ export default function SettingsDialog({
                             },
                           },
                         });
+                      }}
+                    >
+                      Show
+                    </button>
+                  </div>
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Preview backup folder error</b>
+                      <span>Dialog shown when a backup folder fails the write check</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="settings-row-btn"
+                      onClick={() => {
+                        void askBackupFolderFailed();
                       }}
                     >
                       Show

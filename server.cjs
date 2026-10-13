@@ -2748,6 +2748,38 @@ function pruneDayBackups(folderPath, keep = AUTO_BACKUP_KEEP_DAYS) {
   return removed;
 }
 
+function backupFolderProbeError(err) {
+  const code = err && err.code;
+  if (code === "EACCES" || code === "EPERM") return "backup folder is not writable";
+  if (code === "EROFS") return "backup folder is on a read-only volume";
+  if (code === "ENOSPC") return "not enough free space in backup folder";
+  if (code === "ENOENT") return "backup folder does not exist";
+  return "backup folder write check failed";
+}
+
+/** Real write/read/unlink — access(W_OK) alone misses cloud / mount / ACL cases. */
+function probeBackupFolderWritable(dir) {
+  const probePath = path.join(
+    dir,
+    `.project-binder-write-test-${process.pid}-${Date.now()}`
+  );
+  const payload = "ok\n";
+  try {
+    fs.writeFileSync(probePath, payload, { flag: "wx" });
+    const got = fs.readFileSync(probePath, "utf8");
+    if (got !== payload) return { ok: false, error: "backup folder write check failed" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: backupFolderProbeError(e) };
+  } finally {
+    try {
+      fs.unlinkSync(probePath);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 function validateBackupFolder(folderPath) {
   const dir = String(folderPath || "").trim();
   if (!dir) return { ok: false, error: "backup folder not set" };
@@ -2760,11 +2792,8 @@ function validateBackupFolder(folderPath) {
     return { ok: false, error: "cannot access backup folder" };
   }
   if (!st.isDirectory()) return { ok: false, error: "backup path is not a folder" };
-  try {
-    fs.accessSync(dir, fs.constants.W_OK);
-  } catch {
-    return { ok: false, error: "backup folder is not writable" };
-  }
+  const probe = probeBackupFolderWritable(dir);
+  if (!probe.ok) return probe;
   return { ok: true, dir };
 }
 

@@ -54,9 +54,11 @@ import {
   confirmDeleteColumn,
   formatSpent,
   getBoardShow,
+  getBoardSort,
   groupByDoneDay,
   isDone,
   pastel,
+  sortBoardRows,
   taskKey,
   COMPLETED_VIEWS,
   folderAppLabel,
@@ -64,9 +66,27 @@ import {
   loadDbViewsSidebar,
   saveDbViewsSidebar,
 } from "../utils.js";
+import { showSnackbar } from "../snackbar.js";
 import CardTitleIcons, { firstCardFile } from "./CardTitleIcons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import { TimelogContextMenu } from "./TimelogDropdown.jsx";
+
+const BOARD_SORT_OPTIONS_BASE = [
+  { value: "custom", label: "Custom", icon: "grip" },
+  { value: "impact", label: "By impact", icon: "exclamation" },
+  { value: "difficulty", label: "By difficulty", icon: "zap" },
+  {
+    value: "weight",
+    label: "By priority (easy & impactful)",
+    icon: "chevronsUp",
+  },
+];
+
+const BOARD_SORT_PROJECT_OPTION = {
+  value: "project",
+  label: "By project",
+  icon: "folders",
+};
 
 const DRAG_THRESHOLD_PX = 6;
 
@@ -209,7 +229,8 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             height: session.height,
             color,
             done: isDone(row),
-            priority: !!payload.priority || !!row.priority,
+            impact: payload.impact || row.impact || "",
+            difficulty: payload.difficulty || row.difficulty || "",
             file: payload.file || firstCardFile(row.files),
             timerActive: !!payload.timerActive,
             title: row.n || "Untitled",
@@ -293,7 +314,8 @@ function DragPreview({ preview, previewElRef }) {
         <span className="card-check drag-preview-check" aria-hidden="true" />
         <span className="card-name">{preview.title}</span>
         <CardTitleIcons
-          priority={!!preview.priority}
+          impact={preview.impact}
+          difficulty={preview.difficulty}
           file={preview.file}
           timerActive={!!preview.timerActive}
         />
@@ -396,7 +418,8 @@ function TaskCard({
             src,
             showTimeSpent,
             spentSec,
-            priority: !!row.priority,
+            impact: row.impact || "",
+            difficulty: row.difficulty || "",
             file: firstCardFile(row.files),
             timerActive,
           },
@@ -419,7 +442,8 @@ function TaskCard({
         />
         <span className="card-name">{row.n || "Untitled"}</span>
         <CardTitleIcons
-          priority={!!row.priority}
+          impact={row.impact}
+          difficulty={row.difficulty}
           files={row.files}
           timerActive={timerActive}
         />
@@ -570,6 +594,64 @@ function CompletedViewBtn({
           <span className="mod-act-lab">{triggerLabel}</span>
         </>
       ) : undefined}
+    </Dropdown>
+  );
+}
+
+function boardSortOptions(allowProject) {
+  if (!allowProject) return BOARD_SORT_OPTIONS_BASE;
+  return [
+    BOARD_SORT_OPTIONS_BASE[0],
+    BOARD_SORT_PROJECT_OPTION,
+    ...BOARD_SORT_OPTIONS_BASE.slice(1),
+  ];
+}
+
+function explainNonCustomSort(sortMode) {
+  if (sortMode === "project") return "sorted by project";
+  if (sortMode === "impact") return "sorted by impact";
+  if (sortMode === "difficulty") return "sorted by difficulty";
+  if (sortMode === "weight") return "sorted by priority";
+  return "using automatic sorting";
+}
+
+function showCustomSortSnackbar(scope, sortMode, onSetBoardSort) {
+  showSnackbar({
+    icon: "sort",
+    message: `Cards can't be reordered while ${explainNonCustomSort(sortMode)}.`,
+    durationMs: 7000,
+    action: {
+      label: "Switch to custom sorting",
+      onClick: () => onSetBoardSort?.(scope, "custom"),
+    },
+  });
+}
+
+function BoardSortBtn({
+  scope,
+  boardSortByScope,
+  onChange,
+  allowProject = false,
+  align = "right",
+}) {
+  const sortMode = getBoardSort(scope, boardSortByScope, { allowProject });
+  return (
+    <Dropdown
+      className="mod-view-dd mod-sort-dd"
+      buttonClassName="mod-act"
+      ariaLabel="Sort options"
+      title="Sort options"
+      align={align}
+      caret={false}
+      value={sortMode}
+      onChange={(next) => {
+        if (next === sortMode) return;
+        onChange(scope, next);
+      }}
+      options={boardSortOptions(allowProject)}
+    >
+      <Icon name="sort" size={18} />
+      <span className="mod-act-lab">Sort</span>
     </Dropdown>
   );
 }
@@ -829,10 +911,12 @@ function ProjectBoard({
   colCollapsed,
   completedViewByScope,
   boardShowByScope,
+  boardSortByScope,
   uiTick,
   activeTimerKey = null,
   onBumpCollapse,
   onSetCompletedView,
+  onSetBoardSort,
   onOpenCard,
   onToggleDone,
   onStartNewCard,
@@ -848,6 +932,7 @@ function ProjectBoard({
   const scope = boardKey(folder, mod);
   const mode = getCompletedView(scope, completedViewByScope);
   const show = getBoardShow(scope, boardShowByScope);
+  const sortMode = getBoardSort(scope, boardSortByScope, { allowProject: false });
   const spentByKey = useCardSpentByKey(show.timeSpent, uiTick);
 
   const resolveDrop = useCallback(
@@ -866,12 +951,27 @@ function ProjectBoard({
       const targetCol = hint.column;
       if (!targetCol) return;
 
+      const sameCol = row.s === targetCol && !isDone(row);
+      if (sortMode !== "custom") {
+        if (sameCol) {
+          showCustomSortSnackbar(scope, sortMode, onSetBoardSort);
+          return;
+        }
+        row.s = targetCol;
+        row.doneAt = "";
+        onBumpCollapse();
+        const res = await putCardOrder({
+          items: [orderPayload(row, folder, mod, row.ord)],
+        });
+        onApplyWorkspace(res, keepNav(folder.id, mod[2].id));
+        return;
+      }
+
       const openInTarget = byOrd(
         (data.rows || []).filter((r) => r.s === targetCol && !isDone(r))
       );
       const without = openInTarget.filter((r) => r !== row);
       const index = Math.max(0, Math.min(hint.index ?? without.length, without.length));
-      const sameCol = row.s === targetCol && !isDone(row);
       if (sameCol) {
         const oldIndex = openInTarget.indexOf(row);
         if (oldIndex === index) return;
@@ -895,8 +995,11 @@ function ProjectBoard({
       mod,
       onApplyWorkspace,
       onBumpCollapse,
+      onSetBoardSort,
       onToggleDone,
       keepNav,
+      scope,
+      sortMode,
     ]
   );
 
@@ -1060,7 +1163,7 @@ function ProjectBoard({
         const split = columnRows(colRows, mode);
         const key = colCollapseKey(scope, s);
         const collapsed = !boardEdit && colCollapsed.has(key);
-        const openItems = split.open.map((r) => ({
+        const openItems = sortBoardRows(split.open, sortMode).map((r) => ({
           key: r.id || r.n,
           dragKey: cardDragKey(r, folder, mod),
           row: r,
@@ -1173,10 +1276,12 @@ function MasterBoard({
   colCollapsed,
   completedViewByScope,
   boardShowByScope,
+  boardSortByScope,
   uiTick,
   activeTimerKey = null,
   onBump,
   onSetCompletedView,
+  onSetBoardSort,
   onOpenCard,
   onToggleDone,
   onStartNewCard,
@@ -1194,9 +1299,17 @@ function MasterBoard({
   );
   const mode = getCompletedView("master", completedViewByScope);
   const show = getBoardShow("master", boardShowByScope);
+  const sortMode = getBoardSort("master", boardSortByScope, { allowProject: true });
   const spentByKey = useCardSpentByKey(show.timeSpent, uiTick);
   const cardSrc = (t) =>
     show.projectName ? boardColumnLabel(t.folder, t.mod, t.row.s) : null;
+  const projectIndexOf = useCallback(
+    (row) => {
+      const t = tasks.find((x) => x.row === row);
+      return t?.fi ?? 0;
+    },
+    [tasks]
+  );
 
   const resolveDrop = useCallback(
     async (payload, hint) => {
@@ -1217,6 +1330,22 @@ function MasterBoard({
       const targetCol = hint.column;
       if (!targetCol) return;
 
+      const sameCol = row.ms === targetCol && !isDone(row);
+      if (sortMode !== "custom") {
+        if (sameCol) {
+          showCustomSortSnackbar("master", sortMode, onSetBoardSort);
+          return;
+        }
+        row.ms = targetCol;
+        row.doneAt = "";
+        onBump();
+        const res = await putCardOrder({
+          items: [orderPayload(row, loc.folder, loc.mod, row.ord)],
+        });
+        onApplyWorkspace(res);
+        return;
+      }
+
       const openTasks = byOrd(
         tasks
           .filter((t) => t.row.ms === targetCol && !isDone(t.row))
@@ -1227,7 +1356,6 @@ function MasterBoard({
 
       const without = openTasks.filter((t) => t.row !== row);
       const index = Math.max(0, Math.min(hint.index ?? without.length, without.length));
-      const sameCol = row.ms === targetCol && !isDone(row);
       if (sameCol) {
         const oldIndex = openTasks.findIndex((t) => t.row === row);
         if (oldIndex === index) return;
@@ -1247,7 +1375,16 @@ function MasterBoard({
       const res = await putCardOrder({ items });
       onApplyWorkspace(res);
     },
-    [boardEdit, tasks, locateRow, onBump, onToggleDone, onApplyWorkspace]
+    [
+      boardEdit,
+      tasks,
+      locateRow,
+      onBump,
+      onSetBoardSort,
+      onToggleDone,
+      onApplyWorkspace,
+      sortMode,
+    ]
   );
 
   const { dragKey, dragHeight, dragPreview, previewElRef, dropHint, armDrag, consumeDragClick } =
@@ -1395,7 +1532,11 @@ function MasterBoard({
             mode
           );
           const byRow = (row) => stageTasks.find((t) => t.row === row);
-          const open = split.open.map(byRow).filter(Boolean);
+          const open = sortBoardRows(split.open, sortMode, {
+            projectIndex: projectIndexOf,
+          })
+            .map(byRow)
+            .filter(Boolean);
           const done = split.done.map(byRow).filter(Boolean);
           const key = colCollapseKey("master", s);
           const collapsed = !boardEdit && colCollapsed.has(key);
@@ -2269,10 +2410,12 @@ export default function Board({
   colCollapsed,
   completedViewByScope,
   boardShowByScope,
+  boardSortByScope,
   uiTick,
   onBump,
   onSetCompletedView,
   onSetBoardShow,
+  onSetBoardSort,
   onOpenCard,
   onToggleDone,
   onStartNewCard,
@@ -2327,6 +2470,15 @@ export default function Board({
               align="right"
             />
           )}
+          {!boardEdit && (
+            <BoardSortBtn
+              scope="master"
+              boardSortByScope={boardSortByScope}
+              onChange={onSetBoardSort}
+              allowProject
+              align="right"
+            />
+          )}
           <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
         </GlobalBar>
         <MasterBoard
@@ -2337,9 +2489,11 @@ export default function Board({
           colCollapsed={colCollapsed}
           completedViewByScope={completedViewByScope}
           boardShowByScope={boardShowByScope}
+          boardSortByScope={boardSortByScope}
           uiTick={uiTick}
           onBump={onBump}
           onSetCompletedView={onSetCompletedView}
+          onSetBoardSort={onSetBoardSort}
           onOpenCard={onOpenCard}
           onToggleDone={onToggleDone}
           onStartNewCard={onStartNewCard}
@@ -2414,6 +2568,15 @@ export default function Board({
               align="left"
             />
           )}
+          {!editing && (
+            <BoardSortBtn
+              scope={scope}
+              boardSortByScope={boardSortByScope}
+              onChange={onSetBoardSort}
+              allowProject={false}
+              align="left"
+            />
+          )}
         </div>
         {!readonly && (
           <BoardEditBtn boardEdit={editing} onToggle={onToggleBoardEdit} />
@@ -2428,9 +2591,11 @@ export default function Board({
         colCollapsed={colCollapsed}
         completedViewByScope={completedViewByScope}
         boardShowByScope={boardShowByScope}
+        boardSortByScope={boardSortByScope}
         uiTick={uiTick}
         onBumpCollapse={onBump}
         onSetCompletedView={onSetCompletedView}
+        onSetBoardSort={onSetBoardSort}
         onOpenCard={onOpenCard}
         onToggleDone={onToggleDone}
         onStartNewCard={onStartNewCard}

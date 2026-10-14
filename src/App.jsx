@@ -30,6 +30,7 @@ import {
   COMPLETED_VIEWS,
   COMPLETED_VIEW_KEY,
   BOARD_SHOW_KEY,
+  BOARD_SORT_KEY,
   POMO_DURATION_SEC,
   MIN_TIMELOG_SEC,
   WORKSPACE_ITEMS,
@@ -42,7 +43,9 @@ import {
   saveLastTab,
   loadCompletedViews,
   loadBoardShow,
+  loadBoardSorts,
   normalizeBoardShow,
+  normalizeBoardSort,
   loadPomo,
   savePomo,
   pomoRemainingSec,
@@ -124,7 +127,8 @@ export default function App() {
     s: "",
     ms: "",
     doneAt: "",
-    priority: false,
+    impact: "",
+    difficulty: "",
     project: "",
     board: "",
   });
@@ -158,6 +162,7 @@ export default function App() {
   const colCollapsed = useRef(new Set());
   const completedViewByScope = useRef(new Map());
   const boardShowByScope = useRef(new Map());
+  const boardSortByScope = useRef(new Map());
   const pomoFinishing = useRef(false);
   const timelogDialogDoneRef = useRef(null);
   const foldersRef = useRef(folders);
@@ -589,7 +594,8 @@ export default function App() {
         master: row.ms || stagesRef.current[0],
         doneAt: row.doneAt || "",
         body: row.body || "",
-        priority: !!row.priority,
+        impact: row.impact || "",
+        difficulty: row.difficulty || "",
         ord: row.ord,
         ...(Array.isArray(row.files) ? { files: row.files } : {}),
       });
@@ -685,7 +691,7 @@ export default function App() {
     async (
       folder,
       mod,
-      { title, status, master, body, doneAt, priority, id, files } = {}
+      { title, status, master, body, doneAt, impact, difficulty, id, files } = {}
     ) => {
       if (isProjectArchived(folder)) return;
       const boardCol = status || (mod[2].columns || stagesRef.current)[0];
@@ -702,7 +708,8 @@ export default function App() {
         master: masterCol,
         body: body || "",
         doneAt: doneAt || "",
-        priority: !!priority,
+        impact: impact || "",
+        difficulty: difficulty || "",
         ...(id ? { id } : {}),
         ...(Array.isArray(files) ? { files } : {}),
       });
@@ -722,7 +729,8 @@ export default function App() {
         master: row.ms,
         body: row.body || "",
         doneAt: row.doneAt || "",
-        priority: !!row.priority,
+        impact: row.impact || "",
+        difficulty: row.difficulty || "",
       });
     },
     [createCard]
@@ -756,7 +764,8 @@ export default function App() {
           master ||
           (stagesRef.current.includes(cd.ms) ? cd.ms : stagesRef.current[0]),
         doneAt: cd.doneAt || "",
-        priority: !!cd.priority,
+        impact: cd.impact || "",
+        difficulty: cd.difficulty || "",
         id: sameLoc ? cd.id : newId(),
         files: sameLoc && Array.isArray(cd.files) ? cd.files : [],
       };
@@ -791,6 +800,21 @@ export default function App() {
       map[scope] = next;
       try {
         localStorage.setItem(BOARD_SHOW_KEY, JSON.stringify(map));
+      } catch {}
+      bump();
+    },
+    [bump]
+  );
+
+  const setBoardSort = useCallback(
+    (scope, mode) => {
+      const allowProject = scope === "master";
+      const next = normalizeBoardSort(mode, { allowProject });
+      boardSortByScope.current.set(scope, next);
+      const map = loadBoardSorts();
+      map[scope] = next;
+      try {
+        localStorage.setItem(BOARD_SORT_KEY, JSON.stringify(map));
       } catch {}
       bump();
     },
@@ -1244,10 +1268,12 @@ export default function App() {
               colCollapsed={colCollapsed.current}
               completedViewByScope={completedViewByScope.current}
               boardShowByScope={boardShowByScope.current}
+              boardSortByScope={boardSortByScope.current}
               uiTick={uiTick}
               onBump={bump}
               onSetCompletedView={setCompletedView}
               onSetBoardShow={setBoardShow}
+              onSetBoardSort={setBoardSort}
               onOpenCard={openItem}
               onToggleDone={onToggleDone}
               onStartNewCard={startNewCard}
@@ -1299,7 +1325,8 @@ export default function App() {
                     body: entry.body || "",
                     id: entry.card || entry.id,
                     doneAt: entry.doneAt || "",
-                    priority: !!entry.priority,
+                    impact: entry.impact || "",
+                    difficulty: entry.difficulty || "",
                   },
                   loc: {
                     folder: {
@@ -1432,10 +1459,12 @@ export default function App() {
                 colCollapsed={colCollapsed.current}
                 completedViewByScope={completedViewByScope.current}
                 boardShowByScope={boardShowByScope.current}
+                boardSortByScope={boardSortByScope.current}
                 uiTick={uiTick}
                 onBump={bump}
                 onSetCompletedView={setCompletedView}
                 onSetBoardShow={setBoardShow}
+                onSetBoardSort={setBoardSort}
                 onOpenCard={openItem}
                 onToggleDone={onToggleDone}
                 onStartNewCard={startNewCard}
@@ -1577,7 +1606,8 @@ export default function App() {
                 s: result.draftRemember.s || "",
                 ms: result.draftRemember.ms || "",
                 doneAt: result.draftRemember.doneAt || "",
-                priority: !!result.draftRemember.priority,
+                impact: result.draftRemember.impact || "",
+                difficulty: result.draftRemember.difficulty || "",
                 project: result.loc?.folder?.id || "",
                 board: result.loc?.mod?.[2]?.id || "",
               });
@@ -1593,7 +1623,8 @@ export default function App() {
               master: r.ms,
               body: r.body || "",
               doneAt: r.doneAt || "",
-              priority: !!r.priority,
+              impact: r.impact || "",
+              difficulty: r.difficulty || "",
               id: r.id || "",
             });
             setCardDraft({
@@ -1604,7 +1635,8 @@ export default function App() {
               s: "",
               ms: "",
               doneAt: "",
-              priority: false,
+              impact: "",
+              difficulty: "",
               project: "",
               board: "",
             });

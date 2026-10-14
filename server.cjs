@@ -50,6 +50,29 @@ const MIME = {
 };
 const DEFAULT_STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 const DEFAULT_BOARD_COLS = ["Design", "Frontend dev", "Backend dev", "Content"];
+const IMPACT_LEVELS = ["Low", "Medium", "High"];
+const DIFFICULTY_LEVELS = ["Hard", "Medium", "Easy"];
+
+function normalizeImpact(v) {
+  const s = String(v || "");
+  return IMPACT_LEVELS.includes(s) ? s : "";
+}
+
+function normalizeDifficulty(v) {
+  const s = String(v || "");
+  return DIFFICULTY_LEVELS.includes(s) ? s : "";
+}
+
+/** Apply Impact / Difficulty; migrate legacy priority → Impact High. */
+function applyCardMeta(target, src) {
+  const impact = normalizeImpact(src.impact) || (src.priority ? "High" : "");
+  const difficulty = normalizeDifficulty(src.difficulty);
+  if (impact) target.impact = impact;
+  else delete target.impact;
+  if (difficulty) target.difficulty = difficulty;
+  else delete target.difficulty;
+  delete target.priority;
+}
 const NAME_COL_ID = "n";
 const DEFAULT_DB_COLS = [
   { id: NAME_COL_ID, label: "Name", type: "text" },
@@ -720,7 +743,7 @@ function projectToApi(p) {
           if (c.ord != null && c.ord !== "" && !Number.isNaN(Number(c.ord))) {
             card.ord = Number(c.ord);
           }
-          if (c.priority) card.priority = true;
+          applyCardMeta(card, c);
           const files = normalizeCardFiles(c.files);
           if (files.length) card.files = files;
           if (isDemoValue(c.isDemo)) card.isDemo = true;
@@ -1335,8 +1358,7 @@ function writeCard(projectId, boardId, card) {
   existing.body = card.body || "";
   if (card.doneAt) existing.doneAt = card.doneAt;
   else delete existing.doneAt;
-  if (card.priority) existing.priority = true;
-  else delete existing.priority;
+  applyCardMeta(existing, card);
   if (card.ord != null && card.ord !== "" && !Number.isNaN(Number(card.ord))) {
     existing.ord = Number(card.ord);
   } else if (isNew) {
@@ -1384,9 +1406,12 @@ function writeCardOrder(items) {
       if (item.doneAt) card.doneAt = item.doneAt;
       else delete card.doneAt;
     }
-    if (item.priority != null) {
-      if (item.priority) card.priority = true;
-      else delete card.priority;
+    if (item.impact != null || item.difficulty != null || item.priority != null) {
+      applyCardMeta(card, {
+        impact: item.impact != null ? item.impact : card.impact,
+        difficulty: item.difficulty != null ? item.difficulty : card.difficulty,
+        priority: item.priority,
+      });
     }
     if (item.ord != null && item.ord !== "" && !Number.isNaN(Number(item.ord))) {
       card.ord = Number(item.ord);
@@ -1427,7 +1452,7 @@ function softDeleteCard(projectId, boardId, cardId) {
     boardName: board.name || boardId,
     color: project.color || "#3c3c40",
   };
-  if (card.priority) entry.priority = true;
+  applyCardMeta(entry, card);
   const files = normalizeCardFiles(card.files);
   if (files.length) entry.files = files;
   if (isDemoValue(card.isDemo)) entry.isDemo = true;
@@ -1786,7 +1811,7 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
     body: item.body || "",
   };
   if (item.doneAt) card.doneAt = item.doneAt;
-  if (item.priority) card.priority = true;
+  applyCardMeta(card, item);
   const files = normalizeCardFiles(item.files);
   if (files.length) card.files = files;
   if (isDemoValue(item.isDemo)) card.isDemo = true;
@@ -2049,7 +2074,7 @@ function readTrash() {
         doneAt: t.doneAt || "",
         boardName: t.boardName || t.board || "",
       };
-      if (t.priority) card.priority = true;
+      applyCardMeta(card, t);
       return card;
     });
 }

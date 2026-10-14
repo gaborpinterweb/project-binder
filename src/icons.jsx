@@ -18,6 +18,7 @@ import {
   Calendar,
   Check,
   CircleAlert,
+  ChevronsUp,
   ChevronsUpDown,
   ChevronDown,
   ChevronRight,
@@ -28,7 +29,6 @@ import {
   Columns2,
   Copy,
   Database,
-  Diamond,
   Download,
   Ellipsis,
   EllipsisVertical,
@@ -69,6 +69,7 @@ import {
   Pencil,
   Plus,
   Quote,
+  SquareExclamationPoint,
   Rows2,
   Rows3,
   Rows4,
@@ -87,6 +88,7 @@ import {
   Redo2,
   Workflow,
   X,
+  Zap,
 } from "lucide-react";
 
 /** PC cover hues are muted for white-on-fill contrast; lift for thin strokes on dark UI. */
@@ -234,22 +236,6 @@ function RunningClockIcon({ size = 18, className, strokeWidth, fill, ...rest }) 
   );
 }
 
-/** Animated priority APNG (public/icons/priority.png) — title badge only. */
-function RunningPriorityIcon({ size = 18, className, strokeWidth, fill, ...rest }) {
-  return (
-    <img
-      src="/icons/priority.png"
-      alt=""
-      width={size}
-      height={size}
-      className={["card-timer-clock", className].filter(Boolean).join(" ")}
-      draggable={false}
-      aria-hidden="true"
-      {...rest}
-    />
-  );
-}
-
 export const IC = {
   table: Table,
   board: Kanban,
@@ -281,8 +267,8 @@ export const IC = {
   hourglass: Hourglass,
   stopwatch: Timer,
   runningClock: RunningClockIcon,
-  priority: Diamond,
-  runningPriority: RunningPriorityIcon,
+  zap: Zap,
+  exclamation: SquareExclamationPoint,
   plus: Plus,
   asterisk: Asterisk,
   eye: Eye,
@@ -291,6 +277,7 @@ export const IC = {
   sort: ArrowUpDown,
   sortAsc: ArrowUpNarrowWide,
   sortDesc: ArrowDownWideNarrow,
+  chevronsUp: ChevronsUp,
   sortAlphaAsc: ArrowUpAZ,
   sortAlphaDesc: ArrowDownAZ,
   grip: GripVertical,

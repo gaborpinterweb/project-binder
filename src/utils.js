@@ -1,10 +1,18 @@
 import { askConfirm } from "./confirmDialog.js";
+import {
+  cardWeight,
+  difficultySortRank,
+  impactSortRank,
+} from "./cardMeta.js";
 import { ensureNameColumn, normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 export const APP_NAME = "Project Binder";
+/** Semver only — used for GitHub release update matching (`checkUpdate.js`). */
 export const APP_VERSION = "0.1.0";
+/** Short git SHA from Vite `define` at build/dev; not part of update comparison. */
+export const APP_COMMIT = typeof __APP_COMMIT__ !== "undefined" ? __APP_COMMIT__ : "";
 
 export const TYPES = [
   { t: "Board", title: "Tasks", sub: "Board with cards and columns" },
@@ -25,6 +33,7 @@ const LAST_TAB_KEY = `${STORAGE_PREFIX}lastTab`;
 const SESSION_KEY = `${STORAGE_PREFIX}session`;
 export const COMPLETED_VIEW_KEY = `${STORAGE_PREFIX}completedView`;
 export const BOARD_SHOW_KEY = `${STORAGE_PREFIX}boardShow`;
+export const BOARD_SORT_KEY = `${STORAGE_PREFIX}boardSort`;
 const DB_VIEWS_SIDEBAR_KEY = `${STORAGE_PREFIX}dbViewsSidebar`;
 const FILES_SORT_KEY = `${STORAGE_PREFIX}filesSort`;
 const TIMELOG_VIEW_KEY = `${STORAGE_PREFIX}timelogView`;
@@ -48,6 +57,9 @@ export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
 /** Timelogs shorter than this are discarded on stop. */
 export const MIN_TIMELOG_SEC = 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
+/** Per-board card sort; `project` is Masterboard-only. */
+export const BOARD_SORTS = ["custom", "project", "impact", "difficulty", "weight"];
+export const DEFAULT_BOARD_SORT = "custom";
 export const GACC = "#3c3c40";
 /** Client-only Cover tab identity (not stored on the server). */
 export const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
@@ -141,7 +153,10 @@ export function fromApi(data, loadStagesFn) {
             if (c.ord != null && c.ord !== "" && !Number.isNaN(Number(c.ord))) {
               row.ord = Number(c.ord);
             }
-            if (c.priority) row.priority = true;
+            // Legacy boolean priority → Impact High
+            const impact = c.impact || (c.priority ? "High" : "");
+            if (impact) row.impact = impact;
+            if (c.difficulty) row.difficulty = c.difficulty;
             if (Array.isArray(c.files) && c.files.length) {
               row.files = c.files.map((f) => ({
                 id: f.id,
@@ -462,6 +477,32 @@ export function byOrd(rows) {
       if (aMissing) return 1;
       if (bMissing) return -1;
       return Number(ao) - Number(bo) || a.i - b.i;
+    })
+    .map(({ r }) => r);
+}
+
+/**
+ * Display order for open cards. Custom keeps `ord`; other modes sort in memory
+ * without rewriting persisted order. `projectIndex(row)` required for `project`.
+ */
+export function sortBoardRows(rows, sortMode, { projectIndex } = {}) {
+  const base = byOrd(rows);
+  const mode = normalizeBoardSort(sortMode, { allowProject: true });
+  if (mode === "custom") return base;
+  return base
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => {
+      let cmp = 0;
+      if (mode === "impact") {
+        cmp = impactSortRank(b.r.impact) - impactSortRank(a.r.impact);
+      } else if (mode === "difficulty") {
+        cmp = difficultySortRank(b.r.difficulty) - difficultySortRank(a.r.difficulty);
+      } else if (mode === "weight") {
+        cmp = cardWeight(b.r) - cardWeight(a.r);
+      } else if (mode === "project" && typeof projectIndex === "function") {
+        cmp = (projectIndex(a.r) ?? 0) - (projectIndex(b.r) ?? 0);
+      }
+      return cmp || a.i - b.i;
     })
     .map(({ r }) => r);
 }
@@ -1100,6 +1141,25 @@ export function getBoardShow(scope, boardShowByScope) {
   }
   const next = normalizeBoardShow(scope, loadBoardShow()[scope]);
   boardShowByScope?.set(scope, next);
+  return next;
+}
+
+export function normalizeBoardSort(raw, { allowProject = false } = {}) {
+  if (raw === "project" && !allowProject) return DEFAULT_BOARD_SORT;
+  return BOARD_SORTS.includes(raw) ? raw : DEFAULT_BOARD_SORT;
+}
+
+export function loadBoardSorts() {
+  const stored = readStorageJson(BOARD_SORT_KEY, {});
+  return stored && typeof stored === "object" ? stored : {};
+}
+
+export function getBoardSort(scope, boardSortByScope, { allowProject = false } = {}) {
+  if (boardSortByScope?.has(scope)) {
+    return normalizeBoardSort(boardSortByScope.get(scope), { allowProject });
+  }
+  const next = normalizeBoardSort(loadBoardSorts()[scope], { allowProject });
+  boardSortByScope?.set(scope, next);
   return next;
 }
 

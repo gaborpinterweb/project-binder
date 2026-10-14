@@ -10,6 +10,7 @@ import {
 } from "../api.js";
 import {
   APP_NAME,
+  APP_COMMIT,
   APP_VERSION,
   COUNTDOWN_DURATION_OPTIONS,
   STOPTIMER_MAX_OPTIONS_MIN,
@@ -626,7 +627,10 @@ export default function SettingsDialog({
                   />
                   <div className="settings-about-copy">
                     <b>{APP_NAME}</b>
-                    <p className="settings-about-byline">Version {APP_VERSION}</p>
+                    <p className="settings-about-byline">
+                      Version {APP_VERSION}
+                      {APP_COMMIT ? ` (${APP_COMMIT})` : ""}
+                    </p>
                     <p className="settings-about-byline">
                       Created by{" "}
                       <a href={SITE_URL} target="_blank" rel="noopener noreferrer">
@@ -645,21 +649,8 @@ export default function SettingsDialog({
                     </a>
                   </div>
                 </div>
-                <div className="settings-about-credits">
+                  <div className="settings-about-credits">
                   <b>Credits</b>
-                  <p>
-                    <a
-                      href="https://icons8.com/icon/zHqriwlFOo3J/high-priority"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Priority
-                    </a>{" "}
-                    icon by{" "}
-                    <a href="https://icons8.com" target="_blank" rel="noopener noreferrer">
-                      Icons8
-                    </a>
-                  </p>
                   <p>
                     <a
                       href="https://icons8.com/icon/vj8GRDfKf8Ac/stopwatch"

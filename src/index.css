@@ -494,7 +494,8 @@ main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;backgroun
 .modbar .mod-view-dd .mod-act{width:100%}
 .modbar .mod-view-dd .dd-caret{display:none}
 .modbar .mod-view-dd .dd-menu{min-width:220px;max-height:none;overflow:visible}
-.modbar .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
+.modbar .mod-sort-dd .dd-menu{min-width:280px}
+.modbar .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .modbar .gbar-tools .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
 .modbar .db-view-check{flex:none;display:inline-grid;place-items:center;width:14px;height:14px;color:var(--ink)}
 .modbar .db-cols-dd,.modbar .db-filters-dd,.modbar .db-sorts-dd{position:relative;flex:none;width:72px}
@@ -765,12 +766,24 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .drag-preview{position:fixed;left:0;top:0;z-index:1000;margin:0;pointer-events:none;box-shadow:0 12px 32px #00000030,0 2px 8px #00000018;cursor:grabbing}
 .drag-preview .drag-preview-check{flex:none;width:16px;height:16px;border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);border-radius:3px;background:#fff;box-sizing:border-box}
 .card b,.card span{display:block}.card span{color:var(--mute);font-size:13px}
-.card b{display:flex;align-items:center;gap:8px;min-width:0;width:100%}
-.card .card-check{flex:none;width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
-.card .card-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-size:inherit;font-weight:inherit}
-.card .card-timer-ico{flex:none;display:block;line-height:0}
+.card b{display:flex;align-items:flex-start;gap:8px;min-width:0;width:100%}
+.card .card-check{flex:none;width:16px;height:16px;margin:2px 0 0;accent-color:var(--acc);cursor:pointer}
+.card .card-name{min-width:0;flex:1;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.35;color:inherit;font-size:inherit;font-weight:inherit}
+.card .card-timer-ico{flex:none;display:block;line-height:0;margin-top:2px}
+.card .card-meta-ico,.card .card-file-ico{margin-top:1px}
 .card .card-file-ico .file-type-icon{display:block}
 .card-timer-clock{display:block;flex:none;object-fit:contain;pointer-events:none}
+/* Beat `.card span{display:block;color:var(--mute)}` so glyphs stay row + white. */
+.card-meta-ico,.card .card-meta-ico{flex:none;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:1px;box-sizing:border-box;border-radius:999px;line-height:0;vertical-align:middle;color:#fff;font-size:inherit}
+.card-meta-ico span,.card .card-meta-ico span{display:block;color:inherit;font-size:inherit;line-height:1}
+.card-meta-bang{font-weight:800;letter-spacing:-.06em;font-family:system-ui,sans-serif}
+.card-meta-impact-Low{background:#fca5a5}
+.card-meta-impact-Medium{background:#f87171}
+.card-meta-impact-High{background:#dc2626}
+.card-meta-difficulty-Hard{background:#93c5fd}
+.card-meta-difficulty-Medium{background:#60a5fa}
+.card-meta-difficulty-Easy{background:#2563eb}
+.card-meta-ico svg{display:block;flex:none;color:inherit;stroke:currentColor}
 .card.done .card-name{text-decoration:line-through;opacity:.72}
 .card .src,.card .card-spent{font-size:12px;color:var(--mute);margin-top:4px}
 .card .src+.card-spent{margin-top:2px}
@@ -1050,22 +1063,25 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .db-entry-val .rte-toolbar{margin-left:0;flex-wrap:wrap}
 .dlg .db-entry-val .rte .tiptap,
 .dlg .db-entry-val .rte .ProseMirror{min-height:100px;padding:10px 12px}
-.dlg .title-row,.dlg .dlg-content > input.title{padding:2px 2px 2px;box-sizing:border-box}
-.dlg .dlg-content > input.title{width:100%}
+.dlg .title-row,.dlg .dlg-content > input.title,.dlg .dlg-content > textarea.title{padding:2px 2px 2px;box-sizing:border-box}
+.dlg .dlg-content > input.title,.dlg .dlg-content > textarea.title{width:100%}
 .dlg input,.dlg .prop-dd-btn{font:inherit;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px);padding:6px 8px;width:100%;box-sizing:border-box}
 .dlg input:hover,.dlg .prop-dd-btn:hover{background-color:color-mix(in srgb,var(--ink) 5%,transparent)}
 .dlg input:focus,.dlg .prop-dd-btn:focus{outline:none;background-color:color-mix(in srgb,#fff 55%,transparent);border-color:color-mix(in srgb,var(--ink) 12%,transparent)}
 .dlg.tint input:focus,.dlg.tint .prop-dd-btn:focus{background-color:color-mix(in srgb,#fff 72%,transparent)}
-.dlg input.title{font-size:20px;font-weight:600;border:0;padding:0;background:transparent;width:100%}
-.dlg input::placeholder{color:var(--mute)}
-.dlg.tint input::placeholder{color:color-mix(in srgb,var(--pc) 52%,transparent)}
-.dlg.tint input.title,.dlg input.title:hover,.dlg input.title:focus{background:transparent;border-color:transparent}
-.dlg input.title:focus{outline:none}
-.dlg input.title.done{text-decoration:line-through;opacity:.72}
-.dlg .title-row{display:flex;align-items:center;gap:10px;width:100%}
-.dlg .title-row .card-check{flex:none;width:18px;height:18px;margin:0;accent-color:var(--acc);cursor:pointer}
-.dlg .title-row input.title{flex:1;min-width:0}
-.dlg .title-row .card-timer-ico{flex:none;display:block;line-height:0}
+.dlg input.title,.dlg textarea.title{font:inherit;font-size:20px;font-weight:600;border:0;padding:0;background:transparent;width:100%;line-height:1.25;color:var(--ink)}
+.dlg textarea.title{display:block;min-height:0;height:auto;resize:none;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;field-sizing:content}
+.dlg input::placeholder,.dlg textarea.title::placeholder{color:var(--mute)}
+.dlg.tint input::placeholder,.dlg.tint textarea.title::placeholder{color:color-mix(in srgb,var(--pc) 52%,transparent)}
+.dlg.tint input.title,.dlg.tint textarea.title,.dlg input.title:hover,.dlg textarea.title:hover,.dlg input.title:focus,.dlg textarea.title:focus{background:transparent;border-color:transparent}
+.dlg input.title:focus,.dlg textarea.title:focus{outline:none}
+.dlg input.title.done,.dlg textarea.title.done{text-decoration:line-through;opacity:.72}
+.dlg .title-row{display:flex;align-items:flex-start;gap:10px;width:100%}
+.dlg .title-row .card-check{flex:none;width:18px;height:18px;margin:4px 0 0;accent-color:var(--acc);cursor:pointer}
+.dlg .title-row input.title,.dlg .title-row textarea.title{flex:1;min-width:0}
+.dlg .title-row .card-timer-ico,.dlg .title-row .card-meta-ico{flex:none;display:inline-flex;line-height:0;margin-top:4px}
+.dlg .card-add-chip .card-add-sub-menu .card-meta-ico{margin-right:2px;margin-top:0}
+.dlg .title-row .card-file-ico{margin-top:3px}
 .dlg .title-row .card-file-ico .file-type-icon{display:block}
 .dlg .card-dlg-more{position:relative;flex:none;z-index:5}
 .dlg .card-dlg-more-btn{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:calc(var(--radius) - 6px);background:transparent;color:var(--mute);cursor:pointer}
@@ -1083,8 +1099,8 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .prop-dd.open{z-index:40}
 .dlg .prop-dd-btn{display:inline-flex;align-items:center;gap:8px;text-align:left;cursor:pointer;max-width:100%}
 .dlg .prop-dd-btn .lab{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dlg input[readonly],.dlg input:disabled{cursor:default}
-.dlg input[readonly]:hover,.dlg input:disabled:hover{background:transparent}
+.dlg input[readonly],.dlg input:disabled,.dlg textarea.title[readonly]{cursor:default}
+.dlg input[readonly]:hover,.dlg input:disabled:hover,.dlg textarea.title[readonly]:hover{background:transparent}
 .trash-note-dlg{background:#fff;width:min(640px,100%);max-height:min(80vh,760px);overflow:auto}
 .trash-note-dlg .trash-note-body{padding:20px 24px}
 .trash-note-dlg .tiptap{font:inherit;color:var(--ink);line-height:1.55;outline:none}
@@ -1123,11 +1139,11 @@ aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .dlg .prop-dd .pop button:hover{background:var(--sel)}
 .dlg .prop-dd .pop button.on{background:var(--sel)}
 .dlg .desc{margin-top:4px}
-.dlg textarea{font:inherit;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px);padding:8px;width:100%;min-height:140px;resize:vertical;line-height:1.45;box-sizing:border-box}
-.dlg textarea:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
-.dlg textarea:focus{outline:none;background:color-mix(in srgb,#fff 55%,transparent);border-color:color-mix(in srgb,var(--ink) 12%,transparent)}
-.dlg.tint textarea:focus{background:color-mix(in srgb,#fff 72%,transparent)}
-.dlg textarea::placeholder{color:var(--mute)}
+.dlg textarea:not(.title){font:inherit;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px);padding:8px;width:100%;min-height:140px;resize:vertical;line-height:1.45;box-sizing:border-box}
+.dlg textarea:not(.title):hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.dlg textarea:not(.title):focus{outline:none;background:color-mix(in srgb,#fff 55%,transparent);border-color:color-mix(in srgb,var(--ink) 12%,transparent)}
+.dlg.tint textarea:not(.title):focus{background:color-mix(in srgb,#fff 72%,transparent)}
+.dlg textarea:not(.title)::placeholder{color:var(--mute)}
 .dlg .rte{border:0;border-radius:0;background:transparent}
 .dlg .rte .tiptap{font:inherit;color:var(--ink);padding:8px 14px 14px;min-height:220px;line-height:1.55;outline:none}
 .dlg .rte .tiptap > :first-child{margin-top:0}

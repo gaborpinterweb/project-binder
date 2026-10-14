@@ -7,6 +7,12 @@ import {
 } from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
+  DIFFICULTY_LEVELS,
+  IMPACT_LEVELS,
+  normalizeDifficulty,
+  normalizeImpact,
+} from "../cardMeta.js";
+import {
   PC,
   allBoards,
   boardColumnLabel,
@@ -26,7 +32,7 @@ import {
   visibleDbCols,
 } from "../dbViews.js";
 import DbFieldInput from "./DbFieldInput.jsx";
-import CardTitleIcons from "./CardTitleIcons.jsx";
+import CardTitleIcons, { CardMetaIcon } from "./CardTitleIcons.jsx";
 import FilePreviewDialog from "./FilePreviewDialog.jsx";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 import PropDropdown, { closePropDrops } from "./PropDropdown.jsx";
@@ -59,6 +65,36 @@ function formatCardTimelogDate(iso) {
     month: "short",
     day: "numeric",
   });
+}
+
+function fitTitleArea(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function TitleArea({ className, value, onChange, onKeyDown, onBlur, ...rest }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    fitTitleArea(ref.current);
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      rows={1}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e);
+        fitTitleArea(e.currentTarget);
+      }}
+      onKeyDown={onKeyDown}
+      onBlur={onBlur}
+      {...rest}
+    />
+  );
 }
 
 function CardMoreMenu({ onDuplicate, onDelete }) {
@@ -123,7 +159,8 @@ function CardMoreMenu({ onDuplicate, onDelete }) {
 
 function CardAddChip({
   canAddDescription,
-  canAddPriority,
+  canAddImpact,
+  canAddDifficulty,
   canTimelog,
   canAddFile,
   showTimers,
@@ -131,7 +168,8 @@ function CardAddChip({
   mod,
   row,
   onAddDescription,
-  onAddPriority,
+  onAddImpact,
+  onAddDifficulty,
   onAddFile,
   onStartPomo,
   onAddManualTimelog,
@@ -151,7 +189,13 @@ function CardAddChip({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  if (!canAddDescription && !canAddPriority && !canTimelog && !canAddFile)
+  if (
+    !canAddDescription &&
+    !canAddImpact &&
+    !canAddDifficulty &&
+    !canTimelog &&
+    !canAddFile
+  )
     return null;
 
   return (
@@ -192,21 +236,87 @@ function CardAddChip({
               </span>
             </button>
           ) : null}
-          {canAddPriority ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpen(false);
-                onAddPriority?.();
-              }}
-            >
-              <span className="dd-opt">
-                <Icon name="priority" size={14} />
-                Priority
-              </span>
-            </button>
+          {canAddImpact ? (
+            <div className="card-add-sub">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                className="card-add-sub-trigger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="dd-opt">
+                  <Icon name="exclamation" size={14} />
+                  Impact
+                </span>
+                <Icon name="arrow" size={12} />
+              </button>
+              <div className="pop card-add-sub-menu" role="menu">
+                {IMPACT_LEVELS.map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      onAddImpact?.(level);
+                    }}
+                  >
+                    <span className="dd-opt">
+                      <CardMetaIcon
+                        kind="impact"
+                        level={level}
+                        size={18}
+                        decorative
+                      />
+                      {level}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {canAddDifficulty ? (
+            <div className="card-add-sub">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                className="card-add-sub-trigger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="dd-opt">
+                  <Icon name="zap" size={14} />
+                  Difficulty
+                </span>
+                <Icon name="arrow" size={12} />
+              </button>
+              <div className="pop card-add-sub-menu" role="menu">
+                {DIFFICULTY_LEVELS.map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      onAddDifficulty?.(level);
+                    }}
+                  >
+                    <span className="dd-opt">
+                      <CardMetaIcon
+                        kind="difficulty"
+                        level={level}
+                        size={18}
+                        decorative
+                      />
+                      {level}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : null}
           {canAddFile ? (
             <button
@@ -638,7 +748,7 @@ export default function CardDialog({
                   }}
                 />
               ) : null}
-              <input
+              <TitleArea
                 className={"title" + (isDone(draft) ? " done" : "")}
                 value={draft.n || ""}
                 placeholder={isDraft ? "New task..." : "Untitled"}
@@ -656,7 +766,6 @@ export default function CardDialog({
                 }}
               />
               <CardTitleIcons
-                priority={!!draft.priority}
                 files={draft.files}
                 timerActive={timerActive}
               />
@@ -812,25 +921,65 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
-                  {draft.priority ? (
+                  {normalizeImpact(draft.impact) ? (
                     <div className="prop-chip card-file-chip">
                       <span className="card-file-chip-lab">
-                        <Icon name="priority" size={14} />
-                        <span className="lab">Priority</span>
+                        <CardMetaIcon
+                          kind="impact"
+                          level={draft.impact}
+                          size={18}
+                          decorative
+                        />
+                        <span className="lab">Impact: {draft.impact}</span>
                       </span>
                       {!readonly ? (
                         <button
                           type="button"
                           className="card-file-chip-del"
-                          title="Remove priority"
-                          aria-label="Remove priority"
+                          title="Remove impact"
+                          aria-label="Remove impact"
                           onClick={(e) => {
                             e.stopPropagation();
-                            patch({ priority: false });
+                            patch({ impact: "" });
                             clearTimeout(persistTimer.current);
                             draftRef.current = {
                               ...draftRef.current,
-                              priority: false,
+                              impact: "",
+                            };
+                            persist();
+                          }}
+                        >
+                          <Icon name="close" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {normalizeDifficulty(draft.difficulty) ? (
+                    <div className="prop-chip card-file-chip">
+                      <span className="card-file-chip-lab">
+                        <CardMetaIcon
+                          kind="difficulty"
+                          level={draft.difficulty}
+                          size={18}
+                          decorative
+                        />
+                        <span className="lab">
+                          Difficulty: {draft.difficulty}
+                        </span>
+                      </span>
+                      {!readonly ? (
+                        <button
+                          type="button"
+                          className="card-file-chip-del"
+                          title="Remove difficulty"
+                          aria-label="Remove difficulty"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            patch({ difficulty: "" });
+                            clearTimeout(persistTimer.current);
+                            draftRef.current = {
+                              ...draftRef.current,
+                              difficulty: "",
                             };
                             persist();
                           }}
@@ -871,7 +1020,8 @@ export default function CardDialog({
                   {!readonly ? (
                     <CardAddChip
                       canAddDescription={!showDescription}
-                      canAddPriority={!draft.priority}
+                      canAddImpact
+                      canAddDifficulty
                       canAddFile={canAddFile}
                       canTimelog={canTimelogCard && !showTimelogSection}
                       showTimers={showTimelogs}
@@ -879,12 +1029,21 @@ export default function CardDialog({
                       mod={curLoc?.mod}
                       row={draft}
                       onAddDescription={() => setShowDescription(true)}
-                      onAddPriority={() => {
-                        patch({ priority: true });
+                      onAddImpact={(level) => {
+                        patch({ impact: level });
                         clearTimeout(persistTimer.current);
                         draftRef.current = {
                           ...draftRef.current,
-                          priority: true,
+                          impact: level,
+                        };
+                        persist();
+                      }}
+                      onAddDifficulty={(level) => {
+                        patch({ difficulty: level });
+                        clearTimeout(persistTimer.current);
+                        draftRef.current = {
+                          ...draftRef.current,
+                          difficulty: level,
                         };
                         persist();
                       }}
@@ -1138,7 +1297,7 @@ function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
     <>
       {titleCol ? (
         <div className="title-row">
-          <input
+          <TitleArea
             className="title"
             value={row[titleCol.id] || ""}
             placeholder={

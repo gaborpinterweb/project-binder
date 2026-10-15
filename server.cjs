@@ -51,27 +51,35 @@ const MIME = {
 const DEFAULT_STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 const DEFAULT_BOARD_COLS = ["Design", "Frontend dev", "Backend dev", "Content"];
 const IMPACT_LEVELS = ["Low", "Medium", "High"];
-const DIFFICULTY_LEVELS = ["Hard", "Medium", "Easy"];
+const EFFORT_LEVELS = ["Low", "Medium", "High"];
+const LEGACY_DIFFICULTY_TO_EFFORT = {
+  Easy: "Low",
+  Medium: "Medium",
+  Hard: "High",
+};
 
 function normalizeImpact(v) {
   const s = String(v || "");
   return IMPACT_LEVELS.includes(s) ? s : "";
 }
 
-function normalizeDifficulty(v) {
+function normalizeEffort(v) {
   const s = String(v || "");
-  return DIFFICULTY_LEVELS.includes(s) ? s : "";
+  if (EFFORT_LEVELS.includes(s)) return s;
+  return LEGACY_DIFFICULTY_TO_EFFORT[s] || "";
 }
 
-/** Apply Impact / Difficulty; migrate legacy priority → Impact High. */
+/** Apply Impact / Effort; migrate legacy priority → Impact High, difficulty → effort. */
 function applyCardMeta(target, src) {
   const impact = normalizeImpact(src.impact) || (src.priority ? "High" : "");
-  const difficulty = normalizeDifficulty(src.difficulty);
+  const effortRaw = src.effort != null && src.effort !== "" ? src.effort : src.difficulty;
+  const effort = normalizeEffort(effortRaw);
   if (impact) target.impact = impact;
   else delete target.impact;
-  if (difficulty) target.difficulty = difficulty;
-  else delete target.difficulty;
+  if (effort) target.effort = effort;
+  else delete target.effort;
   delete target.priority;
+  delete target.difficulty;
 }
 const NAME_COL_ID = "n";
 const DEFAULT_DB_COLS = [
@@ -1406,10 +1414,20 @@ function writeCardOrder(items) {
       if (item.doneAt) card.doneAt = item.doneAt;
       else delete card.doneAt;
     }
-    if (item.impact != null || item.difficulty != null || item.priority != null) {
+    if (
+      item.impact != null ||
+      item.effort != null ||
+      item.difficulty != null ||
+      item.priority != null
+    ) {
       applyCardMeta(card, {
         impact: item.impact != null ? item.impact : card.impact,
-        difficulty: item.difficulty != null ? item.difficulty : card.difficulty,
+        effort:
+          item.effort != null
+            ? item.effort
+            : item.difficulty != null
+              ? item.difficulty
+              : card.effort,
         priority: item.priority,
       });
     }

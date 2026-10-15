@@ -7,9 +7,9 @@ import {
 } from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
-  DIFFICULTY_LEVELS,
+  EFFORT_LEVELS,
   IMPACT_LEVELS,
-  normalizeDifficulty,
+  normalizeEffort,
   normalizeImpact,
 } from "../cardMeta.js";
 import {
@@ -32,7 +32,11 @@ import {
   visibleDbCols,
 } from "../dbViews.js";
 import DbFieldInput from "./DbFieldInput.jsx";
-import CardTitleIcons, { CardMetaIcon } from "./CardTitleIcons.jsx";
+import CardTitleIcons, {
+  CardMetaIcon,
+  CardMetaKindIcon,
+  CardMetaPicker,
+} from "./CardTitleIcons.jsx";
 import FilePreviewDialog from "./FilePreviewDialog.jsx";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 import PropDropdown, { closePropDrops } from "./PropDropdown.jsx";
@@ -160,7 +164,7 @@ function CardMoreMenu({ onDuplicate, onDelete }) {
 function CardAddChip({
   canAddDescription,
   canAddImpact,
-  canAddDifficulty,
+  canAddEffort,
   canTimelog,
   canAddFile,
   showTimers,
@@ -169,7 +173,7 @@ function CardAddChip({
   row,
   onAddDescription,
   onAddImpact,
-  onAddDifficulty,
+  onAddEffort,
   onAddFile,
   onStartPomo,
   onAddManualTimelog,
@@ -192,7 +196,7 @@ function CardAddChip({
   if (
     !canAddDescription &&
     !canAddImpact &&
-    !canAddDifficulty &&
+    !canAddEffort &&
     !canTimelog &&
     !canAddFile
   )
@@ -236,6 +240,47 @@ function CardAddChip({
               </span>
             </button>
           ) : null}
+          {canAddEffort ? (
+            <div className="card-add-sub">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                className="card-add-sub-trigger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="dd-opt">
+                  <CardMetaKindIcon kind="effort" size={18} />
+                  Effort
+                </span>
+                <Icon name="arrow" size={12} />
+              </button>
+              <div className="pop card-add-sub-menu" role="menu">
+                {EFFORT_LEVELS.map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                      onAddEffort?.(level);
+                    }}
+                  >
+                    <span className="dd-opt">
+                      <CardMetaIcon
+                        kind="effort"
+                        level={level}
+                        size={18}
+                        decorative
+                      />
+                      {level}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {canAddImpact ? (
             <div className="card-add-sub">
               <button
@@ -246,7 +291,7 @@ function CardAddChip({
                 onClick={(e) => e.stopPropagation()}
               >
                 <span className="dd-opt">
-                  <Icon name="exclamation" size={14} />
+                  <CardMetaKindIcon kind="impact" size={18} />
                   Impact
                 </span>
                 <Icon name="arrow" size={12} />
@@ -266,47 +311,6 @@ function CardAddChip({
                     <span className="dd-opt">
                       <CardMetaIcon
                         kind="impact"
-                        level={level}
-                        size={18}
-                        decorative
-                      />
-                      {level}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {canAddDifficulty ? (
-            <div className="card-add-sub">
-              <button
-                type="button"
-                role="menuitem"
-                aria-haspopup="menu"
-                className="card-add-sub-trigger"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="dd-opt">
-                  <Icon name="zap" size={14} />
-                  Difficulty
-                </span>
-                <Icon name="arrow" size={12} />
-              </button>
-              <div className="pop card-add-sub-menu" role="menu">
-                {DIFFICULTY_LEVELS.map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    role="menuitem"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpen(false);
-                      onAddDifficulty?.(level);
-                    }}
-                  >
-                    <span className="dd-opt">
-                      <CardMetaIcon
-                        kind="difficulty"
                         level={level}
                         size={18}
                         decorative
@@ -921,17 +925,66 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
+                  {normalizeEffort(draft.effort) ? (
+                    <div className="prop-chip card-file-chip">
+                      <CardMetaPicker
+                        kind="effort"
+                        level={draft.effort}
+                        size={18}
+                        showLabel
+                        align="left"
+                        disabled={readonly}
+                        onChange={(level) => {
+                          patch({ effort: level });
+                          clearTimeout(persistTimer.current);
+                          draftRef.current = {
+                            ...draftRef.current,
+                            effort: level,
+                          };
+                          persist();
+                        }}
+                      />
+                      {!readonly ? (
+                        <button
+                          type="button"
+                          className="card-file-chip-del"
+                          title="Remove effort"
+                          aria-label="Remove effort"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            patch({ effort: "" });
+                            clearTimeout(persistTimer.current);
+                            draftRef.current = {
+                              ...draftRef.current,
+                              effort: "",
+                            };
+                            persist();
+                          }}
+                        >
+                          <Icon name="close" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {normalizeImpact(draft.impact) ? (
                     <div className="prop-chip card-file-chip">
-                      <span className="card-file-chip-lab">
-                        <CardMetaIcon
-                          kind="impact"
-                          level={draft.impact}
-                          size={18}
-                          decorative
-                        />
-                        <span className="lab">Impact: {draft.impact}</span>
-                      </span>
+                      <CardMetaPicker
+                        kind="impact"
+                        level={draft.impact}
+                        size={18}
+                        showLabel
+                        align="left"
+                        disabled={readonly}
+                        onChange={(level) => {
+                          patch({ impact: level });
+                          clearTimeout(persistTimer.current);
+                          draftRef.current = {
+                            ...draftRef.current,
+                            impact: level,
+                          };
+                          persist();
+                        }}
+                      />
                       {!readonly ? (
                         <button
                           type="button"
@@ -945,41 +998,6 @@ export default function CardDialog({
                             draftRef.current = {
                               ...draftRef.current,
                               impact: "",
-                            };
-                            persist();
-                          }}
-                        >
-                          <Icon name="close" size={12} />
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {normalizeDifficulty(draft.difficulty) ? (
-                    <div className="prop-chip card-file-chip">
-                      <span className="card-file-chip-lab">
-                        <CardMetaIcon
-                          kind="difficulty"
-                          level={draft.difficulty}
-                          size={18}
-                          decorative
-                        />
-                        <span className="lab">
-                          Difficulty: {draft.difficulty}
-                        </span>
-                      </span>
-                      {!readonly ? (
-                        <button
-                          type="button"
-                          className="card-file-chip-del"
-                          title="Remove difficulty"
-                          aria-label="Remove difficulty"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            patch({ difficulty: "" });
-                            clearTimeout(persistTimer.current);
-                            draftRef.current = {
-                              ...draftRef.current,
-                              difficulty: "",
                             };
                             persist();
                           }}
@@ -1021,7 +1039,7 @@ export default function CardDialog({
                     <CardAddChip
                       canAddDescription={!showDescription}
                       canAddImpact
-                      canAddDifficulty
+                      canAddEffort
                       canAddFile={canAddFile}
                       canTimelog={canTimelogCard && !showTimelogSection}
                       showTimers={showTimelogs}
@@ -1038,12 +1056,12 @@ export default function CardDialog({
                         };
                         persist();
                       }}
-                      onAddDifficulty={(level) => {
-                        patch({ difficulty: level });
+                      onAddEffort={(level) => {
+                        patch({ effort: level });
                         clearTimeout(persistTimer.current);
                         draftRef.current = {
                           ...draftRef.current,
-                          difficulty: level,
+                          effort: level,
                         };
                         persist();
                       }}

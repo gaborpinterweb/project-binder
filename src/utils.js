@@ -1,8 +1,9 @@
 import { askConfirm } from "./confirmDialog.js";
 import {
   cardWeight,
-  difficultySortRank,
+  effortSortRank,
   impactSortRank,
+  normalizeEffort,
 } from "./cardMeta.js";
 import { ensureNameColumn, normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
@@ -58,7 +59,7 @@ export const POMO_DURATION_SEC = DEFAULT_COUNTDOWN_DURATION_MIN * 60;
 export const MIN_TIMELOG_SEC = 60;
 export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 /** Per-board card sort; `project` is Masterboard-only. */
-export const BOARD_SORTS = ["custom", "project", "impact", "difficulty", "weight"];
+export const BOARD_SORTS = ["custom", "project", "impact", "effort", "weight"];
 export const DEFAULT_BOARD_SORT = "custom";
 export const GACC = "#3c3c40";
 /** Client-only Cover tab identity (not stored on the server). */
@@ -153,10 +154,11 @@ export function fromApi(data, loadStagesFn) {
             if (c.ord != null && c.ord !== "" && !Number.isNaN(Number(c.ord))) {
               row.ord = Number(c.ord);
             }
-            // Legacy boolean priority → Impact High
+            // Legacy boolean priority → Impact High; difficulty → effort
             const impact = c.impact || (c.priority ? "High" : "");
             if (impact) row.impact = impact;
-            if (c.difficulty) row.difficulty = c.difficulty;
+            const effort = normalizeEffort(c.effort || c.difficulty);
+            if (effort) row.effort = effort;
             if (Array.isArray(c.files) && c.files.length) {
               row.files = c.files.map((f) => ({
                 id: f.id,
@@ -495,8 +497,8 @@ export function sortBoardRows(rows, sortMode, { projectIndex } = {}) {
       let cmp = 0;
       if (mode === "impact") {
         cmp = impactSortRank(b.r.impact) - impactSortRank(a.r.impact);
-      } else if (mode === "difficulty") {
-        cmp = difficultySortRank(b.r.difficulty) - difficultySortRank(a.r.difficulty);
+      } else if (mode === "effort") {
+        cmp = effortSortRank(b.r.effort) - effortSortRank(a.r.effort);
       } else if (mode === "weight") {
         cmp = cardWeight(b.r) - cardWeight(a.r);
       } else if (mode === "project" && typeof projectIndex === "function") {
@@ -1145,6 +1147,8 @@ export function getBoardShow(scope, boardShowByScope) {
 }
 
 export function normalizeBoardSort(raw, { allowProject = false } = {}) {
+  // Legacy sort key from Difficulty era
+  if (raw === "difficulty") raw = "effort";
   if (raw === "project" && !allowProject) return DEFAULT_BOARD_SORT;
   return BOARD_SORTS.includes(raw) ? raw : DEFAULT_BOARD_SORT;
 }

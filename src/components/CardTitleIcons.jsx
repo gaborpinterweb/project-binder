@@ -1,10 +1,15 @@
 import { Icon } from "../icons.jsx";
 import {
-  difficultyIconCount,
+  EFFORT_LEVELS,
+  IMPACT_LEVELS,
+  effortChipLabel,
+  effortIconCount,
+  impactChipLabel,
   impactIconCount,
-  normalizeDifficulty,
+  normalizeEffort,
   normalizeImpact,
 } from "../cardMeta.js";
+import Dropdown from "./Dropdown.jsx";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 
 /** First-added attachment (array order is append order). */
@@ -15,61 +20,163 @@ export function firstCardFile(files) {
 
 export function CardMetaIcon({ kind, level, size = 20, decorative = false }) {
   const normalized =
-    kind === "impact" ? normalizeImpact(level) : normalizeDifficulty(level);
+    kind === "impact" ? normalizeImpact(level) : normalizeEffort(level);
   if (!normalized) return null;
   const count =
     kind === "impact"
       ? impactIconCount(normalized)
-      : difficultyIconCount(normalized);
+      : effortIconCount(normalized);
   if (!count) return null;
   const label =
     kind === "impact"
-      ? `Impact: ${normalized}`
-      : `Difficulty: ${normalized}`;
-  const glyphSize = Math.max(8, Math.round(size * (count >= 3 ? 0.38 : 0.45)));
+      ? impactChipLabel(normalized)
+      : effortChipLabel(normalized);
+  // Stack fits in the pill; tighter glyphs when count is 3.
+  const glyphSize = Math.max(9, Math.round(size * (count >= 3 ? 0.48 : 0.55)));
   return (
     <span
-      className={`card-meta-ico card-meta-${kind} card-meta-${kind}-${normalized}`}
+      className={`card-meta-ico card-meta-${kind}`}
       title={decorative ? undefined : label}
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative ? true : undefined}
       style={{
         minWidth: size,
         height: size,
-        padding: count > 1 ? "0 4px" : 0,
+        padding: "1px 5px",
       }}
     >
-      {Array.from({ length: count }, (_, i) =>
-        kind === "impact" ? (
-          <span
-            key={i}
-            className="card-meta-bang"
-            style={{ fontSize: glyphSize }}
-          >
-            !
-          </span>
-        ) : (
-          <Icon key={i} name="zap" size={glyphSize} filled />
-        )
-      )}
+      {Array.from({ length: count }, (_, i) => (
+        <Icon key={i} name="chevronUp" size={glyphSize} />
+      ))}
     </span>
   );
 }
 
-/** Title-row badges: impact → difficulty → first file → timer. */
+/** Circular axis mark for menus (Medium stack = recognizable shape). */
+export function CardMetaKindIcon({ kind, size = 18 }) {
+  return (
+    <CardMetaIcon kind={kind} level="Medium" size={size} decorative />
+  );
+}
+
+function metaLevels(kind) {
+  return kind === "impact" ? IMPACT_LEVELS : EFFORT_LEVELS;
+}
+
+function metaChipLabel(kind, level) {
+  return kind === "impact"
+    ? impactChipLabel(level)
+    : effortChipLabel(level);
+}
+
+/** Level picker triggered by the stacked-arrow chip. */
+export function CardMetaPicker({
+  kind,
+  level,
+  size = 20,
+  disabled = false,
+  showLabel = false,
+  align = "right",
+  onChange,
+}) {
+  const normalized =
+    kind === "impact" ? normalizeImpact(level) : normalizeEffort(level);
+  if (!normalized || disabled || !onChange) {
+    return normalized ? (
+      <span className="card-meta-picker-ro">
+        <CardMetaIcon kind={kind} level={normalized} size={size} />
+        {showLabel ? (
+          <span className="lab">{metaChipLabel(kind, normalized)}</span>
+        ) : null}
+      </span>
+    ) : null;
+  }
+  const options = [
+    ...metaLevels(kind).map((lv) => ({
+      value: lv,
+      label: metaChipLabel(kind, lv),
+    })),
+    { value: "", label: "Clear" },
+  ];
+  const title =
+    kind === "impact" ? "Change impact" : "Change effort";
+  return (
+    <div
+      className="card-meta-picker"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <Dropdown
+        className="card-meta-dd"
+        buttonClassName="card-meta-dd-btn"
+        menuClassName="card-meta-dd-menu"
+        align={align}
+        value={normalized}
+        options={options}
+        title={title}
+        ariaLabel={title}
+        caret={false}
+        onChange={(next) => onChange(next || "")}
+        renderOption={(o) => (
+          <span className="dd-opt">
+            {o.value ? (
+              <CardMetaIcon
+                kind={kind}
+                level={o.value}
+                size={18}
+                decorative
+              />
+            ) : null}
+            {o.label}
+          </span>
+        )}
+      >
+        <CardMetaIcon kind={kind} level={normalized} size={size} decorative />
+        {showLabel ? (
+          <span className="lab">{metaChipLabel(kind, normalized)}</span>
+        ) : null}
+      </Dropdown>
+    </div>
+  );
+}
+
+/** Title-row badges: effort → impact → first file → timer. */
 export default function CardTitleIcons({
   impact = "",
-  difficulty = "",
+  effort = "",
   files,
   file = null,
   timerActive = false,
   size = 20,
+  readonly = false,
+  onImpactChange,
+  onEffortChange,
 }) {
   const attachment = file || firstCardFile(files);
+  const canEditImpact = !readonly && typeof onImpactChange === "function";
+  const canEditEffort = !readonly && typeof onEffortChange === "function";
   return (
     <>
-      <CardMetaIcon kind="impact" level={impact} size={size} />
-      <CardMetaIcon kind="difficulty" level={difficulty} size={size} />
+      {canEditEffort ? (
+        <CardMetaPicker
+          kind="effort"
+          level={effort}
+          size={size}
+          onChange={onEffortChange}
+        />
+      ) : (
+        <CardMetaIcon kind="effort" level={effort} size={size} />
+      )}
+      {canEditImpact ? (
+        <CardMetaPicker
+          kind="impact"
+          level={impact}
+          size={size}
+          onChange={onImpactChange}
+        />
+      ) : (
+        <CardMetaIcon kind="impact" level={impact} size={size} />
+      )}
       {attachment ? (
         <span
           className="card-timer-ico card-file-ico"

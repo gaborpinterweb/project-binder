@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  EFFORT_LEVELS,
+  IMPACT_LEVELS,
+  normalizeEffort,
+  normalizeImpact,
+} from "../cardMeta.js";
 import { Icon } from "../icons.jsx";
 import { loadCountdownDurationMin, timelogTaskFromCard } from "../utils.js";
+import { CardMetaIcon, CardMetaKindIcon } from "./CardTitleIcons.jsx";
 import Dropdown from "./Dropdown.jsx";
 
 export function timelogOptions({ showTimers = true } = {}) {
@@ -118,6 +125,127 @@ function clampMenuPos(left, top, menuEl) {
   };
 }
 
+/** Nested level picker (Effort / Impact) inside the Add flyout. */
+function CardCtxAddLevelSub({ kind, onPick }) {
+  const levels = kind === "impact" ? IMPACT_LEVELS : EFFORT_LEVELS;
+  const label = kind === "impact" ? "Impact" : "Effort";
+  return (
+    <div className="card-ctx-add-sub">
+      <button
+        type="button"
+        role="menuitem"
+        aria-haspopup="menu"
+        className="card-ctx-add-sub-trigger"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <CardMetaKindIcon kind={kind} size={18} />
+        <span className="card-ctx-add-lab">{label}</span>
+        <span className="card-ctx-add-caret" aria-hidden="true">
+          <Icon name="arrow" size={12} />
+        </span>
+      </button>
+      <div className="pop card-ctx-add-sub-menu" role="menu" aria-label={label}>
+        {levels.map((level) => (
+          <button
+            key={level}
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick?.(level);
+            }}
+          >
+            <span className="dd-opt">
+              <CardMetaIcon kind={kind} level={level} size={18} decorative />
+              {level}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Add → Effort / Impact / File (only options that are still missing / allowed). */
+function CardCtxAddFlyout({
+  canAddEffort,
+  canAddImpact,
+  canAddFile,
+  onAddEffort,
+  onAddImpact,
+  onAddFile,
+}) {
+  const leaveTimer = useRef(0);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+
+  if (!canAddEffort && !canAddImpact && !canAddFile) return null;
+
+  const show = () => {
+    window.clearTimeout(leaveTimer.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
+  return (
+    <div className="dd-section" role="group" aria-label="Add">
+      <div
+        className={"card-ctx-add" + (open ? " open" : "")}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          className="card-ctx-add-btn"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            window.clearTimeout(leaveTimer.current);
+            setOpen((o) => !o);
+          }}
+        >
+          <Icon name="plus" size={14} />
+          <span className="card-ctx-add-lab">Add</span>
+          <span className="card-ctx-add-caret" aria-hidden="true">
+            <Icon name="arrow" size={12} />
+          </span>
+        </button>
+        {open ? (
+          <div className="pop card-ctx-add-pop" role="menu" aria-label="Add">
+            {canAddEffort ? (
+              <CardCtxAddLevelSub kind="effort" onPick={onAddEffort} />
+            ) : null}
+            {canAddImpact ? (
+              <CardCtxAddLevelSub kind="impact" onPick={onAddImpact} />
+            ) : null}
+            {canAddFile ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddFile?.();
+                }}
+              >
+                <span className="dd-opt">
+                  <Icon name="Files" size={14} />
+                  File
+                </span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /** Fixed-position menu for card right-click. */
 export function TimelogContextMenu({
   left,
@@ -128,6 +256,9 @@ export function TimelogContextMenu({
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
+  onAddEffort,
+  onAddImpact,
+  onAddFile,
   onDuplicate,
   onDelete,
   showTimers = true,
@@ -137,6 +268,11 @@ export function TimelogContextMenu({
   const [pos, setPos] = useState({ left, top });
   const options = timelogOptions({ showTimers });
   const canOrganise = !!(onDuplicate || onDelete);
+  const canAddEffort =
+    typeof onAddEffort === "function" && !normalizeEffort(row?.effort);
+  const canAddImpact =
+    typeof onAddImpact === "function" && !normalizeImpact(row?.impact);
+  const canAddFile = typeof onAddFile === "function";
 
   useEffect(() => {
     setPos(clampMenuPos(left, top, wrapRef.current));
@@ -193,6 +329,14 @@ export function TimelogContextMenu({
           }
         />
       </div>
+      <CardCtxAddFlyout
+        canAddEffort={canAddEffort}
+        canAddImpact={canAddImpact}
+        canAddFile={canAddFile}
+        onAddEffort={(level) => run(() => onAddEffort?.(level))}
+        onAddImpact={(level) => run(() => onAddImpact?.(level))}
+        onAddFile={() => run(() => onAddFile?.())}
+      />
       {canOrganise ? (
         <div className="dd-section" role="group" aria-label="Organise">
           <div className="dd-heading">Organise</div>

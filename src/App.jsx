@@ -128,7 +128,7 @@ export default function App() {
     ms: "",
     doneAt: "",
     impact: "",
-    difficulty: "",
+    effort: "",
     project: "",
     board: "",
   });
@@ -595,7 +595,7 @@ export default function App() {
         doneAt: row.doneAt || "",
         body: row.body || "",
         impact: row.impact || "",
-        difficulty: row.difficulty || "",
+        effort: row.effort || "",
         ord: row.ord,
         ...(Array.isArray(row.files) ? { files: row.files } : {}),
       });
@@ -691,7 +691,7 @@ export default function App() {
     async (
       folder,
       mod,
-      { title, status, master, body, doneAt, impact, difficulty, id, files } = {}
+      { title, status, master, body, doneAt, impact, effort, id, files } = {}
     ) => {
       if (isProjectArchived(folder)) return;
       const boardCol = status || (mod[2].columns || stagesRef.current)[0];
@@ -709,7 +709,7 @@ export default function App() {
         body: body || "",
         doneAt: doneAt || "",
         impact: impact || "",
-        difficulty: difficulty || "",
+        effort: effort || "",
         ...(id ? { id } : {}),
         ...(Array.isArray(files) ? { files } : {}),
       });
@@ -730,7 +730,7 @@ export default function App() {
         body: row.body || "",
         doneAt: row.doneAt || "",
         impact: row.impact || "",
-        difficulty: row.difficulty || "",
+        effort: row.effort || "",
       });
     },
     [createCard]
@@ -765,7 +765,7 @@ export default function App() {
           (stagesRef.current.includes(cd.ms) ? cd.ms : stagesRef.current[0]),
         doneAt: cd.doneAt || "",
         impact: cd.impact || "",
-        difficulty: cd.difficulty || "",
+        effort: cd.effort || "",
         id: sameLoc ? cd.id : newId(),
         files: sameLoc && Array.isArray(cd.files) ? cd.files : [],
       };
@@ -827,6 +827,16 @@ export default function App() {
       if (checked) playTaskCompleteSound();
       await saveCard(row, folder, mod);
       if (checked) await stopActiveTimerForCard(folder, mod, row);
+    },
+    [saveCard]
+  );
+
+  const onSetCardMeta = useCallback(
+    async (row, folder, mod, patch) => {
+      if (!row || !folder || !mod) return;
+      if (patch.impact !== undefined) row.impact = patch.impact || "";
+      if (patch.effort !== undefined) row.effort = patch.effort || "";
+      await saveCard(row, folder, mod);
     },
     [saveCard]
   );
@@ -1276,6 +1286,7 @@ export default function App() {
               onSetBoardSort={setBoardSort}
               onOpenCard={openItem}
               onToggleDone={onToggleDone}
+              onSetCardMeta={onSetCardMeta}
               onStartNewCard={startNewCard}
               onApplyWorkspace={applyWorkspace}
               locateRow={(r) => locateRow(foldersRef.current, r)}
@@ -1326,7 +1337,7 @@ export default function App() {
                     id: entry.card || entry.id,
                     doneAt: entry.doneAt || "",
                     impact: entry.impact || "",
-                    difficulty: entry.difficulty || "",
+                    effort: entry.effort || "",
                   },
                   loc: {
                     folder: {
@@ -1467,6 +1478,7 @@ export default function App() {
                 onSetBoardSort={setBoardSort}
                 onOpenCard={openItem}
                 onToggleDone={onToggleDone}
+                onSetCardMeta={onSetCardMeta}
                 onStartNewCard={startNewCard}
                 onApplyWorkspace={applyWorkspace}
                 locateRow={(r) => locateRow(foldersRef.current, r)}
@@ -1607,7 +1619,7 @@ export default function App() {
                 ms: result.draftRemember.ms || "",
                 doneAt: result.draftRemember.doneAt || "",
                 impact: result.draftRemember.impact || "",
-                difficulty: result.draftRemember.difficulty || "",
+                effort: result.draftRemember.effort || "",
                 project: result.loc?.folder?.id || "",
                 board: result.loc?.mod?.[2]?.id || "",
               });
@@ -1624,7 +1636,7 @@ export default function App() {
               body: r.body || "",
               doneAt: r.doneAt || "",
               impact: r.impact || "",
-              difficulty: r.difficulty || "",
+              effort: r.effort || "",
               id: r.id || "",
             });
             setCardDraft({
@@ -1636,7 +1648,7 @@ export default function App() {
               ms: "",
               doneAt: "",
               impact: "",
-              difficulty: "",
+              effort: "",
               project: "",
               board: "",
             });

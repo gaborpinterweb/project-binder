@@ -7,6 +7,7 @@ import {
   putBoard,
   putMasterboard,
   putCardOrder,
+  postCardFile,
   fetchWorkspace,
   fetchTimelogs,
   revealTab,
@@ -73,11 +74,11 @@ import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
 const BOARD_SORT_OPTIONS_BASE = [
   { value: "custom", label: "Custom", icon: "grip" },
-  { value: "impact", label: "By impact", icon: "exclamation" },
-  { value: "difficulty", label: "By difficulty", icon: "zap" },
+  { value: "effort", label: "By effort", icon: "chevronUp" },
+  { value: "impact", label: "By impact", icon: "chevronUp" },
   {
     value: "weight",
-    label: "By priority (easy & impactful)",
+    label: "By priority (low effort & impactful)",
     icon: "chevronsUp",
   },
 ];
@@ -230,7 +231,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             color,
             done: isDone(row),
             impact: payload.impact || row.impact || "",
-            difficulty: payload.difficulty || row.difficulty || "",
+            effort: payload.effort || row.effort || "",
             file: payload.file || firstCardFile(row.files),
             timerActive: !!payload.timerActive,
             title: row.n || "Untitled",
@@ -315,7 +316,7 @@ function DragPreview({ preview, previewElRef }) {
         <span className="card-name">{preview.title}</span>
         <CardTitleIcons
           impact={preview.impact}
-          difficulty={preview.difficulty}
+          effort={preview.effort}
           file={preview.file}
           timerActive={!!preview.timerActive}
         />
@@ -351,6 +352,19 @@ function renderOpenCards(items, column, dropHint, dragHeight, dragKey, renderCar
   );
 }
 
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function TaskCard({
   row,
   folder,
@@ -369,6 +383,9 @@ function TaskCard({
   consumeDragClick,
   onOpen,
   onToggleDone,
+  onSetCardMeta,
+  onApplyWorkspace,
+  keepNav,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -383,6 +400,10 @@ function TaskCard({
   const dragging = dragKey === key;
   const canCtxMenu =
     !boardEdit && !readonly && folder && mod?.[2]?.id && row?.id;
+  const canEditMeta =
+    !readonly && !boardEdit && typeof onSetCardMeta === "function";
+  const canAddFile =
+    canCtxMenu && typeof onApplyWorkspace === "function";
   const timerActive =
     !!activeTimerKey &&
     !!folder?.id &&
@@ -390,6 +411,33 @@ function TaskCard({
     !!row?.id &&
     taskKey(folder.id, mod[2].id, row.id) === activeTimerKey;
   const [timelogMenu, setTimelogMenu] = useState(null);
+  const fileInputRef = useRef(null);
+  const fileBusyRef = useRef(false);
+
+  const uploadCardFiles = async (fileList) => {
+    const list = Array.from(fileList || []).filter(Boolean);
+    if (!list.length || !canAddFile || fileBusyRef.current) return;
+    fileBusyRef.current = true;
+    try {
+      for (const file of list) {
+        const data = await readFileAsBase64(file);
+        const res = await postCardFile({
+          project: folder.id,
+          board: mod[2].id,
+          card: row.id,
+          name: file.name,
+          mime: file.type || "application/octet-stream",
+          data,
+        });
+        onApplyWorkspace(res, keepNav?.(folder.id, mod[2].id));
+      }
+    } catch (err) {
+      window.alert(err.message || "Could not upload file");
+    } finally {
+      fileBusyRef.current = false;
+    }
+  };
+
   return (
     <div
       className={
@@ -419,7 +467,7 @@ function TaskCard({
             showTimeSpent,
             spentSec,
             impact: row.impact || "",
-            difficulty: row.difficulty || "",
+            effort: row.effort || "",
             file: firstCardFile(row.files),
             timerActive,
           },
@@ -427,6 +475,17 @@ function TaskCard({
         );
       }}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={async (e) => {
+          const list = e.target.files;
+          e.target.value = "";
+          await uploadCardFiles(list);
+        }}
+      />
       <b>
         <input
           type="checkbox"
@@ -443,9 +502,20 @@ function TaskCard({
         <span className="card-name">{row.n || "Untitled"}</span>
         <CardTitleIcons
           impact={row.impact}
-          difficulty={row.difficulty}
+          effort={row.effort}
           files={row.files}
           timerActive={timerActive}
+          readonly={!canEditMeta}
+          onImpactChange={
+            canEditMeta
+              ? (impact) => onSetCardMeta(row, folder, mod, { impact })
+              : undefined
+          }
+          onEffortChange={
+            canEditMeta
+              ? (effort) => onSetCardMeta(row, folder, mod, { effort })
+              : undefined
+          }
         />
       </b>
       {src ? <span className="src">{src}</span> : null}
@@ -463,6 +533,21 @@ function TaskCard({
               onStartPomo={onStartPomo}
               onAddManualTimelog={onAddManualTimelog}
               onOpenTimelogs={onOpenTimelogs}
+              onAddEffort={
+                canEditMeta
+                  ? (effort) => onSetCardMeta(row, folder, mod, { effort })
+                  : undefined
+              }
+              onAddImpact={
+                canEditMeta
+                  ? (impact) => onSetCardMeta(row, folder, mod, { impact })
+                  : undefined
+              }
+              onAddFile={
+                canAddFile
+                  ? () => fileInputRef.current?.click()
+                  : undefined
+              }
               onDuplicate={
                 onDuplicateCard
                   ? () => onDuplicateCard(row, folder, mod)
@@ -610,7 +695,7 @@ function boardSortOptions(allowProject) {
 function explainNonCustomSort(sortMode) {
   if (sortMode === "project") return "sorted by project";
   if (sortMode === "impact") return "sorted by impact";
-  if (sortMode === "difficulty") return "sorted by difficulty";
+  if (sortMode === "effort") return "sorted by effort";
   if (sortMode === "weight") return "sorted by priority";
   return "using automatic sorting";
 }
@@ -919,6 +1004,7 @@ function ProjectBoard({
   onSetBoardSort,
   onOpenCard,
   onToggleDone,
+  onSetCardMeta,
   onStartNewCard,
   onApplyWorkspace,
   keepNav,
@@ -1013,6 +1099,9 @@ function ProjectBoard({
     consumeDragClick,
     onOpen: onOpenCard,
     onToggleDone,
+    onSetCardMeta,
+    onApplyWorkspace,
+    keepNav,
     onStartPomo,
     onAddManualTimelog,
     onOpenTimelogs,
@@ -1284,6 +1373,7 @@ function MasterBoard({
   onSetBoardSort,
   onOpenCard,
   onToggleDone,
+  onSetCardMeta,
   onStartNewCard,
   onApplyWorkspace,
   locateRow,
@@ -1397,6 +1487,8 @@ function MasterBoard({
     consumeDragClick,
     onOpen: onOpenCard,
     onToggleDone,
+    onSetCardMeta,
+    onApplyWorkspace,
     onStartPomo,
     onAddManualTimelog,
     onOpenTimelogs,
@@ -2418,6 +2510,7 @@ export default function Board({
   onSetBoardSort,
   onOpenCard,
   onToggleDone,
+  onSetCardMeta,
   onStartNewCard,
   onApplyWorkspace,
   locateRow,
@@ -2496,6 +2589,7 @@ export default function Board({
           onSetBoardSort={onSetBoardSort}
           onOpenCard={onOpenCard}
           onToggleDone={onToggleDone}
+          onSetCardMeta={onSetCardMeta}
           onStartNewCard={onStartNewCard}
           onApplyWorkspace={onApplyWorkspace}
           locateRow={locateRow}
@@ -2598,6 +2692,7 @@ export default function Board({
         onSetBoardSort={onSetBoardSort}
         onOpenCard={onOpenCard}
         onToggleDone={onToggleDone}
+        onSetCardMeta={onSetCardMeta}
         onStartNewCard={onStartNewCard}
         onApplyWorkspace={onApplyWorkspace}
         keepNav={keepNav}

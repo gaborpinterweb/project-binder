@@ -19,6 +19,8 @@ html.desktop-mac aside .side-scroll,html.desktop-mac aside .side-foot{-webkit-ap
 /* Project tab strip: empty chrome after tabs is drag; tabs stay clickable. */
 html.desktop-mac #bar,html.desktop-mac #tabs{-webkit-app-region:drag}
 html.desktop-mac #bar .tab{-webkit-app-region:no-drag}
+/* Overflow/more menus are siblings of .tab (not children) — must opt out of drag. */
+html.desktop-mac #bar .pop,html.desktop-mac #menu{-webkit-app-region:no-drag}
 /* Workspace/global chrome: title strip is drag; right tools stay clickable. */
 html.desktop-mac .modbar.gbar{-webkit-app-region:drag}
 html.desktop-mac .modbar.gbar .gbar-tools{-webkit-app-region:no-drag}

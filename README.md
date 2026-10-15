@@ -134,6 +134,24 @@ Examples: `Project-Binder-0.1.0-mac-arm64.zip`, `Project-Binder-0.2.0-win-x64.zi
 
 `<os>` is `mac` | `win` | `linux`; `<arch>` is `arm64` | `x64`. Tag releases as `v<version>`. Keep this naming stable — the in-app updater picks the asset for the running platform/arch and otherwise opens the release page.
 
+### macOS download (unsigned build)
+
+Builds are not signed or notarized yet, so macOS may say **Project Binder** is damaged and cannot be opened. The download is fine — unblock it once:
+
+1. Unzip the download and open the folder so you see **Project Binder**.
+2. Open **Terminal** (Spotlight → type `Terminal` → Enter).
+3. Type this exactly, including the space at the end (don’t press Enter yet):
+
+   ```text
+   xattr -cr 
+   ```
+
+4. Drag **Project Binder** from the Finder window into the Terminal window. The path appears automatically.
+5. Press **Enter**.
+6. Double-click **Project Binder** again.
+
+Optional: move it into **Applications** first, then drag that copy into Terminal in step 4.
+
 ## Should polish (pre-/post-publish)
 
 Tracked polish items — not blockers for a honest 0.1.0, but worth doing soon:

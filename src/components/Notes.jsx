@@ -728,6 +728,12 @@ export default function Notes({
 
   const setLocked = (next) => setNoteLocked(selectedId, next);
 
+  const toggleNoteLock = (noteId) => {
+    if (!noteId || readonly) return;
+    const key = unlockKey(noteId);
+    setNoteLocked(noteId, !!unlocked[key]);
+  };
+
   // Drop remembered selection only when that note was deleted/moved away.
   useEffect(() => {
     if (!tabKey || !rememberedId) return;
@@ -877,13 +883,6 @@ export default function Notes({
   const selectNote = (id) => {
     if (id === selectedId) return;
     setSelectedId(id);
-  };
-
-  /** Double-click opens for edit (always unlock) — never toggles lock closed. */
-  const openNote = (id) => {
-    if (!id || readonly) return;
-    setSelectedId(id);
-    setNoteLocked(id, false);
   };
 
   const openNoteCtx = (e, note) => {
@@ -1056,7 +1055,10 @@ export default function Notes({
                     type="button"
                     className={"notes-item" + (n.id === selectedId ? " on" : "")}
                     onClick={() => selectNote(n.id)}
-                    onDoubleClick={() => openNote(n.id)}
+                    onDoubleClick={() => {
+                      setSelectedId(n.id);
+                      toggleNoteLock(n.id);
+                    }}
                     onContextMenu={(e) => openNoteCtx(e, n)}
                   >
                     <span className={"notes-item-head" + (isEditing ? " editing" : "")}>

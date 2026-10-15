@@ -2448,7 +2448,7 @@ export function DatabaseView({
       </div>
       <div className="db-layout">
         {showViews ? (
-          <aside className="db-sidebar" aria-label="Custom views">
+          <div className="db-sidebar" aria-label="Custom views">
             <div className="db-views-list">
               {customViews.map((view) => {
                 const on = view.id === activeView.id;
@@ -2480,7 +2480,7 @@ export function DatabaseView({
               <Icon name="plus" size={14} />
               Add view
             </button>
-          </aside>
+          </div>
         ) : null}
         <div className="db-main">{main}</div>
       </div>

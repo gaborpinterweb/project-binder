@@ -1037,7 +1037,7 @@ export default function Notes({
         </div>
       </div>
       <div className="notes-layout">
-        <aside className="notes-sidebar">
+        <div className="notes-sidebar">
           {(d.notes || []).length === 0 ? (
             <p className="notes-empty">No notes yet</p>
           ) : notes.length === 0 ? (
@@ -1087,7 +1087,7 @@ export default function Notes({
               })}
             </div>
           )}
-        </aside>
+        </div>
         <div className="notes-main">
           {!selected ? (
             <p className="notes-placeholder">Nothing is selected</p>

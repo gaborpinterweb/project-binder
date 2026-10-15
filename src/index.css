@@ -12,10 +12,11 @@ body{display:block;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui
 input,textarea,select,[contenteditable="true"],.ProseMirror{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible{outline:2px solid var(--acc)}
-/* Electron macOS hiddenInset: traffic-light pad + window drag regions. */
+/* Electron macOS hiddenInset: traffic-light pad + window drag regions.
+   Only the app nav (.app-side) — not Notes/DB panes that also used <aside>. */
 html.desktop-mac{--desktop-titlebar:36px}
-html.desktop-mac aside{padding-top:calc(10px + var(--desktop-titlebar));-webkit-app-region:drag}
-html.desktop-mac aside .side-scroll,html.desktop-mac aside .side-foot{-webkit-app-region:no-drag}
+html.desktop-mac .app-side{padding-top:calc(10px + var(--desktop-titlebar));-webkit-app-region:drag}
+html.desktop-mac .app-side .side-scroll,html.desktop-mac .app-side .side-foot{-webkit-app-region:no-drag}
 /* Project tab strip: empty chrome after tabs is drag; tabs stay clickable. */
 html.desktop-mac #bar,html.desktop-mac #tabs{-webkit-app-region:drag}
 html.desktop-mac #bar .tab{-webkit-app-region:no-drag}
@@ -24,17 +25,17 @@ html.desktop-mac #bar .pop,html.desktop-mac #menu{-webkit-app-region:no-drag}
 /* Workspace/global chrome: title strip is drag; right tools stay clickable. */
 html.desktop-mac .modbar.gbar{-webkit-app-region:drag}
 html.desktop-mac .modbar.gbar .gbar-tools{-webkit-app-region:no-drag}
-aside{width:var(--aside-w);flex:none;background:var(--side);color:var(--side-ink);padding:10px;display:flex;flex-direction:column;min-height:0}
-aside h2{font-size:13px;color:var(--side-mute);font-weight:600;margin:0 8px 8px}
+.app-side{width:var(--aside-w);flex:none;background:var(--side);color:var(--side-ink);padding:10px;display:flex;flex-direction:column;min-height:0}
+.app-side h2{font-size:13px;color:var(--side-mute);font-weight:600;margin:0 8px 8px}
 .side-head{display:flex;align-items:center;gap:4px;margin:20px 0 8px;padding:0 2px 0 8px}
 .side-head:first-child{margin-top:0}
 .side-head h2{margin:0;flex:1;min-width:0}
 .side-head .side-add{flex:none;width:28px;height:28px;display:grid;place-items:center;padding:0;border-radius:calc(var(--radius) - 6px);color:var(--side-mute);font-size:18px;font-weight:600;line-height:1}
 .side-head .side-add:hover{color:var(--side-ink);background:var(--side-sel)}
-aside button{display:block;width:100%;text-align:left;padding:8px;border-radius:calc(var(--radius) - 4px)}
-aside button:focus-visible{outline-color:var(--side-ink)}
-aside button.on{background:var(--side-sel)}
-aside .side-scroll{flex:1;min-height:0;overflow:auto}
+.app-side button{display:block;width:100%;text-align:left;padding:8px;border-radius:calc(var(--radius) - 4px)}
+.app-side button:focus-visible{outline-color:var(--side-ink)}
+.app-side button.on{background:var(--side-sel)}
+.app-side .side-scroll{flex:1;min-height:0;overflow:auto}
 .side-foot{margin-top:auto;padding-top:8px;}
 .pomo-block{display:flex;flex-direction:column;padding:0;border-radius:16px;background:color-mix(in srgb,var(--pc,var(--acc)) 28%,var(--side));overflow:hidden;border:1px solid color-mix(in srgb,#000 32%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 20%,transparent),0 2px 6px #00000028,0 12px 28px #00000030}
 .pomo-block .pomo-body{padding:0;display:flex;flex-direction:column;min-width:0}
@@ -113,7 +114,7 @@ html.desktop-mac #bar.board-editing .tab.tab-cover,html.desktop-mac #bar.board-e
 .archive-ribbon span{flex:1;min-width:0;line-height:1.35}
 .archive-ribbon button{flex:none;font:inherit;font-size:13px;font-weight:600;color:var(--side);background:var(--side-ink);border:0;border-radius:calc(var(--radius) - 6px);padding:7px 12px;cursor:pointer}
 .archive-ribbon button:hover{background:#fff}
-aside .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;color:var(--side-mute);opacity:.55}
+.app-side .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;color:var(--side-mute);opacity:.55}
 #folders{display:flex;flex-direction:column;gap:2px;min-height:0}
 #folders .bm{touch-action:none;user-select:none}
 .is-project-dragging{cursor:grabbing}
@@ -926,7 +927,7 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .empty h2{margin:0;font-size:20px;font-weight:600;color:var(--ink)}
 .empty p{margin:0 0 12px;font-size:14px;color:var(--mute);max-width:340px;line-height:1.45}
 .empty .cta{font:inherit;color:#fff;background:var(--acc);border:0;border-radius:var(--radius);padding:10px 16px;cursor:pointer}
-aside small{display:block;color:var(--mute);font-size:12px;font-weight:400}
+.app-side small{display:block;color:var(--mute);font-size:12px;font-weight:400}
 .bm{display:flex;align-items:center;gap:8px}
 .bm span:first-child{display:flex;flex:none}
 .bm span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1384,4 +1385,4 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .snackbar-dismiss:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
 .snackbar-dismiss:focus-visible{outline:2px solid color-mix(in srgb,var(--ink) 40%,transparent);outline-offset:1px}
 @keyframes snackbar-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:600px){aside{width:130px}.snackbar-host{left:calc(130px + 12px);right:18px}}
+@media(max-width:600px){.app-side{width:130px}.snackbar-host{left:calc(130px + 12px);right:18px}}

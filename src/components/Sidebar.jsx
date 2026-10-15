@@ -216,7 +216,7 @@ export default function Sidebar({
     : active;
 
   return (
-    <aside>
+    <aside className="app-side">
       <div className="side-scroll">
         <h2>Workspace</h2>
         <div id="globals">

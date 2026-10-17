@@ -585,6 +585,7 @@ export default function TabBar({
       ...measureEl.querySelectorAll(":scope > .tab[data-tab-id]"),
     ];
     const tabWidths = mods.map((mod, i) => {
+      if (!mod) return 0;
       const id = mod[2]?.id || mod[1] + i;
       const el = measureTabs.find((node) => node.dataset.tabId === id);
       return el?.offsetWidth || 0;
@@ -651,23 +652,28 @@ export default function TabBar({
     fit.visible == null ? null : new Set(fit.visible);
   const showOverflow = !!fit.showOverflow;
   const showAddInBar = fit.visible == null ? !archived : !!fit.showAdd;
-  const overflowItems = (fit.hidden || []).map((i) => {
+  // fit can lag one render behind mods (project switch / tab delete); skip stale indices.
+  const overflowItems = (fit.hidden || []).flatMap((i) => {
     const mod = mods[i];
+    if (!mod) return [];
     const active = i === m;
     const locked = boardEdit && !active;
     const id = mod[2]?.id || mod[1] + i;
-    return {
-      index: i,
-      id,
-      label: mod[1],
-      type: mod[0],
-      active,
-      locked,
-    };
+    return [
+      {
+        index: i,
+        id,
+        label: mod[1],
+        type: mod[0],
+        active,
+        locked,
+      },
+    ];
   });
   const addInOverflow = showOverflow && !archived && !showAddInBar;
 
   const renderTab = (mod, i) => {
+    if (!mod) return null;
     const active = i === m;
     const locked = boardEdit && !active;
     const id = mod[2]?.id || mod[1] + i;
@@ -743,6 +749,7 @@ export default function TabBar({
         </div>
         <div className="tabs-measure" ref={measureRef} aria-hidden="true">
           {mods.map((mod, i) => {
+            if (!mod) return null;
             const id = mod[2]?.id || mod[1] + i;
             return (
               <TabBtn

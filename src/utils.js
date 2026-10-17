@@ -315,7 +315,7 @@ export function tabsOrderPayload(mods) {
   return (mods || [])
     .map((mod) => {
       const type = modToTabType(mod);
-      const id = mod[2]?.id;
+      const id = mod?.[2]?.id;
       if (!type || !id) return null;
       return { type, id };
     })
@@ -1194,7 +1194,7 @@ export function restoreTabIndex(pr) {
   if (!pr?.mods?.length) return 0;
   const want = loadLastTabs()[pr.id];
   if (!want) return 0;
-  const i = pr.mods.findIndex((mod) => mod[2]?.id === want);
+  const i = pr.mods.findIndex((mod) => mod?.[2]?.id === want);
   return i >= 0 ? i : 0;
 }
 

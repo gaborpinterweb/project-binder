@@ -243,7 +243,7 @@ export default function App() {
         if (opts.board != null) {
           nextM = Math.max(
             0,
-            (next[nextP]?.mods || []).findIndex((mod) => mod[2]?.id === opts.board)
+            (next[nextP]?.mods || []).findIndex((mod) => mod?.[2]?.id === opts.board)
           );
           if (nextM < 0) nextM = 0;
         }
@@ -264,7 +264,7 @@ export default function App() {
         if (nextP < 0) nextP = 0;
         let nextM = Math.max(
           0,
-          (next[nextP]?.mods || []).findIndex((mod) => mod[2]?.id === keepM)
+          (next[nextP]?.mods || []).findIndex((mod) => mod?.[2]?.id === keepM)
         );
         if (nextM < 0) nextM = 0;
         setP(nextP);
@@ -1186,6 +1186,7 @@ export default function App() {
         <div className="stage">
           {!isGlobal && (
             <TabBar
+              key={folder?.id || "none"}
               folder={folder}
               mods={mods}
               m={m}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   cardFileDownloadUrl,
   deleteCardFileApi,
+  deleteTimelogApi,
   fetchCardTimelogs,
   postCardFile,
 } from "../api.js";
@@ -17,11 +18,16 @@ import {
   allBoards,
   boardColumnLabel,
   boardLabel,
+  MIN_TIMELOG_SEC,
   formatDuration,
+  formatTimer,
   isDone,
   isEmptyNoteBody,
+  isStoptimerSession,
   pastel,
   playTaskCompleteSound,
+  pomoElapsedSec,
+  pomoRemainingSec,
   taskKey,
 } from "../utils.js";
 import { fieldTypeIcon } from "../dbFields.js";
@@ -32,7 +38,7 @@ import {
   visibleDbCols,
 } from "../dbViews.js";
 import DbFieldInput from "./DbFieldInput.jsx";
-import CardTitleIcons, {
+import {
   CardMetaIcon,
   CardMetaKindIcon,
   CardMetaPicker,
@@ -43,6 +49,7 @@ import PropDropdown, { closePropDrops } from "./PropDropdown.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 import TimelogDropdown, {
   TimelogMenuButtons,
+  TimelogMoreMenu,
   runTimelogAction,
   timelogOptions,
 } from "./TimelogDropdown.jsx";
@@ -393,6 +400,7 @@ export default function CardDialog({
   onDelete,
   onDuplicate,
   onStartPomo,
+  onStopPomo,
   onStopActiveTimerForCard,
   onAddManualTimelog,
   onEditTimelog,
@@ -404,6 +412,7 @@ export default function CardDialog({
   showMasterColumn = true,
   showTimelogs = true,
   activeTimerKey = null,
+  activePomo = null,
   logsRefreshKey = 0,
 }) {
   const [curLoc, setCurLoc] = useState(
@@ -448,6 +457,23 @@ export default function CardDialog({
     !!draft?.id &&
     taskKey(curLoc.folder.id, curLoc.mod[2].id, draft.id) ===
       activeTimerKey;
+  const [, setTimerTick] = useState(0);
+  useEffect(() => {
+    if (!timerActive) return;
+    const id = setInterval(() => setTimerTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [timerActive]);
+  const liveElapsed =
+    timerActive && activePomo ? pomoElapsedSec(activePomo) : 0;
+  const liveCanSave = liveElapsed >= MIN_TIMELOG_SEC;
+  const liveTimerLabel =
+    timerActive && activePomo
+      ? formatTimer(
+          isStoptimerSession(activePomo)
+            ? liveElapsed
+            : pomoRemainingSec(activePomo)
+        )
+      : "";
 
   const reloadCardLogs = async () => {
     const cur = curLocRef.current;
@@ -571,7 +597,8 @@ export default function CardDialog({
   const boards = allBoards(folders);
   const canTimelogCard =
     !isDraft && curLoc?.mod[0] === "Board" && !!draft.id;
-  const showTimelogSection = canTimelogCard && cardLogs.length > 0;
+  const showTimelogSection =
+    canTimelogCard && (cardLogs.length > 0 || timerActive);
   const canAddFile =
     !readonly &&
     !!curLoc?.folder?.id &&
@@ -770,10 +797,6 @@ export default function CardDialog({
                   if (isDraft && !(draft.n || "").trim()) return;
                   close(isDraft);
                 }}
-              />
-              <CardTitleIcons
-                files={draft.files}
-                timerActive={timerActive}
               />
               {!readonly &&
                 !isDraft &&
@@ -1161,6 +1184,35 @@ export default function CardDialog({
                     ) : null}
                   </div>
                   <ul className="dlg-timelog-list">
+                    {timerActive && liveTimerLabel ? (
+                      <li className="dlg-timelog-item is-running">
+                        <span className="dlg-timelog-note dlg-timelog-running">
+                          <Icon name="runningClock" size={14} />
+                          Running
+                        </span>
+                        <span className="dlg-timelog-date" aria-hidden="true" />
+                        <span className="dlg-timelog-dur dlg-timelog-live">
+                          {liveTimerLabel}
+                        </span>
+                        <button
+                          type="button"
+                          className={
+                            "dlg-timelog-stop-btn" +
+                            (liveCanSave ? "" : " is-cancel")
+                          }
+                          title={liveCanSave ? "Save timelog" : "Cancel timer"}
+                          aria-label={
+                            liveCanSave ? "Save timelog" : "Cancel timer"
+                          }
+                          onClick={async () => {
+                            await onStopPomo?.();
+                            await reloadCardLogs();
+                          }}
+                        >
+                          {liveCanSave ? "Save" : "Cancel"}
+                        </button>
+                      </li>
+                    ) : null}
                     {cardLogs.map((entry) => {
                       const stamp = entry.endedAt || entry.startedAt || "";
                       return (
@@ -1183,18 +1235,27 @@ export default function CardDialog({
                             {formatDuration(entry.durationSec)}
                           </span>
                           {!readonly ? (
-                            <button
-                              type="button"
-                              className="dlg-timelog-edit-btn"
-                              title="Edit timelog"
-                              aria-label="Edit timelog"
-                              onClick={async () => {
+                            <TimelogMoreMenu
+                              className="dlg-timelog-entry-more"
+                              onEdit={async () => {
                                 await onEditTimelog?.(entry);
                                 await reloadCardLogs();
                               }}
-                            >
-                              <Icon name="pencil" size={14} />
-                            </button>
+                              onDelete={async () => {
+                                const ok = await askConfirm({
+                                  title: "Delete this timelog?",
+                                  confirmLabel: "Delete",
+                                  danger: true,
+                                });
+                                if (!ok) return;
+                                try {
+                                  await deleteTimelogApi({ id: entry.id });
+                                  await reloadCardLogs();
+                                } catch {
+                                  /* keep list as-is */
+                                }
+                              }}
+                            />
                           ) : null}
                         </li>
                       );

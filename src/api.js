@@ -313,6 +313,13 @@ export async function pickBackupFolder() {
   return apiOkData("/api/backup/pick-folder", { method: "POST" }, "could not pick folder");
 }
 
+/** Desktop: native Save dialog, then write text to the chosen path. */
+export async function saveExportFile(body) {
+  const { r, data } = await apiJson("/api/export/save", { method: "POST", body });
+  if (!r.ok) throw new Error(data?.error || "could not save file");
+  return data;
+}
+
 export async function importBackup(body) {
   return apiOkData("/api/backup/import", { method: "POST", body: body || {} }, "import failed");
 }

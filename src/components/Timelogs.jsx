@@ -23,6 +23,7 @@ import { Icon } from "../icons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import Dropdown from "./Dropdown.jsx";
 import TimelogDialog from "./TimelogDialog.jsx";
+import { TimelogMoreMenu } from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
 
 function entryBoardKey(entry) {
@@ -261,71 +262,6 @@ function formatFromTo(entry) {
   const end = entry.endedAt ? formatClock(entry.endedAt) : "";
   if (start && end) return `${start} – ${end}`;
   return start || end || "—";
-}
-
-function TimelogMoreMenu({ disabled, onEdit, onDelete }) {
-  const wrapRef = useRef(null);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  const run = (fn) => {
-    setOpen(false);
-    fn?.();
-  };
-
-  return (
-    <div
-      className={"timelog-more" + (open ? " open" : "")}
-      ref={wrapRef}
-    >
-      <button
-        type="button"
-        className="timelog-more-btn"
-        title="Timelog options"
-        aria-label="Timelog options"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        disabled={disabled}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (disabled) return;
-          setOpen((o) => !o);
-        }}
-      >
-        <Icon name="more" size={14} />
-      </button>
-      {open ? (
-        <div className="pop" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => run(onEdit)}
-          >
-            <Icon name="pencil" size={14} />
-            Edit
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="danger"
-            onClick={() => run(onDelete)}
-          >
-            <Icon name="Trash" size={14} />
-            Delete
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 function TimelogRow({

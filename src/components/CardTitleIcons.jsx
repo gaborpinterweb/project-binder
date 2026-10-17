@@ -9,6 +9,7 @@ import {
   normalizeEffort,
   normalizeImpact,
 } from "../cardMeta.js";
+import { formatSpent } from "../utils.js";
 import Dropdown from "./Dropdown.jsx";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 
@@ -140,43 +141,18 @@ export function CardMetaPicker({
   );
 }
 
-/** Title-row badges: effort → impact → first file → timer. */
+/** Title-row badges: first file (dialog) → timer (+ optional live label). */
 export default function CardTitleIcons({
-  impact = "",
-  effort = "",
   files,
   file = null,
   timerActive = false,
+  timerLabel = "",
   size = 20,
-  readonly = false,
-  onImpactChange,
-  onEffortChange,
 }) {
   const attachment = file || firstCardFile(files);
-  const canEditImpact = !readonly && typeof onImpactChange === "function";
-  const canEditEffort = !readonly && typeof onEffortChange === "function";
+  const label = String(timerLabel || "").trim();
   return (
     <>
-      {canEditEffort ? (
-        <CardMetaPicker
-          kind="effort"
-          level={effort}
-          size={size}
-          onChange={onEffortChange}
-        />
-      ) : (
-        <CardMetaIcon kind="effort" level={effort} size={size} />
-      )}
-      {canEditImpact ? (
-        <CardMetaPicker
-          kind="impact"
-          level={impact}
-          size={size}
-          onChange={onImpactChange}
-        />
-      ) : (
-        <CardMetaIcon kind="impact" level={impact} size={size} />
-      )}
       {attachment ? (
         <span
           className="card-timer-ico card-file-ico"
@@ -190,10 +166,110 @@ export default function CardTitleIcons({
         </span>
       ) : null}
       {timerActive ? (
-        <span className="card-timer-ico" title="Timer active">
+        <span
+          className={"card-timer-ico" + (label ? " has-live" : "")}
+          title={label ? `Timer ${label}` : "Timer active"}
+        >
           <Icon name="runningClock" size={size} />
+          {label ? <span className="card-timer-live">{label}</span> : null}
         </span>
       ) : null}
     </>
+  );
+}
+
+function shortFileLabel(name, max = 8) {
+  const s = String(name || "File").trim() || "File";
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
+}
+
+/** Board preview meta row: project → effort → impact → time → file. */
+export function CardPreviewMeta({
+  impact = "",
+  effort = "",
+  files,
+  src = "",
+  spentSec = 0,
+  metaShow = null,
+  size = 16,
+  readonly = false,
+  onImpactChange,
+  onEffortChange,
+}) {
+  if (metaShow && !metaShow.details) return null;
+  const showTaskBoard = !metaShow || metaShow.taskBoard;
+  const showPriority = !metaShow || metaShow.priority;
+  const showTime = !metaShow || metaShow.timeSpent;
+  const showFiles = !metaShow || metaShow.files;
+  const list = showFiles && Array.isArray(files) ? files.filter(Boolean) : [];
+  const firstFile = list[0] || null;
+  const extraFiles = Math.max(0, list.length - 1);
+  const project = showTaskBoard ? String(src || "").trim() : "";
+  const hasSpent = showTime && (spentSec || 0) > 0;
+  const hasEffort = showPriority && !!normalizeEffort(effort);
+  const hasImpact = showPriority && !!normalizeImpact(impact);
+  if (!project && !hasEffort && !hasImpact && !firstFile && !hasSpent) {
+    return null;
+  }
+  const canEditImpact =
+    showPriority && !readonly && typeof onImpactChange === "function";
+  const canEditEffort =
+    showPriority && !readonly && typeof onEffortChange === "function";
+  const chipIcon = Math.max(11, Math.round(size * 0.75));
+  const fileTitle =
+    list.length <= 1
+      ? firstFile?.name || "File"
+      : list.map((f) => f.name || "File").join(", ");
+  return (
+    <div className="card-meta">
+      {project ? (
+        <span className="card-meta-chip" title={project}>
+          <Icon name="folder" size={chipIcon} />
+          <span className="card-meta-chip-lab">{project}</span>
+        </span>
+      ) : null}
+      {canEditEffort ? (
+        <CardMetaPicker
+          kind="effort"
+          level={effort}
+          size={size}
+          onChange={onEffortChange}
+        />
+      ) : hasEffort ? (
+        <CardMetaIcon kind="effort" level={effort} size={size} />
+      ) : null}
+      {canEditImpact ? (
+        <CardMetaPicker
+          kind="impact"
+          level={impact}
+          size={size}
+          onChange={onImpactChange}
+        />
+      ) : hasImpact ? (
+        <CardMetaIcon kind="impact" level={impact} size={size} />
+      ) : null}
+      {hasSpent ? (
+        <span className="card-meta-chip" title="Time spent">
+          <Icon name="Timelogs" size={chipIcon} />
+          <span className="card-meta-chip-lab">{formatSpent(spentSec)}</span>
+        </span>
+      ) : null}
+      {firstFile ? (
+        <span className="card-meta-chip card-meta-file" title={fileTitle}>
+          <FileTypeIcon
+            name={firstFile.name}
+            mime={firstFile.mime}
+            size={chipIcon}
+          />
+          <span className="card-meta-chip-lab">
+            {shortFileLabel(firstFile.name)}
+            {extraFiles
+              ? ` + ${extraFiles} other${extraFiles === 1 ? "" : "s"}`
+              : ""}
+          </span>
+        </span>
+      ) : null}
+    </div>
   );
 }

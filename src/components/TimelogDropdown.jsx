@@ -10,6 +10,105 @@ import { loadCountdownDurationMin, timelogTaskFromCard } from "../utils.js";
 import { CardMetaIcon, CardMetaKindIcon } from "./CardTitleIcons.jsx";
 import Dropdown from "./Dropdown.jsx";
 
+/** ⋮ menu for a single timelog entry (Edit / Delete). Fixed pop escapes scroll/overflow clip. */
+export function TimelogMoreMenu({ disabled, onEdit, onDelete, className = "" }) {
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const place = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const menuH = 88;
+    const openUp = window.innerHeight - r.bottom < menuH + 8;
+    setPos(
+      openUp
+        ? { bottom: window.innerHeight - r.top + 4, right: window.innerWidth - r.right }
+        : { top: r.bottom + 4, right: window.innerWidth - r.right }
+    );
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setPos(null);
+      return;
+    }
+    place();
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onReposition = () => place();
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open]);
+
+  const run = (fn) => {
+    setOpen(false);
+    fn?.();
+  };
+
+  return (
+    <div
+      className={
+        "timelog-more" + (open ? " open" : "") + (className ? ` ${className}` : "")
+      }
+      ref={wrapRef}
+    >
+      <button
+        type="button"
+        ref={btnRef}
+        className="timelog-more-btn"
+        title="Timelog options"
+        aria-label="Timelog options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (disabled) return;
+          setOpen((o) => !o);
+        }}
+      >
+        <Icon name="more" size={14} />
+      </button>
+      {open && pos ? (
+        <div
+          className="pop"
+          role="menu"
+          style={{
+            top: pos.top,
+            bottom: pos.bottom,
+            right: pos.right,
+            left: "auto",
+          }}
+        >
+          <button type="button" role="menuitem" onClick={() => run(onEdit)}>
+            <Icon name="pencil" size={14} />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => run(onDelete)}
+          >
+            <Icon name="Trash" size={14} />
+            Delete
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function timelogOptions({ showTimers = true } = {}) {
   const mins = loadCountdownDurationMin();
   return [

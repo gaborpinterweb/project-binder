@@ -1683,6 +1683,7 @@ export default function App() {
               ? taskKey(activePomo.project, activePomo.board, activePomo.card)
               : null
           }
+          activePomo={activePomo}
           logsRefreshKey={timelogRefresh}
           onClose={(result) => {
             if (result?.draftRemember) {
@@ -1763,6 +1764,7 @@ export default function App() {
             if (hit) openItem(hit.row);
           }}
           onStartPomo={startPomodoro}
+          onStopPomo={stopPomodoro}
           onStopActiveTimerForCard={stopActiveTimerForCard}
           onAddManualTimelog={addManualTimelog}
           onEditTimelog={editTimelog}

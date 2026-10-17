@@ -3132,7 +3132,7 @@ function importFromBackupZip(zipPath) {
   }
 }
 
-async function electronOpenDialog(options) {
+async function electronDialog(method, options) {
   if (!isDesktopApp()) return { ok: false, error: "desktop only" };
   let dialog;
   let BrowserWindow;
@@ -3143,19 +3143,32 @@ async function electronOpenDialog(options) {
   } catch {
     return { ok: false, error: "electron dialog unavailable" };
   }
-  if (!dialog || typeof dialog.showOpenDialog !== "function") {
+  if (!dialog || typeof dialog[method] !== "function") {
     return { ok: false, error: "electron dialog unavailable" };
   }
   const win = BrowserWindow && typeof BrowserWindow.getFocusedWindow === "function"
     ? BrowserWindow.getFocusedWindow()
     : null;
   const result = win
-    ? await dialog.showOpenDialog(win, options)
-    : await dialog.showOpenDialog(options);
-  if (result.canceled || !result.filePaths || !result.filePaths[0]) {
+    ? await dialog[method](win, options)
+    : await dialog[method](options);
+  if (result.canceled) return { ok: false, cancelled: true };
+  if (method === "showSaveDialog") {
+    if (!result.filePath) return { ok: false, cancelled: true };
+    return { ok: true, path: result.filePath };
+  }
+  if (!result.filePaths || !result.filePaths[0]) {
     return { ok: false, cancelled: true };
   }
   return { ok: true, path: result.filePaths[0] };
+}
+
+function electronOpenDialog(options) {
+  return electronDialog("showOpenDialog", options);
+}
+
+function electronSaveDialog(options) {
+  return electronDialog("showSaveDialog", options);
 }
 
 function pickBackupFolder() {
@@ -3171,6 +3184,28 @@ function pickBackupZip() {
     properties: ["openFile"],
     filters: [{ name: "Project Binder backup", extensions: ["zip"] }],
   });
+}
+
+/** Write text to a user-chosen path via the native Save dialog. */
+async function saveTextExport(body = {}) {
+  const rawName = String(body.filename || "export.csv").trim() || "export.csv";
+  const filename = path.basename(rawName).replace(/[/\\]/g, "-") || "export.csv";
+  const content = String(body.content ?? "");
+  const filters = Array.isArray(body.filters) && body.filters.length
+    ? body.filters
+    : [{ name: "CSV", extensions: ["csv"] }];
+  const picked = await electronSaveDialog({
+    title: String(body.title || "Save file"),
+    defaultPath: filename,
+    filters,
+  });
+  if (picked.cancelled || !picked.ok) return picked;
+  try {
+    fs.writeFileSync(picked.path, content, "utf8");
+    return { ok: true, path: picked.path };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
 }
 
 function backupApiMeta(ab) {
@@ -3339,6 +3374,14 @@ const server = http.createServer(async (req, res) => {
       if (picked.cancelled) return json(res, 200, { ok: false, cancelled: true });
       if (!picked.ok) return json(res, 400, picked);
       return json(res, 200, picked);
+    }
+    if (req.method === "POST" && url.pathname === "/api/export/save") {
+      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
+      const body = await readBody(req);
+      const result = await saveTextExport(body);
+      if (result.cancelled) return json(res, 200, { ok: false, cancelled: true });
+      if (!result.ok) return json(res, 400, result);
+      return json(res, 200, result);
     }
     if (
       req.method === "POST" &&

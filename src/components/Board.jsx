@@ -38,6 +38,7 @@ import {
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
+import DbExportDropdown from "./DbExportDropdown.jsx";
 import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
 import DbSortsDropdown from "./DbSortsDropdown.jsx";
 import DbViewDropdown from "./DbViewDropdown.jsx";
@@ -57,7 +58,6 @@ import {
   colCollapseKey,
   columnRows,
   confirmDeleteColumn,
-  formatSpent,
   getBoardShow,
   getBoardSort,
   groupByDoneDay,
@@ -71,7 +71,7 @@ import {
   saveDbViewsSidebar,
 } from "../utils.js";
 import { showSnackbar } from "../snackbar.js";
-import CardTitleIcons, { firstCardFile } from "./CardTitleIcons.jsx";
+import CardTitleIcons, { CardPreviewMeta } from "./CardTitleIcons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
 import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
@@ -224,7 +224,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
           const folder = payload.folder;
           const color =
             payload.color || folder?.color || PC[0];
-          // payload.src / showTimeSpent come from the card (View settings).
+          // payload.src comes from the card (View settings).
           const src = payload.src || "";
           setDragKey(key);
           setDragHeight(session.height);
@@ -235,11 +235,11 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             done: isDone(row),
             impact: payload.impact || row.impact || "",
             effort: payload.effort || row.effort || "",
-            file: payload.file || firstCardFile(row.files),
+            files: payload.files || row.files,
+            metaShow: payload.metaShow || null,
             timerActive: !!payload.timerActive,
             title: row.n || "Untitled",
             src,
-            showTimeSpent: !!payload.showTimeSpent,
             spentSec: payload.spentSec || 0,
             x: ev.clientX - session.offsetX,
             y: ev.clientY - session.offsetY,
@@ -317,17 +317,17 @@ function DragPreview({ preview, previewElRef }) {
       <b>
         <span className="card-check drag-preview-check" aria-hidden="true" />
         <span className="card-name">{preview.title}</span>
-        <CardTitleIcons
-          impact={preview.impact}
-          effort={preview.effort}
-          file={preview.file}
-          timerActive={!!preview.timerActive}
-        />
+        <CardTitleIcons timerActive={!!preview.timerActive} />
       </b>
-      {preview.src ? <span className="src">{preview.src}</span> : null}
-      {preview.showTimeSpent ? (
-        <span className="card-spent">{formatSpent(preview.spentSec || 0)}</span>
-      ) : null}
+      <CardPreviewMeta
+        impact={preview.impact}
+        effort={preview.effort}
+        files={preview.files}
+        src={preview.src}
+        spentSec={preview.spentSec || 0}
+        metaShow={preview.metaShow}
+        readonly
+      />
     </div>,
     document.body
   );
@@ -375,7 +375,7 @@ function TaskCard({
   color,
   src,
   spentSec,
-  showTimeSpent = false,
+  metaShow = null,
   activeTimerKey = null,
   boardEdit,
   noDrag,
@@ -467,11 +467,11 @@ function TaskCard({
           {
             ...(dragPayload || { row, folder, mod }),
             src,
-            showTimeSpent,
             spentSec,
             impact: row.impact || "",
             effort: row.effort || "",
-            file: firstCardFile(row.files),
+            files: row.files,
+            metaShow,
             timerActive,
           },
           key
@@ -503,28 +503,27 @@ function TaskCard({
           }}
         />
         <span className="card-name">{row.n || "Untitled"}</span>
-        <CardTitleIcons
-          impact={row.impact}
-          effort={row.effort}
-          files={row.files}
-          timerActive={timerActive}
-          readonly={!canEditMeta}
-          onImpactChange={
-            canEditMeta
-              ? (impact) => onSetCardMeta(row, folder, mod, { impact })
-              : undefined
-          }
-          onEffortChange={
-            canEditMeta
-              ? (effort) => onSetCardMeta(row, folder, mod, { effort })
-              : undefined
-          }
-        />
+        <CardTitleIcons timerActive={timerActive} />
       </b>
-      {src ? <span className="src">{src}</span> : null}
-      {showTimeSpent ? (
-        <span className="card-spent">{formatSpent(spentSec || 0)}</span>
-      ) : null}
+      <CardPreviewMeta
+        impact={row.impact}
+        effort={row.effort}
+        files={row.files}
+        src={src}
+        spentSec={spentSec || 0}
+        metaShow={metaShow}
+        readonly={!canEditMeta}
+        onImpactChange={
+          canEditMeta
+            ? (impact) => onSetCardMeta(row, folder, mod, { impact })
+            : undefined
+        }
+        onEffortChange={
+          canEditMeta
+            ? (effort) => onSetCardMeta(row, folder, mod, { effort })
+            : undefined
+        }
+      />
       {timelogMenu
         ? createPortal(
             <TimelogContextMenu
@@ -585,9 +584,12 @@ const COMPLETED_VIEW_OPTIONS = [
   { value: "virtual", label: "Show completed column", icon: "board" },
 ];
 
-const BOARD_SHOW_OPTIONS = [
-  { value: "projectName", label: "Project name" },
-  { value: "timeSpent", label: "Time spent" },
+const BOARD_DETAILS_OPTIONS = [
+  { value: "details", label: "Details" },
+  { value: "taskBoard", label: "Task board", nested: true },
+  { value: "priority", label: "Priority", nested: true },
+  { value: "timeSpent", label: "Total timelog", nested: true },
+  { value: "files", label: "Files", nested: true },
 ];
 
 function useCardSpentByKey(enabled, refreshKey) {
@@ -654,22 +656,30 @@ function CompletedViewBtn({
           options: COMPLETED_VIEW_OPTIONS,
         },
         {
-          label: "Show",
+          label: "Details",
           closeOnSelect: false,
           onChange: (key) => {
-            if (key === "projectName") {
-              onSetBoardShow(scope, { projectName: !show.projectName });
-            } else if (key === "timeSpent") {
-              onSetBoardShow(scope, { timeSpent: !show.timeSpent });
+            if (key === "details") {
+              onSetBoardShow(scope, { details: !show.details });
+              return;
             }
+            if (!show.details) return;
+            if (key in show) onSetBoardShow(scope, { [key]: !show[key] });
           },
-          options: BOARD_SHOW_OPTIONS.map((o) => ({
+          options: BOARD_DETAILS_OPTIONS.map((o) => ({
             ...o,
-            checked: show[o.value],
+            checked: !!show[o.value],
+            disabled: o.nested && !show.details,
           })),
           renderOption: (o) => (
-            <span className="dd-check">
-              <input type="checkbox" checked={!!o.checked} readOnly tabIndex={-1} />
+            <span className={"dd-check" + (o.nested ? " nested" : "")}>
+              <input
+                type="checkbox"
+                checked={!!o.checked}
+                disabled={!!o.disabled}
+                readOnly
+                tabIndex={-1}
+              />
               {o.label}
             </span>
           ),
@@ -1028,7 +1038,7 @@ function ProjectBoard({
   const mode = getCompletedView(scope, completedViewByScope);
   const show = getBoardShow(scope, boardShowByScope);
   const sortMode = getBoardSort(scope, boardSortByScope, { allowProject: false });
-  const spentByKey = useCardSpentByKey(show.timeSpent, uiTick);
+  const spentByKey = useCardSpentByKey(!!show.details && !!show.timeSpent, uiTick);
 
   const resolveDrop = useCallback(
     async (payload, hint) => {
@@ -1117,12 +1127,14 @@ function ProjectBoard({
     onDuplicateCard,
     onDeleteCard,
     readonly,
-    showTimeSpent: show.timeSpent,
     activeTimerKey,
+    metaShow: show,
   };
 
   const cardSrc = (row) =>
-    show.projectName ? boardColumnLabel(folder, mod, row.s) : null;
+    show.details && show.taskBoard
+      ? boardColumnLabel(folder, mod, row.s)
+      : null;
 
   const renameBoardColumn = async (from, to) => {
     const next = (to || "").trim().replace(/,/g, " ");
@@ -1406,9 +1418,11 @@ function MasterBoard({
   const mode = getCompletedView("master", completedViewByScope);
   const show = getBoardShow("master", boardShowByScope);
   const sortMode = getBoardSort("master", boardSortByScope, { allowProject: true });
-  const spentByKey = useCardSpentByKey(show.timeSpent, uiTick);
+  const spentByKey = useCardSpentByKey(!!show.details && !!show.timeSpent, uiTick);
   const cardSrc = (t) =>
-    show.projectName ? boardColumnLabel(t.folder, t.mod, t.row.s) : null;
+    show.details && show.taskBoard
+      ? boardColumnLabel(t.folder, t.mod, t.row.s)
+      : null;
   const projectIndexOf = useCallback(
     (row) => {
       const t = tasks.find((x) => x.row === row);
@@ -1510,8 +1524,8 @@ function MasterBoard({
     onOpenTimelogs,
     onDuplicateCard,
     onDeleteCard,
-    showTimeSpent: show.timeSpent,
     activeTimerKey,
+    metaShow: show,
   };
 
   const renameMasterColumn = async (from, to) => {
@@ -2654,6 +2668,13 @@ export function DatabaseView({
             <Icon name="sidebar" size={18} />
             <span className="mod-act-lab">Presets</span>
           </button>
+        </div>
+        <div className="modbar-end">
+          <DbExportDropdown
+            cols={visibleDbCols(d.cols || [], hiddenCols)}
+            rows={displayRows}
+            name={mod[1]}
+          />
         </div>
       </div>
       <div className={"db-layout" + (showPresets ? " presets-open" : "")}>

@@ -1113,11 +1113,14 @@ export function saveNotesSelected(tabKey, noteId) {
   writeStorageJson(NOTES_SELECTED_KEY, map);
 }
 
-/** Defaults: project name on for Masterboard only; time spent off. */
+/** Card preview meta chips (Details master + per-chip toggles). */
 export function defaultBoardShow(scope) {
   return {
-    projectName: scope === "master",
-    timeSpent: false,
+    details: true,
+    taskBoard: scope === "master",
+    priority: true,
+    timeSpent: true,
+    files: true,
   };
 }
 
@@ -1129,11 +1132,20 @@ export function loadBoardShow() {
 export function normalizeBoardShow(scope, raw) {
   const defaults = defaultBoardShow(scope);
   if (!raw || typeof raw !== "object") return defaults;
+  const taskBoard =
+    typeof raw.taskBoard === "boolean"
+      ? raw.taskBoard
+      : typeof raw.projectName === "boolean"
+        ? raw.projectName
+        : defaults.taskBoard;
   return {
-    projectName:
-      typeof raw.projectName === "boolean" ? raw.projectName : defaults.projectName,
+    details: typeof raw.details === "boolean" ? raw.details : defaults.details,
+    taskBoard,
+    priority:
+      typeof raw.priority === "boolean" ? raw.priority : defaults.priority,
     timeSpent:
       typeof raw.timeSpent === "boolean" ? raw.timeSpent : defaults.timeSpent,
+    files: typeof raw.files === "boolean" ? raw.files : defaults.files,
   };
 }
 

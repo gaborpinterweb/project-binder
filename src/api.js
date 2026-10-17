@@ -26,6 +26,11 @@ export async function fetchWorkspace() {
   return apiData("/api/workspace");
 }
 
+export async function fetchArchivedProjects() {
+  const data = await apiData("/api/archived-projects");
+  return data.projects || [];
+}
+
 export async function putCard(body) {
   return apiData("/api/card", { method: "PUT", body });
 }

@@ -8,10 +8,12 @@ alwaysApply: false
 
 ## Storage
 
-- Packaged Electron → OS user data (`userWorkspace.json`, uploads, settings).
+- Packaged Electron → OS user data (`userWorkspace.json`, `userArchive.json`, uploads, settings).
+- Active projects live in `userWorkspace.json`; archived projects live in `userArchive.json` (never both).
 - CLI / browser / unpackaged → in-memory store seeded from `seedWorkspace.json` (never OS Application Support).
 - **Never write** `seedWorkspace.json` (read-only seed / demo).
-- Packaged: if `userWorkspace.json` is missing/empty/corrupt, clone from seed onto disk.
+- Packaged: if `userWorkspace.json` is missing/empty/corrupt, clone from seed onto disk; peel any `archived` projects into `userArchive.json` on boot.
+- Backup/export zip includes `userWorkspace.json`, `userArchive.json` (optional on import for older zips), and `uploads/`.
 
 ## Demo flag
 

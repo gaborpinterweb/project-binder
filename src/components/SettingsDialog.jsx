@@ -3,6 +3,7 @@ import { Icon } from "../icons.jsx";
 import {
   exportWorkspace,
   fetchAppInfo,
+  fetchArchivedProjects,
   saveBackupSettings,
   runBackupNow,
   pickBackupFolder,
@@ -56,7 +57,6 @@ function formatBackupTime(iso) {
 }
 
 export default function SettingsDialog({
-  folders = [],
   countdownDurationMin,
   onCountdownDurationChange,
   stoptimerMaxMin,
@@ -86,12 +86,9 @@ export default function SettingsDialog({
     return list;
   }, []);
 
-  const archivedProjects = useMemo(
-    () => folders.filter((pr) => pr.archived),
-    [folders]
-  );
-
   const [tab, setTab] = useState("experience");
+  const [archivedProjects, setArchivedProjects] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [resetting, setResetting] = useState(null);
   const [desktop, setDesktop] = useState(false);
   const [menuBarSupported, setMenuBarSupported] = useState(false);
@@ -104,6 +101,25 @@ export default function SettingsDialog({
     keepDays: AUTO_BACKUP_KEEP_DAYS,
   });
   const [backupBusy, setBackupBusy] = useState(null);
+
+  useEffect(() => {
+    if (tab !== "archive") return;
+    let cancelled = false;
+    setArchiveLoading(true);
+    (async () => {
+      try {
+        const list = await fetchArchivedProjects();
+        if (!cancelled) setArchivedProjects(list);
+      } catch {
+        if (!cancelled) setArchivedProjects([]);
+      } finally {
+        if (!cancelled) setArchiveLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -415,7 +431,9 @@ export default function SettingsDialog({
 
           {tab === "archive" && (
             <section className="settings-section">
-              {archivedProjects.length === 0 ? (
+              {archiveLoading ? (
+                <p className="settings-empty">Loading…</p>
+              ) : archivedProjects.length === 0 ? (
                 <p className="settings-empty">No archived projects.</p>
               ) : (
                 <div className="settings-rows">
@@ -434,7 +452,14 @@ export default function SettingsDialog({
                       <button
                         type="button"
                         className="settings-row-btn"
-                        onClick={() => onReactivate?.(pr)}
+                        onClick={async () => {
+                          await onReactivate?.(pr);
+                          try {
+                            setArchivedProjects(await fetchArchivedProjects());
+                          } catch {
+                            setArchivedProjects([]);
+                          }
+                        }}
                       >
                         Reactivate
                       </button>

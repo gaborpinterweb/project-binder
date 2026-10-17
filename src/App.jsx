@@ -922,10 +922,31 @@ export default function App() {
 
   const setProjectArchived = async (folder, archived) => {
     if (!folder) return;
-    const data = await putProject({ project: folder.id, archived: !!archived });
+    const projectId = folder.id;
+    const data = await putProject({ project: projectId, archived: !!archived });
     discardCoverEdit();
     setBoardEdit(false);
-    applyWorkspace(data, { project: folder.id, board: null, g: null });
+    if (archived) {
+      const next = applyWorkspace(data);
+      if (!next.length) {
+        setP(0);
+        setM(0);
+        setG("Masterboard");
+        pRef.current = 0;
+        mRef.current = 0;
+        gRef.current = "Masterboard";
+      } else {
+        const nextM = restoreTabIndex(next[0]);
+        setP(0);
+        setM(nextM);
+        setG(null);
+        pRef.current = 0;
+        mRef.current = nextM;
+        gRef.current = null;
+      }
+      return;
+    }
+    applyWorkspace(data, { project: projectId, board: null, g: null });
     setG(null);
   };
 
@@ -1011,7 +1032,7 @@ export default function App() {
       confirmLabel: "Reactivate",
     });
     if (!ok) return;
-    setProjectArchived(folder, false);
+    await setProjectArchived(folder, false);
   };
 
   const confirmDeleteProject = async (folder) => {
@@ -1823,7 +1844,6 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsDialog
-          folders={folders}
           countdownDurationMin={countdownDurationMin}
           onCountdownDurationChange={(value) =>
             setCountdownDurationMin(saveCountdownDurationMin(value))

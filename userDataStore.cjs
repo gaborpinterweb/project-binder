@@ -59,13 +59,26 @@ function isValidStore(doc) {
   );
 }
 
-function readJsonFromDisk(file) {
+function isValidArchive(doc) {
+  return (
+    doc &&
+    typeof doc === "object" &&
+    Number(doc.version) >= 2 &&
+    Array.isArray(doc.projects)
+  );
+}
+
+function emptyArchiveDoc() {
+  return { version: 2, projects: [] };
+}
+
+function readJsonFromDisk(file, validate) {
   if (!fs.existsSync(file)) return { ok: false, reason: "missing" };
   const raw = fs.readFileSync(file, "utf8");
   if (!String(raw).trim()) return { ok: false, reason: "empty" };
   try {
     const doc = JSON.parse(raw);
-    if (!isValidStore(doc)) return { ok: false, reason: "invalid" };
+    if (!validate(doc)) return { ok: false, reason: "invalid" };
     return { ok: true, doc };
   } catch {
     return { ok: false, reason: "corrupt" };
@@ -98,6 +111,7 @@ function uploadKey(projectId, tabId, fileId) {
 function createDiskStore(userDataDir, seedUploadsDir) {
   fs.mkdirSync(userDataDir, { recursive: true });
   const workspacePath = path.join(userDataDir, "userWorkspace.json");
+  const archivePath = path.join(userDataDir, "userArchive.json");
   const settingsPath = path.join(userDataDir, "appSettings.json");
   const uploadsRoot = path.join(userDataDir, "uploads");
 
@@ -105,12 +119,19 @@ function createDiskStore(userDataDir, seedUploadsDir) {
     persistent: true,
     dir: userDataDir,
     workspacePath,
+    archivePath,
     settingsPath,
     readWorkspaceFile() {
-      return readJsonFromDisk(workspacePath);
+      return readJsonFromDisk(workspacePath, isValidStore);
     },
     writeWorkspaceFile(doc) {
       atomicWriteJson(workspacePath, doc);
+    },
+    readArchiveFile() {
+      return readJsonFromDisk(archivePath, isValidArchive);
+    },
+    writeArchiveFile(doc) {
+      atomicWriteJson(archivePath, doc);
     },
     readAppSettingsFile() {
       if (!fs.existsSync(settingsPath)) return null;
@@ -223,6 +244,7 @@ function createMemoryStore(seedUploadsDir) {
     persistent: false,
     dir: null,
     workspacePath: null,
+    archivePath: null,
     settingsPath: null,
     readWorkspaceFile() {
       // Always missing so the server boots from seed; mutations live in the process `store`.
@@ -230,6 +252,12 @@ function createMemoryStore(seedUploadsDir) {
     },
     writeWorkspaceFile() {
       /* ephemeral — server keeps `store` in RAM */
+    },
+    readArchiveFile() {
+      return { ok: false, reason: "memory" };
+    },
+    writeArchiveFile() {
+      /* ephemeral — server keeps `archiveStore` in RAM */
     },
     readAppSettingsFile() {
       return appSettings;
@@ -315,4 +343,6 @@ module.exports = {
   createUserDataStore,
   isPackagedElectron,
   isValidStore,
+  isValidArchive,
+  emptyArchiveDoc,
 };

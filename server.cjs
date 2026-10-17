@@ -8,6 +8,8 @@ const {
   createUserDataStore,
   isPackagedElectron,
   isValidStore,
+  isValidArchive,
+  emptyArchiveDoc,
 } = require("./userDataStore.cjs");
 
 const APP_USER_DATA_NAME = "Project Binder";
@@ -320,6 +322,9 @@ function normalizeDbColumns(columns) {
 
 /** @type {object|null} */
 let store = null;
+/** Archived projects live here — never written into userWorkspace.json. */
+/** @type {{ version: number, projects: object[] }} */
+let archiveStore = emptyArchiveDoc();
 
 function newId() {
   return crypto.randomUUID();
@@ -487,7 +492,55 @@ function loadSeedWorkspace() {
 
 function saveStore() {
   if (!store) throw new Error("store not initialized");
+  if (!archiveStore) archiveStore = emptyArchiveDoc();
   userData.writeWorkspaceFile(store);
+  userData.writeArchiveFile(archiveStore);
+}
+
+function loadArchiveStore() {
+  const result = userData.readArchiveFile();
+  if (result.ok) {
+    archiveStore = deepClone(result.doc);
+    if (!Array.isArray(archiveStore.projects)) archiveStore.projects = [];
+    if (!Number(archiveStore.version) || archiveStore.version < 2) {
+      archiveStore.version = 2;
+    }
+    return;
+  }
+  archiveStore = emptyArchiveDoc();
+}
+
+/** Peel archived projects out of the active workspace into archiveStore. */
+function migrateArchivedOutOfWorkspace() {
+  const projects = store.projects || [];
+  const active = [];
+  const moved = [];
+  for (const p of projects) {
+    if (isArchivedValue(p.archived)) {
+      p.archived = true;
+      moved.push(p);
+    } else {
+      delete p.archived;
+      active.push(p);
+    }
+  }
+  if (!moved.length) return false;
+  store.projects = active;
+  if (!Array.isArray(archiveStore.projects)) archiveStore.projects = [];
+  const byId = new Set(archiveStore.projects.map((p) => p.id));
+  for (const p of moved) {
+    if (byId.has(p.id)) continue;
+    archiveStore.projects.push(p);
+    byId.add(p.id);
+  }
+  return true;
+}
+
+function initStoreFromDoc(doc, { reloadArchive = true } = {}) {
+  store = deepClone(doc);
+  ensureTrash();
+  if (reloadArchive) loadArchiveStore();
+  return migrateArchivedOutOfWorkspace();
 }
 
 /** Legacy slug workspace must not be overwritten by seed — migrate first (see docs/migrate-slugs-to-uids.md). */
@@ -509,10 +562,9 @@ function ensureStore() {
   if (userData.persistent) {
     const user = userData.readWorkspaceFile();
     if (user.ok) {
-      store = deepClone(user.doc);
-      ensureTrash();
+      const migrated = initStoreFromDoc(user.doc);
       const purged = purgeExpiredTrash();
-      if (purged) saveStore();
+      if (migrated || purged) saveStore();
       return { reseeded: false, purged };
     }
     if (looksLikeLegacySlugWorkspace(USER_WORKSPACE)) {
@@ -522,14 +574,14 @@ function ensureStore() {
       );
       process.exit(1);
     }
-    store = loadSeedWorkspace();
-    ensureTrash();
+    archiveStore = emptyArchiveDoc();
+    initStoreFromDoc(loadSeedWorkspace(), { reloadArchive: false });
     installSeedUploads();
     saveStore();
     return { reseeded: true, reason: user.reason, purged: 0 };
   }
-  store = loadSeedWorkspace();
-  ensureTrash();
+  archiveStore = emptyArchiveDoc();
+  initStoreFromDoc(loadSeedWorkspace(), { reloadArchive: false });
   installSeedUploads();
   return { reseeded: true, reason: "memory", purged: 0 };
 }
@@ -543,8 +595,8 @@ function installSeedUploads() {
 }
 
 function resetToSeedWorkspace() {
-  store = loadSeedWorkspace();
-  ensureTrash();
+  archiveStore = emptyArchiveDoc();
+  initStoreFromDoc(loadSeedWorkspace(), { reloadArchive: false });
   installSeedUploads();
   saveStore();
 }
@@ -561,12 +613,17 @@ function emptyWorkspaceDoc() {
 
 function resetToEmptyWorkspace() {
   store = emptyWorkspaceDoc();
+  archiveStore = emptyArchiveDoc();
   clearUploads();
   saveStore();
 }
 
 function findProject(id) {
   return (store.projects || []).find((p) => p.id === id) || null;
+}
+
+function findArchivedProject(id) {
+  return (archiveStore.projects || []).find((p) => p.id === id) || null;
 }
 
 function findBoard(project, boardId) {
@@ -752,8 +809,40 @@ function writeProjectOrder(order) {
 }
 
 function projectIsArchived(id) {
+  if (findArchivedProject(id)) return true;
   const p = findProject(id);
   return p ? isArchivedValue(p.archived) : false;
+}
+
+function moveProjectToArchive(projectId) {
+  const idx = (store.projects || []).findIndex((p) => p.id === projectId);
+  if (idx < 0) return false;
+  const [p] = store.projects.splice(idx, 1);
+  p.archived = true;
+  if (!Array.isArray(archiveStore.projects)) archiveStore.projects = [];
+  const aIdx = archiveStore.projects.findIndex((x) => x.id === projectId);
+  if (aIdx >= 0) archiveStore.projects[aIdx] = p;
+  else archiveStore.projects.push(p);
+  return true;
+}
+
+function moveProjectFromArchive(projectId) {
+  const idx = (archiveStore.projects || []).findIndex((p) => p.id === projectId);
+  if (idx < 0) return false;
+  const [p] = archiveStore.projects.splice(idx, 1);
+  delete p.archived;
+  if (!Array.isArray(store.projects)) store.projects = [];
+  store.projects.push(p);
+  return true;
+}
+
+function readArchivedProjectsMeta() {
+  const projects = (archiveStore.projects || []).map((p) => ({
+    id: p.id,
+    name: p.name || p.id,
+    color: p.color || "#3c3c40",
+  }));
+  return { projects };
 }
 
 function normalizeColumns(columns) {
@@ -895,10 +984,6 @@ function writeProject(projectId, patch) {
   const demo = patch.isDemo != null ? patch.isDemo : p.isDemo;
   if (isDemoValue(demo)) p.isDemo = true;
   else delete p.isDemo;
-  if (patch.archived != null) {
-    if (isArchivedValue(patch.archived)) p.archived = true;
-    else delete p.archived;
-  }
   return true;
 }
 
@@ -2898,9 +2983,12 @@ function validateBackupFolder(folderPath) {
 
 function writeWorkspaceZip(destZip) {
   if (!store) throw new Error("store not initialized");
+  if (!archiveStore) archiveStore = emptyArchiveDoc();
   const zip = new AdmZip();
   const wsBody = JSON.stringify(store, null, 2) + "\n";
   zip.addFile("userWorkspace.json", Buffer.from(wsBody, "utf8"));
+  const archBody = JSON.stringify(archiveStore, null, 2) + "\n";
+  zip.addFile("userArchive.json", Buffer.from(archBody, "utf8"));
   userData.appendUploadsToZip(zip);
   const tmp = destZip + ".tmp";
   if (fs.existsSync(tmp)) fs.rmSync(tmp, { force: true });
@@ -2962,7 +3050,12 @@ function isSafeZipEntryName(name) {
   if (name.includes("\0")) return false;
   const norm = name.replace(/\\/g, "/");
   if (norm.split("/").some((p) => p === "..")) return false;
-  return norm === "userWorkspace.json" || norm === "uploads" || norm.startsWith("uploads/");
+  return (
+    norm === "userWorkspace.json" ||
+    norm === "userArchive.json" ||
+    norm === "uploads" ||
+    norm.startsWith("uploads/")
+  );
 }
 
 function extractBackupZip(zipPath, destDir) {
@@ -2991,6 +3084,19 @@ function extractBackupZip(zipPath, destDir) {
   }
 }
 
+function readArchiveJsonFile(file) {
+  if (!fs.existsSync(file)) return { ok: false, reason: "missing" };
+  const raw = fs.readFileSync(file, "utf8");
+  if (!String(raw).trim()) return { ok: false, reason: "empty" };
+  try {
+    const doc = JSON.parse(raw);
+    if (!isValidArchive(doc)) return { ok: false, reason: "invalid" };
+    return { ok: true, doc };
+  } catch {
+    return { ok: false, reason: "corrupt" };
+  }
+}
+
 function importFromBackupZip(zipPath) {
   if (!isDesktopApp()) return { ok: false, error: "import is desktop only" };
   const file = String(zipPath || "").trim();
@@ -3004,10 +3110,15 @@ function importFromBackupZip(zipPath) {
     const wsFile = path.join(tmp, "userWorkspace.json");
     const result = readJsonFile(wsFile);
     if (!result.ok) return { ok: false, error: `invalid workspace in backup (${result.reason})` };
+    const archFile = path.join(tmp, "userArchive.json");
+    const archResult = readArchiveJsonFile(archFile);
     clearUploads();
     userData.replaceUploadsFromDirectory(path.join(tmp, "uploads"));
+    archiveStore = archResult.ok ? deepClone(archResult.doc) : emptyArchiveDoc();
+    if (!Array.isArray(archiveStore.projects)) archiveStore.projects = [];
     store = deepClone(result.doc);
     ensureTrash();
+    migrateArchivedOutOfWorkspace();
     saveStore();
     return { ok: true, workspace: readWorkspace() };
   } catch (e) {
@@ -3110,6 +3221,9 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/api/workspace") {
       return json(res, 200, readWorkspace());
+    }
+    if (req.method === "GET" && url.pathname === "/api/archived-projects") {
+      return json(res, 200, readArchivedProjectsMeta());
     }
     if (req.method === "GET" && url.pathname === "/api/user-data") {
       return json(res, 200, {
@@ -3266,22 +3380,36 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "PUT" && url.pathname === "/api/project") {
       const body = await readBody(req);
       if (!body.project) return json(res, 400, { error: "missing fields" });
-      if (!findProject(body.project)) {
+      const active = findProject(body.project);
+      const archived = findArchivedProject(body.project);
+      if (!active && !archived) {
         return json(res, 404, { error: "project not found" });
       }
-      if (projectIsArchived(body.project) && body.archived !== false) {
-        if (body.archived === true) {
-          writeProject(body.project, { archived: true });
+      if (body.archived === true) {
+        if (archived) return json(res, 200, readWorkspace());
+        if (!moveProjectToArchive(body.project)) {
+          return json(res, 404, { error: "project not found" });
+        }
+        saveStore();
+        return json(res, 200, readWorkspace());
+      }
+      if (body.archived === false) {
+        if (active) {
+          delete active.archived;
           saveStore();
           return json(res, 200, readWorkspace());
         }
-        return json(res, 403, { error: "project is archived" });
+        if (!moveProjectFromArchive(body.project)) {
+          return json(res, 404, { error: "project not found" });
+        }
+        saveStore();
+        return json(res, 200, readWorkspace());
       }
+      if (archived) return json(res, 403, { error: "project is archived" });
       writeProject(body.project, {
         name: body.name,
         color: body.color,
         cover: body.cover,
-        archived: body.archived,
       });
       saveStore();
       return json(res, 200, readWorkspace());

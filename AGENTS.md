@@ -16,8 +16,9 @@ Short orientation for coding agents. Human run/dev/storage docs: [README.md](REA
 | `src/api.js` | All browser → `/api/*` calls |
 | `server.cjs` | HTTP API; storage via `userDataStore.cjs` |
 | `userDataStore.cjs` | Packaged Electron → OS user data; CLI/browser → in-memory seed |
-| `userWorkspace.json` | Packaged app live workspace (under OS user data) |
-| `seedWorkspace.json` | Read-only seed / demo (never write) |
+| `userWorkspace.json` | Packaged app live workspace — active projects only (under OS user data) |
+| `userArchive.json` | Archived projects (sibling of `userWorkspace.json`; moved out so the active file stays small) |
+| `seedWorkspace.json` | Read-only seed / demo (never write; boot peels `archived` projects into the archive store) |
 
 ## Client model
 

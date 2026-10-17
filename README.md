@@ -33,13 +33,14 @@ Override either with `PROJECT_BINDER_PORT` (or `PORT`).
 
 | Mode | Role |
 |------|------|
-| **Packaged Electron** (app in Applications / Program Files) | Live data under the OS user-data folder (`Application Support` / `%APPDATA%` / `~/.config`): `userWorkspace.json`, `uploads/`, `appSettings.json`. |
-| **CLI / browser** (`npm start`, `npm run dev`, unpackaged Electron) | Boots from [`seedWorkspace.json`](seedWorkspace.json) + [`seedUploads/`](seedUploads); workspace and uploads stay **in memory** for that process. Never writes OS Application Support. Restart → back to seed. |
+| **Packaged Electron** (app in Applications / Program Files) | Live data under the OS user-data folder (`Application Support` / `%APPDATA%` / `~/.config`): `userWorkspace.json`, `userArchive.json`, `uploads/`, `appSettings.json`. |
+| **CLI / browser** (`npm start`, `npm run dev`, unpackaged Electron) | Boots from [`seedWorkspace.json`](seedWorkspace.json) + [`seedUploads/`](seedUploads); workspace, archive, and uploads stay **in memory** for that process. Never writes OS Application Support. Restart → back to seed. |
 
 | File | Role |
 |------|------|
 | [`seedWorkspace.json`](seedWorkspace.json) | Read-only seed for a fresh start. The app never writes this file. |
-| `userWorkspace.json` | Packaged app only: live workspace under OS user data. |
+| `userWorkspace.json` | Packaged app only: live workspace (active projects) under OS user data. |
+| `userArchive.json` | Packaged app only: archived projects (kept out of the active workspace file). |
 
 Entity identity is UUID `id` (`version: 2`). Legacy slug workspaces must be migrated offline — see [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md).
 

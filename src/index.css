@@ -58,7 +58,8 @@ main.global-view{background:var(--side)}
 main.global-view .stage{margin:6px 6px 6px 0;border-radius:var(--radius)}
 main.board-editing .stage{margin-left:calc(6px - var(--aside-w));border-radius:var(--radius)}
 main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;background:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);flex:1;min-height:0}
-#bar{--tab:var(--bar);background:var(--side);display:flex;align-items:flex-end;gap:0;padding:8px 12px 0 0;overflow-x:hidden;min-height:40px;flex:none;position:relative;z-index:4}
+/* Above .modbar so fixed tab/overflow menus aren't trapped under the toolbar strip */
+#bar{--tab:var(--bar);background:var(--side);display:flex;align-items:flex-end;gap:0;padding:8px 12px 0 0;overflow-x:hidden;min-height:40px;flex:none;position:relative;z-index:5}
 #tabs{display:flex;align-items:flex-end;gap:6px;min-width:0;flex:1;padding-right:8px;overflow:hidden}
 .tabs-measure{position:fixed;left:-10000px;top:0;display:flex;align-items:flex-end;gap:6px;pointer-events:none;visibility:hidden}
 #bar .tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;flex:none;margin:0;padding:8px 14px 9px;min-height:39px;white-space:nowrap;color:color-mix(in srgb,#fff 78%,transparent);font:inherit;font-size:13px;font-weight:500;letter-spacing:.01em;background-color:color-mix(in srgb,var(--c) 32%,#0a0a0b);background-image:var(--leather),var(--leather-shade);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 22%,transparent);border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease,opacity .2s ease}

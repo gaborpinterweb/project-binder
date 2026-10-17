@@ -124,12 +124,34 @@ function MultiSelectField({ value, options, onChange, className = "" }) {
   );
 }
 
-function TextCell({ value, multiline = false, onCommit }) {
+function TextCell({
+  value,
+  multiline = false,
+  autoFocus = false,
+  className = "",
+  onCommit,
+}) {
   const ref = useRef(null);
+
+  useEffect(() => {
+    if (!autoFocus || !ref.current) return;
+    const el = ref.current;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, [autoFocus]);
+
   return (
     <div
       ref={ref}
-      className={"db-cell-text" + (multiline ? " multiline" : "")}
+      className={
+        "db-cell-text" +
+        (multiline ? " multiline" : "") +
+        (className ? " " + className : "")
+      }
       contentEditable
       suppressContentEditableWarning
       onBlur={() => {
@@ -275,11 +297,16 @@ export default function DbFieldInput({
 
   if (col.type === "longtext") {
     if (variant === "prop") return null;
+    // Table edits plain text; card dialog keeps full rich editing.
     const preview = plainFromHtml(coerced) || "";
     return (
-      <div className="db-cell-text db-rich-preview" title={preview}>
-        {preview || <span className="db-chip-placeholder">Empty</span>}
-      </div>
+      <TextCell
+        value={preview}
+        multiline
+        autoFocus={autoFocus}
+        className="db-rich-preview"
+        onCommit={(next) => commit(next)}
+      />
     );
   }
 
@@ -296,20 +323,29 @@ export default function DbFieldInput({
       );
     }
     const raw = String(coerced || "").trim();
-    if (!raw) {
-      return <span className="db-chip-placeholder">Empty</span>;
-    }
+    const href = raw ? hrefForUrlField(raw) : "";
     return (
-      <a
-        className="db-url-link"
-        href={hrefForUrlField(raw)}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={raw}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {raw}
-      </a>
+      <div className="db-url-cell">
+        <TextCell
+          value={coerced || ""}
+          autoFocus={autoFocus}
+          onCommit={(next) => commit(next)}
+        />
+        {href ? (
+          <a
+            className="db-url-open"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open link"
+            aria-label="Open link"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Icon name="external" size={14} />
+          </a>
+        ) : null}
+      </div>
     );
   }
 
@@ -325,5 +361,11 @@ export default function DbFieldInput({
     );
   }
 
-  return <TextCell value={coerced} onCommit={(next) => commit(next)} />;
+  return (
+    <TextCell
+      value={coerced}
+      autoFocus={autoFocus}
+      onCommit={(next) => commit(next)}
+    />
+  );
 }

@@ -1909,10 +1909,20 @@ function DbTable({
 }) {
   const [editCol, setEditCol] = useState(null);
   const [editIsNew, setEditIsNew] = useState(false);
+  const [focusNameId, setFocusNameId] = useState(null);
   const [, bump] = useState(0);
   const rows = displayRows || d.rows;
   const allCols = ensureNameColumn(d.cols);
   const cols = visibleDbCols(allCols, hiddenCols);
+
+  useEffect(() => {
+    if (!focusNameId) return;
+    const id = focusNameId;
+    const t = window.setTimeout(() => {
+      setFocusNameId((cur) => (cur === id ? null : cur));
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [focusNameId]);
 
   const refresh = async () => {
     onApplyWorkspace(await fetchWorkspace());
@@ -2047,7 +2057,11 @@ function DbTable({
                     value={r[c.id]}
                     stages={stages}
                     variant="cell"
-                    onCommit={(next) => setCell(r, c, next)}
+                    autoFocus={isNameCol(c) && r.id === focusNameId}
+                    onCommit={(next) => {
+                      if (r.id === focusNameId) setFocusNameId(null);
+                      setCell(r, c, next);
+                    }}
                   />
                 </td>
               ))}
@@ -2071,6 +2085,7 @@ function DbTable({
                   project: folder.id,
                   board: mod[2].id,
                 });
+                setFocusNameId(data.id);
               }}
             >
               + New

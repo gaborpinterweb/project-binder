@@ -59,7 +59,7 @@ main.global-view .stage{margin:6px 6px 6px 0;border-radius:var(--radius)}
 main.board-editing .stage{margin-left:calc(6px - var(--aside-w));border-radius:var(--radius)}
 main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;background:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);flex:1;min-height:0}
 /* Above .modbar so fixed tab/overflow menus aren't trapped under the toolbar strip */
-#bar{--tab:var(--bar);background:var(--side);display:flex;align-items:flex-end;gap:0;padding:8px 12px 0 0;overflow-x:hidden;min-height:40px;flex:none;position:relative;z-index:5}
+#bar{--tab:var(--bar);background:var(--side);display:flex;align-items:flex-end;gap:0;padding:8px 12px 0 0;overflow-x:hidden;min-height:40px;flex:none;position:relative;z-index:7}
 #tabs{display:flex;align-items:flex-end;gap:6px;min-width:0;flex:1;padding-right:8px;overflow:hidden}
 .tabs-measure{position:fixed;left:-10000px;top:0;display:flex;align-items:flex-end;gap:6px;pointer-events:none;visibility:hidden}
 #bar .tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;flex:none;margin:0;padding:8px 14px 9px;min-height:39px;white-space:nowrap;color:color-mix(in srgb,#fff 78%,transparent);font:inherit;font-size:13px;font-weight:500;letter-spacing:.01em;background-color:color-mix(in srgb,var(--c) 32%,#0a0a0b);background-image:var(--leather),var(--leather-shade);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 22%,transparent);border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease,opacity .2s ease}
@@ -177,6 +177,9 @@ html.desktop-mac #bar.board-editing .tab.tab-cover,html.desktop-mac #bar.board-e
 .db-table tbody tr:not(.new):hover td{background:color-mix(in srgb,var(--tab,var(--acc)) 16%,#fff)}
 .db-table tbody tr:nth-child(odd):not(.new):hover td{background:color-mix(in srgb,var(--ink) 4%,#fff)}
 .db-table .db-td:focus-within{outline:2px solid var(--acc);outline-offset:-2px;background:#fff!important;position:relative;z-index:1}
+/* Sticky cols already positioned — keep sticky so left:44px isn't a relative offset.
+   Stay below .modbar so toolbar dropdowns aren't covered. */
+.db-table td.db-name-col:focus-within,.db-table td.db-enlarge-col:focus-within{position:sticky;z-index:4}
 .db-table .db-enlarge-col{position:sticky;left:0;z-index:2;width:44px;min-width:44px;max-width:44px;padding:8px 6px 8px 12px;box-sizing:border-box}
 .db-table thead th.db-enlarge-col{padding:0 6px 0 12px}
 .db-table .db-name-col{position:sticky;left:44px;z-index:2;min-width:200px;width:240px;box-shadow:1px 0 0 color-mix(in srgb,var(--ink) 8%,transparent)}
@@ -483,7 +486,8 @@ html.desktop-mac #bar.board-editing .tab.tab-cover,html.desktop-mac #bar.board-e
 .notes-rte-wrap .tiptap img.ProseMirror-selectednode,
 .notes-rte-wrap .ProseMirror img.ProseMirror-selectednode,
 .notes-rte-wrap [data-resize-container].ProseMirror-selectednode [data-resize-wrapper] > img{outline:2px solid var(--tab,var(--acc));outline-offset:2px}
-.modbar{position:relative;z-index:4;color:#fff;background-color:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);background-image:var(--leather),linear-gradient(180deg,transparent 50%,color-mix(in srgb,#000 22%,transparent));background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;background-clip:padding-box;display:flex;align-items:center;gap:4px;padding:4px 12px 8px;min-height:56px;border-bottom:none;box-shadow:inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
+/* Above sticky db name/header cells so Columns/Filter/Sort menus aren't covered */
+.modbar{position:relative;z-index:6;color:#fff;background-color:color-mix(in srgb,var(--tab,var(--acc)) 68%,#000);background-image:var(--leather),linear-gradient(180deg,transparent 50%,color-mix(in srgb,#000 22%,transparent));background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;background-clip:padding-box;display:flex;align-items:center;gap:4px;padding:4px 12px 8px;min-height:56px;border-bottom:none;box-shadow:inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
 main:not(.global-view) .modbar{margin-top:-2px;padding-top:6px}
 main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;background-image:var(--leather),linear-gradient(180deg,color-mix(in srgb,#fff 12%,transparent),transparent 36%,color-mix(in srgb,#000 22%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 18%,transparent),inset 0 -1px 0 color-mix(in srgb,#000 32%,transparent),0 4px 10px color-mix(in srgb,#000 22%,transparent)}
 .modbar::after{content:"";position:absolute;left:0;right:0;bottom:4px;border-top:1.5px dashed color-mix(in srgb,#fff 42%,transparent);box-shadow:0 1px 0 color-mix(in srgb,#000 38%,transparent);pointer-events:none;opacity:.85}
@@ -1323,6 +1327,10 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .db-td-checkbox{width:48px;text-align:center}
 .db-cell-text{min-height:1.2em;outline:none;white-space:nowrap}
 .db-cell-text.multiline{white-space:pre-wrap;word-break:break-word}
+.db-url-cell{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+.db-url-cell .db-cell-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--acc)}
+.db-url-open{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:calc(var(--radius) - 6px);color:var(--mute)}
+.db-url-open:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .db-url-link{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--acc);text-decoration:underline;text-underline-offset:2px}
 .db-url-link:hover{opacity:.85}
 .db-check{display:inline-grid;place-items:center;margin:0;cursor:pointer}
@@ -1371,6 +1379,8 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .field-opt-add .dlg-create{flex:none;padding:8px 12px}
 .field-edit-actions{margin-top:4px}
 .db-rich-preview{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
+.db-cell-text.db-rich-preview.multiline{white-space:pre-wrap;word-break:break-word;text-overflow:clip}
+.db-cell-text.db-rich-preview.multiline:focus{max-height:8em;overflow:auto}
 .dlg .db-multi-dd .dd-btn{padding:6px 8px;background:transparent;border:1px solid transparent;border-radius:calc(var(--radius) - 4px)}
 .dlg .db-multi-dd .dd-btn:hover{background-color:color-mix(in srgb,var(--ink) 5%,transparent)}
 .dlg .db-check.prop{justify-content:start}

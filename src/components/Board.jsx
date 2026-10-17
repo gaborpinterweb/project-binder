@@ -39,6 +39,7 @@ import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
 import DbExportDropdown from "./DbExportDropdown.jsx";
+import DbImportButton from "./DbImportButton.jsx";
 import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
 import DbSortsDropdown from "./DbSortsDropdown.jsx";
 import DbViewDropdown from "./DbViewDropdown.jsx";
@@ -2670,6 +2671,15 @@ export function DatabaseView({
           </button>
         </div>
         <div className="modbar-end">
+          {!readonly ? (
+            <DbImportButton
+              folder={folder}
+              mod={mod}
+              cols={d.cols || []}
+              stages={stages}
+              onApplyWorkspace={onApplyWorkspace}
+            />
+          ) : null}
           <DbExportDropdown
             cols={visibleDbCols(d.cols || [], hiddenCols)}
             rows={displayRows}

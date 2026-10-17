@@ -1472,6 +1472,17 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .field-opt-add .prompt-input{flex:1;min-width:0;padding:8px 10px}
 .field-opt-add .dlg-create{flex:none;padding:8px 12px}
 .field-edit-actions{margin-top:4px}
+.db-import-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.db-import-dlg{width:min(720px,100%)}
+.db-import-error{margin:0;font-size:13px;font-weight:550;color:#b42318}
+.db-import-map{display:flex;flex-direction:column;gap:8px;max-height:min(48vh,420px);overflow:auto;min-width:0;padding:2px}
+.db-import-map-head,.db-import-map-row{display:grid;grid-template-columns:minmax(100px,1.1fr) minmax(140px,1.2fr) minmax(140px,1.2fr);gap:8px;align-items:center;min-width:0}
+.db-import-map-head{position:sticky;top:0;z-index:1;padding:4px 2px;font-size:11px;font-weight:650;letter-spacing:.02em;color:var(--mute);background:var(--panel,var(--bg,#fff))}
+.db-import-map-name{font-size:13px;font-weight:550;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-import-where-dd,.db-import-type-dd{min-width:0;width:100%}
+.db-import-where-dd .dd-btn,.db-import-type-dd .dd-btn{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);background:color-mix(in srgb,var(--ink) 4%,transparent);font:inherit;font-size:13px}
+.db-import-where-dd .dd-menu,.db-import-type-dd .dd-menu{min-width:100%;max-height:240px;overflow:auto}
+.db-import-type-dd .dd-btn:disabled{opacity:.55;cursor:default}
 .db-rich-preview{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .db-cell-text.db-rich-preview.multiline{white-space:pre-wrap;word-break:break-word;text-overflow:clip}
 .db-table:not(.wrap-lines) .db-cell-text.db-rich-preview.multiline{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}

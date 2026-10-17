@@ -913,8 +913,14 @@ function BoardCol({
   onMove,
   onDelete,
   onBodyDblClick,
+  className = "",
   children,
 }) {
+  const colClass =
+    "col" +
+    (className ? " " + className : "") +
+    (collapsed && !editing ? " collapsed" : "");
+
   const renameViaPrompt = async () => {
     const next = await askPrompt({
       title: "Rename column",
@@ -929,7 +935,7 @@ function BoardCol({
 
   if (editing) {
     return (
-      <div className="col" data-col={name}>
+      <div className={colClass} data-col={name}>
         <div className="col-head">
           <span className="col-name">{name}</span>
           <ColMoreMenu
@@ -962,7 +968,7 @@ function BoardCol({
   }
 
   return (
-    <div className={"col" + (collapsed ? " collapsed" : "")} data-col={name}>
+    <div className={colClass} data-col={name}>
       <button
         type="button"
         className="col-head"
@@ -1244,6 +1250,11 @@ function ProjectBoard({
     });
   };
 
+  const showDoneCol = mode === "virtual" && !boardEdit;
+  const doneRows = showDoneCol ? (data.rows || []).filter(isDone) : [];
+  const doneCollapseKey = colCollapseKey(scope, "__completed__");
+  const doneCollapsed = colCollapsed.has(doneCollapseKey);
+
   return (
     <div
       className={"board" + (boardEdit ? " editing" : "")}
@@ -1331,30 +1342,32 @@ function ProjectBoard({
           <div className="col-body" />
         </div>
       )}
-      {mode === "virtual" && !boardEdit && (
-        <div className="col done-col">
-          <button type="button" className="col-head" disabled>
-            <span className="col-count">
-              {(data.rows || []).filter(isDone).length}
-            </span>
-            <span className="col-name">Completed</span>
-          </button>
-          <div className="col-body">
-            {fillDoneGroups(
-              (data.rows || []).filter(isDone).map((row) => ({
-                row,
-                folder,
-                mod,
-                color: folder.color || PC[0],
-                src: cardSrc(row),
-                spentSec: cardSpentSec(spentByKey, folder, mod, row),
-                dragPayload: { row, folder, mod },
-              })),
-              {},
-              cardProps
-            )}
-          </div>
-        </div>
+      {showDoneCol && (
+        <BoardCol
+          className="done-col"
+          name="Completed"
+          count={doneRows.length}
+          collapsed={doneCollapsed}
+          onToggleCollapse={() => {
+            if (colCollapsed.has(doneCollapseKey)) colCollapsed.delete(doneCollapseKey);
+            else colCollapsed.add(doneCollapseKey);
+            onBumpCollapse();
+          }}
+        >
+          {fillDoneGroups(
+            doneRows.map((row) => ({
+              row,
+              folder,
+              mod,
+              color: folder.color || PC[0],
+              src: cardSrc(row),
+              spentSec: cardSpentSec(spentByKey, folder, mod, row),
+              dragPayload: { row, folder, mod },
+            })),
+            {},
+            cardProps
+          )}
+        </BoardCol>
       )}
     </div>
   );
@@ -1613,6 +1626,11 @@ function MasterBoard({
     return boards.find((b) => b.folder === currentFolder) || boards[0];
   };
 
+  const showDoneCol = mode === "virtual" && !boardEdit;
+  const doneTasks = showDoneCol ? tasks.filter((t) => isDone(t.row)) : [];
+  const doneCollapseKey = colCollapseKey("master", "__completed__");
+  const doneCollapsed = colCollapsed.has(doneCollapseKey);
+
   return (
     <div className="mb">
       <div
@@ -1729,30 +1747,32 @@ function MasterBoard({
             <div className="col-body" />
           </div>
         )}
-        {mode === "virtual" && !boardEdit && (
-          <div className="col done-col">
-            <button type="button" className="col-head" disabled>
-              <span className="col-count">{tasks.filter((t) => isDone(t.row)).length}</span>
-              <span className="col-name">Completed</span>
-            </button>
-            <div className="col-body">
-              {fillDoneGroups(
-                tasks
-                  .filter((t) => isDone(t.row))
-                  .map((t) => ({
-                    row: t.row,
-                    folder: t.folder,
-                    mod: t.mod,
-                    color: t.folder.color || PC[t.fi % PC.length],
-                    src: cardSrc(t),
-                    spentSec: cardSpentSec(spentByKey, t.folder, t.mod, t.row),
-                    dragPayload: t,
-                  })),
-                {},
-                cardProps
-              )}
-            </div>
-          </div>
+        {showDoneCol && (
+          <BoardCol
+            className="done-col"
+            name="Completed"
+            count={doneTasks.length}
+            collapsed={doneCollapsed}
+            onToggleCollapse={() => {
+              if (colCollapsed.has(doneCollapseKey)) colCollapsed.delete(doneCollapseKey);
+              else colCollapsed.add(doneCollapseKey);
+              onBump();
+            }}
+          >
+            {fillDoneGroups(
+              doneTasks.map((t) => ({
+                row: t.row,
+                folder: t.folder,
+                mod: t.mod,
+                color: t.folder.color || PC[t.fi % PC.length],
+                src: cardSrc(t),
+                spentSec: cardSpentSec(spentByKey, t.folder, t.mod, t.row),
+                dragPayload: t,
+              })),
+              {},
+              cardProps
+            )}
+          </BoardCol>
         )}
       </div>
       {!boardEdit && (

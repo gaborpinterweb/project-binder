@@ -311,6 +311,10 @@ export default function Sidebar({
                     if (consumeDragClick()) return;
                     onSelectProject(i);
                   }}
+                  onDoubleClick={() => {
+                    if (consumeDragClick()) return;
+                    onSelectProject(i, { cover: true });
+                  }}
                 >
                   <span style={{ color: icColor }}>
                     <Icon name="folder" filled />

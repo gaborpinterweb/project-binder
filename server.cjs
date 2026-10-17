@@ -49,7 +49,7 @@ const MIME = {
   ".map": "application/json",
 };
 const DEFAULT_STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
-const DEFAULT_BOARD_COLS = ["Design", "Frontend dev", "Backend dev", "Content"];
+const DEFAULT_BOARD_COLS = ["Idea", "Mandatory"];
 const IMPACT_LEVELS = ["Low", "Medium", "High"];
 const EFFORT_LEVELS = ["Low", "Medium", "High"];
 const LEGACY_DIFFICULTY_TO_EFFORT = {
@@ -789,7 +789,7 @@ function projectToApi(p) {
           const card = {
             id: c.id,
             title: c.title || c.id,
-            status: c.status || (b.columns && b.columns[0]) || "Design",
+            status: c.status || (b.columns && b.columns[0]) || DEFAULT_BOARD_COLS[0],
             master: c.master || "Backlog",
             doneAt: c.doneAt || "",
             body: c.body || "",
@@ -1407,7 +1407,7 @@ function writeCard(projectId, boardId, card) {
     board.cards.push(existing);
   }
   existing.title = card.title || id;
-  existing.status = card.status || "Design";
+  existing.status = card.status || DEFAULT_BOARD_COLS[0];
   existing.master = card.master || "Backlog";
   existing.body = card.body || "";
   if (card.doneAt) existing.doneAt = card.doneAt;

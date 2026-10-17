@@ -190,6 +190,8 @@ html.desktop-mac #bar.board-editing .tab.tab-cover,html.desktop-mac #bar.board-e
 .db-table tbody tr:not(.new):hover td{background:color-mix(in srgb,var(--tab,var(--acc)) 16%,#fff)}
 .db-table tbody tr:nth-child(odd):not(.new):hover td{background:color-mix(in srgb,var(--ink) 4%,#fff)}
 .db-table .db-td:focus-within{outline:2px solid var(--tab,var(--acc));outline-offset:-2px;background:#fff!important;position:relative;z-index:1}
+/* Select/multiselect menus escape cell ellipsis clip (same idea as thead th). */
+.db-table tbody td:has(.dd.open){overflow:visible;position:relative;z-index:5}
 /* Sticky cols already positioned — keep sticky so left isn't a relative offset.
    Stay below .modbar so toolbar dropdowns aren't covered. */
 .db-table td.db-name-col:focus-within,.db-table td.db-enlarge-col:focus-within{position:sticky;z-index:4}

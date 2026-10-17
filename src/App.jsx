@@ -1195,12 +1195,12 @@ export default function App() {
           setBoardEdit(false);
           setG(n);
         }}
-        onSelectProject={(i) => {
+        onSelectProject={(i, { cover } = {}) => {
           discardDraft();
           discardCoverEdit();
           setG(null);
           setP(i);
-          setM(restoreTabIndex(folders[i]));
+          setM(cover ? 0 : restoreTabIndex(folders[i]));
           setBoardEdit(false);
         }}
         onAddProject={startNewProject}

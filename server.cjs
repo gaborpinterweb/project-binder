@@ -301,7 +301,6 @@ function normalizeDbColumn(c) {
   if (String(c.id) === NAME_COL_ID) return nameColumn();
   const type = DB_FIELD_TYPES.has(c.type) ? c.type : "text";
   const out = { id: String(c.id), label: c.label || String(c.id), type };
-  if (type === "number" && c.decimal) out.decimal = true;
   if (type === "select" || type === "multiselect") {
     out.options = Array.isArray(c.options)
       ? c.options.map((o, i) => normalizeSelectOption(o, i)).filter(Boolean)

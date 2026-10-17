@@ -88,7 +88,6 @@ export function normalizeDbCol(c) {
     label: c.label || c.id,
     type,
   };
-  if (type === "number") col.decimal = !!c.decimal;
   if (type === "select" || type === "multiselect") {
     col.options = Array.isArray(c.options)
       ? c.options.map((o, i) => normalizeSelectOption(o, i)).filter(Boolean)
@@ -112,7 +111,6 @@ export function serializeDbCol(c) {
     return { id: NAME_COL_ID, label: "Name", type: "text" };
   }
   const out = { id: col.id, label: col.label, type: col.type };
-  if (col.type === "number" && col.decimal) out.decimal = true;
   if (col.type === "select" || col.type === "multiselect") {
     out.options = (col.options || []).map((o) => ({
       label: o.label,
@@ -147,20 +145,14 @@ export function coerceFieldValue(col, raw) {
   return raw == null ? "" : raw;
 }
 
-export function formatNumberPreview(decimal) {
-  return decimal ? "1,234.56" : "1,235";
-}
-
-export function formatNumberValue(value, decimal) {
+export function formatNumberValue(value) {
   if (value === "" || value == null) return "";
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
-  return decimal
-    ? n.toLocaleString(undefined, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 6,
-      })
-    : Math.round(n).toLocaleString();
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  });
 }
 
 /** Safe href for a URL field value (adds https:// when scheme is missing). */

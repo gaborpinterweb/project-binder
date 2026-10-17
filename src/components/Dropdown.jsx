@@ -17,6 +17,122 @@ function optionKey(o) {
   return String(o);
 }
 
+function SubmenuOption({
+  option,
+  value,
+  onChange,
+  onHighlight,
+  close,
+  renderOption,
+}) {
+  const leaveTimer = useRef(0);
+  const [open, setOpen] = useState(false);
+  const submenu = Array.isArray(option.submenu) ? option.submenu : [];
+  const selectedOpt =
+    typeof option === "object" && option != null && "checked" in option
+      ? !!option.checked
+      : optionValue(option) === value;
+  const optDisabled = !!option.disabled;
+
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+
+  const show = () => {
+    if (optDisabled) return;
+    window.clearTimeout(leaveTimer.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
+  return (
+    <div
+      className={"dd-sub" + (open ? " open" : "") + (selectedOpt ? " on" : "")}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+    >
+      <button
+        type="button"
+        role="option"
+        aria-selected={selectedOpt}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={"dd-sub-btn" + (selectedOpt ? " on" : "")}
+        disabled={optDisabled}
+        onMouseEnter={() => {
+          if (optDisabled) return;
+          onHighlight?.(optionValue(option), option);
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (optDisabled) return;
+          window.clearTimeout(leaveTimer.current);
+          setOpen((o) => !o);
+        }}
+      >
+        {renderOption ? (
+          renderOption(option)
+        ) : option.icon ? (
+          <span className="dd-opt">
+            <Icon name={option.icon} size={14} />
+            {optionLabel(option)}
+          </span>
+        ) : (
+          optionLabel(option)
+        )}
+        <span className="dd-sub-caret" aria-hidden="true">
+          <Icon name="arrow" size={12} />
+        </span>
+      </button>
+      {open ? (
+        <div
+          className="pop dd-sub-pop"
+          role="listbox"
+          aria-label={optionLabel(option)}
+          onMouseEnter={show}
+          onMouseLeave={hide}
+        >
+          {submenu.map((sub) => {
+            const subVal = optionValue(sub);
+            const subSelected =
+              typeof sub === "object" && sub != null && "checked" in sub
+                ? !!sub.checked
+                : subVal === value;
+            const subDisabled =
+              typeof sub === "object" && sub != null && !!sub.disabled;
+            return (
+              <button
+                key={optionKey(sub)}
+                type="button"
+                role="option"
+                aria-selected={subSelected}
+                className={subSelected ? "on" : ""}
+                disabled={subDisabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (subDisabled) return;
+                  onChange?.(subVal, sub);
+                  close?.();
+                }}
+              >
+                {typeof sub === "object" && sub?.icon ? (
+                  <span className="dd-opt">
+                    <Icon name={sub.icon} size={14} />
+                    {optionLabel(sub)}
+                  </span>
+                ) : (
+                  optionLabel(sub)
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function renderOptions({
   options,
   value,
@@ -27,6 +143,20 @@ function renderOptions({
   closeOnSelect = true,
 }) {
   return options.map((o) => {
+    if (typeof o === "object" && o != null && Array.isArray(o.submenu)) {
+      return (
+        <SubmenuOption
+          key={optionKey(o)}
+          option={o}
+          value={value}
+          onChange={onChange}
+          onHighlight={onHighlight}
+          close={close}
+          renderOption={renderOption}
+        />
+      );
+    }
+
     const val = optionValue(o);
     const selectedOpt =
       typeof o === "object" && o != null && "checked" in o

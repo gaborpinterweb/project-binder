@@ -1,4 +1,6 @@
 import { useEditor, EditorContent } from "@tiptap/react";
+import { Mark } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import StarterKit from "@tiptap/starter-kit";
@@ -23,6 +25,130 @@ import {
 import { postRteImage, rteImageUrl } from "../api.js";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
+
+/** `#tag` tokens styled as labels; kept in sync via appendTransaction. */
+const HASHTAG_RE = /#([A-Za-z][\w-]*)/g;
+const hashtagSyncKey = new PluginKey("noteHashtagSync");
+
+function rangesEqual(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].from !== b[i].from || a[i].to !== b[i].to) return false;
+  }
+  return true;
+}
+
+function mergeRanges(ranges) {
+  const sorted = [...ranges].sort((x, y) => x.from - y.from);
+  const out = [];
+  for (const r of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.to === r.from) last.to = r.to;
+    else out.push({ from: r.from, to: r.to });
+  }
+  return out;
+}
+
+/**
+ * Sync hashtag marks over contiguous text in a block.
+ * Per-node sync breaks while typing: `#t` gets marked, then `est` lands outside
+ * the mark (inclusive:false) and never rejoins.
+ */
+function syncHashtagRun(tr, markType, parts) {
+  if (!parts.length) return false;
+
+  let joined = "";
+  const indexToPos = [];
+  for (const p of parts) {
+    for (let i = 0; i < p.text.length; i++) {
+      indexToPos.push(p.from + i);
+      joined += p.text[i];
+    }
+  }
+
+  const desired = [];
+  HASHTAG_RE.lastIndex = 0;
+  let m;
+  while ((m = HASHTAG_RE.exec(joined))) {
+    const start = indexToPos[m.index];
+    const end = indexToPos[m.index + m[0].length - 1] + 1;
+    desired.push({ from: start, to: end });
+  }
+
+  const runFrom = parts[0].from;
+  const runTo = parts[parts.length - 1].from + parts[parts.length - 1].text.length;
+
+  const existing = [];
+  for (const p of parts) {
+    const node = tr.doc.nodeAt(p.from);
+    if (!node?.isText) continue;
+    if (!node.marks.some((mk) => mk.type === markType)) continue;
+    existing.push({ from: p.from, to: p.from + node.text.length });
+  }
+
+  if (rangesEqual(mergeRanges(existing), desired)) return false;
+
+  tr.removeMark(runFrom, runTo, markType);
+  for (const r of desired) {
+    tr.addMark(r.from, r.to, markType.create());
+  }
+  return true;
+}
+
+/** Apply / clear hashtag marks to match `#tag` tokens in text. */
+function buildHashtagSyncTr(state, markType) {
+  const tr = state.tr;
+  let changed = false;
+
+  state.doc.descendants((node, pos) => {
+    if (!node.isTextblock) return;
+    if (node.type.name === "codeBlock") return;
+
+    let run = [];
+    const flush = () => {
+      if (syncHashtagRun(tr, markType, run)) changed = true;
+      run = [];
+    };
+
+    node.forEach((child, offset) => {
+      if (!child.isText || child.marks.some((m) => m.type.name === "code")) {
+        flush();
+        return;
+      }
+      run.push({ from: pos + 1 + offset, text: child.text });
+    });
+    flush();
+  });
+
+  if (!changed) return null;
+  tr.setMeta(hashtagSyncKey, true);
+  return tr;
+}
+
+const Hashtag = Mark.create({
+  name: "hashtag",
+  // Extend while typing inside a tag; sync strips the mark from trailing spaces.
+  inclusive: true,
+  parseHTML() {
+    return [{ tag: "span[data-note-tag]" }];
+  },
+  renderHTML() {
+    return ["span", { "data-note-tag": "", class: "note-tag" }, 0];
+  },
+  addProseMirrorPlugins() {
+    const markType = this.type;
+    return [
+      new Plugin({
+        key: hashtagSyncKey,
+        appendTransaction(transactions, _old, newState) {
+          if (!transactions.some((tr) => tr.docChanged)) return null;
+          if (transactions.some((tr) => tr.getMeta(hashtagSyncKey))) return null;
+          return buildHashtagSyncTr(newState, markType);
+        },
+      }),
+    ];
+  },
+});
 
 const RTE_IMAGE_MAX_W = 400;
 
@@ -654,6 +780,7 @@ export default function RichTextEditor({
   startInHeading = false,
   variant = "mini",
   hasRaisedIslands = false,
+  hashtags = false,
   imageUpload = null,
   onEditor,
 }) {
@@ -721,6 +848,7 @@ export default function RichTextEditor({
           target: "_blank",
         },
       }),
+      ...(hashtags ? [Hashtag] : []),
       ...(feat.highlight ? [Highlight] : []),
       ...(feat.table
         ? [
@@ -772,6 +900,13 @@ export default function RichTextEditor({
         void insertUploadedImages(editorRef.current, files);
         return true;
       },
+    },
+    onCreate: ({ editor: ed }) => {
+      if (!hashtags) return;
+      const markType = ed.schema.marks.hashtag;
+      if (!markType) return;
+      const tr = buildHashtagSyncTr(ed.state, markType);
+      if (tr) ed.view.dispatch(tr);
     },
     onUpdate: ({ editor: ed }) => {
       if (!editable) return;

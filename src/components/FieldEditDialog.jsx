@@ -5,7 +5,6 @@ import {
   FIELD_TYPES,
   SELECT_COLORS,
   fieldTypeMeta,
-  formatNumberPreview,
   nextSelectColor,
   normalizeDbCol,
   selectColor,
@@ -19,7 +18,6 @@ function blankCol() {
     id: "",
     label: "",
     type: "text",
-    decimal: false,
     options: [],
   };
 }
@@ -120,7 +118,6 @@ export default function FieldEditDialog({
   const setType = (type) => {
     setDraft((d) => {
       const next = { ...d, type };
-      if (type === "number" && next.decimal == null) next.decimal = false;
       if (
         (type === "select" || type === "multiselect") &&
         !Array.isArray(next.options)
@@ -231,22 +228,6 @@ export default function FieldEditDialog({
                 </span>
               </Dropdown>
             </div>
-
-            {draft.type === "number" ? (
-              <div className="field-edit-block">
-                <label className="field-edit-check">
-                  <input
-                    type="checkbox"
-                    checked={!!draft.decimal}
-                    onChange={(e) => patch({ decimal: e.target.checked })}
-                  />
-                  <span>Decimal</span>
-                </label>
-                <div className="field-num-preview">
-                  Preview: {formatNumberPreview(!!draft.decimal)}
-                </div>
-              </div>
-            ) : null}
 
             {draft.type === "select" || draft.type === "multiselect" ? (
               <div className="field-edit-block">

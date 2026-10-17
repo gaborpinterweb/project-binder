@@ -26,7 +26,7 @@ export function formatDbCsvCell(col, raw) {
     return arr.map(String).join(", ");
   }
   if (col.type === "number") {
-    return formatNumberValue(raw, col.decimal);
+    return formatNumberValue(raw);
   }
   return raw == null ? "" : String(raw);
 }

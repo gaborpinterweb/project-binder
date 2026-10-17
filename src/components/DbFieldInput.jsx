@@ -166,6 +166,71 @@ function TextCell({
   );
 }
 
+/** Local draft so typing isn’t clobbered by a controlled empty/parent value. */
+function NumberField({
+  value,
+  className = "",
+  autoFocus = false,
+  placeholder = "",
+  onChange,
+  onCommit,
+}) {
+  const asText = (v) => (v === "" || v == null ? "" : String(v));
+  const [text, setText] = useState(() => asText(value));
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setText(asText(value));
+  }, [value]);
+
+  const parseCommit = (raw) => {
+    if (raw === "" || raw == null) {
+      setText("");
+      onChange?.("");
+      onCommit?.("");
+      return;
+    }
+    const n = Number(String(raw).trim().replace(/,/g, ""));
+    if (Number.isFinite(n)) {
+      setText(String(n));
+      onChange?.(n);
+      onCommit?.(n);
+    } else {
+      setText("");
+      onChange?.("");
+      onCommit?.("");
+    }
+  };
+
+  return (
+    <input
+      className={className}
+      type="text"
+      inputMode="decimal"
+      value={text}
+      placeholder={placeholder || formatNumberValue(1234.56)}
+      autoFocus={autoFocus}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        if (raw === "") {
+          onChange?.("");
+          return;
+        }
+        const n = Number(String(raw).trim().replace(/,/g, ""));
+        onChange?.(Number.isFinite(n) ? n : raw);
+      }}
+      onBlur={(e) => {
+        focused.current = false;
+        parseCommit(e.target.value);
+      }}
+    />
+  );
+}
+
 /**
  * Editable control for a database field value (table cell or card props).
  * @param {"cell"|"prop"} variant
@@ -250,36 +315,13 @@ export default function DbFieldInput({
 
   if (col.type === "number") {
     return (
-      <input
+      <NumberField
         className={"db-num" + (variant === "prop" ? " prop" : "")}
-        type="number"
-        step={col.decimal ? "any" : "1"}
-        value={coerced === "" || coerced == null ? "" : coerced}
-        placeholder={
-          placeholder ||
-          (col.decimal
-            ? formatNumberValue(1234.56, true)
-            : formatNumberValue(1235, false))
-        }
+        value={coerced}
+        placeholder={placeholder}
         autoFocus={autoFocus}
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (raw === "") {
-            onChange?.("");
-            return;
-          }
-          const n = Number(raw);
-          onChange?.(Number.isFinite(n) ? n : raw);
-        }}
-        onBlur={(e) => {
-          const raw = e.target.value;
-          if (raw === "") {
-            commit("");
-            return;
-          }
-          const n = Number(raw);
-          commit(Number.isFinite(n) ? (col.decimal ? n : Math.round(n)) : "");
-        }}
+        onChange={onChange}
+        onCommit={onCommit}
       />
     );
   }

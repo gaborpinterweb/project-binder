@@ -130,8 +130,64 @@ function noteHasCodeBlock(body) {
   return /<pre[\s>]/i.test(String(body || ""));
 }
 
+/** `#` + letter, then word chars / hyphen — matches TipTap hashtag mark. */
+const NOTE_TAG_RE = /#([A-Za-z][\w-]*)/g;
+
+function noteBodyText(body) {
+  const html = String(body || "");
+  if (!html) return "";
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return doc.body?.textContent || "";
+  } catch {
+    return html.replace(/<[^>]+>/g, " ");
+  }
+}
+
+/** Unique tags in first-seen casing (case-insensitive dedupe). */
+function extractNoteTags(body) {
+  const text = noteBodyText(body);
+  const out = [];
+  const seen = new Set();
+  NOTE_TAG_RE.lastIndex = 0;
+  let m;
+  while ((m = NOTE_TAG_RE.exec(text))) {
+    const raw = m[1];
+    const key = raw.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(raw);
+  }
+  return out;
+}
+
+function noteHasTag(body, tag) {
+  const want = String(tag || "").toLowerCase();
+  if (!want) return false;
+  return extractNoteTags(body).some((t) => t.toLowerCase() === want);
+}
+
+/** Unique tags across notes in a tab (first-seen casing, A–Z). */
+function collectTabTags(notes) {
+  const seen = new Map();
+  for (const n of notes || []) {
+    for (const t of extractNoteTags(n.body)) {
+      const key = t.toLowerCase();
+      if (!seen.has(key)) seen.set(key, t);
+    }
+  }
+  return [...seen.values()].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+}
+
 function filterNotes(list, filter) {
   const notes = list || [];
+  const f = String(filter || "");
+  if (f.startsWith("tag:")) {
+    const tag = f.slice(4);
+    return notes.filter((n) => noteHasTag(n.body, tag));
+  }
   switch (filter) {
     case "todo":
       return notes.filter((n) => noteHasOpenTodo(n.body));
@@ -155,9 +211,48 @@ function filterNotes(list, filter) {
   }
 }
 
+/** Wrap plain `#tags` for locked preview when marks are not yet in HTML. */
 function previewHtml(body) {
   if (!body) return "<p></p>";
-  return body;
+  try {
+    const doc = new DOMParser().parseFromString(String(body), "text/html");
+    const walk = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const parent = node.parentElement;
+        if (parent?.closest?.("[data-note-tag], pre, code")) return;
+        const text = node.textContent || "";
+        NOTE_TAG_RE.lastIndex = 0;
+        if (!NOTE_TAG_RE.test(text)) return;
+        NOTE_TAG_RE.lastIndex = 0;
+        const frag = doc.createDocumentFragment();
+        let last = 0;
+        let m;
+        while ((m = NOTE_TAG_RE.exec(text))) {
+          if (m.index > last) {
+            frag.appendChild(doc.createTextNode(text.slice(last, m.index)));
+          }
+          const span = doc.createElement("span");
+          span.setAttribute("data-note-tag", "");
+          span.className = "note-tag";
+          span.textContent = m[0];
+          frag.appendChild(span);
+          last = m.index + m[0].length;
+        }
+        if (last < text.length) {
+          frag.appendChild(doc.createTextNode(text.slice(last)));
+        }
+        node.parentNode?.replaceChild(frag, node);
+        return;
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        [...node.childNodes].forEach(walk);
+      }
+    };
+    [...doc.body.childNodes].forEach(walk);
+    return doc.body.innerHTML || body;
+  } catch {
+    return body;
+  }
 }
 
 function clampMenuPos(left, top, menuEl) {
@@ -661,6 +756,32 @@ export default function Notes({
     () => sortNotes(filterNotes(d.notes, filter), sort),
     [d.notes, filter, sort]
   );
+  const filterSections = useMemo(() => {
+    const tags = collectTabTags(d.notes);
+    const submenu = tags.length
+      ? tags.map((t) => ({
+          value: `tag:${t.toLowerCase()}`,
+          label: `#${t}`,
+          checked: filter === `tag:${t.toLowerCase()}`,
+        }))
+      : [{ value: "", label: "No tags yet", disabled: true }];
+    return [
+      ...NOTE_FILTER_SECTIONS,
+      {
+        key: "tags",
+        options: [
+          {
+            value: "tags",
+            label: "Tags",
+            icon: "tag",
+            submenu,
+            checked: String(filter).startsWith("tag:"),
+            closeOnSelect: false,
+          },
+        ],
+      },
+    ];
+  }, [d.notes, filter]);
   const tabKey = notesTabKey(folder?.id, d.id);
   const [selectedByTab, setSelectedByTab] = useState(() => loadNotesSelected());
   const [unlocked, setUnlocked] = useState(() => loadNotesUnlocked());
@@ -952,7 +1073,7 @@ export default function Notes({
             title="Filter notes"
             align="left"
             caret={false}
-            sections={NOTE_FILTER_SECTIONS.map((sec) => ({
+            sections={filterSections.map((sec) => ({
               ...sec,
               value: filter,
               onChange: setFilter,
@@ -1101,6 +1222,7 @@ export default function Notes({
                 variant="full"
                 autofocus
                 startInHeading
+                hashtags
                 imageUpload={imageUpload}
                 onEditor={setEditor}
                 placeholder={NOTE_PLACEHOLDER}

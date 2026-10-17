@@ -276,7 +276,6 @@ export function buildImportPayload({
           multiselect: type === "multiselect",
         });
       }
-      if (type === "number") draft.decimal = false;
       const saved = serializeDbCol(draft);
       if (saved) {
         nextCols.push(saved);

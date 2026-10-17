@@ -23,7 +23,7 @@ function defaultFieldId(cols, usedIds = []) {
   return (free || cols[0])?.id || "";
 }
 
-function withDefaultFields(rules, cols) {
+export function withDefaultSortFields(rules, cols) {
   if (!cols.length) return { rules, changed: false };
   const used = [];
   let changed = false;
@@ -82,14 +82,14 @@ function SortRow({
         className="db-sort-field-dd"
         options={fieldOpts}
         value={rule.fieldId}
-        ariaLabel="Sort field"
+        ariaLabel="Sort column"
         renderOption={(o) => <FieldOption col={o.col} />}
         onChange={(fieldId) => onChange({ ...rule, fieldId })}
       >
         {col ? (
           <FieldOption col={col} />
         ) : (
-          <span className="db-filter-placeholder">Select field</span>
+          <span className="db-filter-placeholder">Select column</span>
         )}
       </Dropdown>
 
@@ -119,22 +119,11 @@ function SortRow({
   );
 }
 
-/** Database Sort toolbar: multi-rule sort builder for the current view. */
-export default function DbSortsDropdown({ cols = [], sorts, onChange }) {
-  const wrapRef = useRef(null);
-  const [open, setOpen] = useState(false);
+/** Sort builder for the current database view. */
+export function DbSortsPanel({ cols = [], sorts, onChange }) {
   const [dragId, setDragId] = useState(null);
   const activeCount = countActiveSorts(sorts, cols);
   const rules = sorts?.rules?.length ? sorts.rules : [createSortRule()];
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
 
   const setRules = (nextRules) => {
     onChange({ rules: nextRules });
@@ -169,6 +158,61 @@ export default function DbSortsDropdown({ cols = [], sorts, onChange }) {
   };
 
   return (
+    <div className="db-sorts-panel" role="group" aria-label="Sort builder">
+      <div className="db-sorts-rows">
+        {rules.map((rule) => (
+          <SortRow
+            key={rule.id}
+            rule={rule}
+            cols={cols}
+            dragging={dragId === rule.id}
+            onChange={(next) => updateRule(rule.id, next)}
+            onRemove={() => removeRule(rule.id)}
+            canRemove={rules.length > 1 || activeCount > 0 || !!rule.fieldId}
+            onDragStart={(e) => {
+              setDragId(rule.id);
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", rule.id);
+            }}
+            onDragEnd={() => setDragId(null)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const fromId = e.dataTransfer.getData("text/plain") || dragId;
+              moveRule(fromId, rule.id);
+              setDragId(null);
+            }}
+          />
+        ))}
+      </div>
+      <button type="button" className="db-filters-add" onClick={addRule}>
+        <Icon name="plus" size={14} />
+        Add sort
+      </button>
+    </div>
+  );
+}
+
+/** Database Sort toolbar button. */
+export default function DbSortsDropdown({ cols = [], sorts, onChange }) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const activeCount = countActiveSorts(sorts, cols);
+  const rules = sorts?.rules?.length ? sorts.rules : [createSortRule()];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
     <div className={"db-sorts-dd" + (open ? " open" : "")} ref={wrapRef}>
       <button
         type="button"
@@ -181,7 +225,7 @@ export default function DbSortsDropdown({ cols = [], sorts, onChange }) {
           setOpen((o) => {
             const next = !o;
             if (next) {
-              const hydrated = withDefaultFields(rules, cols);
+              const hydrated = withDefaultSortFields(rules, cols);
               if (hydrated.changed) onChange({ rules: hydrated.rules });
             }
             return next;
@@ -195,39 +239,7 @@ export default function DbSortsDropdown({ cols = [], sorts, onChange }) {
       </button>
       {open ? (
         <div className="pop db-sorts-menu" role="dialog" aria-label="Sort builder">
-          <div className="db-sorts-rows">
-            {rules.map((rule) => (
-              <SortRow
-                key={rule.id}
-                rule={rule}
-                cols={cols}
-                dragging={dragId === rule.id}
-                onChange={(next) => updateRule(rule.id, next)}
-                onRemove={() => removeRule(rule.id)}
-                canRemove={rules.length > 1 || activeCount > 0 || !!rule.fieldId}
-                onDragStart={(e) => {
-                  setDragId(rule.id);
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData("text/plain", rule.id);
-                }}
-                onDragEnd={() => setDragId(null)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const fromId = e.dataTransfer.getData("text/plain") || dragId;
-                  moveRule(fromId, rule.id);
-                  setDragId(null);
-                }}
-              />
-            ))}
-          </div>
-          <button type="button" className="db-filters-add" onClick={addRule}>
-            <Icon name="plus" size={14} />
-            Add sort
-          </button>
+          <DbSortsPanel cols={cols} sorts={sorts} onChange={onChange} />
         </div>
       ) : null}
     </div>

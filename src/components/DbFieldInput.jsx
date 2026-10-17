@@ -177,6 +177,7 @@ export default function DbFieldInput({
   variant = "cell",
   autoFocus = false,
   placeholder = "",
+  wrapLines = false,
   onChange,
   onCommit,
 }) {
@@ -302,7 +303,7 @@ export default function DbFieldInput({
     return (
       <TextCell
         value={preview}
-        multiline
+        multiline={!!wrapLines}
         autoFocus={autoFocus}
         className="db-rich-preview"
         onCommit={(next) => commit(next)}

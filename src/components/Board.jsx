@@ -27,17 +27,22 @@ import {
   createCustomView,
   DEFAULT_VIEW_ID,
   isDefaultCustomView,
+  MIN_COL_WIDTH,
+  MAX_COL_WIDTH,
+  normalizeColWidths,
   normalizeCustomViews,
+  resolveColWidth,
   resolveCustomViewId,
   visibleDbCols,
 } from "../dbViews.js";
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
-import DbColumnsDropdown from "./DbColumnsDropdown.jsx";
 import DbFieldInput from "./DbFieldInput.jsx";
 import DbFiltersDropdown from "./DbFiltersDropdown.jsx";
 import DbSortsDropdown from "./DbSortsDropdown.jsx";
+import DbViewDropdown from "./DbViewDropdown.jsx";
 import FieldEditDialog from "./FieldEditDialog.jsx";
+import { DbRecordContextMenu } from "./DbRecordMenu.jsx";
 import { askPrompt } from "../promptDialog.js";
 import { askConfirm } from "../confirmDialog.js";
 import {
@@ -1777,30 +1782,90 @@ function MasterBoard({
   );
 }
 
+function clampColWidth(n) {
+  return Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, Math.round(Number(n) || MIN_COL_WIDTH)));
+}
+
+function colWidthStyle(width) {
+  const w = clampColWidth(width);
+  return { width: w, minWidth: w, maxWidth: w };
+}
+
 function DbColHeader({
   col,
+  width,
   canLeft,
   canRight,
   onMoveLeft,
   onMoveRight,
+  onInsertBefore,
+  onInsertAfter,
   onEdit,
+  onResize,
 }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [resizing, setResizing] = useState(false);
   const locked = isNameCol(col);
+
+  const place = () => {
+    const r = wrapRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, left: r.left + 8 });
+  };
 
   useEffect(() => {
     if (!open || locked) return;
+    place();
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
     };
+    const onReposition = () => place();
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
   }, [open, locked]);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [resizing]);
 
   const run = (fn) => {
     setOpen(false);
     fn?.();
+  };
+
+  const startResize = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(false);
+    const startX = e.clientX;
+    const startW = clampColWidth(width);
+    setResizing(true);
+    const onMove = (ev) => {
+      onResize?.(col.id, clampColWidth(startW + (ev.clientX - startX)));
+    };
+    const onUp = () => {
+      setResizing(false);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   };
 
   return (
@@ -1808,24 +1873,30 @@ function DbColHeader({
       className={
         "db-col-th" +
         (locked ? " db-name-col locked" : "") +
-        (open ? " open" : "")
+        (open ? " open" : "") +
+        (resizing ? " resizing" : "")
       }
+      style={colWidthStyle(width)}
       ref={wrapRef}
       onClick={locked ? undefined : () => setOpen((o) => !o)}
     >
       <span className="db-col-lab">
         <Icon name={fieldTypeIcon(col.type)} size={14} />
         <span className="db-col-name">{col.label}</span>
-        {col.required ? (
-          <span className="db-req" title="Required">
-            *
-          </span>
-        ) : null}
       </span>
-      {!locked && open ? (
+      <span
+        className="db-col-resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={`Resize ${col.label || "column"}`}
+        onMouseDown={startResize}
+        onClick={(e) => e.stopPropagation()}
+      />
+      {!locked && open && pos ? (
         <div
           className="pop db-col-menu"
           role="menu"
+          style={{ top: pos.top, left: pos.left }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -1846,9 +1917,25 @@ function DbColHeader({
             <Icon name="arrowRight" size={14} />
             Move right
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onInsertBefore)}
+          >
+            <Icon name="plus" size={14} />
+            Insert column before
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onInsertAfter)}
+          >
+            <Icon name="plus" size={14} />
+            Insert column after
+          </button>
           <button type="button" role="menuitem" onClick={() => run(onEdit)}>
             <Icon name="pencil" size={14} />
-            Edit field
+            Edit column
           </button>
         </div>
       ) : null}
@@ -1902,16 +1989,43 @@ function DbTable({
   stages,
   onOpen,
   onApplyWorkspace,
+  onDuplicateRecord,
+  onDeleteRecord,
   displayRows,
   hiddenCols,
+  wrapLines = false,
+  verticalBorders = true,
+  colWidths = {},
+  onColWidthChange,
 }) {
   const [editCol, setEditCol] = useState(null);
   const [editIsNew, setEditIsNew] = useState(false);
+  /** Index in allCols to splice a new column; null = append. */
+  const [editInsertAt, setEditInsertAt] = useState(null);
   const [focusNameId, setFocusNameId] = useState(null);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const [, bump] = useState(0);
+  const canRecordMenu = !!(onDuplicateRecord || onDeleteRecord);
   const rows = displayRows || d.rows;
   const allCols = ensureNameColumn(d.cols);
   const cols = visibleDbCols(allCols, hiddenCols);
+  const widths = normalizeColWidths(colWidths);
+
+  const openNewCol = (insertAt = null) => {
+    setEditIsNew(true);
+    setEditInsertAt(insertAt);
+    setEditCol({
+      id: "f" + Date.now(),
+      label: "",
+      type: "text",
+    });
+  };
+
+  const closeColEdit = () => {
+    setEditCol(null);
+    setEditIsNew(false);
+    setEditInsertAt(null);
+  };
 
   useEffect(() => {
     if (!focusNameId) return;
@@ -1946,7 +2060,13 @@ function DbTable({
     const idx = list.findIndex((c) => c.id === saved.id);
     if (editIsNew || idx < 0) {
       if (saved.id === NAME_COL_ID) return;
-      list.push(normalizeDbCol(saved));
+      const next = normalizeDbCol(saved);
+      // Never insert before Name (index 0).
+      const at =
+        editInsertAt == null
+          ? list.length
+          : Math.max(1, Math.min(editInsertAt, list.length));
+      list.splice(at, 0, next);
       d.rows.forEach((r) => {
         if (r[saved.id] == null) r[saved.id] = emptyFieldValue(saved, stages);
       });
@@ -1960,8 +2080,7 @@ function DbTable({
     for (const r of d.rows) {
       await persistDbRow(folder, mod, r, d.cols);
     }
-    setEditCol(null);
-    setEditIsNew(false);
+    closeColEdit();
     await refresh();
   };
 
@@ -1976,8 +2095,7 @@ function DbTable({
     for (const r of d.rows) {
       await persistDbRow(folder, mod, r, list);
     }
-    setEditCol(null);
-    setEditIsNew(false);
+    closeColEdit();
     await refresh();
   };
 
@@ -1989,53 +2107,65 @@ function DbTable({
 
   return (
     <div className="scroll db-scroll">
-      <table className="db-table">
+      <table
+        className={
+          "db-table" +
+          (wrapLines ? " wrap-lines" : "") +
+          (verticalBorders ? " vertical-borders" : "")
+        }
+      >
         <thead>
           <tr>
             <th className="db-enlarge-col" aria-hidden="true" />
             {cols.map((c) => {
               const i = allCols.findIndex((col) => col.id === c.id);
+              const width = resolveColWidth(c, widths);
               return (
                 <DbColHeader
                   key={c.id}
                   col={c}
+                  width={width}
                   canLeft={i > 1}
                   canRight={i >= 1 && i < allCols.length - 1}
                   onMoveLeft={() => moveCol(i, -1)}
                   onMoveRight={() => moveCol(i, 1)}
+                  onInsertBefore={() => openNewCol(i)}
+                  onInsertAfter={() => openNewCol(i + 1)}
+                  onResize={onColWidthChange}
                   onEdit={() => {
                     if (isNameCol(c)) return;
                     setEditIsNew(false);
+                    setEditInsertAt(null);
                     setEditCol(c);
                   }}
                 />
               );
             })}
-            <th
-              className="addcol"
-              onClick={() => {
-                setEditIsNew(true);
-                setEditCol({
-                  id: "f" + Date.now(),
-                  label: "",
-                  type: "text",
-                  required: false,
-                });
-              }}
-            >
+            <th className="addcol" onClick={() => openNewCol(null)}>
               + Add column
             </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id}>
+            <tr
+              key={r.id}
+              onContextMenu={
+                canRecordMenu
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCtxMenu({ left: e.clientX, top: e.clientY, row: r });
+                    }
+                  : undefined
+              }
+            >
               <td className="db-enlarge-col">
                 <button
                   type="button"
                   className="db-enlarge"
                   title="Open"
-                  aria-label="Open entry"
+                  aria-label="Open record"
                   onClick={() => onOpen(r, { folder, mod })}
                 >
                   <Icon name="enlarge" size={14} />
@@ -2049,12 +2179,14 @@ function DbTable({
                     (c.type || "text") +
                     (isNameCol(c) ? " db-name-col" : "")
                   }
+                  style={colWidthStyle(resolveColWidth(c, widths))}
                 >
                   <DbFieldInput
                     col={c}
                     value={r[c.id]}
                     stages={stages}
                     variant="cell"
+                    wrapLines={wrapLines}
                     autoFocus={isNameCol(c) && r.id === focusNameId}
                     onCommit={(next) => {
                       if (r.id === focusNameId) setFocusNameId(null);
@@ -2098,12 +2230,36 @@ function DbTable({
           canDelete={
             !editIsNew && !isNameCol(editCol) && allCols.length > 1
           }
-          onClose={() => {
-            setEditCol(null);
-            setEditIsNew(false);
-          }}
+          onClose={closeColEdit}
           onSave={saveCol}
           onDelete={deleteCol}
+        />
+      ) : null}
+      {ctxMenu ? (
+        <DbRecordContextMenu
+          left={ctxMenu.left}
+          top={ctxMenu.top}
+          onClose={() => setCtxMenu(null)}
+          onDuplicate={
+            onDuplicateRecord
+              ? () => onDuplicateRecord(ctxMenu.row)
+              : undefined
+          }
+          onDelete={
+            onDeleteRecord
+              ? async () => {
+                  const label =
+                    (ctxMenu.row.n || "").trim() || "Untitled";
+                  const ok = await askConfirm({
+                    title: `Delete "${label}"?`,
+                    confirmLabel: "Delete",
+                    danger: true,
+                  });
+                  if (!ok) return;
+                  await onDeleteRecord(ctxMenu.row);
+                }
+              : undefined
+          }
         />
       ) : null}
     </div>
@@ -2166,8 +2322,8 @@ function DbViewMoreMenu({ canDelete, onRename, onDelete }) {
         type="button"
         ref={btnRef}
         className="db-view-more-btn"
-        title="View options"
-        aria-label="View options"
+        title="Preset options"
+        aria-label="Preset options"
         aria-haspopup="menu"
         aria-expanded={open}
         onMouseDown={(e) => e.preventDefault()}
@@ -2219,11 +2375,14 @@ export function DatabaseView({
   folder,
   tabC,
   stages,
+  readonly = false,
   onOpenCard,
   onApplyWorkspace,
+  onDuplicateRecord,
+  onDeleteRecord,
 }) {
   const scope = boardKey(folder, mod);
-  const [showViews, setShowViews] = useState(
+  const [showPresets, setShowPresets] = useState(
     () => !!loadDbViewsSidebar()[scope]
   );
   const [, bump] = useState(0);
@@ -2254,17 +2413,20 @@ export function DatabaseView({
   const filters = activeView.filters;
   const sorts = activeView.sorts;
   const hiddenCols = activeView.hiddenCols || [];
+  const wrapLines = !!activeView.wrapLines;
+  const verticalBorders = !!activeView.verticalBorders;
+  const colWidths = activeView.colWidths || {};
 
   useEffect(() => {
-    setShowViews(!!loadDbViewsSidebar()[scope]);
+    setShowPresets(!!loadDbViewsSidebar()[scope]);
   }, [scope]);
 
   useEffect(() => {
     return () => clearTimeout(persistTimer.current);
   }, []);
 
-  const toggleViewsSidebar = () => {
-    setShowViews((v) => {
+  const togglePresetsSidebar = () => {
+    setShowPresets((v) => {
       const next = !v;
       saveDbViewsSidebar(scope, next);
       return next;
@@ -2292,6 +2454,30 @@ export function DatabaseView({
     schedulePersistViews();
   };
 
+  const setWrapLines = (next) => {
+    activeView.wrapLines = !!next;
+    d.customViews = normalizeCustomViews(customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const setVerticalBorders = (next) => {
+    activeView.verticalBorders = !!next;
+    d.customViews = normalizeCustomViews(customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
+  const setColWidth = (colId, width) => {
+    activeView.colWidths = normalizeColWidths({
+      ...(activeView.colWidths || {}),
+      [colId]: width,
+    });
+    d.customViews = normalizeCustomViews(customViews);
+    bump((n) => n + 1);
+    schedulePersistViews();
+  };
+
   const setSorts = (next) => {
     activeView.sorts = next;
     d.customViews = normalizeCustomViews(customViews);
@@ -2306,17 +2492,17 @@ export function DatabaseView({
     schedulePersistViews();
   };
 
-  const addView = () => {
-    const view = createCustomView("Untitled view");
+  const addPreset = () => {
+    const view = createCustomView("Untitled preset");
     d.customViews = normalizeCustomViews([...customViews, view]);
     d.customViewId = view.id;
     bump((n) => n + 1);
     schedulePersistViews();
   };
 
-  const renameView = async (view) => {
+  const renamePreset = async (view) => {
     const next = await askPrompt({
-      title: "Rename view",
+      title: "Rename preset",
       defaultValue: view.name,
       confirmLabel: "Rename",
     });
@@ -2329,7 +2515,7 @@ export function DatabaseView({
     schedulePersistViews();
   };
 
-  const deleteView = async (view) => {
+  const deletePreset = async (view) => {
     if (isDefaultCustomView(view)) return;
     const ok = await askConfirm({
       title: `Delete "${view.name}"?`,
@@ -2385,11 +2571,17 @@ export function DatabaseView({
         d={d}
         displayRows={displayRows}
         hiddenCols={hiddenCols}
+        wrapLines={wrapLines}
+        verticalBorders={verticalBorders}
+        colWidths={colWidths}
+        onColWidthChange={setColWidth}
         folder={folder}
         mod={mod}
         stages={stages}
         onOpen={onOpenCard}
         onApplyWorkspace={onApplyWorkspace}
+        onDuplicateRecord={readonly ? undefined : onDuplicateRecord}
+        onDeleteRecord={readonly ? undefined : onDeleteRecord}
       />
     );
 
@@ -2404,28 +2596,21 @@ export function DatabaseView({
           <button
             type="button"
             className="mod-act"
-            title="Add entry"
-            aria-label="Add entry"
+            title="Add record"
+            aria-label="Add record"
             onClick={addEntry}
           >
             <Icon name="plus" size={18} />
-            <span className="mod-act-lab">Add entry</span>
+            <span className="mod-act-lab">Add record</span>
           </button>
-          <button
-            type="button"
-            className={"mod-act" + (showViews ? " on" : "")}
-            title="Views"
-            aria-label="Views"
-            aria-pressed={showViews}
-            onClick={toggleViewsSidebar}
-          >
-            <Icon name="sidebar" size={18} />
-            <span className="mod-act-lab">Views</span>
-          </button>
-          <DbColumnsDropdown
+          <DbViewDropdown
             cols={d.cols || []}
             hiddenCols={hiddenCols}
-            onChange={setHiddenCols}
+            wrapLines={wrapLines}
+            verticalBorders={verticalBorders}
+            onHiddenColsChange={setHiddenCols}
+            onWrapLinesChange={setWrapLines}
+            onVerticalBordersChange={setVerticalBorders}
           />
           <DbFiltersDropdown
             cols={d.cols || []}
@@ -2438,44 +2623,61 @@ export function DatabaseView({
             sorts={sorts}
             onChange={setSorts}
           />
+          <button
+            type="button"
+            className={"mod-act" + (showPresets ? " on" : "")}
+            title="Presets"
+            aria-label="Presets"
+            aria-pressed={showPresets}
+            onClick={togglePresetsSidebar}
+          >
+            <Icon name="sidebar" size={18} />
+            <span className="mod-act-lab">Presets</span>
+          </button>
         </div>
       </div>
-      <div className="db-layout">
-        {showViews ? (
-          <div className="db-sidebar" aria-label="Custom views">
-            <div className="db-views-list">
-              {customViews.map((view) => {
-                const on = view.id === activeView.id;
-                const locked = isDefaultCustomView(view);
-                return (
-                  <div
-                    key={view.id}
-                    className={"db-view-item" + (on ? " on" : "")}
-                  >
-                    <button
-                      type="button"
-                      className="db-view-select"
-                      aria-current={on ? "true" : undefined}
-                      onClick={() => selectView(view.id)}
+      <div className={"db-layout" + (showPresets ? " presets-open" : "")}>
+        <div className="db-sidebar-slot" aria-hidden={!showPresets}>
+          <div className="db-sidebar-clip">
+            <div
+              className="db-sidebar"
+              aria-label="Presets"
+              inert={showPresets ? undefined : true}
+            >
+              <div className="db-views-list">
+                {customViews.map((view) => {
+                  const on = view.id === activeView.id;
+                  const locked = isDefaultCustomView(view);
+                  return (
+                    <div
+                      key={view.id}
+                      className={"db-view-item" + (on ? " on" : "")}
                     >
-                      <Icon name="eye" size={14} />
-                      <span>{view.name}</span>
-                    </button>
-                    <DbViewMoreMenu
-                      canDelete={!locked}
-                      onRename={() => renameView(view)}
-                      onDelete={() => deleteView(view)}
-                    />
-                  </div>
-                );
-              })}
+                      <button
+                        type="button"
+                        className="db-view-select"
+                        aria-current={on ? "true" : undefined}
+                        onClick={() => selectView(view.id)}
+                      >
+                        <Icon name="eye" size={14} />
+                        <span>{view.name}</span>
+                      </button>
+                      <DbViewMoreMenu
+                        canDelete={!locked}
+                        onRename={() => renamePreset(view)}
+                        onDelete={() => deletePreset(view)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" className="db-views-add" onClick={addPreset}>
+                <Icon name="plus" size={14} />
+                Add preset
+              </button>
             </div>
-            <button type="button" className="db-views-add" onClick={addView}>
-              <Icon name="plus" size={14} />
-              Add view
-            </button>
           </div>
-        ) : null}
+        </div>
         <div className="db-main">{main}</div>
       </div>
     </div>

@@ -105,15 +105,15 @@ export async function deleteTimelogApi(body) {
 }
 
 export async function putItem(body) {
-  await fetch("/api/item", {
-    method: "PUT",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(body),
-  });
+  return apiData("/api/item", { method: "PUT", body });
 }
 
 export async function postItem(body) {
   return apiData("/api/item", { method: "POST", body });
+}
+
+export async function deleteItemApi(body) {
+  return apiData("/api/item", { method: "DELETE", body });
 }
 
 export async function putDatabase(body) {

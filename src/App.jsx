@@ -17,6 +17,8 @@ import {
   deleteTabApi,
   putTabOrder,
   putItem,
+  postItem,
+  deleteItemApi,
   postTimelog,
   putTimelog,
   resetWorkspaceToSeed,
@@ -55,6 +57,7 @@ import {
   stoptimerMaxSec,
   locateRow,
   findCardByIds,
+  findDbItemByIds,
   liveCardTitle,
   modToTabType,
   tabsOrderPayload,
@@ -734,6 +737,48 @@ export default function App() {
       });
     },
     [createCard]
+  );
+
+  const duplicateDbItem = useCallback(
+    async (row, folder, mod) => {
+      if (!folder || !mod || mod[0] !== "Database" || !row) return;
+      if (isProjectArchived(folder)) return;
+      const cols = mod[2].cols || [];
+      const fields = {};
+      cols.forEach((c) => {
+        if (!c?.id) return;
+        if (c.id === "n") {
+          const base = String(row.n || "").trim() || "Untitled";
+          fields[c.id] = "Duplicate of " + base;
+          return;
+        }
+        fields[c.id] = row[c.id] != null ? row[c.id] : "";
+      });
+      const data = await postItem({
+        project: folder.id,
+        database: mod[2].id,
+        fields,
+        body: row.body || "",
+      });
+      applyWorkspace(data, keepNav(folder.id, mod[2].id));
+      return data.id;
+    },
+    [applyWorkspace, keepNav]
+  );
+
+  const deleteDbItem = useCallback(
+    async (folder, mod, id) => {
+      if (!folder || !mod || mod[0] !== "Database" || !id) return;
+      if (isProjectArchived(folder)) return;
+      const data = await deleteItemApi({
+        project: folder.id,
+        database: mod[2].id,
+        id,
+      });
+      applyWorkspace(data, keepNav(folder.id, mod[2].id));
+      return data;
+    },
+    [applyWorkspace, keepNav]
   );
 
   const openItem = useCallback(
@@ -1507,8 +1552,19 @@ export default function App() {
                 folder={folder}
                 tabC={tabC}
                 stages={stages}
+                readonly={archived}
                 onOpenCard={openItem}
                 onApplyWorkspace={applyWorkspace}
+                onDuplicateRecord={
+                  archived
+                    ? undefined
+                    : (row) => duplicateDbItem(row, folder, x)
+                }
+                onDeleteRecord={
+                  archived
+                    ? undefined
+                    : (row) => deleteDbItem(folder, x, row.id)
+                }
               />
             )}
           {loaded &&
@@ -1654,13 +1710,35 @@ export default function App() {
               board: "",
             });
           }}
-          onDelete={dialog.readonly ? undefined : deleteCard}
+          onDelete={
+            dialog.readonly
+              ? undefined
+              : async (folder, mod, id) => {
+                  if (mod?.[0] === "Database") {
+                    await deleteDbItem(folder, mod, id);
+                    return;
+                  }
+                  await deleteCard(folder, mod, id);
+                }
+          }
           onDuplicate={async (r, curLoc) => {
             const projectId = curLoc.folder.id;
-            const boardId = curLoc.mod[2].id;
+            const tabId = curLoc.mod[2].id;
+            if (curLoc.mod[0] === "Database") {
+              const id = await duplicateDbItem(r, curLoc.folder, curLoc.mod);
+              setDialog(null);
+              const hit = findDbItemByIds(
+                foldersRef.current,
+                projectId,
+                tabId,
+                id
+              );
+              if (hit) openItem(hit.row);
+              return;
+            }
             const id = await duplicateCard(r, curLoc.folder, curLoc.mod);
             setDialog(null);
-            const hit = findCardByIds(foldersRef.current, projectId, boardId, id);
+            const hit = findCardByIds(foldersRef.current, projectId, tabId, id);
             if (hit) openItem(hit.row);
           }}
           onStartPomo={startPomodoro}
@@ -1672,17 +1750,21 @@ export default function App() {
           onApplyWorkspace={applyWorkspace}
           keepNav={keepNav}
           onSaveItem={async (r, folder, mod) => {
+            if (!folder || !mod || mod[0] !== "Database") return;
+            if (isProjectArchived(folder)) return;
             const fields = {};
             (mod[2].cols || []).forEach((c) => {
               fields[c.id] = r[c.id] != null ? r[c.id] : "";
             });
-            await putItem({
+            const data = await putItem({
               project: folder.id,
               database: mod[2].id,
               id: r.id,
               fields,
               body: r.body || "",
             });
+            applyWorkspace(data, keepNav(folder.id, mod[2].id));
+            return data;
           }}
         />
       )}

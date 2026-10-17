@@ -19,7 +19,6 @@ function blankCol() {
     id: "",
     label: "",
     type: "text",
-    required: false,
     decimal: false,
     options: [],
   };
@@ -162,7 +161,7 @@ export default function FieldEditDialog({
   const remove = async () => {
     if (!canDelete || isNew) return;
     const ok = await askConfirm({
-      title: `Delete field "${draft.label || "Untitled"}"?`,
+      title: `Delete column "${draft.label || "Untitled"}"?`,
       message: "Values in this column will be removed from all rows.",
       confirmLabel: "Delete",
       danger: true,
@@ -182,10 +181,10 @@ export default function FieldEditDialog({
         className="dlg prompt-dlg field-edit-dlg"
         role="dialog"
         aria-modal="true"
-        aria-label={isNew ? "New field" : "Edit field"}
+        aria-label={isNew ? "New column" : "Edit column"}
       >
         <div className="dlg-content prompt-body">
-          <h2 className="prompt-title">{isNew ? "New field" : "Edit field"}</h2>
+          <h2 className="prompt-title">{isNew ? "New column" : "Edit column"}</h2>
           <form
             className="prompt-form field-edit-form"
             onSubmit={(e) => {
@@ -194,20 +193,20 @@ export default function FieldEditDialog({
             }}
           >
             <label className="field-edit-row">
-              <span className="field-edit-lab">Field name</span>
+              <span className="field-edit-lab">Column name</span>
               <input
                 ref={nameRef}
                 className="prompt-input"
                 type="text"
                 value={draft.label || ""}
-                placeholder="Field name"
+                placeholder="Column name"
                 onChange={(e) => patch({ label: e.target.value })}
                 autoComplete="off"
               />
             </label>
 
             <div className="field-edit-row">
-              <span className="field-edit-lab">Field type</span>
+              <span className="field-edit-lab">Column type</span>
               <Dropdown
                 className="field-type-dd"
                 value={
@@ -232,15 +231,6 @@ export default function FieldEditDialog({
                 </span>
               </Dropdown>
             </div>
-
-            <label className="field-edit-check">
-              <input
-                type="checkbox"
-                checked={!!draft.required}
-                onChange={(e) => patch({ required: e.target.checked })}
-              />
-              <span>Required</span>
-            </label>
 
             {draft.type === "number" ? (
               <div className="field-edit-block">

@@ -19,7 +19,7 @@ export const TYPES = [
   { t: "Board", title: "Tasks", sub: "Board with cards and columns" },
   { t: "Notes", title: "Notes", sub: "Rich text editor with list view and filters" },
   { t: "Files", title: "Files", sub: "Documents for quick reach and preview" },
-  { t: "Database", title: "Database", sub: "Structured records for data analysis" },
+  { t: "Database", title: "Records", sub: "Structured entries with database features" },
   { t: "Docs", title: "Docs", sub: "Knowledge base notes and briefs", off: true },
   { t: "Links", title: "Links", sub: "Stakeholders and key references", off: true },
   { t: "Chat", title: "Chat", sub: "Communication channels and threads", off: true },
@@ -1262,6 +1262,17 @@ export function findCardByIds(folders, project, board, card) {
   const mod = folder.mods.find((m) => m[0] === "Board" && m[2]?.id === board);
   if (!mod) return null;
   const row = (mod[2].rows || []).find((r) => r.id === card);
+  return row ? { row, folder, mod } : null;
+}
+
+export function findDbItemByIds(folders, project, database, itemId) {
+  const folder = folders.find((f) => f.id === project);
+  if (!folder) return null;
+  const mod = folder.mods.find(
+    (m) => m[0] === "Database" && m[2]?.id === database
+  );
+  if (!mod) return null;
+  const row = (mod[2].rows || []).find((r) => r.id === itemId);
   return row ? { row, folder, mod } : null;
 }
 

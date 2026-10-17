@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { bindConfirmHost, settleConfirm } from "../confirmDialog.js";
 import { Icon } from "../icons.jsx";
 
@@ -22,11 +23,13 @@ export default function ConfirmDialog() {
     const onKey = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         settleConfirm(false);
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // Capture so Escape dismisses confirm instead of the dialog underneath.
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, [req]);
 
   if (!req) return null;
@@ -34,9 +37,9 @@ export default function ConfirmDialog() {
   const accept = () => settleConfirm(true);
   const cancel = () => settleConfirm(false);
 
-  return (
+  return createPortal(
     <div
-      className="ov ov-prompt"
+      className="ov ov-prompt ov-confirm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) cancel();
       }}
@@ -125,6 +128,7 @@ export default function ConfirmDialog() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

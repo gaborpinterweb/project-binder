@@ -146,7 +146,7 @@ function FilterRow({
         className="db-filter-field-dd"
         options={fieldOpts}
         value={rule.fieldId}
-        ariaLabel="Field"
+        ariaLabel="Column"
         renderOption={(o) => <FieldOption col={o.col} />}
         onChange={(fieldId) => {
           const next = cols.find((c) => c.id === fieldId);
@@ -164,7 +164,7 @@ function FilterRow({
         {col ? (
           <FieldOption col={col} />
         ) : (
-          <span className="db-filter-placeholder">Select field</span>
+          <span className="db-filter-placeholder">Select column</span>
         )}
       </Dropdown>
 
@@ -201,26 +201,11 @@ function FilterRow({
   );
 }
 
-export default function DbFiltersDropdown({
-  cols = [],
-  stages = [],
-  filters,
-  onChange,
-}) {
-  const wrapRef = useRef(null);
-  const [open, setOpen] = useState(false);
+/** Filter builder for the current database view. */
+export function DbFiltersPanel({ cols = [], stages = [], filters, onChange }) {
   const activeCount = countActiveFilters(filters, cols);
   const rules = filters?.rules?.length ? filters.rules : [createFilterRule()];
   const junction = filters?.junction === "or" ? "or" : "and";
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
 
   const setRules = (nextRules, nextJunction = junction) => {
     onChange({ junction: nextJunction, rules: nextRules });
@@ -240,46 +225,75 @@ export default function DbFiltersDropdown({
   };
 
   return (
-    <div
-      className={"db-filters-dd" + (open ? " open" : "")}
-      ref={wrapRef}
-    >
+    <div className="db-filters-panel" role="group" aria-label="Filter builder">
+      <div className="db-filters-rows">
+        {rules.map((rule, i) => (
+          <FilterRow
+            key={rule.id}
+            rule={rule}
+            index={i}
+            cols={cols}
+            stages={stages}
+            junction={junction}
+            onJunctionChange={(j) => setRules(rules, j)}
+            onChange={(next) => updateRule(rule.id, next)}
+            onRemove={() => removeRule(rule.id)}
+            canRemove={rules.length > 1 || activeCount > 0 || !!rule.fieldId}
+          />
+        ))}
+      </div>
+      <button type="button" className="db-filters-add" onClick={addRule}>
+        <Icon name="plus" size={14} />
+        Add filter
+      </button>
+    </div>
+  );
+}
+
+/** Database Filters toolbar button. */
+export default function DbFiltersDropdown({
+  cols = [],
+  stages = [],
+  filters,
+  onChange,
+}) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const activeCount = countActiveFilters(filters, cols);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div className={"db-filters-dd" + (open ? " open" : "")} ref={wrapRef}>
       <button
         type="button"
         className={"mod-act" + (open || activeCount > 0 ? " on" : "")}
-        aria-label="Filters"
-        title="Filters"
+        aria-label="Filter"
+        title="Filter"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
         <Icon name="filter" size={18} />
         <span className="mod-act-lab">
-          {activeCount > 0 ? `${activeCount} Filter${activeCount === 1 ? "" : "s"}` : "Filters"}
+          {activeCount > 0 ? `${activeCount} Filter${activeCount === 1 ? "" : "s"}` : "Filter"}
         </span>
       </button>
       {open ? (
         <div className="pop db-filters-menu" role="dialog" aria-label="Filter builder">
-          <div className="db-filters-rows">
-            {rules.map((rule, i) => (
-              <FilterRow
-                key={rule.id}
-                rule={rule}
-                index={i}
-                cols={cols}
-                stages={stages}
-                junction={junction}
-                onJunctionChange={(j) => setRules(rules, j)}
-                onChange={(next) => updateRule(rule.id, next)}
-                onRemove={() => removeRule(rule.id)}
-                canRemove={rules.length > 1 || activeCount > 0 || !!rule.fieldId}
-              />
-            ))}
-          </div>
-          <button type="button" className="db-filters-add" onClick={addRule}>
-            <Icon name="plus" size={14} />
-            Add filter
-          </button>
+          <DbFiltersPanel
+            cols={cols}
+            stages={stages}
+            filters={filters}
+            onChange={onChange}
+          />
         </div>
       ) : null}
     </div>

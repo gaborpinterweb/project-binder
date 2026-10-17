@@ -87,7 +87,6 @@ export function normalizeDbCol(c) {
     id: c.id,
     label: c.label || c.id,
     type,
-    required: !!c.required,
   };
   if (type === "number") col.decimal = !!c.decimal;
   if (type === "select" || type === "multiselect") {
@@ -113,7 +112,6 @@ export function serializeDbCol(c) {
     return { id: NAME_COL_ID, label: "Name", type: "text" };
   }
   const out = { id: col.id, label: col.label, type: col.type };
-  if (col.required) out.required = true;
   if (col.type === "number" && col.decimal) out.decimal = true;
   if (col.type === "select" || col.type === "multiselect") {
     out.options = (col.options || []).map((o) => ({
@@ -129,7 +127,7 @@ export function emptyFieldValue(col, stages = []) {
   if (col.type === "checkbox") return false;
   if (col.type === "multiselect") return [];
   if (col.type === "stage") return stages[0] || "";
-  if (col.id === NAME_COL_ID) return "New entry";
+  if (col.id === NAME_COL_ID) return "New record";
   return "";
 }
 

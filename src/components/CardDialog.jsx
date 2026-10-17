@@ -47,6 +47,7 @@ import TimelogDropdown, {
   timelogOptions,
 } from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
+import { DbOrganiseMenu } from "./DbRecordMenu.jsx";
 
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
@@ -695,6 +696,7 @@ export default function CardDialog({
         className={
           "dlg" +
           (curLoc ? " tint" : "") +
+          (isDb ? " dlg-db" : "") +
           (fileDragOver ? " is-file-dragover" : "")
         }
         style={tintStyle}
@@ -807,6 +809,33 @@ export default function CardDialog({
               readonly={readonly}
               onPatch={patch}
               onPersist={persist}
+              onDuplicate={
+                !readonly && onDuplicate && draft.id
+                  ? async () => {
+                      clearTimeout(persistTimer.current);
+                      await persist();
+                      await onDuplicate(draft, originLoc || curLoc);
+                    }
+                  : undefined
+              }
+              onDelete={
+                !readonly && onDelete && draft.id
+                  ? async () => {
+                      const loc = originLoc || curLoc;
+                      const label =
+                        (draft.n || "").trim() || "Untitled";
+                      const ok = await askConfirm({
+                        title: `Delete "${label}"?`,
+                        confirmLabel: "Delete",
+                        danger: true,
+                      });
+                      if (!ok) return;
+                      clearTimeout(persistTimer.current);
+                      await onDelete(loc.folder, loc.mod, draft.id);
+                      onClose({ deleted: true });
+                    }
+                  : undefined
+              }
             />
           ) : (
             <>
@@ -1235,11 +1264,13 @@ function DbFieldGroups({
   focusId,
   onPatch,
   onPersist,
+  leading = null,
 }) {
-  if (!cols.length) return null;
+  if (!cols.length && !leading) return null;
   return (
     <div className="dlg-fields db-entry-fields">
       <div className="db-entry-rows">
+        {leading}
         {cols.map((c) => {
           const rich = c.type === "longtext";
           return (
@@ -1249,10 +1280,7 @@ function DbFieldGroups({
             >
               <span className="db-entry-lab">
                 <Icon name={fieldTypeIcon(c.type)} size={14} />
-                <span className="db-entry-lab-text">
-                  {c.label}
-                  {c.required ? <span className="db-req">*</span> : null}
-                </span>
+                <span className="db-entry-lab-text">{c.label}</span>
               </span>
               <div className="db-entry-val">
                 {rich ? (
@@ -1289,7 +1317,16 @@ function DbFieldGroups({
   );
 }
 
-function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
+function DbFields({
+  row,
+  loc,
+  stages,
+  readonly,
+  onPatch,
+  onPersist,
+  onDuplicate,
+  onDelete,
+}) {
   const modData = loc?.mod?.[2];
   const cols = (modData?.cols || []).filter(Boolean);
   const hiddenList = activeDbHiddenCols(modData);
@@ -1308,52 +1345,72 @@ function DbFields({ row, loc, stages, readonly, onPatch, onPersist }) {
       hiddenCols.find((c) => c.type !== "longtext")?.id ||
       hiddenCols[0]?.id ||
       null;
+  const canOrganise = !!(onDuplicate || onDelete);
 
-  if (!cols.length) return null;
+  if (!cols.length && !canOrganise) return null;
 
   return (
     <>
-      {titleCol ? (
-        <div className="title-row">
-          <TitleArea
-            className="title"
-            value={row[titleCol.id] || ""}
-            placeholder={
-              titleCol.id === "n" ? "New entry" : titleCol.label || "Untitled"
-            }
-            autoFocus={focusId === titleCol.id}
-            readOnly={readonly}
-            onChange={(e) => {
-              if (readonly) return;
-              onPatch({ [titleCol.id]: e.target.value });
-            }}
-            onBlur={() => {
-              if (readonly) return;
-              onPersist();
-            }}
-            onKeyDown={(e) => {
-              if (readonly || e.key !== "Enter") return;
-              e.preventDefault();
-              e.currentTarget.blur();
-            }}
-          />
-        </div>
+      {cols.length ? (
+        <DbFieldGroups
+          cols={visibleRest}
+          row={row}
+          stages={stages}
+          readonly={readonly}
+          focusId={focusId}
+          onPatch={onPatch}
+          onPersist={onPersist}
+          leading={
+            titleCol ? (
+              <div className="db-entry-row is-title">
+                <span className="db-entry-lab">
+                  <Icon name={fieldTypeIcon(titleCol.type)} size={14} />
+                  <span className="db-entry-lab-text">{titleCol.label}</span>
+                </span>
+                <div className="db-entry-title-val">
+                  <div className="db-entry-val">
+                    <TitleArea
+                      className="title"
+                      value={row[titleCol.id] || ""}
+                      placeholder={
+                        titleCol.id === "n"
+                          ? "New record"
+                          : titleCol.label || "Untitled"
+                      }
+                      autoFocus={focusId === titleCol.id}
+                      readOnly={readonly}
+                      onChange={(e) => {
+                        if (readonly) return;
+                        onPatch({ [titleCol.id]: e.target.value });
+                      }}
+                      onBlur={() => {
+                        if (readonly) return;
+                        onPersist();
+                      }}
+                      onKeyDown={(e) => {
+                        if (readonly || e.key !== "Enter") return;
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }}
+                    />
+                  </div>
+                  {canOrganise ? (
+                    <DbOrganiseMenu
+                      onDuplicate={onDuplicate}
+                      onDelete={onDelete}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ) : null
+          }
+        />
       ) : null}
-
-      <DbFieldGroups
-        cols={visibleRest}
-        row={row}
-        stages={stages}
-        readonly={readonly}
-        focusId={focusId}
-        onPatch={onPatch}
-        onPersist={onPersist}
-      />
 
       {hiddenCols.length ? (
         <div className="db-entry-hidden">
           <h3 className="db-entry-section-lab">
-            Hidden fields in current view
+            Hidden columns in current view
           </h3>
           <DbFieldGroups
             cols={hiddenCols}

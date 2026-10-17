@@ -159,13 +159,41 @@ function normalizeSorts(sorts) {
   return { rules: rules.length ? rules : emptySortState().rules };
 }
 
-function createDefaultCustomView(filters, hiddenCols, sorts) {
+const MIN_COL_WIDTH = 80;
+const MAX_COL_WIDTH = 720;
+
+function normalizeColWidths(colWidths) {
+  if (!colWidths || typeof colWidths !== "object" || Array.isArray(colWidths)) {
+    return {};
+  }
+  const out = {};
+  for (const [rawId, rawW] of Object.entries(colWidths)) {
+    const id = String(rawId || "");
+    const n = Math.round(Number(rawW));
+    if (!id || !Number.isFinite(n)) continue;
+    out[id] = Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, n));
+  }
+  return out;
+}
+
+function createDefaultCustomView(
+  filters,
+  hiddenCols,
+  sorts,
+  wrapLines,
+  verticalBorders,
+  colWidths
+) {
   return {
     id: DEFAULT_CUSTOM_VIEW_ID,
     name: DEFAULT_CUSTOM_VIEW_NAME,
     filters: normalizeFilters(filters),
     hiddenCols: normalizeHiddenCols(hiddenCols),
     sorts: normalizeSorts(sorts),
+    wrapLines: !!wrapLines,
+    // Missing → on (legacy presets + new defaults).
+    verticalBorders: verticalBorders !== false,
+    colWidths: normalizeColWidths(colWidths),
   };
 }
 
@@ -174,6 +202,9 @@ function normalizeCustomViews(views) {
   let defaultFilters = emptyFilterState();
   let defaultHiddenCols = [];
   let defaultSorts = emptySortState();
+  let defaultWrapLines = false;
+  let defaultVerticalBorders = true;
+  let defaultColWidths = {};
   for (const v of Array.isArray(views) ? views : []) {
     if (!v || v.id == null) continue;
     const id = String(v.id);
@@ -181,6 +212,9 @@ function normalizeCustomViews(views) {
       defaultFilters = normalizeFilters(v.filters);
       defaultHiddenCols = normalizeHiddenCols(v.hiddenCols);
       defaultSorts = normalizeSorts(v.sorts);
+      defaultWrapLines = !!v.wrapLines;
+      defaultVerticalBorders = v.verticalBorders !== false;
+      defaultColWidths = normalizeColWidths(v.colWidths);
       continue;
     }
     extras.push({
@@ -189,9 +223,22 @@ function normalizeCustomViews(views) {
       filters: normalizeFilters(v.filters),
       hiddenCols: normalizeHiddenCols(v.hiddenCols),
       sorts: normalizeSorts(v.sorts),
+      wrapLines: !!v.wrapLines,
+      verticalBorders: v.verticalBorders !== false,
+      colWidths: normalizeColWidths(v.colWidths),
     });
   }
-  return [createDefaultCustomView(defaultFilters, defaultHiddenCols, defaultSorts), ...extras];
+  return [
+    createDefaultCustomView(
+      defaultFilters,
+      defaultHiddenCols,
+      defaultSorts,
+      defaultWrapLines,
+      defaultVerticalBorders,
+      defaultColWidths
+    ),
+    ...extras,
+  ];
 }
 
 function resolveCustomViewId(viewId, views) {
@@ -252,7 +299,6 @@ function normalizeDbColumn(c) {
   if (String(c.id) === NAME_COL_ID) return nameColumn();
   const type = DB_FIELD_TYPES.has(c.type) ? c.type : "text";
   const out = { id: String(c.id), label: c.label || String(c.id), type };
-  if (c.required) out.required = true;
   if (type === "number" && c.decimal) out.decimal = true;
   if (type === "select" || type === "multiselect") {
     out.options = Array.isArray(c.options)
@@ -2521,6 +2567,16 @@ function writeItem(projectId, databaseId, item, columns) {
   return id;
 }
 
+function deleteItem(projectId, databaseId, itemId) {
+  const project = findProject(projectId);
+  const db = findDatabase(project, databaseId);
+  if (!project || !db || !Array.isArray(db.items)) return false;
+  const idx = db.items.findIndex((it) => it && it.id === itemId);
+  if (idx < 0) return false;
+  db.items.splice(idx, 1);
+  return true;
+}
+
 function readTimelogs() {
   const entries = (store.timelogs || []).map((t) => ({
     id: t.id,
@@ -3877,6 +3933,17 @@ const server = http.createServer(async (req, res) => {
       writeItem(body.project, body.database, { id, fields, body: body.body || "" }, cols);
       saveStore();
       return json(res, 201, { id, ...readWorkspace() });
+    }
+    if (req.method === "DELETE" && url.pathname === "/api/item") {
+      const body = await readBody(req);
+      if (!body.project || !body.database || !body.id) {
+        return json(res, 400, { error: "missing fields" });
+      }
+      if (!deleteItem(body.project, body.database, body.id)) {
+        return json(res, 404, { error: "item not found" });
+      }
+      saveStore();
+      return json(res, 200, readWorkspace());
     }
     if (req.method === "GET" && url.pathname === "/api/timelogs") {
       return json(res, 200, { timelogs: readTimelogs() });

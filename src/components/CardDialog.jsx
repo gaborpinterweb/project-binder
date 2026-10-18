@@ -1290,6 +1290,8 @@ export default function CardDialog({
     {previewFile && curLoc?.folder?.id && curLoc?.mod?.[2]?.id && draft.id ? (
       <FilePreviewDialog
         file={previewFile}
+        files={cardFiles}
+        onFileChange={setPreviewFile}
         project={curLoc.folder.id}
         board={curLoc.mod[2].id}
         card={draft.id}

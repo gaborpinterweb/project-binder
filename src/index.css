@@ -318,7 +318,7 @@ html.desktop-mac main.global-view.board-editing .modbar.gbar .gbar-title{padding
 .notes-layout{display:flex;flex:1;min-height:0}
 .notes-sidebar{width:var(--mod-sidebar-w);flex:none;display:flex;flex-direction:column;padding:0;border-right:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--bg));color:var(--ink);min-height:0}
 .notes-list{flex:1;min-height:0;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:2px}
-.notes-item{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);font:inherit;text-align:left;color:var(--ink);background:transparent;box-shadow:none;cursor:pointer;overflow:hidden}
+.notes-item{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:calc(var(--radius) - 6px);font:inherit;text-align:left;color:var(--ink);background:transparent;box-shadow:none;cursor:pointer;overflow:hidden}
 .notes-item:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .notes-sidebar .notes-item.on{background:color-mix(in srgb,var(--tab,var(--acc)) 14%,transparent);color:var(--ink)}
 .notes-sidebar .notes-item.on:hover{background:color-mix(in srgb,var(--tab,var(--acc)) 18%,transparent)}

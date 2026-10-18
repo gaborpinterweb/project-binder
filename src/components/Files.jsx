@@ -589,6 +589,8 @@ export default function Files({
       {preview ? (
         <FilePreviewDialog
           file={preview}
+          files={sortedFiles}
+          onFileChange={setPreview}
           project={folder.id}
           filesTab={d.id}
           onClose={() => setPreview(null)}

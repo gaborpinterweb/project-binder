@@ -244,6 +244,8 @@ async function waitUntilDialogSized(dlg, host, format, viewer, isCancelled) {
 
 export default function FilePreviewDialog({
   file,
+  files,
+  onFileChange,
   project,
   filesTab,
   board,
@@ -265,6 +267,11 @@ export default function FilePreviewDialog({
   const url = downloadUrl || fileDownloadUrl(project, filesTab, file.id);
   const format = formatFromName(file.name);
   const fit = fitsContent(format);
+  const fileList = Array.isArray(files) && files.length > 1 ? files : null;
+  const fileIndex = fileList
+    ? fileList.findIndex((f) => f.id === file.id)
+    : -1;
+  const canStepFiles = !!fileList && fileIndex >= 0 && typeof onFileChange === "function";
 
   useEffect(() => {
     let cancelled = false;
@@ -352,6 +359,12 @@ export default function FilePreviewDialog({
     setPage(typeof viewer.slideIndex === "number" ? viewer.slideIndex : i);
   };
 
+  const stepFile = (delta) => {
+    if (!canStepFiles) return;
+    const next = fileList[fileIndex + delta];
+    if (next) onFileChange(next);
+  };
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -359,18 +372,19 @@ export default function FilePreviewDialog({
         onClose();
         return;
       }
-      if (!paged) return;
-      if (e.key === "ArrowLeft") {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (canStepFiles) {
         e.preventDefault();
-        goTo(page - 1);
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        goTo(page + 1);
+        stepFile(e.key === "ArrowLeft" ? -1 : 1);
+        return;
       }
+      if (!paged) return;
+      e.preventDefault();
+      goTo(e.key === "ArrowLeft" ? page - 1 : page + 1);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, paged, page, pageCount]);
+  }, [onClose, canStepFiles, fileList, fileIndex, onFileChange, paged, page, pageCount]);
 
   const showInFolder = async () => {
     try {
@@ -438,7 +452,7 @@ export default function FilePreviewDialog({
                 <Icon name="arrowLeft" size={16} />
               </button>
               <span>
-                {page + 1} / {pageCount}
+                Page {page + 1} / {pageCount}
               </span>
               <button
                 type="button"
@@ -446,6 +460,31 @@ export default function FilePreviewDialog({
                 aria-label="Next page"
                 disabled={page >= pageCount - 1}
                 onClick={() => goTo(page + 1)}
+              >
+                <Icon name="arrowRight" size={16} />
+              </button>
+            </div>
+          ) : null}
+          {canStepFiles ? (
+            <div className="file-preview-pager">
+              <button
+                type="button"
+                className="file-preview-icon"
+                aria-label="Previous file"
+                disabled={fileIndex <= 0}
+                onClick={() => stepFile(-1)}
+              >
+                <Icon name="arrowLeft" size={16} />
+              </button>
+              <span>
+                File {fileIndex + 1} / {fileList.length}
+              </span>
+              <button
+                type="button"
+                className="file-preview-icon"
+                aria-label="Next file"
+                disabled={fileIndex >= fileList.length - 1}
+                onClick={() => stepFile(1)}
               >
                 <Icon name="arrowRight" size={16} />
               </button>

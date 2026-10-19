@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { deleteTimelogApi, fetchTimelogs, postTimelog, putTimelog } from "../api.js";
 import {
   DEFAULT_TIMELOG_GROUP_BY,
+  DEFAULT_TIMELOG_SORT,
   GACC,
   TIMELOG_GROUP_BYS,
   TIMELOG_PERIODS,
+  TIMELOG_SORTS,
   allBoardTasks,
   allBoards,
+  compareTimelogStamp,
   downloadBlob,
   formatClock,
   formatDuration,
@@ -186,20 +189,32 @@ function ExportDropdown({ entries, period, folders = [], disabled }) {
   );
 }
 
-function boardsButtonLabel(boards, boardOff) {
-  if (!boards.length) return "Boards";
-  const selected = boards.reduce(
-    (n, b) => n + (boardOff.has(b.key) ? 0 : 1),
-    0
-  );
-  if (selected === boards.length) return "Boards";
-  return `${selected} boards`;
+function selectedProjects(boards, boardOff) {
+  const map = new Map();
+  for (const b of boards) {
+    if (boardOff.has(b.key)) continue;
+    const id = b.projectId || b.key.split("/")[0];
+    if (map.has(id)) continue;
+    map.set(id, {
+      id,
+      name: b.projectName || "Project",
+      color: b.color || GACC,
+    });
+  }
+  return [...map.values()];
 }
 
-function BoardFilterDropdown({ boards, boardOff, onToggle }) {
+function projectsAriaLabel(projects) {
+  if (!projects.length) return "0 projects";
+  if (projects.length === 1) return projects[0].name;
+  return `${projects.length} projects`;
+}
+
+function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const label = boardsButtonLabel(boards, boardOff);
+  const projects = selectedProjects(boards, boardOff);
+  const label = projectsAriaLabel(projects);
 
   useEffect(() => {
     if (!open) return;
@@ -212,20 +227,58 @@ function BoardFilterDropdown({ boards, boardOff, onToggle }) {
 
   return (
     <div
-      className={"board-filter" + (open ? " open" : "")}
+      className={
+        "board-filter" +
+        (inline ? " board-filter-inline" : "") +
+        (open ? " open" : "")
+      }
       ref={wrapRef}
     >
       <button
         type="button"
-        className="mod-act board-filter-btn"
+        className={inline ? "log-view-dd-btn" : "mod-act board-filter-btn"}
         aria-label={label}
         title={label}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <Icon name="board" size={18} />
-        <span className="mod-act-lab">{label}</span>
+        {inline ? (
+          <>
+            {projects.length === 1 ? (
+              <>
+                <span
+                  className="dot"
+                  style={{ background: projects[0].color }}
+                />
+                <span className="dd-lab">{projects[0].name}</span>
+              </>
+            ) : projects.length > 1 ? (
+              <>
+                <span className="log-view-dots" aria-hidden="true">
+                  {projects.map((p) => (
+                    <span
+                      key={p.id}
+                      className="dot"
+                      style={{ background: p.color }}
+                    />
+                  ))}
+                </span>
+                <span className="dd-lab">{projects.length} projects</span>
+              </>
+            ) : (
+              <span className="dd-lab">0 projects</span>
+            )}
+            <span className="dd-caret" aria-hidden="true">
+              <Icon name="caret" size={12} />
+            </span>
+          </>
+        ) : (
+          <>
+            <Icon name="board" size={18} />
+            <span className="mod-act-lab">{label}</span>
+          </>
+        )}
       </button>
       {open && (
         <div className="pop" role="listbox" aria-multiselectable="true">
@@ -257,11 +310,98 @@ function BoardFilterDropdown({ boards, boardOff, onToggle }) {
   );
 }
 
+function LogViewInlineDd({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+}) {
+  return (
+    <Dropdown
+      className="log-view-dd"
+      buttonClassName="log-view-dd-btn"
+      ariaLabel={ariaLabel || value}
+      title={ariaLabel || value}
+      value={value}
+      options={options}
+      onChange={onChange}
+      caret
+    >
+      <span className="dd-lab">{value}</span>
+    </Dropdown>
+  );
+}
+
 function formatFromTo(entry) {
   const start = entry.startedAt ? formatClock(entry.startedAt) : "";
   const end = entry.endedAt ? formatClock(entry.endedAt) : "";
   if (start && end) return `${start} – ${end}`;
   return start || end || "—";
+}
+
+/** Section total row; duration sits in the same column as entry `.dur`. */
+function TimelogAggHead({ label, totalSec }) {
+  return (
+    <header className="log-period-head">
+      <h3>{label}</h3>
+      <div className="timelog-time">
+        <span className="log-agg">{formatDuration(totalSec)}</span>
+        <span className="timelog-agg-spacer" aria-hidden="true" />
+      </div>
+    </header>
+  );
+}
+
+/** View summary: “[Period] for [N projects] grouped by [Day], [Newest first]”. */
+function TimelogViewHead({
+  totalSec,
+  period,
+  groupBy,
+  sort,
+  boards,
+  boardOff,
+  onPeriodChange,
+  onGroupByChange,
+  onSortChange,
+  onToggleBoard,
+}) {
+  return (
+    <header className="log-period-head log-view-head">
+      <div className="log-view-sentence">
+        <LogViewInlineDd
+          value={period}
+          options={TIMELOG_PERIODS}
+          onChange={onPeriodChange}
+          ariaLabel={`Period: ${period}`}
+        />
+        <span className="log-view-lit"> for </span>
+        <BoardFilterDropdown
+          boards={boards}
+          boardOff={boardOff}
+          onToggle={onToggleBoard}
+          inline
+        />
+        <span className="log-view-lit"> grouped by </span>
+        <LogViewInlineDd
+          value={groupBy}
+          options={TIMELOG_GROUP_BYS}
+          onChange={onGroupByChange}
+          ariaLabel={`Group by ${groupBy}`}
+        />
+        <span className="log-view-lit">, </span>
+        <LogViewInlineDd
+          value={sort}
+          options={TIMELOG_SORTS}
+          onChange={onSortChange}
+          ariaLabel={sort}
+        />
+      </div>
+      <div className="timelog-time">
+        <span className="log-agg">{formatDuration(totalSec)}</span>
+        <span className="timelog-agg-spacer" aria-hidden="true" />
+      </div>
+    </header>
+  );
 }
 
 function TimelogRow({
@@ -332,6 +472,7 @@ export default function Timelogs({
       return {
         period: "All time",
         groupBy: DEFAULT_TIMELOG_GROUP_BY,
+        sort: saved.sort || DEFAULT_TIMELOG_SORT,
         boardOff: new Set(),
         savedPeriod: saved.period,
         savedGroupBy: saved.groupBy,
@@ -340,12 +481,13 @@ export default function Timelogs({
     return {
       period: saved.period,
       groupBy: saved.groupBy,
+      sort: saved.sort || DEFAULT_TIMELOG_SORT,
       boardOff: new Set(saved.boardOff),
       savedPeriod: saved.period,
       savedGroupBy: saved.groupBy,
     };
   });
-  const { period, groupBy, boardOff } = view;
+  const { period, groupBy, sort, boardOff } = view;
   const [busyId, setBusyId] = useState(null);
   const [dialog, setDialog] = useState(null); // null | { mode: "add" } | { mode: "edit", entry }
 
@@ -353,6 +495,8 @@ export default function Timelogs({
     () =>
       allBoards(folders).map(({ folder, mod, color, key }) => ({
         key,
+        projectId: folder.id,
+        projectName: folder.name,
         label: `${folder.name} · ${mod[1]}`,
         color,
       })),
@@ -364,6 +508,7 @@ export default function Timelogs({
       const next = {
         period: patch.period !== undefined ? patch.period : prev.period,
         groupBy: patch.groupBy !== undefined ? patch.groupBy : prev.groupBy,
+        sort: patch.sort !== undefined ? patch.sort : prev.sort,
         boardOff:
           patch.boardOff !== undefined ? patch.boardOff : prev.boardOff,
         savedPeriod:
@@ -374,6 +519,7 @@ export default function Timelogs({
       saveTimelogView({
         period: next.savedPeriod,
         groupBy: next.savedGroupBy,
+        sort: next.sort,
         boardOff: [...next.boardOff],
       });
       return next;
@@ -382,6 +528,7 @@ export default function Timelogs({
 
   const changePeriod = (next) => commitView({ period: next });
   const changeGroupBy = (next) => commitView({ groupBy: next });
+  const changeSort = (next) => commitView({ sort: next });
 
   // Identity only — title refreshes must not re-apply drill-down defaults.
   const filterKey = timelogFilter
@@ -401,6 +548,7 @@ export default function Timelogs({
         saveTimelogView({
           period: next.savedPeriod,
           groupBy: next.savedGroupBy,
+          sort: next.sort,
           boardOff: [],
         });
         return next;
@@ -457,14 +605,26 @@ export default function Timelogs({
 
   const shown = useMemo(() => {
     if (!baseFiltered) return null;
-    return baseFiltered.filter((e) => matchesTimelogPeriod(e, period));
-  }, [baseFiltered, period]);
+    const list = baseFiltered.filter((e) => matchesTimelogPeriod(e, period));
+    const dir = sort === "Oldest first" ? 1 : -1;
+    return list
+      .slice()
+      .sort((a, b) => compareTimelogStamp(a, b, dir));
+  }, [baseFiltered, period, sort]);
 
   const groups = useMemo(
     () =>
-      shown ? groupTimelogsByPeriodAndProject(shown, groupBy) : null,
-    [shown, groupBy]
+      shown ? groupTimelogsByPeriodAndProject(shown, groupBy, sort) : null,
+    [shown, groupBy, sort]
   );
+
+  const viewTotalSec = useMemo(() => {
+    if (!shown?.length) return 0;
+    return shown.reduce(
+      (sum, e) => sum + Math.max(0, parseInt(e.durationSec, 10) || 0),
+      0
+    );
+  }, [shown]);
 
   const toggleBoard = (key) => {
     const next = new Set(boardOff);
@@ -554,39 +714,6 @@ export default function Timelogs({
           <Icon name="plus" size={18} />
           <span className="mod-act-lab">Add log</span>
         </button>
-        <BoardFilterDropdown
-          boards={boards}
-          boardOff={boardOff}
-          onToggle={toggleBoard}
-        />
-        <Dropdown
-          className="mod-view-dd"
-          buttonClassName="mod-act"
-          ariaLabel={`Group by ${groupBy}`}
-          title={`Group by ${groupBy}`}
-          align="right"
-          caret={false}
-          value={groupBy}
-          options={TIMELOG_GROUP_BYS}
-          onChange={changeGroupBy}
-        >
-          <Icon name="list" size={18} />
-          <span className="mod-act-lab">{groupBy}</span>
-        </Dropdown>
-        <Dropdown
-          className="mod-view-dd"
-          buttonClassName="mod-act"
-          ariaLabel={period}
-          title={period}
-          align="right"
-          caret={false}
-          value={period}
-          options={TIMELOG_PERIODS}
-          onChange={changePeriod}
-        >
-          <Icon name="Calendar" size={18} />
-          <span className="mod-act-lab">{period}</span>
-        </Dropdown>
         <ExportDropdown
           entries={shown || []}
           period={period}
@@ -610,33 +737,49 @@ export default function Timelogs({
       )}
       <div className="log timelogs">
         {shown == null && <div className="empty-log">Loading…</div>}
-        {shown && !shown.length && (
-          <div className="empty-log">
-            {filter
-              ? period === "All time"
-                ? "No timelogs for this card."
-                : `No timelogs for this card in ${period.toLowerCase()}.`
-              : entries?.length
-                ? period === "All time"
-                  ? "No timelogs yet. Start a countdown from a card."
-                  : `No timelogs for ${period.toLowerCase()}.`
-                : "No timelogs yet. Start a countdown from a card."}
+        {shown != null && (
+          <div className="log-view">
+            <TimelogViewHead
+              totalSec={viewTotalSec}
+              period={period}
+              groupBy={groupBy}
+              sort={sort}
+              boards={boards}
+              boardOff={boardOff}
+              onPeriodChange={changePeriod}
+              onGroupByChange={changeGroupBy}
+              onSortChange={changeSort}
+              onToggleBoard={toggleBoard}
+            />
+            {!shown.length ? (
+              <div className="empty-log">
+                {filter
+                  ? period === "All time"
+                    ? "No timelogs for this card."
+                    : `No timelogs for this card in ${period.toLowerCase()}.`
+                  : entries?.length
+                    ? period === "All time"
+                      ? "No timelogs yet. Start a countdown from a card."
+                      : `No timelogs for ${period.toLowerCase()}.`
+                    : "No timelogs yet. Start a countdown from a card."}
+              </div>
+            ) : (
+              <div className="log-view-groups">
+                {groups?.map((periodGroup) => (
+                  <section className="log-period" key={periodGroup.key}>
+                    {periodGroup.label != null && (
+                      <TimelogAggHead
+                        label={periodGroup.label}
+                        totalSec={periodGroup.totalSec}
+                      />
+                    )}
+                    {renderTimelogRows(periodGroup.entries)}
+                  </section>
+                ))}
+              </div>
+            )}
           </div>
         )}
-        {groups &&
-          groups.map((periodGroup) => (
-            <section className="log-period" key={periodGroup.key}>
-              {periodGroup.label != null && (
-                <header className="log-period-head">
-                  <h3>{periodGroup.label}</h3>
-                  <span className="log-agg">
-                    {formatDuration(periodGroup.totalSec)}
-                  </span>
-                </header>
-              )}
-              {renderTimelogRows(periodGroup.entries)}
-            </section>
-          ))}
       </div>
       {dialog ? (
         <TimelogDialog

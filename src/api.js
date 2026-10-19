@@ -157,12 +157,15 @@ export async function deleteRteImageApi(body) {
   return apiOkData("/api/rte-image", { method: "DELETE", body }, "Could not delete image");
 }
 
-/** scope: "note" | "cover". note scope needs notesTab + note. */
-export function rteImageUrl({ scope, project, notesTab, note, file }) {
+/** scope: "note" | "cover" | "card". note → notesTab+note; card → board+card. */
+export function rteImageUrl({ scope, project, notesTab, note, board, card, file }) {
   const q = new URLSearchParams({ scope, project, file });
   if (scope === "note") {
     q.set("notesTab", notesTab);
     q.set("note", note);
+  } else if (scope === "card") {
+    q.set("board", board);
+    q.set("card", card);
   }
   return `/api/rte-image?${q.toString()}`;
 }

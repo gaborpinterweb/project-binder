@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { postNote, putNote, deleteNoteApi, moveNoteApi } from "../api.js";
 import { Icon } from "../icons.jsx";
@@ -39,6 +39,7 @@ const NOTE_SIZE_OPTIONS = [
 ];
 
 const NOTE_SHOW_OPTIONS = [
+  { value: "tags", label: "Show tags" },
   { value: "created", label: "Show creation date" },
   { value: "updated", label: "Show update date" },
 ];
@@ -181,6 +182,81 @@ function collectTabTags(notes) {
   );
 }
 
+/** One-line tag chips for the notes list; hides overflow and ellipsizes the last visible. */
+function NotesItemTags({ body }) {
+  const tags = useMemo(() => extractNoteTags(body), [body]);
+  const wrapRef = useRef(null);
+  const [visible, setVisible] = useState(tags.length);
+  const [truncLast, setTruncLast] = useState(false);
+
+  useLayoutEffect(() => {
+    const root = wrapRef.current;
+    if (!root || tags.length === 0) {
+      setVisible(0);
+      setTruncLast(false);
+      return;
+    }
+
+    const gap = 4;
+    const measure = () => {
+      const avail = root.clientWidth;
+      if (avail <= 0) return;
+      const probes = [...root.querySelectorAll("[data-tag-probe]")];
+      let used = 0;
+      let count = 0;
+      let trunc = false;
+      for (let i = 0; i < probes.length; i++) {
+        const w = probes[i].offsetWidth;
+        const need = used + (count ? gap : 0) + w;
+        if (need <= avail) {
+          used = need;
+          count = i + 1;
+          continue;
+        }
+        const rem = avail - used - (count ? gap : 0);
+        if (rem >= 28) {
+          count = i + 1;
+          trunc = true;
+        }
+        break;
+      }
+      setVisible(count);
+      setTruncLast(trunc);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [tags]);
+
+  if (!tags.length) return null;
+
+  return (
+    <span className="notes-item-tags" ref={wrapRef}>
+      {/* Off-flow full-size probes so ResizeObserver can decide what fits */}
+      <span className="notes-item-tags-probe" aria-hidden="true">
+        {tags.map((t) => (
+          <span key={t} className="note-tag" data-tag-probe="">
+            #{t}
+          </span>
+        ))}
+      </span>
+      {tags.slice(0, visible).map((t, i) => {
+        const last = i === visible - 1;
+        return (
+          <span
+            key={t}
+            className={"note-tag" + (last && truncLast ? " trunc" : "")}
+          >
+            #{t}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function filterNotes(list, filter) {
   const notes = list || [];
   const f = String(filter || "");
@@ -265,9 +341,11 @@ function clampMenuPos(left, top, menuEl) {
   };
 }
 
-/** Shared Move / Duplicate / Delete items for note menus. */
+/** Shared Pin / Move / Duplicate / Delete items for note menus. */
 function NoteActionsItems({
+  pinned = false,
   moveOptions = [],
+  onPin,
   onMove,
   onDuplicate,
   onDelete,
@@ -297,6 +375,17 @@ function NoteActionsItems({
 
   return (
     <>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={(e) => {
+          e.stopPropagation();
+          run(onPin);
+        }}
+      >
+        <Icon name="pin" size={14} />
+        {pinned ? "Unpin" : "Pin"}
+      </button>
       <div
         className={"notes-ctx-move" + (moveOpen ? " open" : "")}
         onMouseEnter={showMove}
@@ -375,7 +464,9 @@ function NoteActionsItems({
 function NoteContextMenu({
   left,
   top,
+  pinned = false,
   moveOptions = [],
+  onPin,
   onMove,
   onDuplicate,
   onDelete,
@@ -417,7 +508,9 @@ function NoteContextMenu({
       }}
     >
       <NoteActionsItems
+        pinned={pinned}
         moveOptions={moveOptions}
+        onPin={onPin}
         onMove={onMove}
         onDuplicate={onDuplicate}
         onDelete={onDelete}
@@ -615,10 +708,12 @@ function NoteShareMenu({ disabled, body }) {
   );
 }
 
-/** Organise — Move / Duplicate / Delete (same actions as the list context menu). */
+/** Organise — Pin / Move / Duplicate / Delete (same actions as the list context menu). */
 function NoteMoreMenu({
   disabled,
+  pinned = false,
   moveOptions = [],
+  onPin,
   onMove,
   onDuplicate,
   onDelete,
@@ -694,7 +789,9 @@ function NoteMoreMenu({
           }}
         >
           <NoteActionsItems
+            pinned={pinned}
             moveOptions={moveOptions}
+            onPin={onPin}
             onMove={onMove}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
@@ -711,6 +808,7 @@ function NoteMoreMenu({
 
 function sortNotes(list, sort) {
   const notes = [...(list || [])];
+  const byPin = (a, b) => Number(!!b.pinned) - Number(!!a.pinned);
   const byTime = (a, b, key, dir) => {
     const cmp = String(a[key] || "").localeCompare(String(b[key] || ""));
     return dir === "asc" ? cmp : -cmp;
@@ -721,20 +819,21 @@ function sortNotes(list, sort) {
     });
     return dir === "asc" ? cmp : -cmp;
   };
+  const withPin = (cmp) => (a, b) => byPin(a, b) || cmp(a, b);
   switch (sort) {
     case "created-asc":
-      return notes.sort((a, b) => byTime(a, b, "createdAt", "asc"));
+      return notes.sort(withPin((a, b) => byTime(a, b, "createdAt", "asc")));
     case "created-desc":
-      return notes.sort((a, b) => byTime(a, b, "createdAt", "desc"));
+      return notes.sort(withPin((a, b) => byTime(a, b, "createdAt", "desc")));
     case "updated-asc":
-      return notes.sort((a, b) => byTime(a, b, "updatedAt", "asc"));
+      return notes.sort(withPin((a, b) => byTime(a, b, "updatedAt", "asc")));
     case "alpha-asc":
-      return notes.sort((a, b) => byAlpha(a, b, "asc"));
+      return notes.sort(withPin((a, b) => byAlpha(a, b, "asc")));
     case "alpha-desc":
-      return notes.sort((a, b) => byAlpha(a, b, "desc"));
+      return notes.sort(withPin((a, b) => byAlpha(a, b, "desc")));
     case "updated-desc":
     default:
-      return notes.sort((a, b) => byTime(a, b, "updatedAt", "desc"));
+      return notes.sort(withPin((a, b) => byTime(a, b, "updatedAt", "desc")));
   }
 }
 
@@ -749,8 +848,9 @@ export default function Notes({
   const d = mod[2] || { id: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
   const [cardSize, setCardSize] = useState("md");
-  const [showCreated, setShowCreated] = useState(false);
-  const [showUpdated, setShowUpdated] = useState(false);
+  const [showTags, setShowTags] = useState(true);
+  const [showCreated, setShowCreated] = useState(true);
+  const [showUpdated, setShowUpdated] = useState(true);
   const [filter, setFilter] = useState("all");
   const notes = useMemo(
     () => sortNotes(filterNotes(d.notes, filter), sort),
@@ -1000,6 +1100,17 @@ export default function Notes({
     }
   };
 
+  const togglePinNote = async (note = selected) => {
+    if (!note || readonly) return;
+    const data = await putNote({
+      project: folder.id,
+      notesTab: d.id,
+      note: note.id,
+      pinned: !note.pinned,
+    });
+    onApplyWorkspace(data);
+  };
+
   const selectNote = (id) => {
     if (id === selectedId) return;
     setSelectedId(id);
@@ -1047,12 +1158,18 @@ export default function Notes({
                 label: "Show",
                 closeOnSelect: false,
                 onChange: (key) => {
-                  if (key === "created") setShowCreated((v) => !v);
+                  if (key === "tags") setShowTags((v) => !v);
+                  else if (key === "created") setShowCreated((v) => !v);
                   else if (key === "updated") setShowUpdated((v) => !v);
                 },
                 options: NOTE_SHOW_OPTIONS.map((o) => ({
                   ...o,
-                  checked: o.value === "created" ? showCreated : showUpdated,
+                  checked:
+                    o.value === "tags"
+                      ? showTags
+                      : o.value === "created"
+                        ? showCreated
+                        : showUpdated,
                 })),
                 renderOption: (o) => (
                   <span className="dd-check">
@@ -1104,7 +1221,9 @@ export default function Notes({
           {selected && !readonly && (
             <>
               <NoteMoreMenu
+                pinned={!!selected.pinned}
                 moveOptions={moveOptions}
+                onPin={() => togglePinNote(selected)}
                 onMove={(dest) => moveNote(dest)}
                 onDuplicate={() => duplicateNote(selected)}
                 onDelete={() => deleteNote()}
@@ -1168,11 +1287,17 @@ export default function Notes({
                           <Icon name="unlock" size={12} />
                         </span>
                       </span>
+                      {n.pinned ? (
+                        <span className="notes-item-pin" title="Pinned" aria-label="Pinned">
+                          <Icon name="pin" size={12} />
+                        </span>
+                      ) : null}
                       <span className="notes-item-title">{noteListTitle(n.body)}</span>
                     </span>
                     {preview ? (
                       <span className="notes-item-preview">{preview}</span>
                     ) : null}
+                    {showTags ? <NotesItemTags body={n.body} /> : null}
                     {showCreated ? (
                       <span className="notes-item-meta">
                         <Icon name="fieldDate" size={12} />
@@ -1251,7 +1376,9 @@ export default function Notes({
             <NoteContextMenu
               left={ctxMenu.left}
               top={ctxMenu.top}
+              pinned={!!ctxMenu.note?.pinned}
               moveOptions={moveOptions}
+              onPin={() => togglePinNote(ctxMenu.note)}
               onMove={(dest) => moveNote(dest, ctxMenu.note)}
               onDuplicate={() => duplicateNote(ctxMenu.note)}
               onDelete={() => deleteNote(ctxMenu.note)}

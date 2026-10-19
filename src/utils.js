@@ -168,6 +168,15 @@ export function fromApi(data, loadStagesFn) {
                 createdAt: f.createdAt || "",
               }));
             }
+            if (Array.isArray(c.images) && c.images.length) {
+              row.images = c.images.map((f) => ({
+                id: f.id,
+                name: f.name || f.id,
+                mime: f.mime || "application/octet-stream",
+                size: Number(f.size) || 0,
+                createdAt: f.createdAt || "",
+              }));
+            }
             return row;
           }),
         },
@@ -188,6 +197,7 @@ export function fromApi(data, loadStagesFn) {
               createdAt: n.createdAt || n.updatedAt || "",
               updatedAt: n.updatedAt || "",
             };
+            if (n.pinned) note.pinned = true;
             if (Array.isArray(n.images) && n.images.length) {
               note.images = n.images.map((f) => ({
                 id: f.id,
@@ -430,6 +440,30 @@ export function isEmptyNoteBody(body) {
   return noteListTitle(body) === "New note...";
 }
 
+/** Rewrite embedded card RTE image URLs after a card moves board/project/id. */
+export function rewriteCardRteImageUrls(
+  html,
+  { fromProject, fromBoard, fromCard, toProject, toBoard, toCard }
+) {
+  if (!html) return html || "";
+  return String(html).replace(/\/api\/rte-image\?([^"'>\s]+)/g, (full, qs) => {
+    let params;
+    try {
+      params = new URLSearchParams(qs);
+    } catch {
+      return full;
+    }
+    if (params.get("scope") !== "card") return full;
+    if (params.get("project") !== fromProject) return full;
+    if (params.get("board") !== fromBoard) return full;
+    if (params.get("card") !== fromCard) return full;
+    params.set("project", toProject);
+    params.set("board", toBoard);
+    params.set("card", toCard);
+    return `/api/rte-image?${params.toString()}`;
+  });
+}
+
 export function isProjectArchived(folder) {
   return !!(folder && folder.archived);
 }
@@ -635,6 +669,8 @@ function formatTimelogMonth(iso) {
 
 export const TIMELOG_GROUP_BYS = ["None", "Day", "Week", "Month"];
 export const DEFAULT_TIMELOG_GROUP_BY = "Day";
+export const TIMELOG_SORTS = ["Newest first", "Oldest first"];
+export const DEFAULT_TIMELOG_SORT = "Newest first";
 
 function timelogPeriodBucket(stamp, groupBy) {
   if (groupBy === "None") {
@@ -652,9 +688,24 @@ function timelogPeriodBucket(stamp, groupBy) {
   return { key, label: formatTimelogDay(stamp) };
 }
 
-/** Group newest-first by period (None/Day/Week/Month). */
-export function groupTimelogsByPeriodAndProject(entries, groupBy = "Day") {
+function timelogStamp(entry) {
+  return String(entry?.endedAt || entry?.startedAt || "");
+}
+
+/** Compare by ended/started time; dir is 1 (oldest first) or -1 (newest first). */
+export function compareTimelogStamp(a, b, dir = -1) {
+  return dir * timelogStamp(a).localeCompare(timelogStamp(b));
+}
+
+/** Group by period (None/Day/Week/Month); sort periods and rows by sort. */
+export function groupTimelogsByPeriodAndProject(
+  entries,
+  groupBy = "Day",
+  sort = DEFAULT_TIMELOG_SORT
+) {
   const mode = TIMELOG_GROUP_BYS.includes(groupBy) ? groupBy : "Day";
+  const newestFirst = sort !== "Oldest first";
+  const dir = newestFirst ? -1 : 1;
   const periodMap = new Map();
   for (const entry of entries || []) {
     const stamp = entry.endedAt || entry.startedAt || "";
@@ -674,16 +725,14 @@ export function groupTimelogsByPeriodAndProject(entries, groupBy = "Day") {
   }
 
   return [...periodMap.values()]
-    .sort((a, b) => String(b.key).localeCompare(String(a.key)))
+    .sort((a, b) => dir * String(a.key).localeCompare(String(b.key)))
     .map((period) => ({
       key: period.key,
       label: period.label,
       totalSec: period.totalSec,
-      entries: period.entries.slice().sort((a, b) =>
-        String(b.endedAt || b.startedAt).localeCompare(
-          String(a.endedAt || a.startedAt)
-        )
-      ),
+      entries: period.entries
+        .slice()
+        .sort((a, b) => compareTimelogStamp(a, b, dir)),
     }));
 }
 
@@ -717,10 +766,14 @@ export function loadTimelogView() {
     stored && TIMELOG_GROUP_BYS.includes(stored.groupBy)
       ? stored.groupBy
       : DEFAULT_TIMELOG_GROUP_BY;
+  const sort =
+    stored && TIMELOG_SORTS.includes(stored.sort)
+      ? stored.sort
+      : DEFAULT_TIMELOG_SORT;
   const boardOff = Array.isArray(stored?.boardOff)
     ? stored.boardOff.filter((k) => typeof k === "string" && k)
     : [];
-  return { period, groupBy, boardOff };
+  return { period, groupBy, sort, boardOff };
 }
 
 export function saveTimelogView(view) {
@@ -730,10 +783,13 @@ export function saveTimelogView(view) {
   const groupBy = TIMELOG_GROUP_BYS.includes(view?.groupBy)
     ? view.groupBy
     : DEFAULT_TIMELOG_GROUP_BY;
+  const sort = TIMELOG_SORTS.includes(view?.sort)
+    ? view.sort
+    : DEFAULT_TIMELOG_SORT;
   const boardOff = Array.isArray(view?.boardOff)
     ? [...new Set(view.boardOff.filter((k) => typeof k === "string" && k))]
     : [];
-  const next = { period, groupBy, boardOff };
+  const next = { period, groupBy, sort, boardOff };
   writeStorageJson(TIMELOG_VIEW_KEY, next);
   return next;
 }

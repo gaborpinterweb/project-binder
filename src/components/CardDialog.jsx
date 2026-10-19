@@ -426,6 +426,7 @@ export default function CardDialog({
   const [draft, setDraft] = useState(() => ({
     ...row,
     files: Array.isArray(row?.files) ? row.files.map((f) => ({ ...f })) : [],
+    images: Array.isArray(row?.images) ? row.images.map((f) => ({ ...f })) : [],
   }));
   const [showDescription, setShowDescription] = useState(
     () => !isEmptyNoteBody(row?.body)
@@ -605,6 +606,28 @@ export default function CardDialog({
     curLoc?.mod?.[0] === "Board" &&
     !!draft.id;
   const cardFiles = Array.isArray(draft.files) ? draft.files : [];
+  const imageUpload =
+    canAddFile
+      ? {
+          scope: "card",
+          project: curLoc.folder.id,
+          board: curLoc.mod[2].id,
+          card: draft.id,
+          onApplyWorkspace: (res) => {
+            if (Array.isArray(res?.images)) {
+              setDraft((d) => {
+                const next = { ...d, images: res.images };
+                draftRef.current = next;
+                return next;
+              });
+            }
+            onApplyWorkspace?.(
+              res,
+              keepNav?.(curLoc.folder.id, curLoc.mod[2].id)
+            );
+          },
+        }
+      : null;
 
   const setDraftFiles = (files) => {
     setDraft((d) => {
@@ -1141,6 +1164,7 @@ export default function CardDialog({
                     editable={!readonly}
                     showToolbar={!readonly}
                     variant="mini"
+                    imageUpload={imageUpload}
                     onChange={(html) => {
                       if (readonly) return;
                       patch({ body: html });

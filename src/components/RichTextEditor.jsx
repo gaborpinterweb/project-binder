@@ -260,6 +260,9 @@ async function uploadRteImageFile(imageUpload, file) {
   if (imageUpload.scope === "note") {
     body.notesTab = imageUpload.notesTab;
     body.note = imageUpload.note;
+  } else if (imageUpload.scope === "card") {
+    body.board = imageUpload.board;
+    body.card = imageUpload.card;
   }
   const res = await postRteImage(body);
   const fileId = res.file?.id || res.id;
@@ -269,6 +272,8 @@ async function uploadRteImageFile(imageUpload, file) {
     project: imageUpload.project,
     notesTab: imageUpload.notesTab,
     note: imageUpload.note,
+    board: imageUpload.board,
+    card: imageUpload.card,
     file: fileId,
   });
   return { src, res };
@@ -527,7 +532,7 @@ function TableFloat({ editor }) {
   );
 }
 
-/** mini: card/DB · full: notes/project cover */
+/** mini: card/DB · full: notes/project cover — images need imageUpload either way */
 function rteFeatures(variant = "mini") {
   const full = variant === "full";
   return {
@@ -538,7 +543,7 @@ function rteFeatures(variant = "mini") {
     codeBlock: true,
     highlight: full,
     table: full,
-    image: full,
+    image: true,
   };
 }
 

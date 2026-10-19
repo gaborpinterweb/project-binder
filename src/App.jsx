@@ -63,6 +63,7 @@ import {
   tabsOrderPayload,
   isProjectArchived,
   newId,
+  rewriteCardRteImageUrls,
   COVER_TAB_ID,
   loadCountdownDurationMin,
   saveCountdownDurationMin,
@@ -127,6 +128,7 @@ export default function App() {
     body: "",
     id: "",
     files: [],
+    images: [],
     s: "",
     ms: "",
     doneAt: "",
@@ -601,6 +603,7 @@ export default function App() {
         effort: row.effort || "",
         ord: row.ord,
         ...(Array.isArray(row.files) ? { files: row.files } : {}),
+        ...(Array.isArray(row.images) ? { images: row.images } : {}),
       });
       applyWorkspace(data, keepNav(folder.id, mod[2].id));
       const cur = activePomoRef.current;
@@ -664,19 +667,40 @@ export default function App() {
       let id = oldId || newId();
       const taken = new Set((to.mod[2].rows || []).map((r) => r.id));
       if (taken.has(id)) id = newId();
+      const fromProject = from.folder.id;
+      const fromBoard = from.mod[2].id;
+      const toProject = to.folder.id;
+      const toBoard = to.mod[2].id;
+      if (Array.isArray(row.files) && row.files.length) {
+        await moveCardFilesApi({
+          fromProject,
+          fromBoard,
+          toProject,
+          toBoard,
+          files: row.files,
+        });
+      }
+      if (Array.isArray(row.images) && row.images.length) {
+        await moveCardFilesApi({
+          fromProject,
+          fromBoard,
+          toProject,
+          toBoard,
+          files: row.images,
+        });
+      }
+      row.body = rewriteCardRteImageUrls(row.body || "", {
+        fromProject,
+        fromBoard,
+        fromCard: oldId,
+        toProject,
+        toBoard,
+        toCard: id,
+      });
       row.id = id;
       from.mod[2].rows = (from.mod[2].rows || []).filter((r) => r !== row);
       if (!to.mod[2].rows) to.mod[2].rows = [];
       if (!to.mod[2].rows.includes(row)) to.mod[2].rows.push(row);
-      if (Array.isArray(row.files) && row.files.length) {
-        await moveCardFilesApi({
-          fromProject: from.folder.id,
-          fromBoard: from.mod[2].id,
-          toProject: to.folder.id,
-          toBoard: to.mod[2].id,
-          files: row.files,
-        });
-      }
       await saveCard(row, to.folder, to.mod);
       const data = await deleteCardApi({
         project: from.folder.id,
@@ -694,7 +718,7 @@ export default function App() {
     async (
       folder,
       mod,
-      { title, status, master, body, doneAt, impact, effort, id, files } = {}
+      { title, status, master, body, doneAt, impact, effort, id, files, images } = {}
     ) => {
       if (isProjectArchived(folder)) return;
       const boardCol = status || (mod[2].columns || stagesRef.current)[0];
@@ -715,6 +739,7 @@ export default function App() {
         effort: effort || "",
         ...(id ? { id } : {}),
         ...(Array.isArray(files) ? { files } : {}),
+        ...(Array.isArray(images) ? { images } : {}),
       });
       applyWorkspace(data, keepNav(folder.id, mod[2].id));
       return data.id;
@@ -813,6 +838,7 @@ export default function App() {
         effort: cd.effort || "",
         id: sameLoc ? cd.id : newId(),
         files: sameLoc && Array.isArray(cd.files) ? cd.files : [],
+        images: sameLoc && Array.isArray(cd.images) ? cd.images : [],
       };
       openItem(row, { draft: true, folder, mod });
     },
@@ -1694,6 +1720,9 @@ export default function App() {
                 files: Array.isArray(result.draftRemember.files)
                   ? result.draftRemember.files
                   : [],
+                images: Array.isArray(result.draftRemember.images)
+                  ? result.draftRemember.images
+                  : [],
                 s: result.draftRemember.s || "",
                 ms: result.draftRemember.ms || "",
                 doneAt: result.draftRemember.doneAt || "",
@@ -1717,12 +1746,15 @@ export default function App() {
               impact: r.impact || "",
               effort: r.effort || "",
               id: r.id || "",
+              files: Array.isArray(r.files) ? r.files : undefined,
+              images: Array.isArray(r.images) ? r.images : undefined,
             });
             setCardDraft({
               n: "",
               body: "",
               id: "",
               files: [],
+              images: [],
               s: "",
               ms: "",
               doneAt: "",

@@ -888,6 +888,8 @@ function projectToApi(p) {
           applyCardMeta(card, c);
           const files = normalizeCardFiles(c.files);
           if (files.length) card.files = files;
+          const images = normalizeCardFiles(c.images);
+          if (images.length) card.images = images;
           if (isDemoValue(c.isDemo)) card.isDemo = true;
           return card;
         }),
@@ -921,6 +923,7 @@ function projectToApi(p) {
           createdAt: n.createdAt || n.updatedAt || "",
           updatedAt: n.updatedAt || "",
         };
+        if (n.pinned) note.pinned = true;
         const images = normalizeCardFiles(n.images);
         if (images.length) note.images = images;
         return note;
@@ -1045,8 +1048,9 @@ function syncTimelogCardTitle(projectId, boardId, cardId, title) {
   }
 }
 
-/** Draft card attachments before the card row exists. key = project\\0board\\0card */
+/** Draft card attachments / RTE images before the card row exists. key = project\\0board\\0card */
 const pendingCardFiles = new Map();
+const pendingCardImages = new Map();
 
 function pendingCardFilesKey(projectId, boardId, cardId) {
   return `${projectId}\0${boardId}\0${cardId}`;
@@ -1109,6 +1113,38 @@ function takePendingCardFiles(projectId, boardId, cardId) {
 
 function clearPendingCardFiles(projectId, boardId, cardId) {
   pendingCardFiles.delete(pendingCardFilesKey(projectId, boardId, cardId));
+}
+
+function listCardImages(projectId, boardId, cardId) {
+  const card = findCardRecord(projectId, boardId, cardId);
+  if (card) return normalizeCardFiles(card.images);
+  const pending = pendingCardImages.get(pendingCardFilesKey(projectId, boardId, cardId));
+  return normalizeCardFiles(pending);
+}
+
+function setCardImagesList(projectId, boardId, cardId, files) {
+  const next = normalizeCardFiles(files);
+  const card = findCardRecord(projectId, boardId, cardId);
+  if (card) {
+    if (next.length) card.images = next;
+    else delete card.images;
+    return next;
+  }
+  const key = pendingCardFilesKey(projectId, boardId, cardId);
+  if (next.length) pendingCardImages.set(key, next);
+  else pendingCardImages.delete(key);
+  return next;
+}
+
+function takePendingCardImages(projectId, boardId, cardId) {
+  const key = pendingCardFilesKey(projectId, boardId, cardId);
+  const files = normalizeCardFiles(pendingCardImages.get(key));
+  pendingCardImages.delete(key);
+  return files;
+}
+
+function clearPendingCardImages(projectId, boardId, cardId) {
+  pendingCardImages.delete(pendingCardFilesKey(projectId, boardId, cardId));
 }
 
 function uniqueCardFileId() {
@@ -1191,6 +1227,9 @@ function discardCardFiles(projectId, boardId, cardId) {
   const files = listCardFiles(projectId, boardId, cardId);
   purgeCardFileBlobs(projectId, boardId, files);
   clearPendingCardFiles(projectId, boardId, cardId);
+  const images = listCardImages(projectId, boardId, cardId);
+  purgeRteImageBlobs(projectId, boardId, images);
+  clearPendingCardImages(projectId, boardId, cardId);
   return { ok: true };
 }
 
@@ -1478,6 +1517,86 @@ function deleteCoverRteImage(projectId, fileId) {
   return { ok: true, images };
 }
 
+function addCardRteImage(projectId, boardId, cardId, { name, mime, data }) {
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const project = findProject(projectId);
+  const board = findBoard(project, boardId);
+  if (!project || !board) return { ok: false, error: "board not found" };
+  const fileName = String(name || "").trim();
+  if (!fileName) return { ok: false, error: "missing fields" };
+  if (!isAllowedRteImageMime(mime, fileName)) {
+    return { ok: false, error: "not an image" };
+  }
+  if (typeof data !== "string" || !data) return { ok: false, error: "missing fields" };
+  let buf;
+  try {
+    buf = Buffer.from(data, "base64");
+  } catch {
+    return { ok: false, error: "invalid data" };
+  }
+  if (!buf.length) return { ok: false, error: "empty file" };
+  if (buf.length > MAX_UPLOAD_BYTES) return { ok: false, error: "file too large" };
+  const id = newId();
+  if (!isSafePathId(id)) return { ok: false, error: "invalid name" };
+  userData.writeUpload(projectId, boardId, id, buf);
+  const meta = {
+    id,
+    name: fileName,
+    mime: String(mime || "application/octet-stream").slice(0, 200),
+    size: buf.length,
+    createdAt: new Date().toISOString(),
+  };
+  const images = listCardImages(projectId, boardId, cardId);
+  images.push(meta);
+  setCardImagesList(projectId, boardId, cardId, images);
+  return { ok: true, file: meta, images, tabId: boardId };
+}
+
+function readCardRteImage(projectId, boardId, cardId, fileId) {
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId) ||
+    !isSafePathId(fileId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const meta = listCardImages(projectId, boardId, cardId).find((f) => f.id === fileId);
+  if (!meta) return { ok: false, error: "file not found" };
+  const body = userData.readUpload(projectId, boardId, fileId);
+  if (!body) return { ok: false, error: "file not found" };
+  return {
+    ok: true,
+    name: meta.name || fileId,
+    mime: meta.mime || "application/octet-stream",
+    body,
+  };
+}
+
+function deleteCardRteImage(projectId, boardId, cardId, fileId) {
+  if (
+    !isSafePathId(projectId) ||
+    !isSafePathId(boardId) ||
+    !isSafePathId(cardId) ||
+    !isSafePathId(fileId)
+  ) {
+    return { ok: false, error: "invalid path" };
+  }
+  const images = listCardImages(projectId, boardId, cardId);
+  const idx = images.findIndex((f) => f.id === fileId);
+  if (idx < 0) return { ok: false, error: "file not found" };
+  images.splice(idx, 1);
+  setCardImagesList(projectId, boardId, cardId, images);
+  userData.unlinkUpload(projectId, boardId, fileId);
+  return { ok: true, images };
+}
+
 function writeCard(projectId, boardId, card) {
   const project = findProject(projectId);
   const board = findBoard(project, boardId);
@@ -1515,6 +1634,14 @@ function writeCard(projectId, boardId, card) {
   } else if (isNew) {
     const pending = takePendingCardFiles(projectId, boardId, id);
     if (pending.length) existing.files = pending;
+  }
+  if (card.images != null) {
+    const images = normalizeCardFiles(card.images);
+    if (images.length) existing.images = images;
+    else delete existing.images;
+  } else if (isNew) {
+    const pendingImages = takePendingCardImages(projectId, boardId, id);
+    if (pendingImages.length) existing.images = pendingImages;
   }
   const demo = card.isDemo != null ? card.isDemo : existing.isDemo;
   if (isDemoValue(demo)) existing.isDemo = true;
@@ -1603,6 +1730,8 @@ function softDeleteCard(projectId, boardId, cardId) {
   applyCardMeta(entry, card);
   const files = normalizeCardFiles(card.files);
   if (files.length) entry.files = files;
+  const images = normalizeCardFiles(card.images);
+  if (images.length) entry.images = images;
   if (isDemoValue(card.isDemo)) entry.isDemo = true;
   store.trash.push(entry);
   return true;
@@ -1631,6 +1760,7 @@ function softDeleteNote(projectId, notesTabId, noteId) {
     notesTabName: tab.name || notesTabId,
     color: project.color || "#3c3c40",
   };
+  if (note.pinned) entry.pinned = true;
   const images = normalizeCardFiles(note.images);
   if (images.length) entry.images = images;
   store.trash.push(entry);
@@ -1760,8 +1890,12 @@ function hardDeleteCard(projectId, boardId, cardId, { purgeFiles = true } = {}) 
   const idx = board.cards.findIndex((c) => c.id === cardId);
   if (idx < 0) return;
   const [card] = board.cards.splice(idx, 1);
-  if (purgeFiles) purgeCardFileBlobs(projectId, boardId, card?.files);
+  if (purgeFiles) {
+    purgeCardFileBlobs(projectId, boardId, card?.files);
+    purgeRteImageBlobs(projectId, boardId, card?.images);
+  }
   clearPendingCardFiles(projectId, boardId, cardId);
+  clearPendingCardImages(projectId, boardId, cardId);
 }
 
 function deleteCard(projectId, boardId, cardId, { permanent = false, keepFiles = false } = {}) {
@@ -1962,6 +2096,8 @@ function restoreCardFromTrash(item, { restoreParent = false } = {}) {
   applyCardMeta(card, item);
   const files = normalizeCardFiles(item.files);
   if (files.length) card.files = files;
+  const images = normalizeCardFiles(item.images);
+  if (images.length) card.images = images;
   if (isDemoValue(item.isDemo)) card.isDemo = true;
   board.cards.push(card);
   return { ok: true, project: project.id, board: board.id || item.board, id };
@@ -2021,6 +2157,7 @@ function restoreNoteFromTrash(item, { restoreParent = false } = {}) {
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   };
+  if (item.pinned) restored.pinned = true;
   const images = normalizeCardFiles(item.images);
   if (images.length) restored.images = images;
   tab.notes.push(restored);
@@ -2257,6 +2394,7 @@ function purgeExpiredTrash() {
     }
     if (item && item.kind === "card") {
       purgeCardFileBlobs(item.project, item.board, item.files);
+      purgeRteImageBlobs(item.project, item.board, item.images);
     } else if (item && item.kind === "note") {
       purgeRteImageBlobs(item.project, item.notesTab, item.images);
     } else if (item && item.kind === "project" && item.snapshot) {
@@ -2264,6 +2402,12 @@ function purgeExpiredTrash() {
       for (const tab of item.snapshot.notesTabs || []) {
         for (const note of tab.notes || []) {
           purgeRteImageBlobs(item.project, tab.id, note.images);
+        }
+      }
+      for (const board of item.snapshot.boards || []) {
+        for (const card of board.cards || []) {
+          purgeCardFileBlobs(item.project, board.id, card.files);
+          purgeRteImageBlobs(item.project, board.id, card.images);
         }
       }
     } else if (
@@ -2532,7 +2676,7 @@ function readUploadedFile(projectId, filesTabId, fileId) {
   };
 }
 
-function writeNote(projectId, notesTabId, { id, title, body }) {
+function writeNote(projectId, notesTabId, { id, title, body, pinned }) {
   const project = findProject(projectId);
   const tab = findNotesTab(project, notesTabId);
   if (!project || !tab) throw new Error("notes tab not found");
@@ -2547,12 +2691,24 @@ function writeNote(projectId, notesTabId, { id, title, body }) {
       createdAt: now,
       updatedAt: now,
     };
+    if (pinned) note.pinned = true;
     tab.notes.push(note);
   } else {
-    if (title != null) note.title = String(title).trim() || note.title || id;
-    if (body != null) note.body = String(body);
+    let contentChanged = false;
+    if (title != null) {
+      note.title = String(title).trim() || note.title || id;
+      contentChanged = true;
+    }
+    if (body != null) {
+      note.body = String(body);
+      contentChanged = true;
+    }
+    if (pinned != null) {
+      if (pinned) note.pinned = true;
+      else delete note.pinned;
+    }
     if (!note.createdAt) note.createdAt = note.updatedAt || now;
-    note.updatedAt = now;
+    if (contentChanged) note.updatedAt = now;
   }
   return id;
 }
@@ -2619,6 +2775,7 @@ function moveNote(fromProjectId, fromTabId, noteId, toProjectId, toTabId) {
     createdAt: note.createdAt || note.updatedAt || now,
     updatedAt: now,
   };
+  if (note.pinned) movedNote.pinned = true;
   if (images.length) movedNote.images = images;
   toTab.notes.push(movedNote);
   return {
@@ -3789,6 +3946,13 @@ const server = http.createServer(async (req, res) => {
           url.searchParams.get("note") || "",
           file
         );
+      } else if (scope === "card") {
+        result = readCardRteImage(
+          project,
+          url.searchParams.get("board") || "",
+          url.searchParams.get("card") || "",
+          file
+        );
       } else {
         return json(res, 400, { error: "invalid scope" });
       }
@@ -3828,12 +3992,23 @@ const server = http.createServer(async (req, res) => {
           mime: body.mime,
           data: body.data,
         });
+      } else if (body.scope === "card") {
+        if (!body.board || !body.card) {
+          return json(res, 400, { error: "missing fields" });
+        }
+        result = addCardRteImage(body.project, body.board, body.card, {
+          name: body.name,
+          mime: body.mime,
+          data: body.data,
+        });
       } else {
         return json(res, 400, { error: "invalid scope" });
       }
       if (!result.ok) {
         const status =
-          result.error === "note not found" || result.error === "project not found"
+          result.error === "note not found" ||
+          result.error === "project not found" ||
+          result.error === "board not found"
             ? 404
             : result.error === "file too large"
               ? 413
@@ -3862,6 +4037,11 @@ const server = http.createServer(async (req, res) => {
           return json(res, 400, { error: "missing fields" });
         }
         result = deleteNoteRteImage(body.project, body.notesTab, body.note, body.file);
+      } else if (body.scope === "card") {
+        if (!body.board || !body.card) {
+          return json(res, 400, { error: "missing fields" });
+        }
+        result = deleteCardRteImage(body.project, body.board, body.card, body.file);
       } else {
         return json(res, 400, { error: "invalid scope" });
       }
@@ -4010,6 +4190,7 @@ const server = http.createServer(async (req, res) => {
         id: body.note,
         title: body.title,
         body: body.body,
+        pinned: body.pinned,
       });
       saveStore();
       return json(res, 200, readWorkspace());

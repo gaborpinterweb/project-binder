@@ -6,3 +6,4 @@ release/
 *.log
 npm-debug.log*
 userWorkspace.json
+/pocketbase/

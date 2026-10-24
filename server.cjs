@@ -6,17 +6,14 @@ const path = require("path");
 const AdmZip = require("adm-zip");
 const {
   createUserDataStore,
-  isPackagedElectron,
   isValidStore,
   isValidArchive,
   emptyArchiveDoc,
 } = require("./userDataStore.cjs");
 
-const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
 const SEED_UPLOADS = path.join(__dirname, "seedUploads");
 const userData = createUserDataStore({
-  appName: APP_USER_DATA_NAME,
   seedUploadsDir: SEED_UPLOADS,
 });
 const USER_DATA_DIR = userData.dir;
@@ -27,14 +24,12 @@ const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
 const AUTO_BACKUP_KEEP_DAYS = 3;
 const AUTO_BACKUP_DAY_RE = /^project-binder-backup-(\d{4}-\d{2}-\d{2})\.zip$/i;
 const AUTO_BACKUP_INTERVAL_MS = 5 * 60 * 1000;
-// Packaged desktop keeps 3456; CLI / unpackaged use 3457 so both can run at once.
-const DEFAULT_PORT_PACKAGED = 3456;
-const DEFAULT_PORT_CLI = 3457;
+const DEFAULT_PORT = 3457;
 function resolvePort() {
   const raw = process.env.PROJECT_BINDER_PORT || process.env.PORT;
   const n = Number(raw);
   if (Number.isFinite(n) && n > 0) return Math.floor(n);
-  return isPackagedElectron() ? DEFAULT_PORT_PACKAGED : DEFAULT_PORT_CLI;
+  return DEFAULT_PORT;
 }
 const PORT = resolvePort();
 const DIST = path.join(__dirname, "dist");
@@ -2902,19 +2897,6 @@ function deleteTimelog(id) {
 }
 
 function revealPath(targetPath, { select = false } = {}) {
-  try {
-    const electron = require("electron");
-    const shell = electron && electron.shell;
-    if (select && shell && typeof shell.showItemInFolder === "function") {
-      shell.showItemInFolder(targetPath);
-      return Promise.resolve("");
-    }
-    if (!select && shell && typeof shell.openPath === "function") {
-      return shell.openPath(targetPath);
-    }
-  } catch {
-    /* fall through to OS opener */
-  }
   const { spawn } = require("child_process");
   const cmd = select
     ? process.platform === "darwin"
@@ -2990,8 +2972,9 @@ function revealFilesTabDir(projectId, filesTabId) {
   return revealTabDir(projectId, "files", filesTabId);
 }
 
+/** Desktop Electron removed; desktop-only APIs stay gated for now. */
 function isDesktopApp() {
-  return Boolean(process.versions && process.versions.electron);
+  return false;
 }
 
 function defaultAppSettings() {
@@ -3288,43 +3271,16 @@ function importFromBackupZip(zipPath) {
   }
 }
 
-async function electronDialog(method, options) {
-  if (!isDesktopApp()) return { ok: false, error: "desktop only" };
-  let dialog;
-  let BrowserWindow;
-  try {
-    const electron = require("electron");
-    dialog = electron.dialog;
-    BrowserWindow = electron.BrowserWindow;
-  } catch {
-    return { ok: false, error: "electron dialog unavailable" };
-  }
-  if (!dialog || typeof dialog[method] !== "function") {
-    return { ok: false, error: "electron dialog unavailable" };
-  }
-  const win = BrowserWindow && typeof BrowserWindow.getFocusedWindow === "function"
-    ? BrowserWindow.getFocusedWindow()
-    : null;
-  const result = win
-    ? await dialog[method](win, options)
-    : await dialog[method](options);
-  if (result.canceled) return { ok: false, cancelled: true };
-  if (method === "showSaveDialog") {
-    if (!result.filePath) return { ok: false, cancelled: true };
-    return { ok: true, path: result.filePath };
-  }
-  if (!result.filePaths || !result.filePaths[0]) {
-    return { ok: false, cancelled: true };
-  }
-  return { ok: true, path: result.filePaths[0] };
+async function electronDialog() {
+  return { ok: false, error: "desktop only" };
 }
 
-function electronOpenDialog(options) {
-  return electronDialog("showOpenDialog", options);
+function electronOpenDialog() {
+  return electronDialog();
 }
 
-function electronSaveDialog(options) {
-  return electronDialog("showSaveDialog", options);
+function electronSaveDialog() {
+  return electronDialog();
 }
 
 function pickBackupFolder() {
@@ -3458,11 +3414,10 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/app") {
-      const desktop = isDesktopApp();
       return json(res, 200, {
-        desktop,
+        desktop: false,
         platform: process.platform,
-        menuBar: desktop && process.platform === "darwin",
+        menuBar: false,
         persistentUserData: userData.persistent,
         autoBackupFilename: AUTO_BACKUP_FILENAME_PATTERN,
         autoBackupKeepDays: AUTO_BACKUP_KEEP_DAYS,
@@ -4365,8 +4320,4 @@ server.listen(PORT, () => {
   console.log(`Seed workspace (read-only): ${SEED_WORKSPACE}`);
   if (boot.reseeded) console.log(`Seeded workspace from seedWorkspace.json (${boot.reason})`);
   if (boot.purged) console.log(`Purged ${boot.purged} trash item(s) older than 30 days`);
-  if (isDesktopApp() && userData.persistent) {
-    console.log(`Auto backup: desktop enabled (every ${AUTO_BACKUP_INTERVAL_MS / 60000} min)`);
-    startAutoBackupScheduler();
-  }
 });

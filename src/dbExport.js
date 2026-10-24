@@ -1,6 +1,5 @@
 /** Database → clipboard / file export helpers. */
 
-import { saveExportFile } from "./api.js";
 import { formatNumberValue, plainFromHtml } from "./dbFields.js";
 import { downloadBlob, slugifyClient } from "./utils.js";
 
@@ -91,15 +90,6 @@ export async function saveDbCsv(
 
   const picked = await saveViaFilePicker(filename, text);
   if (picked) return picked;
-
-  if (typeof window !== "undefined" && window.desktop) {
-    return saveExportFile({
-      title: "Save as CSV",
-      filename,
-      content: text,
-      filters: [{ name: "CSV", extensions: ["csv"] }],
-    });
-  }
 
   downloadBlob(
     filename,

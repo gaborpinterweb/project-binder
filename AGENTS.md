@@ -1,12 +1,13 @@
 # Agent notes — Project Binder
 
-Short orientation for coding agents. Human run/dev/storage docs: [README.md](README.md).
+Short orientation for coding agents. Human run/dev/storage docs: [README.md](README.md). PocketBase roadmap: [docs/pocketbase-master-plan.md](docs/pocketbase-master-plan.md).
 
 ## Stack
 
 - **UI**: React 19 + Vite (`src/`), ESM
-- **API / persistence**: Node `server.cjs` (CJS), JSON workspace files
-- **Desktop**: Electron (`electron/main.cjs`) wrapping the built UI + server
+- **API / persistence (transitional)**: Node `server.cjs` (CJS), JSON workspace files (in-memory by default)
+- **UI host (in progress)**: PocketBase binary via `npm run pb` (`pocketbase/pb_public`)
+- **Desktop**: removed (no Electron)
 
 ## Entry points
 
@@ -15,9 +16,8 @@ Short orientation for coding agents. Human run/dev/storage docs: [README.md](REA
 | `src/main.jsx` → `src/App.jsx` | App shell, workspace state, navigation |
 | `src/api.js` | All browser → `/api/*` calls |
 | `server.cjs` | HTTP API; storage via `userDataStore.cjs` |
-| `userDataStore.cjs` | Packaged Electron → OS user data; CLI/browser → in-memory seed |
-| `userWorkspace.json` | Packaged app live workspace — active projects only (under OS user data) |
-| `userArchive.json` | Archived projects (sibling of `userWorkspace.json`; moved out so the active file stays small) |
+| `userDataStore.cjs` | In-memory seed by default; disk if `PROJECT_BINDER_USER_DATA` is set |
+| `scripts/fetch-pocketbase.cjs` / `run-pocketbase.cjs` | Fetch binary; build UI + `pocketbase serve` |
 | `seedWorkspace.json` | Read-only seed / demo (never write; boot peels `archived` projects into the archive store) |
 
 ## Client model
@@ -55,24 +55,6 @@ Entity identity is UUID `id` (not slug). Display names stay `name` / `title`. Wo
 - Comment **invariants and non-obvious why**, not what the next line does.
 - File-level one-liners on non-obvious modules are fine.
 - No banner comments that restate the file tree; no TODO features in code (use chat/issues).
-
-## Release assets
-
-When publishing a GitHub Release, name desktop zips so in-app update matching works (`src/checkUpdate.js`):
-
-```text
-Project-Binder-<version>-<os>-<arch>.zip
-```
-
-| Token | Values |
-|-------|--------|
-| `<version>` | Semver without `v` (e.g. `0.1.0`) |
-| `<os>` | `mac` \| `win` \| `linux` |
-| `<arch>` | `arm64` \| `x64` |
-
-Examples: `Project-Binder-0.1.0-mac-arm64.zip`, `Project-Binder-0.2.0-win-x64.zip`.
-
-Tag the release `v<version>` (e.g. `v0.1.0`). Attach only matching zips as release assets (not source trees). The app picks the asset for `window.desktop.platform` + `arch`; if none match, the CTA falls back to the release page.
 
 ## Agent defaults
 

@@ -71,9 +71,6 @@ import {
   saveStoptimerMaxMin,
   loadUiSounds,
   saveUiSounds,
-  loadMenuBarTimer,
-  saveMenuBarTimer,
-  formatMenuBarTimer,
   playSound,
   playTaskCompleteSound,
   playTimerCompleteSound,
@@ -158,7 +155,6 @@ export default function App() {
     loadStoptimerMaxMin()
   );
   const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
-  const [menuBarTimer, setMenuBarTimer] = useState(() => loadMenuBarTimer());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -374,30 +370,6 @@ export default function App() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!activePomo]);
-
-  useEffect(() => {
-    window.desktop?.setTrayVisible?.(menuBarTimer);
-  }, [menuBarTimer]);
-
-  useEffect(() => {
-    if (!menuBarTimer) return;
-    const syncTitle = () => {
-      const cur = activePomoRef.current;
-      if (!cur) {
-        window.desktop?.setTrayTitle?.("No timer");
-        return;
-      }
-      const sec = isStoptimerSession(cur)
-        ? pomoElapsedSec(cur)
-        : pomoRemainingSec(cur);
-      window.desktop?.setTrayTitle?.(formatMenuBarTimer(sec));
-    };
-    syncTitle();
-    if (!activePomo) return;
-    const id = setInterval(syncTitle, 1000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuBarTimer, !!activePomo]);
 
   useEffect(() => {
     const closeMenus = () => {
@@ -1888,10 +1860,6 @@ export default function App() {
           }
           uiSounds={uiSounds}
           onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
-          menuBarTimer={menuBarTimer}
-          onMenuBarTimerChange={(enabled) =>
-            setMenuBarTimer(saveMenuBarTimer(enabled))
-          }
           onReactivate={confirmUnarchiveProject}
           onClose={() => setSettingsOpen(false)}
           onResetSeed={async () => {
@@ -1908,17 +1876,6 @@ export default function App() {
           }}
           onResetEmpty={async () => {
             const data = await resetWorkspaceToEmpty();
-            applyWorkspace(data, { initial: true });
-            setBoardEdit(false);
-            setDraftProject(null);
-            setCoverEdit(false);
-            setCoverDraft(null);
-            setDialog(null);
-            setTimelogFilter(null);
-            setTrashRefresh((n) => n + 1);
-            setTimelogRefresh((n) => n + 1);
-          }}
-          onImportBackup={async (data) => {
             applyWorkspace(data, { initial: true });
             setBoardEdit(false);
             setDraftProject(null);

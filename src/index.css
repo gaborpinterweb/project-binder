@@ -12,19 +12,6 @@ body{display:block;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui
 input,textarea,select,[contenteditable="true"],.ProseMirror{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible{outline:2px solid var(--acc)}
-/* Electron macOS hiddenInset: traffic-light pad + window drag regions.
-   Only the app nav (.app-side) — not Notes/DB panes that also used <aside>. */
-html.desktop-mac{--desktop-titlebar:36px}
-html.desktop-mac .app-side{padding-top:calc(10px + var(--desktop-titlebar));-webkit-app-region:drag}
-html.desktop-mac .app-side .side-scroll,html.desktop-mac .app-side .side-foot{-webkit-app-region:no-drag}
-/* Project tab strip: empty chrome after tabs is drag; tabs stay clickable. */
-html.desktop-mac #bar,html.desktop-mac #tabs{-webkit-app-region:drag}
-html.desktop-mac #bar .tab{-webkit-app-region:no-drag}
-/* Overflow/more menus are siblings of .tab (not children) — must opt out of drag. */
-html.desktop-mac #bar .pop,html.desktop-mac #menu{-webkit-app-region:no-drag}
-/* Workspace/global chrome: title strip is drag; right tools stay clickable. */
-html.desktop-mac .modbar.gbar{-webkit-app-region:drag}
-html.desktop-mac .modbar.gbar .gbar-tools{-webkit-app-region:no-drag}
 .app-side{width:var(--aside-w);flex:none;background:var(--side);color:var(--side-ink);padding:10px;display:flex;flex-direction:column;min-height:0}
 .app-side h2{font-size:13px;color:var(--side-mute);font-weight:600;margin:0 8px 8px}
 .side-head{display:flex;align-items:center;gap:4px;margin:20px 0 8px;padding:0 2px 0 8px}
@@ -63,10 +50,6 @@ main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;back
 #tabs{display:flex;align-items:flex-end;gap:6px;min-width:0;flex:1;padding-right:8px;overflow:hidden}
 .tabs-measure{position:fixed;left:-10000px;top:0;display:flex;align-items:flex-end;gap:6px;pointer-events:none;visibility:hidden}
 #bar .tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;flex:none;margin:0;padding:8px 14px 9px;min-height:39px;white-space:nowrap;color:color-mix(in srgb,#fff 78%,transparent);font:inherit;font-size:13px;font-weight:500;letter-spacing:.01em;background-color:color-mix(in srgb,var(--c) 32%,#0a0a0b);background-image:var(--leather),var(--leather-shade);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 22%,transparent);border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;transition:background-color .15s ease,color .15s ease,box-shadow .15s ease,opacity .2s ease}
-/* macOS Electron only: hide Cover under traffic lights but keep its width as a spacer. */
-html.desktop-mac #bar.board-editing .tab.tab-cover,html.desktop-mac #bar.board-editing .tab.tab-cover.locked,html.desktop-mac #bar.board-editing .tab.tab-cover.locked:hover,html.desktop-mac #bar.board-editing .tab.tab-cover.locked:focus-visible{opacity:0;pointer-events:none;cursor:default}
-/* Masterboard edit expands under the sidebar — pad title clear of traffic lights (x:14 cluster). */
-html.desktop-mac main.global-view.board-editing .modbar.gbar .gbar-title{padding-left:60px}
 #bar .tab svg{flex:none;opacity:.85}
 #bar .tab:hover{z-index:2;color:#fff;background-color:color-mix(in srgb,var(--c) 48%,#0a0a0b)}
 #bar .tab.on{z-index:3;color:#fff;background-color:color-mix(in srgb,var(--c) 68%,#000);background-image:var(--leather),var(--leather-on);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light;padding-bottom:10px;margin-bottom:0;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 18%,transparent)}

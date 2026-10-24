@@ -9,7 +9,8 @@ This document locks architecture so later work does not re-litigate decisions. I
 - **Web only.** Long term there is no desktop / Electron app. Users either self-host or use the paid cloud.
 - **OSS self-host:** one PocketBase process + `pb_data`; users bring their own VPS or optional Docker.
 - **Paid cloud:** the same app artifact operated by the project maintainer; multi-tenant single PocketBase instance; billing (e.g. Stripe) around signup and limits later.
-- **Desktop Electron + Node `server.cjs`:** transitional only. Keep shipping them until the web / PocketBase path reaches **HEAD feature parity**, then remove packager, `electron/`, and Node-as-product-server. Do **not** invest in a PocketBase-backed desktop rewrite.
+- **Electron:** removed early (web-only pivot). Do **not** reintroduce a desktop shell.
+- **Node `server.cjs`:** transitional API/persistence until PocketBase auth + JSON files reach HEAD feature parity, then retire Node as the product server.
 
 Same codebase for self-host and cloud. Cloud differs by who runs the process and whether billing is enabled, not by a forked app.
 
@@ -27,7 +28,7 @@ Same codebase for self-host and cloud. Cloud differs by who runs the process and
 - Demo / seed behavior and related developer restore flows (adapted to web where needed)
 - Any other HEAD features
 
-Phased delivery may land auth and storage first. A phase is **not done** for replacing Node / Electron until **feature parity with HEAD** is verified. No silent drops. Gate with a checklist against current HEAD.
+Phased delivery may land auth and storage first. A phase is **not done** for replacing Node until **feature parity with HEAD** is verified. No silent drops. Gate with a checklist against current HEAD.
 
 ## Architecture: PocketBase as thin as possible
 
@@ -128,13 +129,19 @@ Restore every HEAD capability on the web / PocketBase path:
 - Stripe (or equivalent); `CLOUD` (or similar) env for billing-only bits
 - Keep core MIT; billing layer stays thin and optional for self-host
 
-### 5. Retire desktop
+### 5. Retire Node product server
 
 Only after web / PocketBase matches the HEAD feature set:
 
-- Drop Electron packaging, `electron/`, and Node as the product server
-- Update README / AGENTS to web-only
-- Document migration for existing desktop users (export zip → import into web / self-host)
+- Drop Node as the product server (`server.cjs` / in-memory path)
+- Update README / AGENTS to PocketBase-only run docs
+- Document migration for anyone still on old desktop backups (export zip → import into web / self-host)
+
+### Status (repo)
+
+- Electron removed.
+- `npm run pb` serves the built UI via PocketBase (`pb_public`); API still on Node (`npm start`).
+- Auth + workspace/archive file fields: not implemented yet.
 
 ## Explicit non-goals
 
@@ -147,11 +154,12 @@ Only after web / PocketBase matches the HEAD feature set:
 
 ## Relation to current codebase
 
-Today (HEAD): React UI + `src/api.js` → Node `server.cjs` → `userWorkspace.json` / `userArchive.json` / uploads (Electron on disk; CLI / browser often in-memory).
+Today: React UI + `src/api.js` → Node `server.cjs` → in-memory (or `PROJECT_BINDER_USER_DATA` on disk) `userWorkspace.json` / `userArchive.json` / uploads. PocketBase can serve the built UI via `npm run pb`.
 
 Target: React UI + thin client storage adapter → PocketBase auth + owner file fields; domain logic remains client-side. Fine-grained `/api/*` routes are not ported server-side; persistence becomes “save these JSON files (and later attachment files) for the logged-in user.”
 
 ## Doc status
 
-- **This file:** architecture and roadmap only (branch `build/pocketbase`).
-- **Not in this pass:** PocketBase binary in repo, migrations, auth UI, client adapter, or changes to `server.cjs`.
+- Architecture and roadmap live here.
+- Implemented so far: Electron removed; PocketBase binary fetch + `npm run pb` UI host.
+- Still open: migrations, auth UI, client storage adapter, retiring `server.cjs`.

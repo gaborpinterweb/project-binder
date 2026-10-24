@@ -1,52 +1,9 @@
 /**
- * User-data storage: real OS Application Support only for packaged Electron.
- * CLI / browser / unpackaged Electron use an in-memory store seeded from the repo.
+ * User-data storage: in-memory by default (seed from repo).
+ * Set PROJECT_BINDER_USER_DATA to a directory for on-disk workspace/archive/uploads.
  */
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
-
-function isPackagedElectron() {
-  try {
-    const electron = require("electron");
-    const app = electron && electron.app;
-    if (app && typeof app.isPackaged === "boolean") return app.isPackaged;
-  } catch {
-    /* not running inside Electron */
-  }
-  return false;
-}
-
-function defaultUserDataDir(appName) {
-  if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", appName);
-  }
-  if (process.platform === "win32") {
-    return path.join(
-      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
-      appName
-    );
-  }
-  return path.join(
-    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"),
-    appName
-  );
-}
-
-function resolvePackagedUserDataDir(appName) {
-  const envDir = String(process.env.PROJECT_BINDER_USER_DATA || "").trim();
-  if (envDir) return envDir;
-  try {
-    const electron = require("electron");
-    const app = electron && electron.app;
-    if (app && typeof app.getPath === "function") {
-      return app.getPath("userData");
-    }
-  } catch {
-    /* fall through */
-  }
-  return defaultUserDataDir(appName);
-}
 
 function isValidStore(doc) {
   return (
@@ -326,22 +283,19 @@ function createMemoryStore(seedUploadsDir) {
 }
 
 /**
- * @param {{ appName: string, seedUploadsDir: string }} opts
+ * @param {{ seedUploadsDir: string }} opts
  */
 function createUserDataStore(opts) {
-  const appName = opts.appName || "Project Binder";
   const seedUploadsDir = opts.seedUploadsDir;
-  const packaged = isPackagedElectron();
-  if (packaged) {
-    const dir = resolvePackagedUserDataDir(appName);
-    return createDiskStore(dir, seedUploadsDir);
+  const envDir = String(process.env.PROJECT_BINDER_USER_DATA || "").trim();
+  if (envDir) {
+    return createDiskStore(envDir, seedUploadsDir);
   }
   return createMemoryStore(seedUploadsDir);
 }
 
 module.exports = {
   createUserDataStore,
-  isPackagedElectron,
   isValidStore,
   isValidArchive,
   emptyArchiveDoc,

@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../icons.jsx";
-import {
-  exportWorkspace,
-  fetchAppInfo,
-  fetchArchivedProjects,
-  saveBackupSettings,
-  runBackupNow,
-  pickBackupFolder,
-  importBackup,
-} from "../api.js";
+import { exportWorkspace, fetchArchivedProjects } from "../api.js";
 import {
   APP_NAME,
   APP_COMMIT,
@@ -21,9 +13,6 @@ import { askConfirm } from "../confirmDialog.js";
 import { askBackupFolderFailed } from "../backupFolderDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
-
-const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
-const AUTO_BACKUP_KEEP_DAYS = 3;
 
 const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
 const BMC_BTN = "/bmc-button.png";
@@ -43,19 +32,6 @@ const STOPTIMER_MAX_DD_OPTIONS = STOPTIMER_MAX_OPTIONS_MIN.map((min) => ({
   label: min === 0 ? "No limit" : `${min / 60}h`,
 }));
 
-function formatBackupTime(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export default function SettingsDialog({
   countdownDurationMin,
   onCountdownDurationChange,
@@ -63,14 +39,11 @@ export default function SettingsDialog({
   onStoptimerMaxChange,
   uiSounds,
   onUiSoundsChange,
-  menuBarTimer,
-  onMenuBarTimerChange,
   onReactivate,
   onClose,
   onResetSeed,
   onResetEmpty,
   onResetFirstLaunch,
-  onImportBackup,
 }) {
   const tabs = useMemo(() => {
     const list = [
@@ -90,17 +63,6 @@ export default function SettingsDialog({
   const [archivedProjects, setArchivedProjects] = useState([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [resetting, setResetting] = useState(null);
-  const [desktop, setDesktop] = useState(false);
-  const [menuBarSupported, setMenuBarSupported] = useState(false);
-  const [backup, setBackup] = useState({
-    enabled: false,
-    folderPath: "",
-    lastBackupAt: null,
-    lastError: null,
-    filename: AUTO_BACKUP_FILENAME_PATTERN,
-    keepDays: AUTO_BACKUP_KEEP_DAYS,
-  });
-  const [backupBusy, setBackupBusy] = useState(null);
 
   useEffect(() => {
     if (tab !== "archive") return;
@@ -122,37 +84,6 @@ export default function SettingsDialog({
   }, [tab]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const info = await fetchAppInfo();
-        if (cancelled) return;
-        setDesktop(!!info.desktop);
-        setMenuBarSupported(!!info.menuBar);
-        if (info.backup) {
-          setBackup((prev) => ({
-            ...prev,
-            ...info.backup,
-            filename: info.autoBackupFilename || prev.filename,
-            keepDays:
-              info.autoBackupKeepDays != null
-                ? Number(info.autoBackupKeepDays) || prev.keepDays
-                : prev.keepDays,
-          }));
-        }
-      } catch {
-        if (!cancelled) {
-          setDesktop(false);
-          setMenuBarSupported(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!import.meta.env.DEV && tab === "developer") setTab("experience");
   }, [tab]);
 
@@ -164,129 +95,12 @@ export default function SettingsDialog({
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
 
-  const applyBackupState = (data) => {
-    if (!data || typeof data !== "object") return;
-    setBackup((prev) => ({
-      ...prev,
-      enabled: !!data.enabled,
-      folderPath: data.folderPath != null ? String(data.folderPath) : prev.folderPath,
-      lastBackupAt: data.lastBackupAt !== undefined ? data.lastBackupAt : prev.lastBackupAt,
-      lastError: data.lastError !== undefined ? data.lastError : prev.lastError,
-      filename: data.filename || prev.filename,
-      keepDays:
-        data.keepDays != null ? Number(data.keepDays) || prev.keepDays : prev.keepDays,
-    }));
-  };
-
-  const persistBackup = async (patch) => {
-    setBackupBusy("save");
-    try {
-      const data = await saveBackupSettings(patch);
-      applyBackupState(data);
-      return { ok: true, data };
-    } catch (e) {
-      return { ok: false, error: e.message || "Could not save backup settings." };
-    } finally {
-      setBackupBusy(null);
-    }
-  };
-
   const handleExport = async () => {
     try {
       await exportWorkspace();
     } catch {
       alert("Could not export workspace.");
     }
-  };
-
-  const handleBrowseFolder = async () => {
-    for (;;) {
-      setBackupBusy("folder");
-      try {
-        const picked = await pickBackupFolder();
-        if (picked.cancelled || !picked.path) return false;
-        const data = await saveBackupSettings({
-          enabled: true,
-          folderPath: picked.path,
-        });
-        applyBackupState(data);
-        return true;
-      } catch {
-        setBackupBusy(null);
-        const retry = await askBackupFolderFailed();
-        if (!retry) return false;
-      } finally {
-        setBackupBusy(null);
-      }
-    }
-  };
-
-  const handleToggleAutoBackup = async (checked) => {
-    if (checked && !backup.folderPath) {
-      await handleBrowseFolder();
-      return;
-    }
-    const result = await persistBackup({
-      enabled: checked,
-      folderPath: backup.folderPath,
-    });
-    if (result.ok) return;
-    if (checked) {
-      const retry = await askBackupFolderFailed();
-      if (retry) await handleBrowseFolder();
-      return;
-    }
-    alert(result.error);
-  };
-
-  const handleBackupNow = async () => {
-    setBackupBusy("now");
-    try {
-      const data = await runBackupNow();
-      applyBackupState(data);
-    } catch (e) {
-      alert(e.message || "Backup failed.");
-    } finally {
-      setBackupBusy(null);
-    }
-  };
-
-  const runImportZip = async () => {
-    setBackupBusy("import");
-    try {
-      const data = await importBackup();
-      if (data?.cancelled) return;
-      await onImportBackup?.(data);
-      onClose();
-    } catch (e) {
-      alert(e.message || "Could not import workspace.");
-    } finally {
-      setBackupBusy(null);
-    }
-  };
-
-  const handleImport = async () => {
-    const choice = await askConfirm({
-      title: "Import workspace data?",
-      message:
-        "Importing a .zip replaces your current workspace and uploaded files. Export a .zip of your current data first if you might need it.",
-      confirmLabel: "Continue without exporting",
-      altLabel: "Export current workspace data",
-      cancelLabel: "Cancel",
-      danger: true,
-    });
-    if (!choice) return;
-    if (choice === "alt") {
-      try {
-        await exportWorkspace();
-      } catch {
-        alert("Could not export workspace.");
-        return;
-      }
-      await runImportZip();
-      return;
-    }
-    await runImportZip();
   };
 
   const runReset = async (kind, title, message, action) => {
@@ -331,9 +145,6 @@ export default function SettingsDialog({
       "This restores seed data, clears saved views and settings, and reloads the app. Your changes will be lost.",
       onResetFirstLaunch
     );
-
-  const lastBackupLabel = formatBackupTime(backup.lastBackupAt);
-  const backupDisabled = !!backupBusy;
 
   return (
     <div
@@ -408,23 +219,6 @@ export default function SettingsDialog({
                     <span className="settings-toggle-ui" aria-hidden="true" />
                   </label>
                 </div>
-                {menuBarSupported && (
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Menu bar timer</b>
-                      <span>Show the active session in the system tray</span>
-                    </div>
-                    <label className="settings-toggle">
-                      <input
-                        type="checkbox"
-                        checked={!!menuBarTimer}
-                        onChange={(e) => onMenuBarTimerChange?.(e.target.checked)}
-                        aria-label="Menu bar timer"
-                      />
-                      <span className="settings-toggle-ui" aria-hidden="true" />
-                    </label>
-                  </div>
-                )}
               </div>
             </section>
           )}
@@ -471,110 +265,20 @@ export default function SettingsDialog({
           )}
 
           {tab === "data" && (
-            <>
-              {desktop && (
-                <section className="settings-section">
-                  <h3 className="settings-heading">Backup</h3>
-                  <div className="settings-backup-block">
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Enable backup</b>
-                        <span>Backs up your workspace every 5 minutes and on launch</span>
-                      </div>
-                      <label className="settings-toggle">
-                        <input
-                          type="checkbox"
-                          checked={!!backup.enabled}
-                          disabled={backupDisabled}
-                          onChange={(e) => handleToggleAutoBackup(e.target.checked)}
-                          aria-label="Enable backup"
-                        />
-                        <span className="settings-toggle-ui" aria-hidden="true" />
-                      </label>
-                    </div>
-                    <div
-                      className={`settings-backup-details${backup.enabled ? " in" : ""}`}
-                      aria-hidden={!backup.enabled}
-                    >
-                      <div className="settings-backup-details-clip">
-                        <div className="settings-backup-details-inner">
-                          <div className="settings-row">
-                            <div className="settings-row-copy">
-                              <b>Set backup folder</b>
-                              {backup.folderPath ? (
-                                <span className="settings-path" title={backup.folderPath}>
-                                  {backup.folderPath}
-                                </span>
-                              ) : (
-                                <span>No folder selected</span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              className="settings-row-btn"
-                              disabled={backupDisabled || !backup.enabled}
-                              tabIndex={backup.enabled ? undefined : -1}
-                              onClick={handleBrowseFolder}
-                            >
-                              {backupBusy === "folder" ? "…" : "Browse"}
-                            </button>
-                          </div>
-                          <div className="settings-backup-meta">
-                            <span>
-                              Last backup {lastBackupLabel || "not yet"}
-                              {backup.lastError ? ` · Error: ${backup.lastError}` : ""}
-                            </span>
-                            <span aria-hidden="true">·</span>
-                            <button
-                              type="button"
-                              className="settings-text-btn"
-                              disabled={
-                                backupDisabled || !backup.enabled || !backup.folderPath
-                              }
-                              tabIndex={backup.enabled ? undefined : -1}
-                              onClick={handleBackupNow}
-                            >
-                              {backupBusy === "now" ? "…" : "Backup now"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+            <section className="settings-section">
+              <h3 className="settings-heading">Workspace</h3>
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Export workspace data</b>
+                    <span>Download a .zip of your workspace and files</span>
                   </div>
-                </section>
-              )}
-
-              <section className="settings-section">
-                <h3 className="settings-heading">Workspace</h3>
-                <div className="settings-rows">
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Export workspace data</b>
-                      <span>Download a .zip of your workspace and files</span>
-                    </div>
-                    <button type="button" className="settings-row-btn" onClick={handleExport}>
-                      Export
-                    </button>
-                  </div>
-                  {desktop && (
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Import workspace data</b>
-                        <span>Replace this workspace from a backup .zip</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="settings-row-btn settings-row-btn-danger"
-                        disabled={backupDisabled}
-                        onClick={handleImport}
-                      >
-                        {backupBusy === "import" ? "…" : "Import"}
-                      </button>
-                    </div>
-                  )}
+                  <button type="button" className="settings-row-btn" onClick={handleExport}>
+                    Export
+                  </button>
                 </div>
-              </section>
-            </>
+              </div>
+            </section>
           )}
 
           {tab === "help" && (

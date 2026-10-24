@@ -3,142 +3,59 @@
 ## Quick overview
 
 - Free, open-source (MIT)
-- Web workspace for freelance projects (local Node API today; PocketBase UI host in progress)
-- **0.1.0 includes:** task boards, master board, notes, files, databases, timelogs, trash, export
-- **Roadmap:** thin PocketBase auth + JSON file storage, self-host, paid cloud — see [docs/pocketbase-master-plan.md](docs/pocketbase-master-plan.md)
+- Web workspace for freelance projects
+- **Self-host** with one PocketBase binary, or run a **paid cloud** instance (`VITE_CLOUD=true`)
+- Boards, master board, notes, files, databases, timelogs, trash, archive, export/import
 - Electron desktop has been removed
 
-## Description
-
-**App data / API (transitional):** `server.cjs` serves the React UI and JSON API. Seed data ships in the repo. `npm start` / `npm run dev` keep workspace changes **in memory** for that process (restart → back to seed). Optional on-disk store: set `PROJECT_BINDER_USER_DATA` to a directory.
+## Run (product path)
 
 ```bash
 npm install
-npm run build
-npm start
-# → http://localhost:3457  (in-memory seed)
-```
-
-Dev (Vite HMR + API on :3457):
-
-```bash
-npm start          # API + static on :3457 (build first)
-npm run dev        # Vite on :5173, proxies /api → :3457
-```
-
-Override the API port with `PROJECT_BINDER_PORT` (or `PORT`).
-
-**PocketBase (UI host):** fetches a PocketBase binary, builds the UI into `pocketbase/pb_public`, and serves it:
-
-```bash
-npm run pb
+npm start          # same as npm run pb
 # → http://127.0.0.1:8090
 ```
 
-`npm run pb` alone serves the SPA. Workspace `/api` still needs `npm start` on `:3457` until auth + file storage are wired to PocketBase. Fetch only: `npm run pb:fetch`.
+1. Open the app URL (not `/_/` — that is the PocketBase admin).
+2. First PocketBase boot: create a superuser at the install link if prompted (admin only).
+3. Sign in with the demo account (seeded on migrate), or register your own:
+   - Email: `demo@projectbinder.local`
+   - Password: `demodemodemo`
+4. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
+5. Sign out: Settings → Data → Account.
 
-## Storage
+Fetch binary only: `npm run pb:fetch`. Optional Docker: `docker compose up` (see `docker-compose.yml`).
 
-| Mode | Role |
-|------|------|
-| **Default** (`npm start` / `npm run dev`) | Boots from [`seedWorkspace.json`](seedWorkspace.json) + [`seedUploads/`](seedUploads); workspace, archive, and uploads stay **in memory**. Restart → back to seed. |
-| **`PROJECT_BINDER_USER_DATA`** | On-disk `userWorkspace.json`, `userArchive.json`, `uploads/`, `appSettings.json` under that directory. |
+If migrations changed and you already have `pocketbase/pb_data`, delete that folder once so migrations re-apply (loses local PB data).
 
-| File | Role |
-|------|------|
-| [`seedWorkspace.json`](seedWorkspace.json) | Read-only seed for a fresh start. The app never writes this file. |
-| `userWorkspace.json` | Live workspace when using on-disk user data. |
-| `userArchive.json` | Archived projects (kept out of the active workspace file). |
+### Cloud flag
 
-Entity identity is UUID `id` (`version: 2`). Legacy slug workspaces must be migrated offline — see [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md).
+Build with `VITE_CLOUD=true` and optional `VITE_STRIPE_CHECKOUT_URL` for an Upgrade button (Stripe Checkout test/live URL). Self-host builds omit billing chrome.
 
-On-disk mode: if `userWorkspace.json` is missing, empty, or corrupt/invalid, the server deep-clones `seedWorkspace.json` into a new file. A detectable legacy slug workspace is **not** overwritten (process exits; migrate first).
+### Legacy Node API (dev only)
 
-Restore the demo: Settings → Developer → **Reset to seed workspace**, or restart the server (memory mode always reseeds on boot).
+```bash
+npm run start:node   # http://localhost:3457 in-memory seed
+npm run dev          # Vite :5173 → proxies /api to :3457
+```
+
+Prefer `npm start` (PocketBase) for the real product path.
+
+## Storage (PocketBase)
+
+| Piece | Role |
+|-------|------|
+| `users` | Email/password auth |
+| `user_data` | Per-user `userWorkspace` + `userArchive` JSON files |
+| `attachments` | Uploaded file bytes keyed by project/tab/file id |
+| [`public/seedWorkspace.json`](public/seedWorkspace.json) | Seed for first login |
+
+Roadmap notes: [docs/pocketbase-master-plan.md](docs/pocketbase-master-plan.md).
 
 ## Demo data (`isDemo`)
 
-The seed is sample freelancer work. Every **project**, **task board**, and **task card** in `seedWorkspace.json` is marked:
+Seed projects/boards/cards may include `"isDemo": true` (hidden in UI). User-created entities omit it.
 
-```json
-"isDemo": true
-```
+## License
 
-- Not shown in the UI.
-- Exposed on the API (`project.isDemo`, `board.isDemo`, `card.isDemo`) so a future “Remove demo data” control can delete only flagged items and leave user-created work alone.
-- User-created projects / boards / cards omit `isDemo`. Writes preserve an existing `isDemo: true` when editing demo entities so saves don’t strip the flag.
-
-### Planned UX (not implemented yet)
-
-New users start from this demo state. A button should:
-
-1. Delete all projects with `isDemo: true` (and their boards/cards), **or** delete only boards/cards flagged `isDemo` inside mixed projects if that model is preferred later.
-2. Leave anything without `isDemo` untouched.
-
-Until that exists, restore via Settings → Developer → **Reset to seed workspace** (dev builds only), or by deleting `userWorkspace.json` (see above).
-
-## Seed snapshot (revert target)
-
-Master board stages:
-
-`Backlog, This week, Today, Tomorrow, Next week`
-
-Entities use UUID `id` (see `seedWorkspace.json`). Display names below:
-
-| Project | Color | Tab | Tab columns |
-|---|---|---|---|
-| Freelancing | `#2f7a6e` | Ops | Admin, Marketing, Finance |
-| Client project A | `#b45a3c` | Delivery | Design, Frontend, Content |
-| Client project B | `#6b4f8c` | Launch | Design, Development, Content |
-
-### Freelancing — Ops
-
-| Title | Task board column | Master board column | Done |
-|---|---|---|---|
-| Update invoice template | Finance | Today | |
-| Quarterly tax checklist | Finance | This week | |
-| LinkedIn post cadence | Marketing | Today | |
-| Portfolio site refresh | Marketing | Next week | |
-| CRM cleanup | Admin | Backlog | |
-| Client contract template | Admin | This week | yes |
-
-### Client project A — Delivery
-
-| Title | Task board column | Master board column | Done |
-|---|---|---|---|
-| Homepage wireframes | Design | Today | |
-| Type & color system | Design | This week | |
-| Services page draft | Content | Today | |
-| Frontend component kit | Frontend | Next week | |
-| Case study template | Content | This week | yes |
-| Accessibility pass | Frontend | Backlog | |
-
-### Client project B — Launch
-
-| Title | Task board column | Master board column | Done |
-|---|---|---|---|
-| Landing hero copy | Content | Today | |
-| Waitlist signup flow | Development | Today | |
-| Pricing section | Development | Backlog | yes |
-| Press kit PDF | Content | This week | yes |
-| Launch day checklist | Development | This week | |
-| Onboarding email sequence | Content | Next week | |
-
-Each project also has matching Notes, Files, and Database demo tabs. Descriptions live in each project’s `description` field in the JSON.
-
-### Notes
-
-- Database tabs are available in the UI (`Database` tab type).
-- New task boards default to columns `Design, Frontend dev, Backend dev, Content` until customized.
-
-## Releases
-
-Tag releases as `v<version>` (e.g. `v0.1.0`). The in-app update check opens the GitHub Releases page when a newer semver is available.
-
-## Should polish (pre-/post-publish)
-
-- **Version sync:** one source of truth for version (`package.json` ↔ `APP_VERSION` in `src/utils.js` ↔ server log string)
-- **Onboarding visuals:** real screenshots or product images in the launch flow
-- **Error UX:** replace widespread `alert()` with in-app confirm/prompt dialogs where it matters
-- **Demo cleanup:** “Remove demo data” button that deletes `isDemo: true` entities only (see Demo data above)
-- **PocketBase spike:** auth + `userWorkspace` / `userArchive` file fields (see master plan)
+MIT — see [LICENSE](LICENSE).

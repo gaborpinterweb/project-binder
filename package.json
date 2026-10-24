@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server.cjs",
+    "start": "npm run pb",
+    "start:node": "node server.cjs",
     "pb:fetch": "node scripts/fetch-pocketbase.cjs",
     "pb": "node scripts/run-pocketbase.cjs"
   },
@@ -27,8 +28,10 @@
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
     "adm-zip": "^0.6.1",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.54.0",
     "marked": "^18.1.0",
+    "pocketbase": "^0.28.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-file-icon": "^1.6.0",

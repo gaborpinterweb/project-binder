@@ -6,4 +6,7 @@ release/
 *.log
 npm-debug.log*
 userWorkspace.json
-/pocketbase/
+# PocketBase runtime + binary; keep committed migrations
+/pocketbase/*
+!/pocketbase/pb_migrations/
+!/pocketbase/pb_migrations/**

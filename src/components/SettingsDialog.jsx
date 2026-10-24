@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { exportWorkspace, fetchArchivedProjects } from "../api.js";
+import { exportWorkspace, fetchArchivedProjects, importBackup } from "../api.js";
+import { getPb, isPbMode } from "../pb/client.js";
 import {
   APP_NAME,
   APP_COMMIT,
@@ -100,6 +101,24 @@ export default function SettingsDialog({
       await exportWorkspace();
     } catch {
       alert("Could not export workspace.");
+    }
+  };
+
+  const handleImportZip = async (file) => {
+    if (!file) return;
+    const ok = await askConfirm({
+      title: "Import workspace data?",
+      message:
+        "This replaces your current workspace from the backup zip. Export first if you might need it.",
+      confirmLabel: "Import",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await importBackup({ file });
+      window.location.reload();
+    } catch (e) {
+      alert(e.message || "Could not import workspace.");
     }
   };
 
@@ -277,7 +296,53 @@ export default function SettingsDialog({
                     Export
                   </button>
                 </div>
+                {isPbMode() && (
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Import workspace data</b>
+                      <span>Replace this workspace from a backup .zip</span>
+                    </div>
+                    <label className="settings-row-btn">
+                      Import
+                      <input
+                        type="file"
+                        accept=".zip,application/zip"
+                        hidden
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          void handleImportZip(f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
+              {isPbMode() && (
+                <>
+                  <h3 className="settings-heading">Account</h3>
+                  <div className="settings-rows">
+                    <div className="settings-row">
+                      <div className="settings-row-copy">
+                        <b>Sign out</b>
+                        <span>
+                          {getPb().authStore.record?.email || "End this session"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="settings-row-btn"
+                        onClick={() => {
+                          getPb().authStore.clear();
+                          window.location.reload();
+                        }}
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
           )}
 

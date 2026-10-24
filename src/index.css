@@ -1533,3 +1533,24 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .snackbar-dismiss:focus-visible{outline:2px solid color-mix(in srgb,var(--ink) 40%,transparent);outline-offset:1px}
 @keyframes snackbar-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){.app-side{width:130px}.snackbar-host{left:calc(130px + 12px);right:18px}}
+
+/* Auth + cloud chrome (PocketBase builds) */
+.auth-gate{min-height:100%;width:100%;display:grid;place-items:center;background:var(--bg);padding:24px}
+.auth-card{width:min(400px,100%);background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:28px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 28px #00000014}
+.auth-card h1{margin:0;font-size:22px}
+.auth-sub{margin:0 0 8px;color:var(--mute);font-size:14px}
+.auth-demo-hint{margin:0 0 4px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);color:var(--mute);font-size:12px;font-weight:400;line-height:1.45}
+.auth-demo-hint code{font-size:12px;color:var(--ink)}
+.auth-card label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--mute)}
+.auth-card input{font:inherit;font-weight:400;color:var(--ink);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.auth-submit{margin-top:8px;padding:10px 14px;border-radius:10px;background:var(--acc);color:#fff;font-weight:600}
+.auth-submit:disabled{opacity:.6}
+.auth-switch{color:var(--mute);font-size:13px;text-align:center;padding:6px}
+.auth-error,.auth-boot-error{color:#b42318;font-size:13px;margin:0}
+.auth-boot-error{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#fff;padding:8px 12px;border-radius:8px;border:1px solid var(--line)}
+.cloud-banner{flex:none;display:flex;align-items:center;gap:10px;padding:6px 12px;background:#1c1c1e;color:#f5f5f7;font-size:12px;width:100%}
+.cloud-banner-muted{background:#2c2c2e}
+.cloud-upgrade{margin-left:auto;padding:4px 10px;border-radius:8px;background:#3c3c40;color:#fff;font-size:12px}
+/* Column so optional cloud banner can sit above the app; app-frame restores sidebar|main row. */
+#root{flex-direction:column}
+.app-frame{display:flex;flex:1;min-height:0;min-width:0;width:100%}

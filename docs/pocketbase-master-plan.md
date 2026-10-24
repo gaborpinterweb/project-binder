@@ -140,8 +140,9 @@ Only after web / PocketBase matches the HEAD feature set:
 ### Status (repo)
 
 - Electron removed.
-- `npm run pb` serves the built UI via PocketBase (`pb_public`); API still on Node (`npm start`).
-- Auth + workspace/archive file fields: not implemented yet.
+- `npm start` / `npm run pb` is the product path (PocketBase).
+- Auth gate, client workspace engine, `user_data` + `attachments` migrations, export/import zip, optional Compose + `VITE_CLOUD`.
+- Legacy Node: `npm run start:node` only.
 
 ## Explicit non-goals
 
@@ -161,5 +162,5 @@ Target: React UI + thin client storage adapter → PocketBase auth + owner file 
 ## Doc status
 
 - Architecture and roadmap live here.
-- Implemented so far: Electron removed; PocketBase binary fetch + `npm run pb` UI host.
-- Still open: migrations, auth UI, client storage adapter, retiring `server.cjs`.
+- Core spike through self-host packaging and cloud flag are implemented on `build/pocketbase`.
+- `server.cjs` remains available as `start:node` for Vite HMR; product default is PocketBase.

@@ -14,6 +14,7 @@ const BIN_PATH = path.join(PB_DIR, BIN_NAME);
 const DIST = path.join(ROOT, "dist");
 const PUBLIC = path.join(PB_DIR, "pb_public");
 const DATA = path.join(PB_DIR, "pb_data");
+const MIGRATIONS = path.join(PB_DIR, "pb_migrations");
 
 function runNode(script, args = []) {
   const r = spawnSync(process.execPath, [script, ...args], {
@@ -45,14 +46,25 @@ if (!fs.existsSync(path.join(DIST, "index.html"))) {
 
 copyDir(DIST, PUBLIC);
 fs.mkdirSync(DATA, { recursive: true });
+if (!fs.existsSync(MIGRATIONS)) {
+  console.error(`missing migrations dir: ${MIGRATIONS}`);
+  process.exit(1);
+}
 
 console.log(`Serving UI from ${PUBLIC}`);
+console.log(`Migrations: ${MIGRATIONS}`);
 console.log("PocketBase: http://127.0.0.1:8090");
-console.log("Note: /api needs `npm start` on :3457 until PocketBase storage is wired.");
+console.log("Demo login: demo@projectbinder.local / demodemodemo");
 
 const child = spawn(
   BIN_PATH,
-  ["serve", `--dir=${DATA}`, `--publicDir=${PUBLIC}`, "--http=127.0.0.1:8090"],
+  [
+    "serve",
+    `--dir=${DATA}`,
+    `--publicDir=${PUBLIC}`,
+    `--migrationsDir=${MIGRATIONS}`,
+    "--http=127.0.0.1:8090",
+  ],
   { cwd: PB_DIR, stdio: "inherit" }
 );
 

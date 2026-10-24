@@ -1,0 +1,15 @@
+node_modules
+dist
+release
+.git
+.npm-cache
+*.log
+pocketbase/pb_data
+pocketbase/pb_public
+pocketbase/pocketbase
+pocketbase/pocketbase.exe
+pocketbase/mail.env
+pocketbase/*.zip
+.DS_Store
+agent-transcripts
+.cursor

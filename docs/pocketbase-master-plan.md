@@ -126,10 +126,11 @@ Restore every HEAD capability on the web / PocketBase path:
 
 - Deploy the same image / binary layout (one PocketBase process + volume for `pb_data`)
 - **Host: [Railway](https://railway.app)** — simplest UI and method among common options (Fly.io, Render, Railway): GUI deploy, attach a volume, expose one port; little CLI required
+- Packaging in-repo: [`Dockerfile`](../Dockerfile), [`railway.toml`](../railway.toml), [`deploy/railway.env.example`](../deploy/railway.env.example), volume mount **`/data`** (survives redeploys)
 - Public signup; **email verification required** before login (client gate + Resend)
-- **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`pocketbase/mail.env` → `npm run pb:mail`)
+- **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Railway env → configure on boot)
 - **Billing later: [Lemon Squeezy](https://www.lemonsqueezy.com)** — out of auth-mail MVP; simplest MoR when subscriptions ship
-- `CLOUD` (or similar) env for hosted-only chrome
+- `VITE_CLOUD` build-arg for hosted-only chrome
 - Keep core MIT; billing and cloud mail stay thin and optional for self-host
 
 ### 5. Retire Node product server
@@ -146,6 +147,7 @@ Only after web / PocketBase matches the HEAD feature set:
 - `npm start` / `npm run pb` is the product path (PocketBase).
 - Auth gate, client workspace engine, `user_data` + `attachments` migrations, export/import zip, optional Compose + `VITE_CLOUD`.
 - Resend mail config (`mail.env` / `pb:mail`), email verification gate + password reset UI.
+- Railway/Docker packaging (`Dockerfile`, volume `/data`, env example).
 - Legacy Node: `npm run start:node` only.
 
 ## Explicit non-goals

@@ -43,6 +43,27 @@ Without `mail.env`, the app still runs; verification/reset emails simply will no
 
 Build with `VITE_CLOUD=true` for hosted chrome. Billing (e.g. Lemon Squeezy) is planned later; not required for auth mail.
 
+### Deploy on Railway
+
+Preferred hosted path (same Docker image keeps **`/data` volume** across deploys so users/workspace survive new app versions).
+
+1. Create a Railway project from this repo (Dockerfile / [`railway.toml`](railway.toml)).
+2. Add a **volume** mounted at **`/data`** (PocketBase `pb_data`).
+3. Set variables from [`deploy/railway.env.example`](deploy/railway.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL). Add Resend vars for verify/reset mail.
+4. Set Docker **build-arg** `VITE_CLOUD=true` if you want hosted chrome.
+5. Deploy. Open the public URL; register or use demo after migrations run.
+
+Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data.
+
+Local image check:
+
+```bash
+docker build -t project-binder .
+docker run --rm -p 8090:8090 -v binder-data:/data \
+  -e PB_ADMIN_EMAIL=admin@example.com -e PB_ADMIN_PASSWORD=changeme \
+  -e APP_URL=http://127.0.0.1:8090 project-binder
+```
+
 ### Legacy Node API (dev only)
 
 ```bash

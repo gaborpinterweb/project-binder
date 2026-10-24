@@ -8,7 +8,7 @@ This document locks architecture so later work does not re-litigate decisions. I
 
 - **Web only.** Long term there is no desktop / Electron app. Users either self-host or use the paid cloud.
 - **OSS self-host:** one PocketBase process + `pb_data`; users bring their own VPS or optional Docker.
-- **Paid cloud:** the same app artifact operated by the project maintainer; multi-tenant single PocketBase instance; billing (e.g. Stripe) around signup and limits later.
+- **Paid cloud:** the same app artifact operated by the project maintainer; multi-tenant single PocketBase instance; billing and mail around signup / limits later (see Cloud phase).
 - **Electron:** removed early (web-only pivot). Do **not** reintroduce a desktop shell.
 - **Node `server.cjs`:** transitional API/persistence until PocketBase auth + JSON files reach HEAD feature parity, then retire Node as the product server.
 
@@ -53,7 +53,7 @@ Stored as PocketBase **file fields** on an owner-scoped record. The client downl
 
 **SQLite / collections** only for auth and thin ownership metadata (and later relations if needed, e.g. billing customer id). Do **not** model boards, cards, or notes as PocketBase collections.
 
-SMTP is optional later (verification / password reset only), not required for the thin core.
+Transactional email is for the **paid cloud** path (verification / password reset): prefer **[Resend](https://resend.com)** (simple API / SMTP). Not required for local binary / self-host.
 
 ```mermaid
 flowchart LR
@@ -124,10 +124,13 @@ Restore every HEAD capability on the web / PocketBase path:
 
 ### 4. Cloud
 
-- Deploy the same image / binary layout
+- Deploy the same image / binary layout (one PocketBase process + volume for `pb_data`)
+- **Host: [Railway](https://railway.app)** — simplest UI and method among common options (Fly.io, Render, Railway): GUI deploy, attach a volume, expose one port; little CLI required
 - Public signup
-- Stripe (or equivalent); `CLOUD` (or similar) env for billing-only bits
-- Keep core MIT; billing layer stays thin and optional for self-host
+- **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — simplest subscription/MoR path for a small SaaS (hosted checkout + webhooks → mark PB user paid); prefer over raw Stripe or heavier Paddle for MVP
+- **Email: [Resend](https://resend.com)** — simplest transactional mail for password reset / verification (wire PocketBase SMTP or API)
+- `CLOUD` (or similar) env for billing/mail UI only on the hosted build
+- Keep core MIT; billing and cloud mail stay thin and optional for self-host
 
 ### 5. Retire Node product server
 

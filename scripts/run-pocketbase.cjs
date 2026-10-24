@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Build UI → pocketbase/pb_public, then serve with the PocketBase binary.
- * App /api still needs `npm start` (Node) until the auth/files spike.
+ * If pocketbase/mail.env has RESEND_API_KEY, apply SMTP after health check.
  */
 const fs = require("fs");
 const path = require("path");
@@ -15,6 +15,8 @@ const DIST = path.join(ROOT, "dist");
 const PUBLIC = path.join(PB_DIR, "pb_public");
 const DATA = path.join(PB_DIR, "pb_data");
 const MIGRATIONS = path.join(PB_DIR, "pb_migrations");
+const MAIL_ENV = path.join(PB_DIR, "mail.env");
+const PB_HTTP = "http://127.0.0.1:8090";
 
 function runNode(script, args = []) {
   const r = spawnSync(process.execPath, [script, ...args], {
@@ -34,6 +36,27 @@ function copyDir(src, dest) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
   fs.cpSync(src, dest, { recursive: true });
+}
+
+function mailEnvHasKey() {
+  if (!fs.existsSync(MAIL_ENV)) return false;
+  const text = fs.readFileSync(MAIL_ENV, "utf8");
+  const m = text.match(/^RESEND_API_KEY=(.*)$/m);
+  return !!(m && m[1] && m[1].trim() && !m[1].trim().startsWith("#"));
+}
+
+async function waitHealthy(timeoutMs = 60000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const r = await fetch(`${PB_HTTP}/api/health`);
+      if (r.ok) return;
+    } catch {
+      /* retry */
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  throw new Error("PocketBase health check timed out");
 }
 
 runNode(path.join(__dirname, "fetch-pocketbase.cjs"));
@@ -72,3 +95,21 @@ child.on("exit", (code, signal) => {
   if (signal) process.kill(process.pid, signal);
   process.exit(code ?? 1);
 });
+
+if (mailEnvHasKey()) {
+  waitHealthy()
+    .then(() => {
+      console.log("Applying Resend mail settings…");
+      const r = spawnSync(
+        process.execPath,
+        [path.join(__dirname, "configure-pb-mail.cjs")],
+        { cwd: ROOT, stdio: "inherit" }
+      );
+      if (r.status !== 0) {
+        console.warn("Mail configure failed (app still running). Fix mail.env or run npm run pb:mail");
+      }
+    })
+    .catch((err) => {
+      console.warn(String(err.message || err));
+    });
+}

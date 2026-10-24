@@ -94,8 +94,6 @@ import CardDialog from "./components/CardDialog.jsx";
 import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
-import ConfirmDialog from "./components/ConfirmDialog.jsx";
-import Snackbar from "./components/Snackbar.jsx";
 import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
 import { showSnackbar } from "./snackbar.js";
@@ -1895,8 +1893,6 @@ export default function App() {
         />
       )}
       <PromptDialog />
-      <ConfirmDialog />
-      <Snackbar />
     </>
   );
 }

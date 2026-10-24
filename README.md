@@ -21,16 +21,27 @@ npm start          # same as npm run pb
 3. Sign in with the demo account (seeded on migrate), or register your own:
    - Email: `demo@projectbinder.local`
    - Password: `demodemodemo`
-4. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
-5. Sign out: Settings → Data → Account.
+4. New accounts must **verify email** before sign-in (demo user is pre-verified).
+5. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
+6. Sign out: Settings → Data → Account.
 
 Fetch binary only: `npm run pb:fetch`. Optional Docker: `docker compose up` (see `docker-compose.yml`).
 
 If migrations changed and you already have `pocketbase/pb_data`, delete that folder once so migrations re-apply (loses local PB data).
 
+### Email (Resend) — verify + password reset
+
+Optional for local; recommended for hosted cloud.
+
+1. Copy [`pocketbase/mail.env.example`](pocketbase/mail.env.example) → `pocketbase/mail.env`.
+2. Fill `RESEND_API_KEY`, `MAIL_FROM` (verified domain), `APP_URL`, and your PocketBase superuser `PB_ADMIN_*`.
+3. With PB running: `npm run pb:mail` (or restart `npm start` — it applies mail.env automatically when the key is set).
+
+Without `mail.env`, the app still runs; verification/reset emails simply will not send.
+
 ### Cloud flag
 
-Build with `VITE_CLOUD=true` and optional `VITE_STRIPE_CHECKOUT_URL` for an Upgrade button (Stripe Checkout test/live URL). Self-host builds omit billing chrome.
+Build with `VITE_CLOUD=true` for hosted chrome. Billing (e.g. Lemon Squeezy) is planned later; not required for auth mail.
 
 ### Legacy Node API (dev only)
 

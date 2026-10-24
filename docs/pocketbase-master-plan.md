@@ -53,7 +53,7 @@ Stored as PocketBase **file fields** on an owner-scoped record. The client downl
 
 **SQLite / collections** only for auth and thin ownership metadata (and later relations if needed, e.g. billing customer id). Do **not** model boards, cards, or notes as PocketBase collections.
 
-Transactional email is for the **paid cloud** path (verification / password reset): prefer **[Resend](https://resend.com)** (simple API / SMTP). Not required for local binary / self-host.
+Transactional email is for **verification + password reset** (cloud MVP): **[Resend](https://resend.com)** via SMTP. Configure with [`pocketbase/mail.env`](../pocketbase/mail.env.example) (`npm run pb:mail`). Not required for local binary / self-host without mail. Subscriptions are out of the auth-mail MVP.
 
 ```mermaid
 flowchart LR
@@ -126,10 +126,10 @@ Restore every HEAD capability on the web / PocketBase path:
 
 - Deploy the same image / binary layout (one PocketBase process + volume for `pb_data`)
 - **Host: [Railway](https://railway.app)** — simplest UI and method among common options (Fly.io, Render, Railway): GUI deploy, attach a volume, expose one port; little CLI required
-- Public signup
-- **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — simplest subscription/MoR path for a small SaaS (hosted checkout + webhooks → mark PB user paid); prefer over raw Stripe or heavier Paddle for MVP
-- **Email: [Resend](https://resend.com)** — simplest transactional mail for password reset / verification (wire PocketBase SMTP or API)
-- `CLOUD` (or similar) env for billing/mail UI only on the hosted build
+- Public signup; **email verification required** before login (client gate + Resend)
+- **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`pocketbase/mail.env` → `npm run pb:mail`)
+- **Billing later: [Lemon Squeezy](https://www.lemonsqueezy.com)** — out of auth-mail MVP; simplest MoR when subscriptions ship
+- `CLOUD` (or similar) env for hosted-only chrome
 - Keep core MIT; billing and cloud mail stay thin and optional for self-host
 
 ### 5. Retire Node product server
@@ -145,6 +145,7 @@ Only after web / PocketBase matches the HEAD feature set:
 - Electron removed.
 - `npm start` / `npm run pb` is the product path (PocketBase).
 - Auth gate, client workspace engine, `user_data` + `attachments` migrations, export/import zip, optional Compose + `VITE_CLOUD`.
+- Resend mail config (`mail.env` / `pb:mail`), email verification gate + password reset UI.
 - Legacy Node: `npm run start:node` only.
 
 ## Explicit non-goals

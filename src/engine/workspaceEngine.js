@@ -2945,12 +2945,6 @@ export const workspaceEngine = {
     onChange?.();
     return deepClone(readWorkspace());
   },
-
-  /** Desktop reveal is gone; no-op for UI that still calls these. */
-  revealCardFile: async () => ({ ok: true }),
-  revealFile: async () => ({ ok: true }),
-  revealFilesTab: async () => ({ ok: true }),
-  revealTab: async () => ({ ok: true }),
 };
 
 export { COVER_TAB_ID };

@@ -1317,8 +1317,6 @@ export default function CardDialog({
         files={cardFiles}
         onFileChange={setPreviewFile}
         project={curLoc.folder.id}
-        board={curLoc.mod[2].id}
-        card={draft.id}
         downloadUrl={cardFileDownloadUrl(
           curLoc.folder.id,
           curLoc.mod[2].id,

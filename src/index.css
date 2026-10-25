@@ -261,8 +261,6 @@ main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;back
 .file-preview-icon:hover:not(:disabled){color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
 .file-preview-icon:disabled{opacity:.35;cursor:default}
 .file-preview-pager{display:flex;align-items:center;gap:4px;flex:none;color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.file-preview-finder{flex:none;padding:7px 12px;border-radius:calc(var(--radius) - 6px);font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
-.file-preview-finder:hover{background:color-mix(in srgb,var(--ink) 14%,transparent)}
 .file-preview-stage{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;background:#15171c}
 .file-preview-dlg.is-fit .file-preview-stage{flex:none}
 .file-preview-msg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:#c8c4bc;font-size:14px;text-align:center}
@@ -1345,20 +1343,6 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .settings-check:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .settings-check input{flex:none;width:16px;height:16px;margin:0;accent-color:var(--acc);cursor:pointer}
 .settings-rows{display:flex;flex-direction:column;gap:8px}
-.settings-backup-block{display:flex;flex-direction:column}
-/* Height animates so Workspace below is pushed / pulled with Enable backup */
-.settings-backup-details{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s ease;pointer-events:none}
-.settings-backup-details.in{grid-template-rows:1fr;pointer-events:auto}
-.settings-backup-details-clip{overflow:hidden;min-height:0}
-.settings-backup-details-inner{display:flex;flex-direction:column;gap:8px;padding-top:8px}
-.settings-backup-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;padding:0 4px 2px;font-size:12px;line-height:1.35;color:var(--mute)}
-.settings-text-btn{margin:0;padding:0;border:0;border-radius:0;background:none;font:inherit;font-size:inherit;line-height:inherit;color:inherit;text-decoration:underline;cursor:pointer}
-.settings-text-btn:hover:not(:disabled){color:var(--ink)}
-.settings-text-btn:disabled{opacity:.45;cursor:default;text-decoration:none}
-.settings-text-btn:focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 55%,transparent);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){
-  .settings-backup-details{transition:none}
-}
 .settings-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:calc(var(--radius) - 2px);background:color-mix(in srgb,var(--ink) 2%,transparent)}
 .settings-row-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .settings-row-copy b{font-size:14px;font-weight:600;color:var(--ink)}
@@ -1421,14 +1405,9 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .launch-dot{display:block;width:7px;height:7px;border-radius:50%;background:color-mix(in srgb,var(--ink) 18%,transparent);transition:background .15s ease,transform .15s ease}
 .launch-dot.is-active{background:var(--ink);transform:scale(1.15)}
 .launch-actions{display:flex;flex-direction:column;align-items:stretch;width:100%;min-height:46px}
-.launch-cta-row{display:flex;align-items:stretch;gap:10px;width:100%}
-.launch-cta-row .launch-cta,.launch-cta-row .launch-cta-secondary{flex:1;min-width:0}
 .launch-cta{display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:var(--acc);border:0;border-radius:var(--radius);padding:14px 24px;cursor:pointer;width:100%}
 .launch-cta:hover:not(:disabled){filter:brightness(1.05)}
 .launch-cta:disabled{opacity:.55;cursor:default}
-.launch-cta-secondary{display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:14px;font-weight:600;line-height:1;color:var(--mute);background:color-mix(in srgb,var(--ink) 6%,transparent);border:0;border-radius:var(--radius);padding:14px 18px;cursor:pointer;width:100%}
-.launch-cta-secondary:hover:not(:disabled){color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
-.launch-cta-secondary:disabled{opacity:.55;cursor:default}
 td.open{width:1%}.open button{color:var(--acc);font-size:13px}
 th.db-enlarge-col,td.db-enlarge-col{border-left:0;vertical-align:middle}
 td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}

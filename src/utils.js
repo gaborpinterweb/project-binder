@@ -42,12 +42,10 @@ const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 const COUNTDOWN_DURATION_KEY = `${STORAGE_PREFIX}countdownDurationMin`;
 const STOPTIMER_MAX_KEY = `${STORAGE_PREFIX}stoptimerMaxMin`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
-const MENU_BAR_TIMER_KEY = `${STORAGE_PREFIX}menuBarTimer`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
 const NOTES_UNLOCKED_KEY = `${STORAGE_PREFIX}notesUnlocked`;
 const NOTES_SELECTED_KEY = `${STORAGE_PREFIX}notesSelected`;
 const DEFAULT_UI_SOUNDS = true;
-const DEFAULT_MENU_BAR_TIMER = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 export const DEFAULT_COUNTDOWN_DURATION_MIN = 25;
 export const COUNTDOWN_DURATION_OPTIONS = [10, 15, 20, 25, 30, 45, 50, 60];
@@ -68,17 +66,6 @@ export function newId() {
   return crypto.randomUUID();
 }
 
-/** OS file-manager label for “Show in …” actions. */
-export function folderAppLabel() {
-  const platform = navigator.userAgentData?.platform || navigator.platform || "";
-  if (/mac/i.test(platform)) return "Finder";
-  if (/win/i.test(platform)) return "File Explorer";
-  return "Folder";
-}
-
-export function showInFolderLabel() {
-  return `Show in ${folderAppLabel()}`;
-}
 /** 16 cover colors: hue-spaced, no grays, each ≥4.5:1 with white text. */
 export const PC = [
   "#e42737",
@@ -580,21 +567,6 @@ export function formatTimer(sec) {
   return mm + ":" + ss;
 }
 
-/** Fixed-width hh:mm:ss for the macOS menu bar (avoids tray width jumps). */
-export function formatMenuBarTimer(sec) {
-  const s = Math.max(0, Math.floor(sec || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
-  return (
-    String(h).padStart(2, "0") +
-    ":" +
-    String(m).padStart(2, "0") +
-    ":" +
-    String(r).padStart(2, "0")
-  );
-}
-
 export function formatClock(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
@@ -960,23 +932,6 @@ export function saveUiSounds(enabled) {
   const next = !!enabled;
   try {
     localStorage.setItem(UI_SOUNDS_KEY, next ? "1" : "0");
-  } catch {}
-  return next;
-}
-
-export function loadMenuBarTimer() {
-  try {
-    const stored = localStorage.getItem(MENU_BAR_TIMER_KEY);
-    if (stored === "0") return false;
-    if (stored === "1") return true;
-  } catch {}
-  return DEFAULT_MENU_BAR_TIMER;
-}
-
-export function saveMenuBarTimer(enabled) {
-  const next = !!enabled;
-  try {
-    localStorage.setItem(MENU_BAR_TIMER_KEY, next ? "1" : "0");
   } catch {}
   return next;
 }

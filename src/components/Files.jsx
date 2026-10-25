@@ -4,17 +4,13 @@ import {
   putFile,
   deleteFileApi,
   moveFileApi,
-  revealFile,
-  revealFilesTab,
 } from "../api.js";
 import { Icon } from "../icons.jsx";
 import {
   allFilesTabs,
   DEFAULT_FILES_SORT,
-  folderAppLabel,
   loadFilesSorts,
   saveFilesSort,
-  showInFolderLabel,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
@@ -93,7 +89,6 @@ function readFileAsBase64(file) {
 function FileMoreMenu({
   disabled,
   moveTargets = [],
-  onShowInFolder,
   onRename,
   onMove,
   onDelete,
@@ -181,17 +176,6 @@ function FileMoreMenu({
           role="menu"
           style={{ top: pos.top, right: pos.right, left: "auto" }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={(e) => {
-              e.stopPropagation();
-              run(onShowInFolder);
-            }}
-          >
-            <Icon name="folder" size={14} />
-            {showInFolderLabel()}
-          </button>
           <button
             type="button"
             role="menuitem"
@@ -308,26 +292,6 @@ export default function Files({
         : { key: col, dir: FILE_SORT_DEFAULT_DIR[col] || "asc" };
     setSorts((prev) => ({ ...prev, [tabSortKey]: next }));
     saveFilesSort(tabSortKey, next);
-  };
-
-  const openFolder = async () => {
-    try {
-      await revealFilesTab({ project: folder.id, filesTab: d.id });
-    } catch (err) {
-      window.alert(err.message || "Could not open the folder");
-    }
-  };
-
-  const showFileInFolder = async (file) => {
-    try {
-      await revealFile({
-        project: folder.id,
-        filesTab: d.id,
-        file: file.id,
-      });
-    } catch (err) {
-      window.alert(err.message || "Could not show the file");
-    }
   };
 
   const uploadFiles = async (fileList) => {
@@ -491,16 +455,6 @@ export default function Files({
               <span className="mod-act-lab">Add file</span>
             </button>
           )}
-          <button
-            type="button"
-            className="mod-act"
-            onClick={openFolder}
-            title={folderAppLabel()}
-            aria-label={`Open in ${folderAppLabel()}`}
-          >
-            <Icon name="folder" size={18} />
-            <span className="mod-act-lab">{folderAppLabel()}</span>
-          </button>
           <input
             ref={inputRef}
             type="file"
@@ -567,7 +521,6 @@ export default function Files({
                     <FileMoreMenu
                       disabled={busy}
                       moveTargets={moveTargets}
-                      onShowInFolder={() => showFileInFolder(file)}
                       onRename={() => renameFile(file)}
                       onMove={(dest) => moveFile(file, dest)}
                       onDelete={() => removeFile(file)}

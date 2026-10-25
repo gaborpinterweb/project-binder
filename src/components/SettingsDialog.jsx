@@ -11,7 +11,6 @@ import {
   PC,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
-import { askBackupFolderFailed } from "../backupFolderDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 
@@ -488,21 +487,6 @@ export default function SettingsDialog({
                             },
                           },
                         });
-                      }}
-                    >
-                      Show
-                    </button>
-                  </div>
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Preview backup folder error</b>
-                      <span>Dialog shown when a backup folder fails the write check</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="settings-row-btn"
-                      onClick={() => {
-                        void askBackupFolderFailed();
                       }}
                     >
                       Show

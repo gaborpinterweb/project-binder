@@ -69,7 +69,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
   fs.mkdirSync(userDataDir, { recursive: true });
   const workspacePath = path.join(userDataDir, "userWorkspace.json");
   const archivePath = path.join(userDataDir, "userArchive.json");
-  const settingsPath = path.join(userDataDir, "appSettings.json");
   const uploadsRoot = path.join(userDataDir, "uploads");
 
   return {
@@ -77,7 +76,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
     dir: userDataDir,
     workspacePath,
     archivePath,
-    settingsPath,
     readWorkspaceFile() {
       return readJsonFromDisk(workspacePath, isValidStore);
     },
@@ -89,17 +87,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
     },
     writeArchiveFile(doc) {
       atomicWriteJson(archivePath, doc);
-    },
-    readAppSettingsFile() {
-      if (!fs.existsSync(settingsPath)) return null;
-      try {
-        return JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-      } catch {
-        return null;
-      }
-    },
-    writeAppSettingsFile(doc) {
-      atomicWriteJson(settingsPath, doc);
     },
     uploadPath(projectId, tabId, fileId) {
       return path.join(uploadsRoot, projectId, tabId, fileId);
@@ -184,25 +171,18 @@ function createDiskStore(userDataDir, seedUploadsDir) {
         fs.cpSync(srcUploadsDir, uploadsRoot, { recursive: true });
       }
     },
-    ensureUserDataDir() {
-      fs.mkdirSync(userDataDir, { recursive: true });
-      return userDataDir;
-    },
   };
 }
 
 function createMemoryStore(seedUploadsDir) {
   /** @type {Map<string, Buffer>} */
   const uploads = new Map();
-  /** @type {object|null} */
-  let appSettings = null;
 
   return {
     persistent: false,
     dir: null,
     workspacePath: null,
     archivePath: null,
-    settingsPath: null,
     readWorkspaceFile() {
       // Always missing so the server boots from seed; mutations live in the process `store`.
       return { ok: false, reason: "memory" };
@@ -215,12 +195,6 @@ function createMemoryStore(seedUploadsDir) {
     },
     writeArchiveFile() {
       /* ephemeral — server keeps `archiveStore` in RAM */
-    },
-    readAppSettingsFile() {
-      return appSettings;
-    },
-    writeAppSettingsFile(doc) {
-      appSettings = doc;
     },
     uploadPath() {
       return null;
@@ -275,9 +249,6 @@ function createMemoryStore(seedUploadsDir) {
       walkFiles(srcUploadsDir, (rel, abs) => {
         uploads.set(rel.replace(/\\/g, "/"), fs.readFileSync(abs));
       });
-    },
-    ensureUserDataDir() {
-      return null;
     },
   };
 }

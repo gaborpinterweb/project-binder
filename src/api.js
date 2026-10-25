@@ -237,10 +237,6 @@ export async function moveCardFilesApi(body) {
   );
 }
 
-export async function revealCardFile() {
-  return { ok: true };
-}
-
 export async function putFile(body) {
   if (isPbMode()) return bridge.bridgePutFile(body);
   return apiOkData("/api/file", { method: "PUT", body }, "Could not rename file");
@@ -255,18 +251,6 @@ export function fileDownloadUrl(project, filesTab, file) {
   if (isPbMode()) return `pb-blob://${project}/${filesTab}/${file}`;
   const q = new URLSearchParams({ project, filesTab, file });
   return `/api/file?${q.toString()}`;
-}
-
-export async function revealFile() {
-  return { ok: true };
-}
-
-export async function revealFilesTab() {
-  return { ok: true };
-}
-
-export async function revealTab() {
-  return { ok: true };
 }
 
 export async function moveFileApi(body) {
@@ -368,64 +352,22 @@ export async function exportWorkspace() {
   URL.revokeObjectURL(url);
 }
 
-export async function fetchAppInfo() {
-  if (isPbMode()) {
-    return {
-      desktop: false,
-      menuBar: false,
-      persistentUserData: true,
-      backend: "pocketbase",
-      cloud: import.meta.env.VITE_CLOUD === "true",
-    };
-  }
-  return apiData("/api/app");
-}
-
-export async function fetchBackupSettings() {
-  if (isPbMode()) return { enabled: false };
-  return apiOkData("/api/backup", {}, "backup settings failed");
-}
-
-export async function saveBackupSettings(body) {
-  if (isPbMode()) return body;
-  return apiOkData("/api/backup", { method: "PUT", body }, "could not save backup settings");
-}
-
-export async function runBackupNow() {
-  if (isPbMode()) throw new Error("Use Export workspace on PocketBase builds");
-  return apiOkData("/api/backup/now", { method: "POST" }, "backup failed");
-}
-
-export async function pickBackupFolder() {
-  if (isPbMode()) throw new Error("desktop only");
-  return apiOkData("/api/backup/pick-folder", { method: "POST" }, "could not pick folder");
-}
-
-export async function saveExportFile(body) {
-  if (isPbMode()) throw new Error("desktop only");
-  const { r, data } = await apiJson("/api/export/save", { method: "POST", body });
-  if (!r.ok) throw new Error(data?.error || "could not save file");
-  return data;
-}
-
 export async function importBackup(body) {
-  if (isPbMode()) {
-    const file = body?.file;
-    if (!file) throw new Error("Choose a backup zip");
-    const JSZip = (await import("jszip")).default;
-    const zip = await JSZip.loadAsync(file);
-    const wsText = await zip.file("userWorkspace.json")?.async("string");
-    if (!wsText) throw new Error("backup missing userWorkspace.json");
-    const archText = await zip.file("userArchive.json")?.async("string");
-    const { engine } = await import("./engine/apiBridge.js");
-    engine.loadFromWorkspaceDoc(JSON.parse(wsText));
-    if (archText) engine.loadFromArchiveDoc(JSON.parse(archText));
-    else engine.loadFromArchiveDoc({ version: 2, projects: [] });
-    const { flushPersist } = await import("./engine/apiBridge.js");
-    await flushPersist();
-    return engine.getWorkspace();
-  }
-  return apiOkData("/api/backup/import", { method: "POST", body: body || {} }, "import failed");
+  if (!isPbMode()) throw new Error("Import requires PocketBase");
+  const file = body?.file;
+  if (!file) throw new Error("Choose a backup zip");
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(file);
+  const wsText = await zip.file("userWorkspace.json")?.async("string");
+  if (!wsText) throw new Error("backup missing userWorkspace.json");
+  const archText = await zip.file("userArchive.json")?.async("string");
+  const { engine } = await import("./engine/apiBridge.js");
+  engine.loadFromWorkspaceDoc(JSON.parse(wsText));
+  if (archText) engine.loadFromArchiveDoc(JSON.parse(archText));
+  else engine.loadFromArchiveDoc({ version: 2, projects: [] });
+  const { flushPersist } = await import("./engine/apiBridge.js");
+  await flushPersist();
+  return engine.getWorkspace();
 }
 
 export async function resetWorkspaceToSeed() {

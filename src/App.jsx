@@ -891,8 +891,36 @@ export default function App() {
   );
 
   // --- project actions ---
-  const startNewProject = () => {
-    const color = nextUnusedProjectColor(folders);
+  const startNewProject = async () => {
+    const demos = foldersRef.current.filter(
+      (f) => !isProjectArchived(f) && f.isDemo
+    );
+    if (demos.length) {
+      const ok = await askConfirm({
+        title: "Creating your first project? Let's clean up first!",
+        message:
+          "Your binder still has demo projects. Delete them before creating your own project?",
+        confirmLabel: "Delete and continue",
+        confirmIcon: "Trash",
+        danger: true,
+      });
+      if (!ok) return;
+      let lastOk = null;
+      for (const demo of demos) {
+        const data = await deleteProjectApi({ project: demo.id });
+        if (data?.error) {
+          if (lastOk) applyWorkspace(lastOk);
+          alert(data.error || "Could not delete demo projects.");
+          return;
+        }
+        lastOk = data;
+      }
+      if (lastOk) {
+        applyWorkspace(lastOk);
+        setTrashRefresh((n) => n + 1);
+      }
+    }
+    const color = nextUnusedProjectColor(foldersRef.current);
     discardCoverEdit();
     setDraftProject({ name: "", color, description: "" });
     setG(null);

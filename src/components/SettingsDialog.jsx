@@ -46,11 +46,16 @@ export default function SettingsDialog({
   const tabs = useMemo(() => {
     const list = [
       { id: "experience", label: "Experience", icon: "Experience" },
+    ];
+    if (isPbMode()) {
+      list.push({ id: "account", label: "Account", icon: "Account" });
+    }
+    list.push(
       { id: "data", label: "Data", icon: "Workspace" },
       { id: "archive", label: "Archive", icon: "Archive" },
       { id: "help", label: "Help", icon: "Help" },
-      { id: "about", label: "About", icon: "About" },
-    ];
+      { id: "about", label: "About", icon: "About" }
+    );
     if (import.meta.env.DEV) {
       list.push({ id: "developer", label: "Developer", icon: "Developer" });
     }
@@ -83,6 +88,7 @@ export default function SettingsDialog({
 
   useEffect(() => {
     if (!import.meta.env.DEV && tab === "developer") setTab("experience");
+    if (!isPbMode() && tab === "account") setTab("experience");
   }, [tab]);
 
   useEffect(() => {
@@ -291,9 +297,61 @@ export default function SettingsDialog({
             </section>
           )}
 
+          {tab === "account" && isPbMode() && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Change Email</b>
+                    <span>Update the email on this account</span>
+                  </div>
+                  <button type="button" className="settings-row-btn" disabled>
+                    Change Email
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Change password</b>
+                    <span>Set a new password for this account</span>
+                  </div>
+                  <button type="button" className="settings-row-btn" disabled>
+                    Change password
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Sign out</b>
+                    <span>
+                      {getPb().authStore.record?.email || "End this session"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    onClick={() => void handleSignOut()}
+                  >
+                    Sign out
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Delete account</b>
+                    <span>Permanently remove this account and its data</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn settings-row-btn-danger"
+                    disabled
+                  >
+                    Delete account
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
           {tab === "data" && (
             <section className="settings-section">
-              <h3 className="settings-heading">Workspace</h3>
               <div className="settings-rows">
                 <div className="settings-row">
                   <div className="settings-row-copy">
@@ -326,28 +384,6 @@ export default function SettingsDialog({
                   </div>
                 )}
               </div>
-              {isPbMode() && (
-                <>
-                  <h3 className="settings-heading">Account</h3>
-                  <div className="settings-rows">
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Sign out</b>
-                        <span>
-                          {getPb().authStore.record?.email || "End this session"}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="settings-row-btn"
-                        onClick={() => void handleSignOut()}
-                      >
-                        Sign out
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
             </section>
           )}
 

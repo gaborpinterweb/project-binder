@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
 import { exportWorkspace, fetchArchivedProjects, importBackup } from "../api.js";
 import {
@@ -76,6 +76,13 @@ export default function SettingsDialog({
   const [archivedProjects, setArchivedProjects] = useState([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [resetting, setResetting] = useState(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNext, setPwNext] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const pwCurrentRef = useRef(null);
 
   useEffect(() => {
     if (tab !== "archive") return;
@@ -111,12 +118,10 @@ export default function SettingsDialog({
   };
 
   useEffect(() => {
-    const esc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
-  }, [onClose]);
+    if (!pwOpen) return;
+    const t = requestAnimationFrame(() => pwCurrentRef.current?.focus());
+    return () => cancelAnimationFrame(t);
+  }, [pwOpen]);
 
   const handleExport = async () => {
     try {
@@ -205,6 +210,95 @@ export default function SettingsDialog({
     }
   };
 
+  const closePasswordDialog = () => {
+    if (pwBusy) return;
+    setPwOpen(false);
+    setPwCurrent("");
+    setPwNext("");
+    setPwConfirm("");
+    setPwError("");
+  };
+
+  useEffect(() => {
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      if (pwOpen) {
+        e.preventDefault();
+        if (pwBusy) return;
+        setPwOpen(false);
+        setPwCurrent("");
+        setPwNext("");
+        setPwConfirm("");
+        setPwError("");
+        return;
+      }
+      onClose();
+    };
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose, pwOpen, pwBusy]);
+
+  const openPasswordDialog = () => {
+    setPwCurrent("");
+    setPwNext("");
+    setPwConfirm("");
+    setPwError("");
+    setPwBusy(false);
+    setPwOpen(true);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwError("");
+    const oldPassword = pwCurrent;
+    const password = pwNext;
+    const passwordConfirm = pwConfirm;
+    if (!oldPassword || !password || !passwordConfirm) {
+      setPwError("Fill in all password fields.");
+      return;
+    }
+    if (password.length < 8) {
+      setPwError("New password must be at least 8 characters.");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setPwError("New passwords do not match.");
+      return;
+    }
+    const pb = getPb();
+    const userId = pb.authStore.record?.id;
+    const email = String(pb.authStore.record?.email || "").trim();
+    if (!userId || !email) {
+      setPwError("Not signed in.");
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await pb.collection("users").update(userId, {
+        oldPassword,
+        password,
+        passwordConfirm,
+      });
+      await pb.collection("users").authWithPassword(email, password);
+      setPwBusy(false);
+      setPwOpen(false);
+      setPwCurrent("");
+      setPwNext("");
+      setPwConfirm("");
+      setPwError("");
+      showSnackbar({
+        icon: "check",
+        tone: "success",
+        center: true,
+        message: "Password updated.",
+        durationMs: 4000,
+      });
+    } catch (err) {
+      setPwBusy(false);
+      setPwError(err?.message || "Could not update password");
+    }
+  };
+
   const handleSignOut = async () => {
     const ok = await askConfirm({
       title: "Sign out?",
@@ -260,10 +354,11 @@ export default function SettingsDialog({
     );
 
   return (
+    <>
     <div
       className="ov"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !pwOpen) onClose();
       }}
     >
       <div className="dlg settings-dlg" role="dialog" aria-label="Settings">
@@ -398,7 +493,11 @@ export default function SettingsDialog({
                     <b>Change password</b>
                     <span>Set a new password for this account</span>
                   </div>
-                  <button type="button" className="settings-row-btn" disabled>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    onClick={openPasswordDialog}
+                  >
                     Change password
                   </button>
                 </div>
@@ -711,5 +810,82 @@ export default function SettingsDialog({
         </div>
       </div>
     </div>
+    {pwOpen ? (
+      <div
+        className="ov ov-prompt"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget && !pwBusy) closePasswordDialog();
+        }}
+      >
+        <div
+          className="dlg prompt-dlg"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Change password"
+        >
+          <div className="dlg-content prompt-body">
+            <h2 className="prompt-title">Change password</h2>
+            <p className="prompt-msg">
+              Enter your current password, then choose a new one.
+            </p>
+            <form className="prompt-form" onSubmit={handleChangePassword}>
+              <label className="prompt-field">
+                Current password
+                <input
+                  ref={pwCurrentRef}
+                  className="prompt-input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={pwCurrent}
+                  onChange={(e) => setPwCurrent(e.target.value)}
+                  disabled={pwBusy}
+                  required
+                />
+              </label>
+              <label className="prompt-field">
+                New password
+                <input
+                  className="prompt-input"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
+                  value={pwNext}
+                  onChange={(e) => setPwNext(e.target.value)}
+                  disabled={pwBusy}
+                  required
+                />
+              </label>
+              <label className="prompt-field">
+                Confirm new password
+                <input
+                  className="prompt-input"
+                  type="password"
+                  autoComplete="new-password"
+                  value={pwConfirm}
+                  onChange={(e) => setPwConfirm(e.target.value)}
+                  disabled={pwBusy}
+                  required
+                />
+              </label>
+              {pwError ? <p className="auth-error">{pwError}</p> : null}
+              <div className="actions prompt-actions">
+                <button
+                  type="button"
+                  className="dlg-delete"
+                  onClick={closePasswordDialog}
+                  disabled={pwBusy}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="dlg-create" disabled={pwBusy}>
+                  {pwBusy ? "…" : "Update"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }

@@ -1008,6 +1008,8 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .prompt-help-link{font-size:13px;font-weight:600;color:var(--acc);text-decoration:underline dotted;text-underline-offset:2px}
 .prompt-help-link:hover{text-decoration-style:solid}
 .prompt-form{display:flex;flex-direction:column;gap:14px;min-width:0}
+.prompt-field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--mute)}
+.prompt-field .prompt-input{font-weight:400}
 .prompt-input{font:inherit;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid var(--line);border-radius:calc(var(--radius) - 4px);padding:10px 12px;width:100%;box-sizing:border-box}
 .prompt-input:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 45%,var(--line));background:#fff}
 .prompt-actions{margin:0}

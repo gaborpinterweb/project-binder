@@ -15,8 +15,6 @@ import { askBackupFolderFailed } from "../backupFolderDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 
-const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
-const BMC_BTN = "/bmc-button.png";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL =
   "https://gaborpinter.com/?utm_source=project-binder&utm_medium=app&utm_campaign=settings-about";
@@ -120,6 +118,17 @@ export default function SettingsDialog({
     } catch (e) {
       alert(e.message || "Could not import workspace.");
     }
+  };
+
+  const handleSignOut = async () => {
+    const ok = await askConfirm({
+      title: "Sign out?",
+      message: "You will need to sign in again to open this workspace.",
+      confirmLabel: "Sign out",
+    });
+    if (!ok) return;
+    getPb().authStore.clear();
+    window.location.reload();
   };
 
   const runReset = async (kind, title, message, action) => {
@@ -332,10 +341,7 @@ export default function SettingsDialog({
                       <button
                         type="button"
                         className="settings-row-btn"
-                        onClick={() => {
-                          getPb().authStore.clear();
-                          window.location.reload();
-                        }}
+                        onClick={() => void handleSignOut()}
                       >
                         Sign out
                       </button>
@@ -431,16 +437,6 @@ export default function SettingsDialog({
                         Gábor Pintér
                       </a>
                     </p>
-                  </div>
-                  <div className="settings-bmc-wrap">
-                    <a
-                      className="settings-bmc"
-                      href={BMC_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <img src={BMC_BTN} alt="Buy me a coffee" width={217} height={60} />
-                    </a>
                   </div>
                 </div>
                   <div className="settings-about-credits">

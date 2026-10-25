@@ -104,6 +104,8 @@ export default function Root() {
           clearAuthParams();
           showSnackbar({
             icon: "check",
+            tone: "success",
+            center: true,
             message: "Email verified. You can sign in.",
             durationMs: 5000,
           });
@@ -113,6 +115,8 @@ export default function Root() {
           clearAuthParams();
           showSnackbar({
             icon: "bell",
+            tone: "error",
+            center: true,
             message: err?.message || "Could not verify email",
             durationMs: 6000,
           });
@@ -183,7 +187,11 @@ export default function Root() {
           }}
         />
         {bootError ? <p className="auth-error">{bootError}</p> : null}
-        {booting ? <p className="auth-booting">Loading workspace…</p> : null}
+        {booting ? (
+          <div className="workspace-boot" role="status" aria-label="Loading workspace">
+            <span className="workspace-boot-spinner" />
+          </div>
+        ) : null}
       </>
     );
   }
@@ -192,7 +200,9 @@ export default function Root() {
     return (
       <>
         {hosts}
-        <p className="auth-booting">Loading workspace…</p>
+        <div className="workspace-boot" role="status" aria-label="Loading workspace">
+          <span className="workspace-boot-spinner" />
+        </div>
       </>
     );
   }

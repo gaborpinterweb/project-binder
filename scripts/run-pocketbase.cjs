@@ -77,7 +77,7 @@ if (!fs.existsSync(MIGRATIONS)) {
 console.log(`Serving UI from ${PUBLIC}`);
 console.log(`Migrations: ${MIGRATIONS}`);
 console.log("PocketBase: http://127.0.0.1:8090");
-console.log("Demo login: demo@projectbinder.local / demodemodemo");
+console.log("Register an account to sign in (verify email if mail.env is set).");
 
 const child = spawn(
   BIN_PATH,

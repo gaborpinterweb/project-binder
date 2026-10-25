@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { getPb } from "../pb/client.js";
-import { DEMO_EMAIL, DEMO_PASSWORD } from "../pb/demoAccount.js";
 import { askConfirm } from "../confirmDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import { APP_NAME } from "../utils.js";
@@ -20,8 +19,8 @@ export default function AuthGate({
   onConsumedResetToken,
 }) {
   const [mode, setMode] = useState(initialMode);
-  const [email, setEmail] = useState(DEMO_EMAIL);
-  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -55,12 +54,16 @@ export default function AuthGate({
         await getPb().collection("users").requestVerification(addr);
         showSnackbar({
           icon: "check",
+          tone: "success",
+          center: true,
           message: "Verification email sent. Check your inbox.",
           durationMs: 5000,
         });
       } catch (err) {
         showSnackbar({
           icon: "bell",
+          tone: "error",
+          center: true,
           message: err?.message || "Could not send verification email",
           durationMs: 5000,
         });
@@ -86,6 +89,8 @@ export default function AuthGate({
         setInfo("If that email exists, a reset link is on its way.");
         showSnackbar({
           icon: "check",
+          tone: "success",
+          center: true,
           message: "Password reset email sent (if the account exists).",
           durationMs: 5000,
         });
@@ -102,7 +107,13 @@ export default function AuthGate({
         setPassword("");
         setPassword2("");
         setInfo("Password updated. Sign in.");
-        showSnackbar({ icon: "check", message: "Password updated. Sign in.", durationMs: 4000 });
+        showSnackbar({
+          icon: "check",
+          tone: "success",
+          center: true,
+          message: "Password updated. Sign in.",
+          durationMs: 4000,
+        });
         return;
       }
 
@@ -114,20 +125,36 @@ export default function AuthGate({
           password,
           passwordConfirm: password2,
         });
+        let mailOk = true;
         try {
           await pb.collection("users").requestVerification(email);
-        } catch {
-          /* mail may be unset locally */
+        } catch (err) {
+          mailOk = false;
+          showSnackbar({
+            icon: "bell",
+            tone: "error",
+            center: true,
+            message: err?.message || "Account created, but verification email failed to send.",
+            durationMs: 7000,
+          });
         }
         setMode("login");
         setPassword("");
         setPassword2("");
-        setInfo("Check your email to verify your account, then sign in.");
-        showSnackbar({
-          icon: "check",
-          message: "Account created. Verify your email, then sign in.",
-          durationMs: 6000,
-        });
+        setInfo(
+          mailOk
+            ? "Check your email to verify your account, then sign in."
+            : "Account created, but email did not send. Try Sign in → Send again, or check mail.env."
+        );
+        if (mailOk) {
+          showSnackbar({
+            icon: "check",
+            tone: "success",
+            center: true,
+            message: "Account created. Verify your email, then sign in.",
+            durationMs: 6000,
+          });
+        }
         return;
       }
 
@@ -146,24 +173,26 @@ export default function AuthGate({
   };
 
   const title =
-    mode === "forgot"
+    mode === "forgot" || mode === "reset"
       ? "Reset password"
-      : mode === "reset"
-        ? "Choose new password"
-        : mode === "register"
-          ? "Create an account"
-          : "Sign in to your workspace";
+      : mode === "register"
+        ? "Sign-up"
+        : "Sign-in";
 
   return (
     <div className="auth-gate">
       <form className="auth-card" onSubmit={submit}>
-        <h1>{APP_NAME}</h1>
-        <p className="auth-sub">{title}</p>
-        {mode === "login" ? (
-          <p className="auth-demo-hint">
-            Demo: <code>{DEMO_EMAIL}</code> / <code>{DEMO_PASSWORD}</code>
-          </p>
-        ) : null}
+        <div className="auth-brand">
+          <img
+            className="auth-logo"
+            src="/app-icon.png"
+            alt={APP_NAME}
+            width={56}
+            height={56}
+            draggable={false}
+          />
+          <h1>{title}</h1>
+        </div>
         {mode !== "reset" ? (
           <label>
             Email
@@ -171,6 +200,7 @@ export default function AuthGate({
               type="email"
               autoComplete="email"
               required
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -183,6 +213,9 @@ export default function AuthGate({
               type="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               required
+              placeholder={
+                mode === "login" ? "Your password" : "At least 8 characters"
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -195,6 +228,7 @@ export default function AuthGate({
               type="password"
               autoComplete="new-password"
               required
+              placeholder="Repeat password"
               value={password2}
               onChange={(e) => setPassword2(e.target.value)}
             />

@@ -12,9 +12,12 @@ export default function Snackbar() {
 
   if (!req) return null;
 
+  const hostClass = req.center ? "snackbar-host snackbar-host--center" : "snackbar-host";
+  const barClass = req.tone ? `snackbar snackbar--${req.tone}` : "snackbar";
+
   return (
-    <div className="snackbar-host" aria-live="polite" aria-atomic="true">
-      <div className="snackbar" role="status" key={req.id}>
+    <div className={hostClass} aria-live="polite" aria-atomic="true">
+      <div className={barClass} role="status" key={req.id}>
         <span className="snackbar-icon" aria-hidden="true">
           <Icon name={req.icon || "bell"} size={18} />
         </span>

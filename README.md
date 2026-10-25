@@ -14,16 +14,16 @@
 npm install
 npm start          # same as npm run pb
 # → http://127.0.0.1:8090
+
+# While PB is already running, rebuild UI only (no restart):
+npm run pb:ui
 ```
 
 1. Open the app URL (not `/_/` — that is the PocketBase admin).
 2. First PocketBase boot: create a superuser at the install link if prompted (admin only).
-3. Sign in with the demo account (seeded on migrate), or register your own:
-   - Email: `demo@projectbinder.local`
-   - Password: `demodemodemo`
-4. New accounts must **verify email** before sign-in (demo user is pre-verified).
-5. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
-6. Sign out: Settings → Data → Account.
+3. **Register** an account, then sign in. New accounts must **verify email** before sign-in (needs Resend/`mail.env` locally, or cloud mail).
+4. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
+5. Sign out: Settings → Data → Account.
 
 Fetch binary only: `npm run pb:fetch`. Optional Docker: `docker compose up` (see `docker-compose.yml`).
 

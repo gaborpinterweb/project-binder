@@ -1012,17 +1012,24 @@ export function clearClientAppState() {
   } catch {}
 }
 
-export function hasSeenLaunch() {
+function launchSeenStorageKey(userId) {
+  const id = userId != null ? String(userId).trim() : "";
+  return id ? `${LAUNCH_SEEN_KEY}:${id}` : LAUNCH_SEEN_KEY;
+}
+
+/** @param {string} [userId] PocketBase user id when signed in; omit for legacy Node. */
+export function hasSeenLaunch(userId) {
   try {
-    return localStorage.getItem(LAUNCH_SEEN_KEY) === "1";
+    return localStorage.getItem(launchSeenStorageKey(userId)) === "1";
   } catch {
     return false;
   }
 }
 
-export function markLaunchSeen() {
+/** @param {string} [userId] PocketBase user id when signed in; omit for legacy Node. */
+export function markLaunchSeen(userId) {
   try {
-    localStorage.setItem(LAUNCH_SEEN_KEY, "1");
+    localStorage.setItem(launchSeenStorageKey(userId), "1");
   } catch {}
 }
 

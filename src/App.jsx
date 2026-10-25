@@ -100,6 +100,12 @@ import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
+import { getPb, isPbMode } from "./pb/client.js";
+
+function currentLaunchUserId() {
+  if (!isPbMode()) return "";
+  return getPb().authStore.record?.id || "";
+}
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -322,7 +328,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (loaded && !loadError && !hasSeenLaunch()) setLaunchOpen(true);
+    if (loaded && !loadError && !hasSeenLaunch(currentLaunchUserId())) {
+      setLaunchOpen(true);
+    }
   }, [loaded, loadError]);
 
   useEffect(() => {
@@ -1830,7 +1838,7 @@ export default function App() {
       {launchOpen && (
         <LaunchDialog
           onStart={() => {
-            markLaunchSeen();
+            markLaunchSeen(currentLaunchUserId());
             setLaunchOpen(false);
           }}
         />

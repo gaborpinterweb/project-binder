@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { pickBackupFolder, saveBackupSettings } from "../api.js";
-import { askBackupFolderFailed } from "../backupFolderDialog.js";
 import { Icon } from "../icons.jsx";
 import { APP_NAME } from "../utils.js";
 
@@ -14,15 +12,6 @@ const STEPS = [
       { icon: "plus", text: "Create projects, tasks, notes and more" },
       { icon: "stopwatch", text: "Track time spent on tasks and projects" },
       { icon: "asterisk", text: "Master board shows all tasks from all projects" },
-    ],
-  },
-  {
-    icon: "folder",
-    title: "Select a backup folder",
-    points: [
-      { icon: "lock", text: "Your data stays offline on your machine" },
-      { icon: "folder", text: "Pick a folder to periodically create backups" },
-      { icon: "cloud", text: "Tip: use Google Drive, iCloud, or other cloud storage" },
     ],
   },
   {
@@ -53,32 +42,11 @@ const STEPS = [
 
 export default function LaunchDialog({ onStart }) {
   const [step, setStep] = useState(0);
-  const [busy, setBusy] = useState(false);
   const current = STEPS[step];
+  const isLast = step === STEPS.length - 1;
 
   const finish = () => onStart();
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-
-  const handleSelectFolder = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      for (;;) {
-        const picked = await pickBackupFolder();
-        if (picked.cancelled || !picked.path) return;
-        try {
-          await saveBackupSettings({ enabled: true, folderPath: picked.path });
-          goNext();
-          return;
-        } catch {
-          const retry = await askBackupFolderFailed();
-          if (!retry) return;
-        }
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -87,50 +55,13 @@ export default function LaunchDialog({ onStart }) {
         e.stopPropagation();
         return;
       }
-      if (e.key !== "Enter" || busy) return;
-      if (step === 0) goNext();
-      else if (step === 1) goNext();
-      else finish();
+      if (e.key !== "Enter") return;
+      if (isLast) finish();
+      else goNext();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [step, busy, onStart]);
-
-  let primary = null;
-  if (step === 0) {
-    primary = (
-      <button type="button" className="launch-cta" onClick={goNext}>
-        Next
-      </button>
-    );
-  } else if (step === 1) {
-    primary = (
-      <div className="launch-cta-row">
-        <button
-          type="button"
-          className="launch-cta-secondary"
-          disabled={busy}
-          onClick={goNext}
-        >
-          Skip for now
-        </button>
-        <button
-          type="button"
-          className="launch-cta"
-          disabled={busy}
-          onClick={handleSelectFolder}
-        >
-          {busy ? "…" : "Select folder"}
-        </button>
-      </div>
-    );
-  } else {
-    primary = (
-      <button type="button" className="launch-cta" onClick={finish}>
-        Let&apos;s go
-      </button>
-    );
-  }
+  }, [step, onStart]);
 
   return (
     <div className="ov" role="presentation">
@@ -180,7 +111,17 @@ export default function LaunchDialog({ onStart }) {
                 />
               ))}
             </div>
-            <div className="launch-actions">{primary}</div>
+            <div className="launch-actions">
+              {isLast ? (
+                <button type="button" className="launch-cta" onClick={finish}>
+                  Let&apos;s go
+                </button>
+              ) : (
+                <button type="button" className="launch-cta" onClick={goNext}>
+                  Next
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

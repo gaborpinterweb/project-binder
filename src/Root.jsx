@@ -14,6 +14,7 @@ function readAuthParams() {
   return {
     verify: q.get("verify") || "",
     reset: q.get("reset") || "",
+    emailChange: q.get("emailChange") || "",
   };
 }
 
@@ -21,6 +22,7 @@ function clearAuthParams() {
   const url = new URL(window.location.href);
   url.searchParams.delete("verify");
   url.searchParams.delete("reset");
+  url.searchParams.delete("emailChange");
   const next = url.pathname + (url.searchParams.toString() ? `?${url.searchParams}` : "") + url.hash;
   window.history.replaceState({}, "", next);
 }
@@ -55,12 +57,20 @@ export default function Root() {
   const [ready, setReady] = useState(!isPbMode());
   const [authed, setAuthed] = useState(() => {
     if (!isPbMode()) return true;
+    const { reset, emailChange } = readAuthParams();
+    if (reset || emailChange) return false;
     return sessionIsVerified();
   });
   const [bootError, setBootError] = useState("");
   const [booting, setBooting] = useState(false);
   const [resetToken, setResetToken] = useState("");
-  const [authGateMode, setAuthGateMode] = useState("login");
+  const [emailChangeToken, setEmailChangeToken] = useState("");
+  const [authGateMode, setAuthGateMode] = useState(() => {
+    const { reset, emailChange } = readAuthParams();
+    if (emailChange) return "emailChange";
+    if (reset) return "reset";
+    return "login";
+  });
 
   const finishAuth = useCallback(async () => {
     setBooting(true);
@@ -85,18 +95,9 @@ export default function Root() {
 
   useEffect(() => {
     if (!isPbMode()) return;
-    if (sessionIsVerified()) {
-      finishAuth();
-    } else if (getPb().authStore.isValid) {
-      getPb().authStore.clear();
-    }
-  }, [finishAuth]);
-
-  useEffect(() => {
-    if (!isPbMode()) return;
     let cancelled = false;
     (async () => {
-      const { verify, reset } = readAuthParams();
+      const { verify, reset, emailChange } = readAuthParams();
       if (verify) {
         try {
           await getPb().collection("users").confirmVerification(verify);
@@ -121,16 +122,33 @@ export default function Root() {
             durationMs: 6000,
           });
         }
-      } else if (reset) {
+        return;
+      }
+      if (reset) {
         clearAuthParams();
         setResetToken(reset);
         setAuthGateMode("reset");
+        return;
+      }
+      if (emailChange) {
+        getPb().authStore.clear();
+        clearAuthParams();
+        setAuthed(false);
+        setReady(false);
+        setEmailChangeToken(emailChange);
+        setAuthGateMode("emailChange");
+        return;
+      }
+      if (sessionIsVerified()) {
+        await finishAuth();
+      } else if (getPb().authStore.isValid) {
+        getPb().authStore.clear();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [finishAuth]);
 
   useEffect(() => {
     if (!isPbMode()) return;
@@ -172,6 +190,11 @@ export default function Root() {
           resetToken={resetToken}
           onConsumedResetToken={() => {
             setResetToken("");
+            setAuthGateMode("login");
+          }}
+          emailChangeToken={emailChangeToken}
+          onConsumedEmailChangeToken={() => {
+            setEmailChangeToken("");
             setAuthGateMode("login");
           }}
         />

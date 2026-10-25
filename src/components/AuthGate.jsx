@@ -7,9 +7,11 @@ import { APP_NAME } from "../utils.js";
 /**
  * @param {{
  *   onAuthed?: () => void,
- *   initialMode?: "login" | "register" | "forgot" | "reset",
+ *   initialMode?: "login" | "register" | "forgot" | "reset" | "emailChange",
  *   resetToken?: string,
  *   onConsumedResetToken?: () => void,
+ *   emailChangeToken?: string,
+ *   onConsumedEmailChangeToken?: () => void,
  * }} props
  */
 export default function AuthGate({
@@ -17,6 +19,8 @@ export default function AuthGate({
   initialMode = "login",
   resetToken = "",
   onConsumedResetToken,
+  emailChangeToken = "",
+  onConsumedEmailChangeToken,
 }) {
   const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState("");
@@ -39,6 +43,16 @@ export default function AuthGate({
       setInfo("Choose a new password.");
     }
   }, [resetToken]);
+
+  useEffect(() => {
+    if (emailChangeToken) {
+      setMode("emailChange");
+      setPassword("");
+      setPassword2("");
+      setError("");
+      setInfo("Enter your current password to confirm the new email.");
+    }
+  }, [emailChangeToken]);
 
   const handleUnverified = async (addr) => {
     const choice = await askConfirm({
@@ -117,6 +131,24 @@ export default function AuthGate({
         return;
       }
 
+      if (mode === "emailChange") {
+        if (!emailChangeToken) throw new Error("Missing email change token");
+        await pb.collection("users").confirmEmailChange(emailChangeToken, password);
+        pb.authStore.clear();
+        onConsumedEmailChangeToken?.();
+        setMode("login");
+        setPassword("");
+        setInfo("Email updated. Sign in with your new email.");
+        showSnackbar({
+          icon: "check",
+          tone: "success",
+          center: true,
+          message: "Email updated. Sign in.",
+          durationMs: 5000,
+        });
+        return;
+      }
+
       if (mode === "register") {
         if (password !== password2) throw new Error("Passwords do not match");
         if (password.length < 8) throw new Error("Password must be at least 8 characters");
@@ -175,9 +207,13 @@ export default function AuthGate({
   const title =
     mode === "forgot" || mode === "reset"
       ? "Reset password"
-      : mode === "register"
-        ? "Sign-up"
-        : "Sign-in";
+      : mode === "emailChange"
+        ? "Confirm email change"
+        : mode === "register"
+          ? "Sign-up"
+          : "Sign-in";
+
+  const hideEmail = mode === "reset" || mode === "emailChange";
 
   return (
     <div className="auth-gate">
@@ -193,7 +229,7 @@ export default function AuthGate({
           />
           <h1>{title}</h1>
         </div>
-        {mode !== "reset" ? (
+        {!hideEmail ? (
           <label>
             Email
             <input
@@ -211,10 +247,16 @@ export default function AuthGate({
             Password
             <input
               type="password"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              autoComplete={
+                mode === "login" || mode === "emailChange"
+                  ? "current-password"
+                  : "new-password"
+              }
               required
               placeholder={
-                mode === "login" ? "Your password" : "At least 8 characters"
+                mode === "login" || mode === "emailChange"
+                  ? "Your password"
+                  : "At least 8 characters"
               }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -243,9 +285,11 @@ export default function AuthGate({
               ? "Send reset link"
               : mode === "reset"
                 ? "Update password"
-                : mode === "register"
-                  ? "Create account"
-                  : "Sign in"}
+                : mode === "emailChange"
+                  ? "Confirm"
+                  : mode === "register"
+                    ? "Create account"
+                    : "Sign in"}
         </button>
         {mode === "login" ? (
           <>
@@ -286,6 +330,7 @@ export default function AuthGate({
               setError("");
               setInfo("");
               onConsumedResetToken?.();
+              onConsumedEmailChangeToken?.();
             }}
           >
             Back to sign in

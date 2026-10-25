@@ -126,6 +126,13 @@ async function main() {
 <p><a href="${c.appUrl}/?reset={TOKEN}">Reset password</a></p>
 <p>If you did not request this, you can ignore this email.</p>`,
   };
+  const confirmEmailChangeTemplate = {
+    subject: "Confirm your new Project Binder email",
+    body: `<p>Hello,</p>
+<p>Confirm your new email for Project Binder by clicking the link below:</p>
+<p><a href="${c.appUrl}/?emailChange={TOKEN}">Confirm email change</a></p>
+<p>If you did not request this, you can ignore this email.</p>`,
+  };
 
   await jsonFetch(`${c.pbUrl}/api/collections/${users.id}`, {
     method: "PATCH",
@@ -133,10 +140,11 @@ async function main() {
     body: JSON.stringify({
       verificationTemplate,
       resetPasswordTemplate,
+      confirmEmailChangeTemplate,
     }),
   });
 
-  console.log("configure-pb-mail: Resend SMTP + verify/reset links applied");
+  console.log("configure-pb-mail: Resend SMTP + verify/reset/email-change links applied");
 }
 
 main().catch((err) => {

@@ -17,6 +17,7 @@ import {
   PC,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
+import { askPrompt } from "../promptDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 
@@ -140,6 +141,67 @@ export default function SettingsDialog({
       window.location.reload();
     } catch (e) {
       alert(e.message || "Could not import workspace.");
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    const current = String(getPb().authStore.record?.email || "").trim();
+    const entered = await askPrompt({
+      title: "Change email",
+      message: "Enter the new email address. We will send a confirmation link there.",
+      defaultValue: "",
+      placeholder: "you@example.com",
+      confirmLabel: "Send link",
+    });
+    if (entered == null) return;
+    const newEmail = String(entered).trim();
+    if (!newEmail) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "Enter a new email address.",
+        durationMs: 4000,
+      });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "That does not look like a valid email.",
+        durationMs: 4000,
+      });
+      return;
+    }
+    if (current && newEmail.toLowerCase() === current.toLowerCase()) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "That is already your current email.",
+        durationMs: 4000,
+      });
+      return;
+    }
+    try {
+      await getPb().collection("users").requestEmailChange(newEmail);
+      showSnackbar({
+        icon: "check",
+        tone: "success",
+        center: true,
+        message: "Confirmation email sent. Check the new inbox.",
+        durationMs: 6000,
+      });
+    } catch (err) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: err?.message || "Could not request email change",
+        durationMs: 6000,
+      });
     }
   };
 
@@ -323,7 +385,11 @@ export default function SettingsDialog({
                     <b>Change Email</b>
                     <span>Update the email on this account</span>
                   </div>
-                  <button type="button" className="settings-row-btn" disabled>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    onClick={() => void handleChangeEmail()}
+                  >
                     Change Email
                   </button>
                 </div>

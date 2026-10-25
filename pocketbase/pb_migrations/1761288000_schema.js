@@ -1,8 +1,8 @@
 /**
  * Product schema: owner-scoped workspace files + attachments, public signup.
- * Email SMTP/templates for verify/reset are applied at runtime by configure-pb-mail
- * (APP_URL from env). Templates below use {APP_URL} so links stay host-agnostic
- * until mail configure runs.
+ * Email SMTP/templates for verify/reset/email-change are applied at runtime by
+ * configure-pb-mail (APP_URL from env). Templates below use {APP_URL} so links
+ * stay host-agnostic until mail configure runs.
  */
 migrate(
   (app) => {
@@ -29,6 +29,13 @@ migrate(
       body: `<p>Hello,</p>
 <p>Reset your password by clicking the link below:</p>
 <p><a href="{APP_URL}/?reset={TOKEN}">Reset password</a></p>
+<p>If you did not request this, you can ignore this email.</p>`,
+    };
+    users.confirmEmailChangeTemplate = {
+      subject: "Confirm your new Project Binder email",
+      body: `<p>Hello,</p>
+<p>Confirm your new email for Project Binder by clicking the link below:</p>
+<p><a href="{APP_URL}/?emailChange={TOKEN}">Confirm email change</a></p>
 <p>If you did not request this, you can ignore this email.</p>`,
     };
     app.save(users);

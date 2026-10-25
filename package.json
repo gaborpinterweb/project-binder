@@ -8,11 +8,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:commercial": "VITE_COMMERCIAL=true vite build",
     "start": "npm run pb",
+    "start:commercial": "VITE_COMMERCIAL=true npm run pb",
     "start:node": "node server.cjs",
     "pb:fetch": "node scripts/fetch-pocketbase.cjs",
     "pb:mail": "node scripts/configure-pb-mail.cjs",
     "pb:ui": "node scripts/rebuild-pb-ui.cjs",
+    "pb:ui:commercial": "VITE_COMMERCIAL=true node scripts/rebuild-pb-ui.cjs",
     "pb": "node scripts/run-pocketbase.cjs"
   },
   "dependencies": {

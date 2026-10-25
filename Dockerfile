@@ -9,10 +9,12 @@ COPY . .
 # Always fetch a Linux binary inside the image (ignore any host binary).
 RUN rm -f pocketbase/pocketbase pocketbase/pocketbase.exe && npm run pb:fetch
 
-ARG VITE_CLOUD=
-ARG VITE_STRIPE_CHECKOUT_URL=
-ENV VITE_CLOUD=$VITE_CLOUD \
-    VITE_STRIPE_CHECKOUT_URL=$VITE_STRIPE_CHECKOUT_URL
+ARG VITE_COMMERCIAL=
+ARG VITE_LS_CHECKOUT_URL=
+ARG VITE_LS_PORTAL_URL=
+ENV VITE_COMMERCIAL=$VITE_COMMERCIAL \
+    VITE_LS_CHECKOUT_URL=$VITE_LS_CHECKOUT_URL \
+    VITE_LS_PORTAL_URL=$VITE_LS_PORTAL_URL
 
 RUN npm run build \
   && mkdir -p pocketbase/pb_public \

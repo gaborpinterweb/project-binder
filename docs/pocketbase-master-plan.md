@@ -8,11 +8,11 @@ This document locks architecture so later work does not re-litigate decisions. I
 
 - **Web only.** Long term there is no desktop / Electron app. Users either self-host or use the paid cloud.
 - **OSS self-host:** one PocketBase process + `pb_data`; users bring their own VPS or optional Docker.
-- **Paid cloud:** the same app artifact operated by the project maintainer; multi-tenant single PocketBase instance; billing and mail around signup / limits later (see Cloud phase).
+- **Commercial (paid cloud):** the same app, built with `VITE_COMMERCIAL=true`, operated by the project maintainer; multi-tenant single PocketBase instance; Lemon Squeezy billing links in Settings (see Cloud phase).
 - **Electron:** removed early (web-only pivot). Do **not** reintroduce a desktop shell.
 - **Node `server.cjs`:** transitional API/persistence until PocketBase auth + JSON files reach HEAD feature parity, then retire Node as the product server.
 
-Same codebase for self-host and cloud. Cloud differs by who runs the process and whether billing is enabled, not by a forked app.
+Same codebase for Community (self-host) and Commercial. They differ by who runs the process and whether the commercial build-args enable Settings → Pro, not by a forked app.
 
 ## Non-regression (hard constraint)
 
@@ -129,8 +129,8 @@ Restore every HEAD capability on the web / PocketBase path:
 - Packaging in-repo: [`Dockerfile`](../Dockerfile), [`railway.toml`](../railway.toml), [`deploy/railway.env.example`](../deploy/railway.env.example), volume mount **`/data`** (survives redeploys)
 - Public signup; **email verification required** before login (client gate + Resend)
 - **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Railway env → configure on boot)
-- **Billing later: [Lemon Squeezy](https://www.lemonsqueezy.com)** — out of auth-mail MVP; simplest MoR when subscriptions ship
-- `VITE_CLOUD` build-arg for hosted-only chrome
+- **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — Commercial build only; checkout + customer portal URLs via `VITE_LS_*` (link-only; no webhooks / entitlements yet)
+- `VITE_COMMERCIAL=true` build-arg enables Settings → Pro; Community (default) has no payment UI
 - Keep core MIT; billing and cloud mail stay thin and optional for self-host
 
 ### 5. Retire Node product server
@@ -145,7 +145,7 @@ Only after web / PocketBase matches the HEAD feature set:
 
 - Electron removed.
 - `npm start` / `npm run pb` is the product path (PocketBase).
-- Auth gate, client workspace engine, `user_data` + `attachments` migrations, export/import zip, optional Compose + `VITE_CLOUD`.
+- Auth gate, client workspace engine, `user_data` + `attachments` migrations, export/import zip, optional Compose + Community / Commercial builds (`VITE_COMMERCIAL`).
 - Resend mail config (`mail.env` / `pb:mail`), email verification gate + password reset UI.
 - Railway/Docker packaging (`Dockerfile`, volume `/data`, env example).
 - Legacy Node: `npm run start:node` only.

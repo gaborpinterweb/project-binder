@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Build UI → pocketbase/pb_public, then serve with the PocketBase binary.
+ * Community by default; Commercial when VITE_COMMERCIAL=true|1 or --commercial.
  * If pocketbase/mail.env has RESEND_API_KEY, apply SMTP after health check.
  */
 const fs = require("fs");
@@ -18,6 +19,11 @@ const MIGRATIONS = path.join(PB_DIR, "pb_migrations");
 const MAIL_ENV = path.join(PB_DIR, "mail.env");
 const PB_HTTP = "http://127.0.0.1:8090";
 
+const commercial =
+  process.env.VITE_COMMERCIAL === "true" ||
+  process.env.VITE_COMMERCIAL === "1" ||
+  process.argv.includes("--commercial");
+
 function runNode(script, args = []) {
   const r = spawnSync(process.execPath, [script, ...args], {
     cwd: ROOT,
@@ -26,9 +32,9 @@ function runNode(script, args = []) {
   if (r.status !== 0) process.exit(r.status || 1);
 }
 
-function runNpm(args) {
+function runNpm(args, env = process.env) {
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-  const r = spawnSync(npm, args, { cwd: ROOT, stdio: "inherit" });
+  const r = spawnSync(npm, args, { cwd: ROOT, stdio: "inherit", env });
   if (r.status !== 0) process.exit(r.status || 1);
 }
 
@@ -60,7 +66,14 @@ async function waitHealthy(timeoutMs = 60000) {
 }
 
 runNode(path.join(__dirname, "fetch-pocketbase.cjs"));
-runNpm(["run", "build"]);
+if (commercial) {
+  runNpm(["run", "build:commercial"], {
+    ...process.env,
+    VITE_COMMERCIAL: "true",
+  });
+} else {
+  runNpm(["run", "build"]);
+}
 
 if (!fs.existsSync(path.join(DIST, "index.html"))) {
   console.error("build missing dist/index.html");
@@ -74,6 +87,7 @@ if (!fs.existsSync(MIGRATIONS)) {
   process.exit(1);
 }
 
+console.log(`Build: ${commercial ? "Commercial" : "Community"}`);
 console.log(`Serving UI from ${PUBLIC}`);
 console.log(`Migrations: ${MIGRATIONS}`);
 console.log("PocketBase: http://127.0.0.1:8090");

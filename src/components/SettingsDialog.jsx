@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../icons.jsx";
 import { exportWorkspace, fetchArchivedProjects, importBackup } from "../api.js";
-import { getPb, isPbMode } from "../pb/client.js";
+import {
+  getPb,
+  isCommercialMode,
+  isPbMode,
+  lsCheckoutUrl,
+  lsPortalUrl,
+} from "../pb/client.js";
 import {
   APP_NAME,
   APP_COMMIT,
@@ -50,6 +56,9 @@ export default function SettingsDialog({
     if (isPbMode()) {
       list.push({ id: "account", label: "Account", icon: "Account" });
     }
+    if (isCommercialMode()) {
+      list.push({ id: "pro", label: "Pro", icon: "Pro" });
+    }
     list.push(
       { id: "data", label: "Data", icon: "Workspace" },
       { id: "archive", label: "Archive", icon: "Archive" },
@@ -89,7 +98,16 @@ export default function SettingsDialog({
   useEffect(() => {
     if (!import.meta.env.DEV && tab === "developer") setTab("experience");
     if (!isPbMode() && tab === "account") setTab("experience");
+    if (!isCommercialMode() && tab === "pro") setTab("experience");
   }, [tab]);
+
+  const openProUrl = (url, missingLabel) => {
+    if (url) {
+      window.open(url, "_blank", "noopener");
+      return;
+    }
+    alert(`${missingLabel} URL is not configured for this build.`);
+  };
 
   useEffect(() => {
     const esc = (e) => {
@@ -350,6 +368,50 @@ export default function SettingsDialog({
             </section>
           )}
 
+          {tab === "pro" && isCommercialMode() && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Hosted commercial instance</b>
+                    <span>
+                      Pro for this hosted Project Binder is billed via Lemon
+                      Squeezy.
+                    </span>
+                  </div>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Subscribe / upgrade</b>
+                    <span>Open checkout to start or change a subscription</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    disabled={!lsCheckoutUrl()}
+                    onClick={() => openProUrl(lsCheckoutUrl(), "Checkout")}
+                  >
+                    Subscribe
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Manage subscription</b>
+                    <span>Update payment method or cancel in the customer portal</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    disabled={!lsPortalUrl()}
+                    onClick={() => openProUrl(lsPortalUrl(), "Portal")}
+                  >
+                    Manage
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
           {tab === "data" && (
             <section className="settings-section">
               <div className="settings-rows">
@@ -463,7 +525,8 @@ export default function SettingsDialog({
                   <div className="settings-about-copy">
                     <b>{APP_NAME}</b>
                     <p className="settings-about-byline">
-                      Version {APP_VERSION}
+                      {isCommercialMode() ? "Commercial" : "Community"} build{" "}
+                      {APP_VERSION}
                       {APP_COMMIT ? ` (${APP_COMMIT})` : ""}
                     </p>
                     <p className="settings-about-byline">

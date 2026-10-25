@@ -4,7 +4,7 @@
 
 - Free, open-source (MIT)
 - Web workspace for freelance projects
-- **Self-host** with one PocketBase binary, or run a **paid cloud** instance (`VITE_CLOUD=true`)
+- **Self-host** with one PocketBase binary (**Community** build), or run a **Commercial** hosted instance (`VITE_COMMERCIAL=true`)
 - Boards, master board, notes, files, databases, timelogs, trash, archive, export/import
 - Electron desktop has been removed
 
@@ -12,11 +12,13 @@
 
 ```bash
 npm install
-npm start          # same as npm run pb
+npm start                 # Community (default); same as npm run pb
+npm run start:commercial  # Commercial (Settings → Pro); pass VITE_LS_* if desired
 # → http://127.0.0.1:8090
 
 # While PB is already running, rebuild UI only (no restart):
 npm run pb:ui
+npm run pb:ui:commercial
 ```
 
 1. Open the app URL (not `/_/` — that is the PocketBase admin).
@@ -41,9 +43,22 @@ Optional for local; recommended for hosted cloud.
 
 Without `mail.env`, the app still runs; verification/reset emails simply will not send.
 
-### Cloud flag
+### Community vs Commercial builds
 
-Build with `VITE_CLOUD=true` for hosted chrome. Billing (e.g. Lemon Squeezy) is planned later; not required for auth mail.
+- **Community** (default): `npm start` / `npm run build` / Docker without commercial build-args. Full features; no payment UI.
+- **Commercial**: `npm run start:commercial` (or `build:commercial`). Settings → Pro; optional Lemon Squeezy URLs.
+
+```bash
+# Local serve
+npm start
+VITE_LS_CHECKOUT_URL=https://… VITE_LS_PORTAL_URL=https://… npm run start:commercial
+
+# Build only
+npm run build
+VITE_LS_CHECKOUT_URL=https://… VITE_LS_PORTAL_URL=https://… npm run build:commercial
+```
+
+Auth mail (Resend) is independent of the commercial flag.
 
 ### Deploy on Railway
 
@@ -52,7 +67,7 @@ Preferred hosted path (same Docker image keeps **`/data` volume** across deploys
 1. Create a Railway project from this repo (Dockerfile / [`railway.toml`](railway.toml)).
 2. Add a **volume** mounted at **`/data`** (PocketBase `pb_data`).
 3. Set variables from [`deploy/railway.env.example`](deploy/railway.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL). Add Resend vars for verify/reset mail.
-4. Set Docker **build-arg** `VITE_CLOUD=true` if you want hosted chrome.
+4. For a Commercial instance, set Docker **build-args** `VITE_COMMERCIAL=true`, `VITE_LS_CHECKOUT_URL`, and `VITE_LS_PORTAL_URL`. Leave them empty for Community.
 5. Deploy. Open the public URL; register or use demo after migrations run.
 
 Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data.

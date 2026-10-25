@@ -21,11 +21,28 @@ export function isPbMode() {
   return false;
 }
 
-export function isCloudMode() {
+/** True for the Commercial production build (billing UI). Community is the default. */
+export function isCommercialMode() {
   return (
-    import.meta.env.VITE_CLOUD === "true" ||
-    import.meta.env.VITE_CLOUD === "1"
+    import.meta.env.VITE_COMMERCIAL === "true" ||
+    import.meta.env.VITE_COMMERCIAL === "1"
   );
+}
+
+function trimUrl(v) {
+  if (v == null) return "";
+  const s = String(v).trim();
+  return s || "";
+}
+
+/** Lemon Squeezy checkout URL (Commercial builds). */
+export function lsCheckoutUrl() {
+  return trimUrl(import.meta.env.VITE_LS_CHECKOUT_URL);
+}
+
+/** Lemon Squeezy customer portal URL (Commercial builds). */
+export function lsPortalUrl() {
+  return trimUrl(import.meta.env.VITE_LS_PORTAL_URL);
 }
 
 let pb;

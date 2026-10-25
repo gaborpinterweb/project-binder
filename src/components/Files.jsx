@@ -259,6 +259,8 @@ export default function Files({
   tabC,
   readonly,
   onApplyWorkspace,
+  routeFileId = null,
+  onFilePreview = null,
 }) {
   const d = mod[2] || { id: "", files: [] };
   const files = d.files || [];
@@ -275,6 +277,25 @@ export default function Files({
     const currentKey = `${folder?.id || ""}/${d.id || ""}`;
     return allFilesTabs(folders).filter((t) => t.key !== currentKey);
   }, [folders, folder?.id, d.id]);
+
+  const openPreview = (file) => {
+    setPreview(file);
+    if (onFilePreview) onFilePreview(file?.id || null);
+  };
+  const closePreview = () => {
+    setPreview(null);
+    if (onFilePreview) onFilePreview(null);
+  };
+
+  useEffect(() => {
+    if (!routeFileId) {
+      setPreview((prev) => (prev ? null : prev));
+      return;
+    }
+    const hit = files.find((f) => f.id === routeFileId);
+    if (hit) setPreview(hit);
+    else setPreview(null);
+  }, [routeFileId, files]);
 
   const keepNav = {
     keepNav: { project: folder.id, board: d.id, g: null },
@@ -496,7 +517,7 @@ export default function Files({
                 <li
                   key={file.id}
                   className="files-row"
-                  onClick={() => setPreview(file)}
+                  onClick={() => openPreview(file)}
                 >
                   <FileTypeIcon name={file.name} mime={file.mime} size={22} />
                   <button
@@ -505,7 +526,7 @@ export default function Files({
                     title={file.name}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setPreview(file);
+                      openPreview(file);
                     }}
                   >
                     {file.name}
@@ -543,10 +564,13 @@ export default function Files({
         <FilePreviewDialog
           file={preview}
           files={sortedFiles}
-          onFileChange={setPreview}
+          onFileChange={(file) => {
+            setPreview(file);
+            if (onFilePreview) onFilePreview(file?.id || null);
+          }}
           project={folder.id}
           filesTab={d.id}
-          onClose={() => setPreview(null)}
+          onClose={closePreview}
         />
       ) : null}
     </div>

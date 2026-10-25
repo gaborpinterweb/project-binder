@@ -844,6 +844,8 @@ export default function Notes({
   tabC,
   readonly,
   onApplyWorkspace,
+  routeNoteId = null,
+  onNoteRouteSelect = null,
 }) {
   const d = mod[2] || { id: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
@@ -904,12 +906,15 @@ export default function Notes({
   }, [folders, folder?.id, d.id]);
 
   const rememberedId = (tabKey && selectedByTab[tabKey]) || null;
+  const routeMatch =
+    routeNoteId && notes.some((n) => n.id === routeNoteId) ? routeNoteId : null;
   const selectedId =
-    rememberedId && notes.some((n) => n.id === rememberedId)
+    routeMatch ||
+    (rememberedId && notes.some((n) => n.id === rememberedId)
       ? rememberedId
-      : notes[0]?.id || null;
+      : notes[0]?.id || null);
 
-  const setSelectedId = (id) => {
+  const persistSelectedId = (id) => {
     if (!tabKey) return;
     const nextId = id || null;
     setSelectedByTab((prev) => {
@@ -920,6 +925,13 @@ export default function Notes({
       return next;
     });
     saveNotesSelected(tabKey, nextId);
+  };
+
+  /** User-driven selection — also updates the deep-link path when wired. */
+  const setSelectedId = (id) => {
+    const nextId = id || null;
+    persistSelectedId(nextId);
+    if (onNoteRouteSelect) onNoteRouteSelect(nextId);
   };
 
   const unlockKey = (noteId) =>
@@ -959,7 +971,7 @@ export default function Notes({
     if (!tabKey || !rememberedId) return;
     const all = Array.isArray(d.notes) ? d.notes : [];
     if (all.some((n) => n.id === rememberedId)) return;
-    setSelectedId(notes[0]?.id || null);
+    persistSelectedId(notes[0]?.id || null);
   }, [tabKey, d.notes, rememberedId, notes]);
 
   useEffect(() => {

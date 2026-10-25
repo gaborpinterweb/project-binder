@@ -25,6 +25,8 @@ npm run pb:ui
 4. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
 5. Sign out: Settings → Data → Account.
 
+Deep links use path URLs (e.g. `/projects/<id>/tabs/<id>/tasks/<id>`). PocketBase’s default `--indexFallback` serves `index.html` for unknown paths so refresh works; do not start the binary with `--indexFallback=0`.
+
 Fetch binary only: `npm run pb:fetch`. Optional Docker: `docker compose up` (see `docker-compose.yml`).
 
 If migrations changed and you already have `pocketbase/pb_data`, delete that folder once so migrations re-apply (loses local PB data).

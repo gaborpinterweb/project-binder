@@ -1002,7 +1002,14 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .prompt-dlg{width:min(400px,100%);box-shadow:0 16px 48px #00000033}
 .prompt-body{gap:10px}
 .prompt-title{margin:0;font-size:16px;font-weight:650;color:var(--ink)}
+.prompt-title-danger{color:#b42318}
 .prompt-msg{margin:0;font-size:13px;color:var(--mute);line-height:1.4}
+.delete-account-phrase{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;color:var(--ink)}
+.delete-account-callout{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:calc(var(--radius) - 4px);background:color-mix(in srgb,#b42318 8%,transparent);border:1px solid color-mix(in srgb,#b42318 28%,transparent)}
+.delete-account-callout-msg{margin:0;font-size:13px;color:var(--ink);line-height:1.4}
+.delete-account-callout-actions{display:flex;flex-wrap:wrap;gap:8px}
+.delete-account-callout-actions .dlg-create,
+.delete-account-callout-actions .dlg-delete{flex:1;min-width:0}
 .prompt-msg-pre{white-space:pre-wrap}
 .prompt-help{margin:0}
 .prompt-help-link{font-size:13px;font-weight:600;color:var(--acc);text-decoration:underline dotted;text-underline-offset:2px}

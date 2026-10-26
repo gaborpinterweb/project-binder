@@ -22,6 +22,7 @@ import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
+import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
 
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL =
@@ -86,6 +87,7 @@ export default function SettingsDialog({
   const [pwBusy, setPwBusy] = useState(false);
   const [billingPro, setBillingPro] = useState(() => isProUser());
   const [billingRefreshBusy, setBillingRefreshBusy] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const pwCurrentRef = useRef(null);
 
   useEffect(() => {
@@ -556,7 +558,7 @@ export default function SettingsDialog({
                   <button
                     type="button"
                     className="settings-row-btn settings-row-btn-danger"
-                    disabled
+                    onClick={() => setDeleteAccountOpen(true)}
                   >
                     Delete account
                   </button>
@@ -851,6 +853,10 @@ export default function SettingsDialog({
         </div>
       </div>
     </div>
+    <DeleteAccountDialog
+      open={deleteAccountOpen}
+      onClose={() => setDeleteAccountOpen(false)}
+    />
     {pwOpen ? (
       <div
         className="ov ov-prompt"

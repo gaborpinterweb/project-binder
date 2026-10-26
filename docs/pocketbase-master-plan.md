@@ -125,10 +125,10 @@ Restore every HEAD capability on the web / PocketBase path:
 ### 4. Cloud
 
 - Deploy the same image / binary layout (one PocketBase process + volume for `pb_data`)
-- **Host: [Railway](https://railway.app)** — simplest UI and method among common options (Fly.io, Render, Railway): GUI deploy, attach a volume, expose one port; little CLI required
-- Packaging in-repo: [`Dockerfile`](../Dockerfile), [`railway.toml`](../railway.toml), [`deploy/railway.env.example`](../deploy/railway.env.example), volume mount **`/data`** (survives redeploys)
+- **Host: [Fly.io](https://fly.io)** — local `fly deploy`, attach a volume, expose one port; Commercial build-args in `fly.toml`
+- Packaging in-repo: [`Dockerfile`](../Dockerfile), [`fly.toml`](../fly.toml), [`deploy/fly.env.example`](../deploy/fly.env.example), volume mount **`/data`** (survives redeploys)
 - Public signup; **email verification required** before login (client gate + Resend)
-- **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Railway env → configure on boot)
+- **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Fly secrets → configure on boot)
 - **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — Commercial build only; checkout + customer portal URLs via `VITE_LS_*` (link-only; no webhooks / entitlements yet)
 - `VITE_COMMERCIAL=true` build-arg enables Settings → Pro; Community (default) has no payment UI
 - Keep core MIT; billing and cloud mail stay thin and optional for self-host
@@ -147,7 +147,7 @@ Only after web / PocketBase matches the HEAD feature set:
 - `npm start` / `npm run pb` is the product path (PocketBase).
 - Auth gate, client workspace engine, `user_data` + `attachments` migrations, export/import zip, optional Compose + Community / Commercial builds (`VITE_COMMERCIAL`).
 - Resend mail config (`mail.env` / `pb:mail`), email verification gate + password reset UI.
-- Railway/Docker packaging (`Dockerfile`, volume `/data`, env example).
+- Fly.io/Docker packaging (`Dockerfile`, `fly.toml`, volume `/data`, env example).
 - Legacy Node: `npm run start:node` only.
 
 ## Explicit non-goals

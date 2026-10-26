@@ -1,4 +1,4 @@
-# Project Binder — PocketBase + static UI for Railway / Docker
+# Project Binder — PocketBase + static UI for Fly.io / Docker
 FROM node:22-bookworm AS build
 WORKDIR /app
 

@@ -60,22 +60,22 @@ VITE_LS_CHECKOUT_URL=https://… VITE_LS_PORTAL_URL=https://… npm run build:co
 
 Auth mail (Resend) is independent of the commercial flag.
 
-### Deploy on Railway
+### Deploy on Fly.io
 
-Preferred hosted path (same Docker image keeps **`/data` volume** across deploys so users/workspace survive new app versions).
+Preferred hosted path (same Docker image keeps a **`/data` volume** across deploys so users/workspace survive new app versions). Config: [`fly.toml`](fly.toml) (Commercial build by default). Deploy from your machine with [flyctl](https://fly.io/docs/hands-on/install-flyctl/).
 
-1. Create a Railway project from this repo (Dockerfile / [`railway.toml`](railway.toml)).
-2. Add a **volume** mounted at **`/data`** (PocketBase `pb_data`).
-3. Set variables from [`deploy/railway.env.example`](deploy/railway.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL). Add Resend vars for verify/reset mail.
-4. For a Commercial instance, set Docker **build-args** `VITE_COMMERCIAL=true`, `VITE_LS_CHECKOUT_URL`, and `VITE_LS_PORTAL_URL`. Leave them empty for Community.
-5. Deploy. Open the public URL; register or use demo after migrations run.
+1. `fly auth login`, then `fly apps create project-binder` (skip if the app already exists).
+2. Create a volume once: `fly volumes create pb_data --region ams --size 3` (mount name must match `fly.toml`).
+3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://project-binder.fly.dev`). Add Resend vars for verify/reset mail (`fly secrets set …`).
+4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Optionally set `VITE_LS_CHECKOUT_URL` / `VITE_LS_PORTAL_URL` there or via `fly deploy --build-arg`.
+5. `fly deploy`. Open the public URL; register after migrations run.
 
-Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data.
+Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data. Keep a **single machine** (SQLite).
 
 Local image check:
 
 ```bash
-docker build -t project-binder .
+docker build --build-arg VITE_COMMERCIAL=true -t project-binder .
 docker run --rm -p 8090:8090 -v binder-data:/data \
   -e PB_ADMIN_EMAIL=admin@example.com -e PB_ADMIN_PASSWORD=changeme \
   -e APP_URL=http://127.0.0.1:8090 project-binder

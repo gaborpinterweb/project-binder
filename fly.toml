@@ -1,0 +1,40 @@
+# Project Binder — Fly.io (Commercial). Deploy locally: fly deploy
+# Attach volume once: fly volumes create pb_data --region ams --size 3
+
+app = "project-binder"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+  [build.args]
+    VITE_COMMERCIAL = "true"
+    # Optional Lemon Squeezy (rebuild required when changing):
+    # VITE_LS_CHECKOUT_URL = "https://…"
+    # VITE_LS_PORTAL_URL = "https://…"
+
+[env]
+  PORT = "8090"
+  DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 8090
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/api/health"
+
+[[mounts]]
+  source = "pb_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

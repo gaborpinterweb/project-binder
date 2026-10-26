@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Container entrypoint: upsert superuser, serve PocketBase on $PORT, apply Resend mail.
- * Persists SQLite + files under DATA_DIR (default /data — Railway volume).
+ * Persists SQLite + files under DATA_DIR (default /data — Fly volume).
  */
 const { spawn, spawnSync } = require("child_process");
 const fs = require("fs");

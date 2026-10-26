@@ -99,6 +99,8 @@ import SharingSettingsDialog from "./components/SharingSettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
+import { askPaywall } from "./paywallDialog.js";
+import { shouldBlockNewActiveProject } from "./billingLimits.js";
 import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
@@ -1415,6 +1417,10 @@ export default function App() {
         setTrashRefresh((n) => n + 1);
       }
     }
+    if (shouldBlockNewActiveProject(foldersRef.current)) {
+      await askPaywall();
+      return;
+    }
     const color = nextUnusedProjectColor(foldersRef.current);
     discardCoverEdit();
     setDraftProject({ name: "", color, description: "" });
@@ -1427,6 +1433,10 @@ export default function App() {
     const name = (draftProject.name || "").trim();
     if (!name) {
       alert("Add a project title first.");
+      return;
+    }
+    if (shouldBlockNewActiveProject(foldersRef.current)) {
+      await askPaywall();
       return;
     }
     const { ok, data } = await postProject({
@@ -1601,6 +1611,10 @@ export default function App() {
 
   const confirmUnarchiveProject = async (folder) => {
     if (!folder) return;
+    if (shouldBlockNewActiveProject(foldersRef.current)) {
+      await askPaywall();
+      return;
+    }
     const ok = await askConfirm({
       title: `Reactivate "${folder.name}"?`,
       message: "The project will become editable again.",
@@ -2156,8 +2170,22 @@ export default function App() {
                 });
               }}
               onRestore={async (entry) => {
+                if (
+                  entry.kind === "project" &&
+                  shouldBlockNewActiveProject(foldersRef.current)
+                ) {
+                  await askPaywall();
+                  return;
+                }
                 let data = await restoreTrashApi({ id: entry.id });
                 if (data.needsParent) {
+                  if (
+                    data.parentKind === "project" &&
+                    shouldBlockNewActiveProject(foldersRef.current)
+                  ) {
+                    await askPaywall();
+                    return;
+                  }
                   const parentLabel =
                     data.parentKind === "project"
                       ? "project"

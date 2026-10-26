@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import App from "./App.jsx";
 import AuthGate from "./components/AuthGate.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import PaywallDialog from "./components/PaywallDialog.jsx";
 import ShareViewer from "./components/ShareViewer.jsx";
 import Snackbar from "./components/Snackbar.jsx";
 import { getPb, isPbMode } from "./pb/client.js";
@@ -258,6 +259,7 @@ export default function Root() {
   const hosts = (
     <>
       <ConfirmDialog />
+      <PaywallDialog />
       <Snackbar />
     </>
   );

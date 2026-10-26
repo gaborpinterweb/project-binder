@@ -17,6 +17,7 @@ const DIST = path.join(ROOT, "dist");
 const PUBLIC = path.join(PB_DIR, "pb_public");
 const DATA = path.join(PB_DIR, "pb_data");
 const MIGRATIONS = path.join(PB_DIR, "pb_migrations");
+const HOOKS = path.join(PB_DIR, "pb_hooks");
 const MAIL_ENV = path.join(PB_DIR, "mail.env");
 const PB_HTTP = "http://127.0.0.1:8090";
 
@@ -178,17 +179,19 @@ console.log(`Migrations: ${MIGRATIONS}`);
 console.log("PocketBase: http://127.0.0.1:8090");
 console.log("Register an account to sign in (verify email if mail.env is set).");
 
-const child = spawn(
-  BIN_PATH,
-  [
-    "serve",
-    `--dir=${DATA}`,
-    `--publicDir=${PUBLIC}`,
-    `--migrationsDir=${MIGRATIONS}`,
-    "--http=127.0.0.1:8090",
-  ],
-  { cwd: PB_DIR, stdio: "inherit" }
-);
+const serveArgs = [
+  "serve",
+  `--dir=${DATA}`,
+  `--publicDir=${PUBLIC}`,
+  `--migrationsDir=${MIGRATIONS}`,
+  "--http=127.0.0.1:8090",
+];
+if (fs.existsSync(HOOKS)) {
+  serveArgs.push(`--hooksDir=${HOOKS}`);
+  console.log(`Hooks: ${HOOKS}`);
+}
+
+const child = spawn(BIN_PATH, serveArgs, { cwd: PB_DIR, stdio: "inherit" });
 
 child.on("exit", (code, signal) => {
   if (signal) process.kill(process.pid, signal);

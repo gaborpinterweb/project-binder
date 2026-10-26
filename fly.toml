@@ -8,9 +8,11 @@ primary_region = "ams"
   dockerfile = "Dockerfile"
   [build.args]
     VITE_COMMERCIAL = "true"
-    # Optional Lemon Squeezy (rebuild required when changing):
+    # Lemon Squeezy (rebuild required when changing):
     # VITE_LS_CHECKOUT_URL = "https://…"
     # VITE_LS_PORTAL_URL = "https://…"
+# Runtime secret (not a build-arg): fly secrets set LEMONSQUEEZY_WEBHOOK_SECRET=…
+# Webhook URL: https://cloud.projectbinder.app/api/ls-webhook
 
 [env]
   PORT = "8090"

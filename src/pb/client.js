@@ -45,6 +45,29 @@ export function lsPortalUrl() {
   return trimUrl(import.meta.env.VITE_LS_PORTAL_URL);
 }
 
+/** True when the signed-in user has Pro entitlement (Commercial). */
+export function isProUser() {
+  return !!getPb().authStore.record?.pro;
+}
+
+/**
+ * Checkout URL with custom user_id (and email) so LS webhooks map to the PB user.
+ * @returns {string}
+ */
+export function lsCheckoutUrlForUser() {
+  const base = lsCheckoutUrl();
+  if (!base) return "";
+  const record = getPb().authStore.record;
+  if (!record?.id) return base;
+  const parts = [
+    `checkout[custom][user_id]=${encodeURIComponent(String(record.id))}`,
+  ];
+  const email = String(record.email || "").trim();
+  if (email) parts.push(`checkout[email]=${encodeURIComponent(email)}`);
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}${parts.join("&")}`;
+}
+
 let pb;
 
 export function getPb() {

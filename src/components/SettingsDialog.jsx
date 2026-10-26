@@ -5,7 +5,9 @@ import {
   getPb,
   isCommercialMode,
   isPbMode,
+  isProUser,
   lsCheckoutUrl,
+  lsCheckoutUrlForUser,
   lsPortalUrl,
 } from "../pb/client.js";
 import {
@@ -82,7 +84,37 @@ export default function SettingsDialog({
   const [pwConfirm, setPwConfirm] = useState("");
   const [pwError, setPwError] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
+  const [billingPro, setBillingPro] = useState(() => isProUser());
+  const [billingRefreshBusy, setBillingRefreshBusy] = useState(false);
   const pwCurrentRef = useRef(null);
+
+  useEffect(() => {
+    if (tab !== "billing" || !isCommercialMode()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await getPb().collection("users").authRefresh();
+      } catch {
+        /* keep cached record */
+      }
+      if (!cancelled) setBillingPro(isProUser());
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  const refreshBillingStatus = async () => {
+    setBillingRefreshBusy(true);
+    try {
+      await getPb().collection("users").authRefresh();
+      setBillingPro(isProUser());
+    } catch {
+      showSnackbar("Could not refresh billing status");
+    } finally {
+      setBillingRefreshBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (tab !== "archive") return;
@@ -538,12 +570,17 @@ export default function SettingsDialog({
               <div className="settings-rows">
                 <div className="settings-row">
                   <div className="settings-row-copy">
-                    <b>Hosted commercial instance</b>
-                    <span>
-                      Pro for this hosted Project Binder is billed via Lemon
-                      Squeezy.
-                    </span>
+                    <b>Status</b>
+                    <span>{billingPro ? "Pro" : "Free"}</span>
                   </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    disabled={billingRefreshBusy}
+                    onClick={() => void refreshBillingStatus()}
+                  >
+                    Refresh
+                  </button>
                 </div>
                 <div className="settings-row">
                   <div className="settings-row-copy">
@@ -554,7 +591,9 @@ export default function SettingsDialog({
                     type="button"
                     className="settings-row-btn"
                     disabled={!lsCheckoutUrl()}
-                    onClick={() => openProUrl(lsCheckoutUrl(), "Checkout")}
+                    onClick={() =>
+                      openProUrl(lsCheckoutUrlForUser(), "Checkout")
+                    }
                   >
                     Subscribe
                   </button>
@@ -562,7 +601,9 @@ export default function SettingsDialog({
                 <div className="settings-row">
                   <div className="settings-row-copy">
                     <b>Manage subscription</b>
-                    <span>Update payment method or cancel in the customer portal</span>
+                    <span>
+                      Update payment method or cancel in Lemon Squeezy
+                    </span>
                   </div>
                   <button
                     type="button"

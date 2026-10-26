@@ -46,7 +46,7 @@ Without `mail.env`, the app still runs; verification/reset emails simply will no
 ### Community vs Commercial builds
 
 - **Community** (default): `npm start` / `npm run build` / Docker without commercial build-args. Full features; no payment UI.
-- **Commercial**: `npm run start:commercial` (or `build:commercial`). Settings → Pro; optional Lemon Squeezy URLs.
+- **Commercial**: `npm run start:commercial` (or `build:commercial`). Settings → Billing; Lemon Squeezy checkout/portal + webhooks for Free/Pro status.
 
 ```bash
 # Local serve
@@ -60,15 +60,28 @@ VITE_LS_CHECKOUT_URL=https://… VITE_LS_PORTAL_URL=https://… npm run build:co
 
 Auth mail (Resend) is independent of the commercial flag.
 
+#### Lemon Squeezy billing (Commercial / Test mode)
+
+1. Set build-args `VITE_LS_CHECKOUT_URL` and `VITE_LS_PORTAL_URL` (checkout buy link + customer portal).
+2. Set runtime secret: `fly secrets set LEMONSQUEEZY_WEBHOOK_SECRET=…` (same value as in the LS webhook).
+3. In Lemon Squeezy **Test mode** → Webhooks → URL `https://cloud.projectbinder.app/api/ls-webhook`, events: subscription lifecycle (`subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_resumed`, `subscription_paused`, `subscription_unpaused`, …).
+4. Deploy so migrations + `pb_hooks` are live. Unsigned POSTs to the webhook should return 401/503.
+5. Sign in → Settings → Billing → **Subscribe** (checkout includes `checkout[custom][user_id]`). Complete a test purchase.
+6. Settings → Billing should show **Pro** after **Refresh** (or reopen the tab). PB Admin: user `pro` / `proStatus` / `ls*` fields.
+7. In LS, open the test subscription → **Simulate event** (e.g. expire) → Refresh → **Free**.
+8. Escape hatch: set `pro` in PB Admin to exercise the status UI without a purchase.
+
+Local commercial with webhooks: export `LEMONSQUEEZY_WEBHOOK_SECRET` before `npm run start:commercial`, and point a Test-mode webhook at a tunnel to `http://127.0.0.1:8090/api/ls-webhook`, or test against Fly only.
+
 ### Deploy on Fly.io
 
 Preferred hosted path (same Docker image keeps a **`/data` volume** across deploys so users/workspace survive new app versions). Config: [`fly.toml`](fly.toml) (Commercial build by default). Deploy from your machine with [flyctl](https://fly.io/docs/hands-on/install-flyctl/).
 
 1. `fly auth login`, then `fly apps create project-binder` (skip if the app already exists).
 2. Create a volume once: `fly volumes create pb_data --region ams --size 3` (mount name must match `fly.toml`).
-3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://project-binder.fly.dev`). Add Resend vars for verify/reset mail (`fly secrets set …`).
-4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Optionally set `VITE_LS_CHECKOUT_URL` / `VITE_LS_PORTAL_URL` there or via `fly deploy --build-arg`.
-5. `fly deploy`. Open the public URL; register after migrations run.
+3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://cloud.projectbinder.app`). Add Resend vars for verify/reset mail, and `LEMONSQUEEZY_WEBHOOK_SECRET` for billing (`fly secrets set …`).
+4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Set `VITE_LS_CHECKOUT_URL` / `VITE_LS_PORTAL_URL` there or via `fly deploy --build-arg`.
+5. `fly deploy`. Open the public URL; register after migrations run. Point LS Test webhooks at `/api/ls-webhook` (see Commercial billing above).
 
 Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data. Keep a **single machine** (SQLite).
 

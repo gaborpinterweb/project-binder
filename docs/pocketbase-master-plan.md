@@ -34,8 +34,8 @@ Phased delivery may land auth and storage first. A phase is **not done** for rep
 
 PocketBase is a **dumb store + auth + static host**.
 
-- **No** `pb_hooks`
-- **No** custom Go / JS backend logic
+- **No** `pb_hooks` for product/workspace logic (billing-only Lemon Squeezy webhook hook is allowed)
+- **No** custom Go / JS backend logic beyond that thin billing hook
 - **No** port of `server.cjs` domain rules into the server
 - **No** Node-in-front hybrid for the web build
 - **No** long-lived backend beyond PocketBase itself
@@ -129,8 +129,8 @@ Restore every HEAD capability on the web / PocketBase path:
 - Packaging in-repo: [`Dockerfile`](../Dockerfile), [`fly.toml`](../fly.toml), [`deploy/fly.env.example`](../deploy/fly.env.example), volume mount **`/data`** (survives redeploys)
 - Public signup; **email verification required** before login (client gate + Resend)
 - **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Fly secrets → configure on boot)
-- **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — Commercial build only; checkout + customer portal URLs via `VITE_LS_*` (link-only; no webhooks / entitlements yet)
-- `VITE_COMMERCIAL=true` build-arg enables Settings → Pro; Community (default) has no payment UI
+- **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — Commercial build only; checkout + portal via `VITE_LS_*`; webhooks (`pb_hooks` + `LEMONSQUEEZY_WEBHOOK_SECRET`) update `users.pro` / `proStatus` / `ls*`
+- `VITE_COMMERCIAL=true` build-arg enables Settings → Billing; Community (default) has no payment UI
 - Keep core MIT; billing and cloud mail stay thin and optional for self-host
 
 ### 5. Retire Node product server
@@ -152,7 +152,7 @@ Only after web / PocketBase matches the HEAD feature set:
 
 ## Explicit non-goals
 
-- `pb_hooks`, custom PocketBase backend logic, or server-side validation of workspace shape
+- `pb_hooks` for workspace/product logic (billing webhook exception), or server-side validation of workspace shape
 - Workspace / archive as server-interpreted JSON **columns** (files first; DB only for ownership / relations)
 - Normalizing boards / cards into many PocketBase collections
 - Long-term desktop or Electron + PocketBase hybrid

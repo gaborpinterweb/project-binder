@@ -11,6 +11,7 @@ const ROOT = path.join(__dirname, "..");
 const BIN = path.join(ROOT, "pocketbase", "pocketbase");
 const PUBLIC = path.join(ROOT, "pocketbase", "pb_public");
 const MIGRATIONS = path.join(ROOT, "pocketbase", "pb_migrations");
+const HOOKS = path.join(ROOT, "pocketbase", "pb_hooks");
 const DATA_DIR = process.env.DATA_DIR || "/data";
 const PORT = String(process.env.PORT || "8090");
 
@@ -86,6 +87,9 @@ function main() {
     `--publicDir=${PUBLIC}`,
     `--migrationsDir=${MIGRATIONS}`,
   ];
+  if (fs.existsSync(HOOKS)) {
+    args.push(`--hooksDir=${HOOKS}`);
+  }
   log("Starting PocketBase:", args.join(" "));
 
   const child = spawn(BIN, args, { stdio: "inherit" });

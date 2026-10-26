@@ -30,6 +30,7 @@ RUN apt-get update \
 COPY --from=build /app/pocketbase/pocketbase /app/pocketbase/pocketbase
 COPY --from=build /app/pocketbase/pb_public /app/pocketbase/pb_public
 COPY --from=build /app/pocketbase/pb_migrations /app/pocketbase/pb_migrations
+COPY --from=build /app/pocketbase/pb_hooks /app/pocketbase/pb_hooks
 COPY --from=build /app/scripts/configure-pb-mail.cjs /app/scripts/configure-pb-mail.cjs
 COPY --from=build /app/scripts/docker-entrypoint.cjs /app/scripts/docker-entrypoint.cjs
 

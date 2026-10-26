@@ -1048,14 +1048,13 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .paywall-plan{color:var(--ink)}
 .paywall-compare-head .paywall-plan{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:14px;padding-bottom:14px}
 .paywall-plan-name{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.paywall-price-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:650;letter-spacing:.01em;line-height:1.2;white-space:nowrap;color:#fff;background:#5856d6;box-shadow:0 1px 2px #5856d640}
 .paywall-plan-pro{background:color-mix(in srgb,var(--acc) 5%,transparent)}
 .paywall-compare-head .paywall-plan-pro{background:color-mix(in srgb,var(--acc) 8%,transparent)}
 .paywall-unlimited{font-weight:700;background:linear-gradient(90deg,#007aff,#5856d6,#af52de,#ff2d55,#ff9500);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .dlg .actions.paywall-actions{margin-top:2px;flex-direction:column;align-items:stretch;gap:10px}
-.dlg .actions.paywall-actions .paywall-cta{flex:none;width:100%;justify-content:center;padding:12px 18px;border-radius:12px;font-size:15px}
-.paywall-meta{margin:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;text-align:center;font-size:12px;line-height:1.35;color:var(--mute);font-weight:400}
-.paywall-meta-check{flex:none;display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:color-mix(in srgb,var(--mute) 14%,transparent);color:var(--mute);line-height:0}
-.paywall-meta-check svg{display:block;flex:none;width:11px;height:11px;margin:0;overflow:visible;transform:translateY(0.5px)}
+.dlg .actions.paywall-actions .paywall-cta{flex:none;width:100%;justify-content:center;padding:12px 18px;border-radius:12px;font-size:15px;background:#5856d6;color:#fff}
+.dlg .actions.paywall-actions .paywall-cta:hover:not(:disabled){background:color-mix(in srgb,#5856d6 82%,#000);color:#fff}
 @media (max-width:560px){
   .paywall-body{padding:16px 16px 18px;gap:0}
   .paywall-head{margin:20px 0 20px}
@@ -1064,6 +1063,7 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
   .paywall-compare-head,.paywall-compare-row{grid-template-columns:minmax(96px,0.85fr) 1fr 1fr}
   .paywall-compare-label,.paywall-plan{padding:12px 10px;font-size:12px}
   .paywall-plan-name{font-size:13px}
+  .paywall-price-badge{font-size:10px;padding:2px 6px}
 }
 .prompt-danger{background:color-mix(in srgb,#b42318 88%,#000)!important;color:#fff!important}
 .prompt-danger:hover{background:#b42318!important}

@@ -100,6 +100,7 @@ export default function PaywallDialog() {
               </div>
               <div className="paywall-plan paywall-plan-pro" role="columnheader">
                 <span className="paywall-plan-name">Cloud Pro</span>
+                <span className="paywall-price-badge">$4.99/m or $49.99/y</span>
               </div>
             </div>
             {ROWS.map((row) => (
@@ -135,15 +136,9 @@ export default function PaywallDialog() {
               disabled={!polarCheckoutUrl()}
               onClick={openCheckout}
             >
-              Open Cloud Pro plans
+              Checkout
               <Icon name="external" size={15} />
             </button>
-            <p className="paywall-meta">
-              <span className="paywall-meta-check" aria-hidden="true">
-                <Icon name="check" size={11} />
-              </span>
-              No-questions-asked refund available for 14 days
-            </p>
           </div>
         </div>
       </div>

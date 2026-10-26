@@ -1026,6 +1026,7 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .dlg .actions.prompt-actions-stack .dlg-create{flex:none;width:100%;justify-content:center}
 .prompt-dlg:has(.prompt-actions-stack){width:min(440px,100%)}
 .ov.ov-paywall{z-index:40}
+.ov.ov-paywall.ov-paywall-nested{background:transparent}
 /* Beat `.prompt-dlg:has(.prompt-actions-stack)` (440px) so the comparison fits. */
 .prompt-dlg.paywall-dlg{width:min(820px,100%);border-radius:20px;box-shadow:0 8px 28px #00000014,0 28px 80px #0000002e}
 .paywall-body{gap:0;padding:20px 28px 24px}
@@ -1377,8 +1378,8 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .dlg .rte .tiptap img.ProseMirror-selectednode,
 .dlg .rte [data-resize-container].ProseMirror-selectednode [data-resize-wrapper] > img{outline:2px solid var(--acc);outline-offset:2px}
 .settings-dlg{width:min(620px,100%);height:min(520px,100%);gap:0;overflow:hidden}
-.settings-tabs{display:flex;justify-content:center;gap:6px;flex:none;padding:14px 16px 12px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--card))}
-.settings-tab{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:84px;padding:10px 12px 8px;border-radius:calc(var(--radius) - 4px);color:var(--mute);font:inherit;font-size:11px;font-weight:600;letter-spacing:.01em}
+.settings-tabs{display:flex;justify-content:center;gap:4px;flex:none;padding:14px 20px 12px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--ink) 3%,var(--card));box-sizing:border-box}
+.settings-tab{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1 1 0;min-width:0;max-width:84px;padding:10px 8px 8px;border-radius:calc(var(--radius) - 4px);color:var(--mute);font:inherit;font-size:11px;font-weight:600;letter-spacing:.01em}
 .settings-tab:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .settings-tab.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
 .settings-tab-icon{display:grid;place-items:center;width:28px;height:28px}
@@ -1402,6 +1403,12 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .settings-row-btn:disabled{opacity:.45;cursor:default}
 .settings-row-btn-danger{color:#b42318;background:color-mix(in srgb,#b42318 10%,transparent)}
 .settings-row-btn-danger:hover:not(:disabled){background:color-mix(in srgb,#b42318 18%,transparent)}
+.settings-row-btn-pro{color:#fff;background:#5856d6}
+.settings-row-btn-pro:hover:not(:disabled){background:color-mix(in srgb,#5856d6 82%,#000);color:#fff}
+.settings-billing-meta{margin:10px 2px 0;font-size:12px;line-height:1.4;color:var(--mute)}
+.settings-billing-refresh{margin:0;padding:0;border:0;background:none;font:inherit;font-size:inherit;line-height:inherit;color:var(--mute);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.settings-billing-refresh:hover:not(:disabled){color:var(--ink)}
+.settings-billing-refresh:disabled{opacity:.55;cursor:default;text-decoration:none}
 .settings-row-stack{align-items:flex-start}
 .settings-empty{margin:0;padding:8px 2px;font-size:14px;color:var(--mute)}
 .settings-archive-item{flex-direction:row;align-items:center;gap:10px}

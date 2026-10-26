@@ -33,6 +33,7 @@ const ROWS = [
 export default function PaywallDialog() {
   const [open, setOpen] = useState(null);
   const ctaRef = useRef(null);
+  const underExistingOverlay = !!open?.underExistingOverlay;
 
   useEffect(() => {
     bindPaywallHost(setOpen);
@@ -74,7 +75,10 @@ export default function PaywallDialog() {
 
   return createPortal(
     <div
-      className="ov ov-prompt ov-paywall"
+      className={
+        "ov ov-prompt ov-paywall" +
+        (underExistingOverlay ? " ov-paywall-nested" : "")
+      }
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) cancel();
       }}

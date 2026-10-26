@@ -6,8 +6,6 @@ import {
   isCommercialMode,
   isPbMode,
   isProUser,
-  polarCheckoutUrl,
-  polarCheckoutUrlForUser,
   polarPortalUrl,
 } from "../pb/client.js";
 import {
@@ -20,6 +18,7 @@ import {
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
+import { askPaywall } from "../paywallDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
@@ -87,8 +86,19 @@ export default function SettingsDialog({
   const [pwBusy, setPwBusy] = useState(false);
   const [billingPro, setBillingPro] = useState(() => isProUser());
   const [billingRefreshBusy, setBillingRefreshBusy] = useState(false);
+  const [billingLastRefreshedAt, setBillingLastRefreshedAt] = useState(null);
+  const [paywallCovering, setPaywallCovering] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const pwCurrentRef = useRef(null);
+
+  const openPaywallFromSettings = async () => {
+    setPaywallCovering(true);
+    try {
+      await askPaywall({ underExistingOverlay: true });
+    } finally {
+      setPaywallCovering(false);
+    }
+  };
 
   useEffect(() => {
     if (tab !== "billing" || !isCommercialMode()) return;
@@ -96,10 +106,13 @@ export default function SettingsDialog({
     (async () => {
       try {
         await getPb().collection("users").authRefresh();
+        if (!cancelled) {
+          setBillingPro(isProUser());
+          setBillingLastRefreshedAt(new Date());
+        }
       } catch {
-        /* keep cached record */
+        if (!cancelled) setBillingPro(isProUser());
       }
-      if (!cancelled) setBillingPro(isProUser());
     })();
     return () => {
       cancelled = true;
@@ -107,10 +120,12 @@ export default function SettingsDialog({
   }, [tab]);
 
   const refreshBillingStatus = async () => {
+    if (billingRefreshBusy) return;
     setBillingRefreshBusy(true);
     try {
       await getPb().collection("users").authRefresh();
       setBillingPro(isProUser());
+      setBillingLastRefreshedAt(new Date());
     } catch {
       showSnackbar("Could not refresh billing status");
     } finally {
@@ -392,10 +407,17 @@ export default function SettingsDialog({
     <div
       className="ov"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !pwOpen) onClose();
+        if (e.target !== e.currentTarget || pwOpen || paywallCovering) return;
+        onClose();
       }}
     >
-      <div className="dlg settings-dlg" role="dialog" aria-label="Settings">
+      <div
+        className="dlg settings-dlg"
+        role="dialog"
+        aria-label="Settings"
+        hidden={paywallCovering}
+        aria-hidden={paywallCovering || undefined}
+      >
         <div className="settings-tabs" role="tablist" aria-label="Settings sections">
           {tabs.map((t) => (
             <button
@@ -572,51 +594,44 @@ export default function SettingsDialog({
               <div className="settings-rows">
                 <div className="settings-row">
                   <div className="settings-row-copy">
-                    <b>Status</b>
-                    <span>{billingPro ? "Pro" : "Free"}</span>
+                    <b>Plan</b>
+                    <span>{billingPro ? "Cloud Pro" : "Cloud Free"}</span>
                   </div>
-                  <button
-                    type="button"
-                    className="settings-row-btn"
-                    disabled={billingRefreshBusy}
-                    onClick={() => void refreshBillingStatus()}
-                  >
-                    Refresh
-                  </button>
-                </div>
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Subscribe / upgrade</b>
-                    <span>Open checkout to start or change a subscription</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-row-btn"
-                    disabled={!polarCheckoutUrl()}
-                    onClick={() =>
-                      openProUrl(polarCheckoutUrlForUser(), "Checkout")
-                    }
-                  >
-                    Subscribe
-                  </button>
-                </div>
-                <div className="settings-row">
-                  <div className="settings-row-copy">
-                    <b>Manage subscription</b>
-                    <span>
-                      Update payment method or cancel in Polar
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-row-btn"
-                    disabled={!polarPortalUrl()}
-                    onClick={() => openProUrl(polarPortalUrl(), "Portal")}
-                  >
-                    Manage
-                  </button>
+                  {billingPro ? (
+                    <button
+                      type="button"
+                      className="settings-row-btn"
+                      disabled={!polarPortalUrl()}
+                      onClick={() => openProUrl(polarPortalUrl(), "Portal")}
+                    >
+                      Manage
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="settings-row-btn settings-row-btn-pro"
+                      onClick={() => void openPaywallFromSettings()}
+                    >
+                      Get Cloud Pro
+                    </button>
+                  )}
                 </div>
               </div>
+              <p className="settings-billing-meta">
+                Last refreshed{" "}
+                {billingLastRefreshedAt
+                  ? billingLastRefreshedAt.toLocaleString()
+                  : "—"}
+                {" · "}
+                <button
+                  type="button"
+                  className="settings-billing-refresh"
+                  disabled={billingRefreshBusy}
+                  onClick={() => void refreshBillingStatus()}
+                >
+                  {billingRefreshBusy ? "Refreshing…" : "Refresh"}
+                </button>
+              </p>
             </section>
           )}
 

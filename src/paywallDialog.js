@@ -5,8 +5,13 @@ export function bindPaywallHost(setter) {
   setPaywallState = setter;
 }
 
-/** Show the Cloud Pro paywall. Resolves when the dialog closes. */
-export function askPaywall() {
+/**
+ * Show the Cloud Pro paywall. Resolves when the dialog closes.
+ * @param {{ underExistingOverlay?: boolean }} [opts]
+ *   When underExistingOverlay, skip the dimmed backdrop (caller keeps theirs).
+ */
+export function askPaywall(opts = {}) {
+  const underExistingOverlay = !!opts.underExistingOverlay;
   return new Promise((resolve) => {
     if (resolvePaywall) {
       resolvePaywall();
@@ -18,7 +23,7 @@ export function askPaywall() {
       resolvePaywall = null;
       return;
     }
-    setPaywallState(true);
+    setPaywallState({ underExistingOverlay });
   });
 }
 

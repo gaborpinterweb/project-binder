@@ -9,8 +9,8 @@ primary_region = "ams"
   [build.args]
     VITE_COMMERCIAL = "true"
     # Polar (rebuild required when changing). Paste Checkout Link + portal URLs:
-    VITE_POLAR_CHECKOUT_URL = ""
-    VITE_POLAR_PORTAL_URL = ""
+    VITE_POLAR_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_jraoGQKA35jP7DwIwthkNpIjsDBDxLDmCY1q93k4n6h"
+    VITE_POLAR_PORTAL_URL = "https://polar.sh/gabor-pinter/portal"
 # Runtime secret (not a build-arg): fly secrets set POLAR_WEBHOOK_SECRET=…
 # Webhook URL: https://cloud.projectbinder.app/api/polar-webhook
 # Checkout Link must be created with require_billing_address = true

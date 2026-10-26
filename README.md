@@ -13,7 +13,7 @@
 ```bash
 npm install
 npm start                 # Community (default); same as npm run pb
-npm run start:commercial  # Commercial (Settings → Pro); pass VITE_LS_* if desired
+npm run start:commercial  # Commercial (Settings → Pro); pass VITE_POLAR_* if desired
 # → http://127.0.0.1:8090
 
 # While PB is already running, rebuild UI only (no restart):
@@ -46,32 +46,33 @@ Without `mail.env`, the app still runs; verification/reset emails simply will no
 ### Community vs Commercial builds
 
 - **Community** (default): `npm start` / `npm run build` / Docker without commercial build-args. Full features; no payment UI.
-- **Commercial**: `npm run start:commercial` (or `build:commercial`). Settings → Billing; Lemon Squeezy checkout/portal + webhooks for Free/Pro status.
+- **Commercial**: `npm run start:commercial` (or `build:commercial`). Settings → Billing; Polar checkout/portal + webhooks for Free/Pro status.
 
 ```bash
 # Local serve
 npm start
-VITE_LS_CHECKOUT_URL=https://… VITE_LS_PORTAL_URL=https://… npm run start:commercial
+VITE_POLAR_CHECKOUT_URL=https://… VITE_POLAR_PORTAL_URL=https://… npm run start:commercial
 
 # Build only
 npm run build
-VITE_LS_CHECKOUT_URL=https://… VITE_LS_PORTAL_URL=https://… npm run build:commercial
+VITE_POLAR_CHECKOUT_URL=https://… VITE_POLAR_PORTAL_URL=https://… npm run build:commercial
 ```
 
 Auth mail (Resend) is independent of the commercial flag.
 
-#### Lemon Squeezy billing (Commercial / Test mode)
+#### Polar billing (Commercial / sandbox)
 
-1. Set build-args `VITE_LS_CHECKOUT_URL` and `VITE_LS_PORTAL_URL` (checkout buy link + customer portal).
-2. Set runtime secret: `fly secrets set LEMONSQUEEZY_WEBHOOK_SECRET=…` (same value as in the LS webhook).
-3. In Lemon Squeezy **Test mode** → Webhooks → URL `https://cloud.projectbinder.app/api/ls-webhook`, events: subscription lifecycle (`subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_resumed`, `subscription_paused`, `subscription_unpaused`, …).
-4. Deploy so migrations + `pb_hooks` are live. Unsigned POSTs to the webhook should return 401/503.
-5. Sign in → Settings → Billing → **Subscribe** (checkout includes `checkout[custom][user_id]`). Complete a test purchase.
-6. Settings → Billing should show **Pro** after **Refresh** (or reopen the tab). PB Admin: user `pro` / `proStatus` / `ls*` fields.
-7. In LS, open the test subscription → **Simulate event** (e.g. expire) → Refresh → **Free**.
-8. Escape hatch: set `pro` in PB Admin to exercise the status UI without a purchase.
+1. In Polar, create a **subscription** product, then a **Checkout Link** with **`require_billing_address: true`**. Portal URL is `https://polar.sh/<org-slug>/portal`.
+2. Set build-args `VITE_POLAR_CHECKOUT_URL` (Checkout Link) and `VITE_POLAR_PORTAL_URL`.
+3. Set runtime secret: `fly secrets set POLAR_WEBHOOK_SECRET=…` (same value as the Polar webhook endpoint secret).
+4. In Polar (prefer **sandbox** while testing) → Webhooks → URL `https://cloud.projectbinder.app/api/polar-webhook`, events: `subscription.created`, `subscription.updated`, `subscription.active`, `subscription.canceled`, `subscription.uncanceled`, `subscription.revoked`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`, …
+5. Deploy so migrations + `pb_hooks` are live. Unsigned POSTs to the webhook should return 401/503.
+6. Sign in → Settings → Billing → **Subscribe** (checkout appends `reference_id` = PocketBase user id + `customer_email`). Complete a test purchase.
+7. Settings → Billing should show **Pro** after **Refresh** (or reopen the tab). PB Admin: user `pro` / `proStatus` / `polar*` fields.
+8. Cancel / revoke in Polar sandbox → Refresh → **Free** when entitlement ends.
+9. Escape hatch: set `pro` in PB Admin to exercise the status UI without a purchase.
 
-Local commercial with webhooks: export `LEMONSQUEEZY_WEBHOOK_SECRET` before `npm run start:commercial`, and point a Test-mode webhook at a tunnel to `http://127.0.0.1:8090/api/ls-webhook`, or test against Fly only.
+Local commercial with webhooks: export `POLAR_WEBHOOK_SECRET` before `npm run start:commercial`, and point a sandbox webhook at a tunnel to `http://127.0.0.1:8090/api/polar-webhook` (or use `polar webhook listen`), or test against Fly only.
 
 ### Deploy on Fly.io
 
@@ -79,9 +80,9 @@ Preferred hosted path (same Docker image keeps a **`/data` volume** across deplo
 
 1. `fly auth login`, then `fly apps create project-binder` (skip if the app already exists).
 2. Create a volume once: `fly volumes create pb_data --region ams --size 3` (mount name must match `fly.toml`).
-3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://cloud.projectbinder.app`). Add Resend vars for verify/reset mail, and `LEMONSQUEEZY_WEBHOOK_SECRET` for billing (`fly secrets set …`).
-4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Set `VITE_LS_CHECKOUT_URL` / `VITE_LS_PORTAL_URL` there or via `fly deploy --build-arg`.
-5. `fly deploy`. Open the public URL; register after migrations run. Point LS Test webhooks at `/api/ls-webhook` (see Commercial billing above).
+3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://cloud.projectbinder.app`). Add Resend vars for verify/reset mail, and `POLAR_WEBHOOK_SECRET` for billing (`fly secrets set …`).
+4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Set `VITE_POLAR_CHECKOUT_URL` / `VITE_POLAR_PORTAL_URL` there or via `fly deploy --build-arg`.
+5. `fly deploy`. Open the public URL; register after migrations run. Point Polar webhooks at `/api/polar-webhook` (see Commercial billing above).
 
 Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data. Keep a **single machine** (SQLite).
 

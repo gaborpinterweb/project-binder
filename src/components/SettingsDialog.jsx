@@ -6,9 +6,9 @@ import {
   isCommercialMode,
   isPbMode,
   isProUser,
-  lsCheckoutUrl,
-  lsCheckoutUrlForUser,
-  lsPortalUrl,
+  polarCheckoutUrl,
+  polarCheckoutUrlForUser,
+  polarPortalUrl,
 } from "../pb/client.js";
 import {
   APP_NAME,
@@ -592,9 +592,9 @@ export default function SettingsDialog({
                   <button
                     type="button"
                     className="settings-row-btn"
-                    disabled={!lsCheckoutUrl()}
+                    disabled={!polarCheckoutUrl()}
                     onClick={() =>
-                      openProUrl(lsCheckoutUrlForUser(), "Checkout")
+                      openProUrl(polarCheckoutUrlForUser(), "Checkout")
                     }
                   >
                     Subscribe
@@ -604,14 +604,14 @@ export default function SettingsDialog({
                   <div className="settings-row-copy">
                     <b>Manage subscription</b>
                     <span>
-                      Update payment method or cancel in Lemon Squeezy
+                      Update payment method or cancel in Polar
                     </span>
                   </div>
                   <button
                     type="button"
                     className="settings-row-btn"
-                    disabled={!lsPortalUrl()}
-                    onClick={() => openProUrl(lsPortalUrl(), "Portal")}
+                    disabled={!polarPortalUrl()}
+                    onClick={() => openProUrl(polarPortalUrl(), "Portal")}
                   >
                     Manage
                   </button>

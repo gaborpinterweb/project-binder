@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bindPaywallHost, settlePaywall } from "../paywallDialog.js";
-import { lsCheckoutUrl, lsCheckoutUrlForUser } from "../pb/client.js";
+import { polarCheckoutUrl, polarCheckoutUrlForUser } from "../pb/client.js";
 import { Icon } from "../icons.jsx";
 
 const ROWS = [
@@ -61,7 +61,7 @@ export default function PaywallDialog() {
   if (!open) return null;
 
   const openCheckout = () => {
-    const url = lsCheckoutUrlForUser();
+    const url = polarCheckoutUrlForUser();
     if (url) {
       window.open(url, "_blank", "noopener");
       settlePaywall();
@@ -132,7 +132,7 @@ export default function PaywallDialog() {
               ref={ctaRef}
               type="button"
               className="dlg-create dlg-create-icon paywall-cta"
-              disabled={!lsCheckoutUrl()}
+              disabled={!polarCheckoutUrl()}
               onClick={openCheckout}
             >
               Open Cloud Pro plans

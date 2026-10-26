@@ -8,7 +8,7 @@ This document locks architecture so later work does not re-litigate decisions. I
 
 - **Web only.** Long term there is no desktop / Electron app. Users either self-host or use the paid cloud.
 - **OSS self-host:** one PocketBase process + `pb_data`; users bring their own VPS or optional Docker.
-- **Commercial (paid cloud):** the same app, built with `VITE_COMMERCIAL=true`, operated by the project maintainer; multi-tenant single PocketBase instance; Lemon Squeezy billing links in Settings (see Cloud phase).
+- **Commercial (paid cloud):** the same app, built with `VITE_COMMERCIAL=true`, operated by the project maintainer; multi-tenant single PocketBase instance; Polar billing links in Settings (see Cloud phase).
 - **Electron:** removed early (web-only pivot). Do **not** reintroduce a desktop shell.
 - **Node `server.cjs`:** transitional API/persistence until PocketBase auth + JSON files reach HEAD feature parity, then retire Node as the product server.
 
@@ -34,7 +34,7 @@ Phased delivery may land auth and storage first. A phase is **not done** for rep
 
 PocketBase is a **dumb store + auth + static host**.
 
-- **No** `pb_hooks` for product/workspace logic (billing-only Lemon Squeezy webhook hook is allowed)
+- **No** `pb_hooks` for product/workspace logic (billing-only Polar webhook hook is allowed)
 - **No** custom Go / JS backend logic beyond that thin billing hook
 - **No** port of `server.cjs` domain rules into the server
 - **No** Node-in-front hybrid for the web build
@@ -129,7 +129,7 @@ Restore every HEAD capability on the web / PocketBase path:
 - Packaging in-repo: [`Dockerfile`](../Dockerfile), [`fly.toml`](../fly.toml), [`deploy/fly.env.example`](../deploy/fly.env.example), volume mount **`/data`** (survives redeploys)
 - Public signup; **email verification required** before login (client gate + Resend)
 - **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Fly secrets → configure on boot)
-- **Billing: [Lemon Squeezy](https://www.lemonsqueezy.com)** — Commercial build only; checkout + portal via `VITE_LS_*`; webhooks (`pb_hooks` + `LEMONSQUEEZY_WEBHOOK_SECRET`) update `users.pro` / `proStatus` / `ls*`
+- **Billing: [Polar](https://polar.sh)** — Commercial build only; Checkout Link + portal via `VITE_POLAR_*` (Checkout Link with `require_billing_address`); webhooks (`pb_hooks` + `POLAR_WEBHOOK_SECRET`) update `users.pro` / `proStatus` / `polar*`
 - `VITE_COMMERCIAL=true` build-arg enables Settings → Billing; Community (default) has no payment UI
 - Keep core MIT; billing and cloud mail stay thin and optional for self-host
 

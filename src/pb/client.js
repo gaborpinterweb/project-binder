@@ -35,14 +35,14 @@ function trimUrl(v) {
   return s || "";
 }
 
-/** Lemon Squeezy checkout URL (Commercial builds). */
-export function lsCheckoutUrl() {
-  return trimUrl(import.meta.env.VITE_LS_CHECKOUT_URL);
+/** Polar Checkout Link URL (Commercial builds). */
+export function polarCheckoutUrl() {
+  return trimUrl(import.meta.env.VITE_POLAR_CHECKOUT_URL);
 }
 
-/** Lemon Squeezy customer portal URL (Commercial builds). */
-export function lsPortalUrl() {
-  return trimUrl(import.meta.env.VITE_LS_PORTAL_URL);
+/** Polar customer portal URL (Commercial builds). */
+export function polarPortalUrl() {
+  return trimUrl(import.meta.env.VITE_POLAR_PORTAL_URL);
 }
 
 /** True when the signed-in user has Pro entitlement (Commercial). */
@@ -51,19 +51,19 @@ export function isProUser() {
 }
 
 /**
- * Checkout URL with custom user_id (and email) so LS webhooks map to the PB user.
+ * Checkout URL with reference_id (and email) so Polar webhooks map to the PB user.
  * @returns {string}
  */
-export function lsCheckoutUrlForUser() {
-  const base = lsCheckoutUrl();
+export function polarCheckoutUrlForUser() {
+  const base = polarCheckoutUrl();
   if (!base) return "";
   const record = getPb().authStore.record;
   if (!record?.id) return base;
   const parts = [
-    `checkout[custom][user_id]=${encodeURIComponent(String(record.id))}`,
+    `reference_id=${encodeURIComponent(String(record.id))}`,
   ];
   const email = String(record.email || "").trim();
-  if (email) parts.push(`checkout[email]=${encodeURIComponent(email)}`);
+  if (email) parts.push(`customer_email=${encodeURIComponent(email)}`);
   const sep = base.includes("?") ? "&" : "?";
   return `${base}${sep}${parts.join("&")}`;
 }

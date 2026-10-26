@@ -8,11 +8,12 @@ primary_region = "ams"
   dockerfile = "Dockerfile"
   [build.args]
     VITE_COMMERCIAL = "true"
-    # Lemon Squeezy (rebuild required when changing):
-    VITE_LS_CHECKOUT_URL = "https://gaborpinter.lemonsqueezy.com/checkout/buy/d2765aee-0ba1-48a2-ba5e-ea9ea500eb5a"
-    VITE_LS_PORTAL_URL = "https://gaborpinter.lemonsqueezy.com/billing"
-# Runtime secret (not a build-arg): fly secrets set LEMONSQUEEZY_WEBHOOK_SECRET=…
-# Webhook URL: https://cloud.projectbinder.app/api/ls-webhook
+    # Polar (rebuild required when changing). Paste Checkout Link + portal URLs:
+    VITE_POLAR_CHECKOUT_URL = ""
+    VITE_POLAR_PORTAL_URL = ""
+# Runtime secret (not a build-arg): fly secrets set POLAR_WEBHOOK_SECRET=…
+# Webhook URL: https://cloud.projectbinder.app/api/polar-webhook
+# Checkout Link must be created with require_billing_address = true
 
 [env]
   PORT = "8090"

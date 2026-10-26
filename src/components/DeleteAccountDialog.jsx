@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
   getPb,
   isProUser,
-  lsPortalUrl,
+  polarPortalUrl,
 } from "../pb/client.js";
 import { showSnackbar } from "../snackbar.js";
 
@@ -11,7 +11,9 @@ const CONFIRM_PHRASE = "delete forever";
 
 function canDeleteAccount() {
   if (!isProUser()) return true;
-  return getPb().authStore.record?.proStatus === "cancelled";
+  const status = String(getPb().authStore.record?.proStatus || "").toLowerCase();
+  // Polar uses "canceled"; keep "cancelled" for any residual LS test data.
+  return status === "canceled" || status === "cancelled" || status === "revoked";
 }
 
 export default function DeleteAccountDialog({ open, onClose }) {
@@ -55,7 +57,7 @@ export default function DeleteAccountDialog({ open, onClose }) {
   const phraseOk = phrase === CONFIRM_PHRASE;
 
   const openPortal = () => {
-    const url = lsPortalUrl();
+    const url = polarPortalUrl();
     if (url) {
       window.open(url, "_blank", "noopener");
       return;
@@ -127,9 +129,8 @@ export default function DeleteAccountDialog({ open, onClose }) {
           {!allowed ? (
             <div className="delete-account-callout" role="status">
               <p className="delete-account-callout-msg">
-                Cancel your Lemon Squeezy subscription before deleting this
-                account. Open the customer portal to cancel, then refresh status
-                here.
+                Cancel your Polar subscription before deleting this account.
+                Open the customer portal to cancel, then refresh status here.
               </p>
               <div className="delete-account-callout-actions">
                 <button

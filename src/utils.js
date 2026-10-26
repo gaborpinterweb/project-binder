@@ -127,6 +127,8 @@ export function fromApi(data, loadStagesFn) {
         b.name,
         {
           id: b.id,
+          ...(b.shareId ? { shareId: b.shareId } : {}),
+          ...(b.shareEnabled ? { shareEnabled: true } : {}),
           columns: b.columns && b.columns.length ? b.columns : undefined,
           rows: (b.cards || []).map((c) => {
             const msRaw = c.master || c.status;
@@ -176,6 +178,8 @@ export function fromApi(data, loadStagesFn) {
         nt.name,
         {
           id: nt.id,
+          ...(nt.shareId ? { shareId: nt.shareId } : {}),
+          ...(nt.shareEnabled ? { shareEnabled: true } : {}),
           notes: (nt.notes || []).map((n) => {
             const note = {
               id: n.id,
@@ -206,6 +210,8 @@ export function fromApi(data, loadStagesFn) {
         ft.name,
         {
           id: ft.id,
+          ...(ft.shareId ? { shareId: ft.shareId } : {}),
+          ...(ft.shareEnabled ? { shareEnabled: true } : {}),
           files: (ft.files || []).map((f) => ({
             id: f.id,
             name: f.name || f.id,
@@ -223,6 +229,8 @@ export function fromApi(data, loadStagesFn) {
         db.name,
         {
           id: db.id,
+          ...(db.shareId ? { shareId: db.shareId } : {}),
+          ...(db.shareEnabled ? { shareEnabled: true } : {}),
           cols: ensureNameColumn(
             (db.columns || []).map(normalizeDbCol).filter(Boolean),
           ),
@@ -294,6 +302,8 @@ export function fromApi(data, loadStagesFn) {
       color: pr.color || GACC,
       archived: !!pr.archived,
       isDemo: !!pr.isDemo,
+      ...(pr.shareId ? { shareId: pr.shareId } : {}),
+      ...(pr.shareEnabled ? { shareEnabled: true } : {}),
       mods,
     };
   });

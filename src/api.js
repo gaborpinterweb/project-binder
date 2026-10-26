@@ -393,7 +393,92 @@ export async function resolvePbBlobUrl(url) {
   if (!url || !String(url).startsWith("pb-blob://")) return url;
   const path = String(url).slice("pb-blob://".length);
   const [project, tab, file] = path.split("/");
+  const { getShareGuestContext } = await import("./pb/shareGuest.js");
+  const guest = getShareGuestContext();
+  if (guest?.fileMap) {
+    const { attachmentKey } = await import("./pb/persist.js");
+    const { downloadShareFile } = await import("./pb/shares.js");
+    const key = attachmentKey(project, tab, file);
+    const shareFileId = guest.fileMap[key];
+    if (shareFileId) {
+      const blob = await downloadShareFile(shareFileId);
+      if (blob) return URL.createObjectURL(blob);
+    }
+    return url;
+  }
   const bytes = await bridgeGetFileBytes(project, tab, file);
   if (!bytes) return url;
   return URL.createObjectURL(new Blob([bytes]));
+}
+
+export async function enableProjectShare(projectId) {
+  const { workspaceEngine } = await import("./engine/workspaceEngine.js");
+  const { ensureShareRecord, syncSharePayload, sharePublicUrl } = await import(
+    "./pb/shares.js"
+  );
+  const meta = workspaceEngine.peekShareMeta(projectId, null);
+  const { id } = await ensureShareRecord({
+    shareId: meta.shareId,
+    scope: "project",
+    projectId,
+    tabId: "",
+    enabled: true,
+  });
+  await syncSharePayload(
+    id,
+    workspaceEngine.getWorkspace(),
+    { scope: "project", projectId, tabId: "" },
+    { enabled: true }
+  );
+  workspaceEngine.setShareMeta(projectId, null, {
+    shareId: id,
+    shareEnabled: true,
+  });
+  return { shareId: id, url: sharePublicUrl(id) };
+}
+
+export async function enableTabShare(projectId, tabId) {
+  const { workspaceEngine } = await import("./engine/workspaceEngine.js");
+  const { ensureShareRecord, syncSharePayload, sharePublicUrl } = await import(
+    "./pb/shares.js"
+  );
+  const meta = workspaceEngine.peekShareMeta(projectId, tabId);
+  const { id } = await ensureShareRecord({
+    shareId: meta.shareId,
+    scope: "tab",
+    projectId,
+    tabId,
+    enabled: true,
+  });
+  await syncSharePayload(
+    id,
+    workspaceEngine.getWorkspace(),
+    { scope: "tab", projectId, tabId },
+    { enabled: true }
+  );
+  workspaceEngine.setShareMeta(projectId, tabId, {
+    shareId: id,
+    shareEnabled: true,
+  });
+  return { shareId: id, url: sharePublicUrl(id) };
+}
+
+export async function disableShare(projectId, tabId) {
+  const { workspaceEngine } = await import("./engine/workspaceEngine.js");
+  const { setShareEnabled, sharePublicUrl } = await import("./pb/shares.js");
+  const meta = workspaceEngine.peekShareMeta(projectId, tabId || null);
+  if (!meta.shareId) return { shareId: null, url: "" };
+  await setShareEnabled(meta.shareId, false);
+  workspaceEngine.setShareMeta(projectId, tabId || null, {
+    shareId: meta.shareId,
+    shareEnabled: false,
+  });
+  return { shareId: meta.shareId, url: sharePublicUrl(meta.shareId) };
+}
+
+export function getShareLink(projectId, tabId) {
+  const meta = bridge.engine.peekShareMeta(projectId, tabId || null);
+  if (!meta.shareId) return "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/share/${meta.shareId}`;
 }

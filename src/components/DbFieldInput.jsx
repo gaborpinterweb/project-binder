@@ -28,7 +28,13 @@ function ChipOption({ o }) {
   return <SelectChip label={o.label} color={o.color} />;
 }
 
-function MultiSelectField({ value, options, onChange, className = "" }) {
+function MultiSelectField({
+  value,
+  options,
+  onChange,
+  className = "",
+  readOnly = false,
+}) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
   const selected = Array.isArray(value) ? value.map(String) : [];
@@ -44,6 +50,7 @@ function MultiSelectField({ value, options, onChange, className = "" }) {
   }, [open]);
 
   const toggle = (opt) => {
+    if (readOnly) return;
     const next = selected.includes(opt)
       ? selected.filter((v) => v !== opt)
       : [...selected, opt];
@@ -64,7 +71,9 @@ function MultiSelectField({ value, options, onChange, className = "" }) {
         className="dd-btn db-chip-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={readOnly}
         onClick={(e) => {
+          if (readOnly) return;
           e.stopPropagation();
           setOpen((o) => !o);
         }}
@@ -129,12 +138,13 @@ function TextCell({
   multiline = false,
   autoFocus = false,
   className = "",
+  readOnly = false,
   onCommit,
 }) {
   const ref = useRef(null);
 
   useEffect(() => {
-    if (!autoFocus || !ref.current) return;
+    if (readOnly || !autoFocus || !ref.current) return;
     const el = ref.current;
     el.focus();
     const range = document.createRange();
@@ -142,7 +152,7 @@ function TextCell({
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
-  }, [autoFocus]);
+  }, [autoFocus, readOnly]);
 
   return (
     <div
@@ -152,9 +162,10 @@ function TextCell({
         (multiline ? " multiline" : "") +
         (className ? " " + className : "")
       }
-      contentEditable
+      contentEditable={!readOnly}
       suppressContentEditableWarning
       onBlur={() => {
+        if (readOnly) return;
         const next = multiline
           ? ref.current?.innerText ?? ""
           : ref.current?.textContent ?? "";
@@ -172,6 +183,7 @@ function NumberField({
   className = "",
   autoFocus = false,
   placeholder = "",
+  readOnly = false,
   onChange,
   onCommit,
 }) {
@@ -210,10 +222,12 @@ function NumberField({
       value={text}
       placeholder={placeholder || formatNumberValue(1234.56)}
       autoFocus={autoFocus}
+      readOnly={readOnly}
       onFocus={() => {
         focused.current = true;
       }}
       onChange={(e) => {
+        if (readOnly) return;
         const raw = e.target.value;
         setText(raw);
         if (raw === "") {
@@ -225,6 +239,7 @@ function NumberField({
       }}
       onBlur={(e) => {
         focused.current = false;
+        if (readOnly) return;
         parseCommit(e.target.value);
       }}
     />
@@ -243,10 +258,12 @@ export default function DbFieldInput({
   autoFocus = false,
   placeholder = "",
   wrapLines = false,
+  readOnly = false,
   onChange,
   onCommit,
 }) {
   const commit = (next) => {
+    if (readOnly) return;
     onChange?.(next);
     onCommit?.(next);
   };
@@ -259,6 +276,7 @@ export default function DbFieldInput({
         <input
           type="checkbox"
           checked={!!coerced}
+          disabled={readOnly}
           onChange={(e) => commit(e.target.checked)}
         />
       </label>
@@ -276,6 +294,10 @@ export default function DbFieldInput({
     ) : (
       <span className="db-chip-placeholder">Select…</span>
     );
+
+    if (readOnly) {
+      return <span className="db-chip-row">{chip}</span>;
+    }
 
     if (variant === "prop") {
       return (
@@ -308,6 +330,7 @@ export default function DbFieldInput({
         className={variant === "prop" ? "" : "table-dd"}
         value={coerced}
         options={opts}
+        readOnly={readOnly}
         onChange={(next) => commit(next)}
       />
     );
@@ -320,6 +343,7 @@ export default function DbFieldInput({
         value={coerced}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        readOnly={readOnly}
         onChange={onChange}
         onCommit={onCommit}
       />
@@ -333,6 +357,8 @@ export default function DbFieldInput({
         type="date"
         value={coerced || ""}
         autoFocus={autoFocus}
+        readOnly={readOnly}
+        disabled={readOnly}
         onChange={(e) => commit(e.target.value)}
       />
     );
@@ -347,6 +373,7 @@ export default function DbFieldInput({
         value={preview}
         multiline={!!wrapLines}
         autoFocus={autoFocus}
+        readOnly={readOnly}
         className="db-rich-preview"
         onCommit={(next) => commit(next)}
       />
@@ -360,8 +387,15 @@ export default function DbFieldInput({
           value={coerced || ""}
           placeholder={placeholder || "https://"}
           autoFocus={autoFocus}
-          onChange={(e) => onChange?.(e.target.value)}
-          onBlur={(e) => onCommit?.(e.target.value)}
+          readOnly={readOnly}
+          onChange={(e) => {
+            if (readOnly) return;
+            onChange?.(e.target.value);
+          }}
+          onBlur={(e) => {
+            if (readOnly) return;
+            onCommit?.(e.target.value);
+          }}
         />
       );
     }
@@ -372,6 +406,7 @@ export default function DbFieldInput({
         <TextCell
           value={coerced || ""}
           autoFocus={autoFocus}
+          readOnly={readOnly}
           onCommit={(next) => commit(next)}
         />
         {href ? (
@@ -398,8 +433,15 @@ export default function DbFieldInput({
         value={coerced || ""}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        onChange={(e) => onChange?.(e.target.value)}
-        onBlur={(e) => onCommit?.(e.target.value)}
+        readOnly={readOnly}
+        onChange={(e) => {
+          if (readOnly) return;
+          onChange?.(e.target.value);
+        }}
+        onBlur={(e) => {
+          if (readOnly) return;
+          onCommit?.(e.target.value);
+        }}
       />
     );
   }
@@ -408,6 +450,7 @@ export default function DbFieldInput({
     <TextCell
       value={coerced}
       autoFocus={autoFocus}
+      readOnly={readOnly}
       onCommit={(next) => commit(next)}
     />
   );

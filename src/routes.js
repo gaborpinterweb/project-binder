@@ -37,12 +37,13 @@ export function entityKindToModType(entityKind) {
 
 /**
  * @returns {null | {
- *   kind: "global" | "settings" | "project" | "cover" | "tab" | "entity",
+ *   kind: "global" | "settings" | "project" | "cover" | "tab" | "entity" | "share",
  *   g?: string,
  *   projectId?: string,
  *   tabId?: string,
  *   entityKind?: string,
  *   entityId?: string,
+ *   shareId?: string,
  * }}
  */
 export function parsePath(pathname) {
@@ -55,6 +56,10 @@ export function parsePath(pathname) {
     const g = GLOBAL_PATH[parts[0]];
     if (g) return { kind: "global", g };
     return null;
+  }
+
+  if (parts[0] === "share" && parts[1] && parts.length === 2) {
+    return { kind: "share", shareId: parts[1] };
   }
 
   if (parts[0] !== "projects" || !parts[1]) return null;

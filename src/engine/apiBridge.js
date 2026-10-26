@@ -11,20 +11,37 @@ import {
   deleteAttachment,
   attachmentKey,
 } from "../pb/persist.js";
+import { deleteShareRecord, syncEnabledShares } from "../pb/shares.js";
+import { showSnackbar } from "../snackbar.js";
 
 let persistTimer = null;
 let persistChain = Promise.resolve();
 let persistHooked = false;
+
+async function persistWorkspaceAndShares() {
+  const { workspace, archive } = eng.exportWorkspaceData();
+  await saveUserDocs({ workspace, archive });
+  const targets = eng.listEnabledShares();
+  if (!targets.length) return;
+  try {
+    await syncEnabledShares(eng.getWorkspace(), targets);
+  } catch (err) {
+    console.error("share sync failed", err);
+    showSnackbar({
+      icon: "bell",
+      tone: "error",
+      message: "Could not update shared link",
+      durationMs: 5000,
+    });
+  }
+}
 
 export function schedulePersist() {
   if (!isPbMode()) return;
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistChain = persistChain
-      .then(() => {
-        const { workspace, archive } = eng.exportWorkspaceData();
-        return saveUserDocs({ workspace, archive });
-      })
+      .then(() => persistWorkspaceAndShares())
       .catch((err) => console.error("persist failed", err));
   }, 400);
 }
@@ -39,8 +56,7 @@ async function flushPersist() {
   clearTimeout(persistTimer);
   await persistChain;
   if (isPbMode()) {
-    const { workspace, archive } = eng.exportWorkspaceData();
-    await saveUserDocs({ workspace, archive });
+    await persistWorkspaceAndShares();
   }
 }
 
@@ -104,7 +120,13 @@ export async function bridgePostProject(body) {
 }
 
 export async function bridgeDeleteProject(body) {
-  return after(await eng.deleteProjectApi(body));
+  const data = await eng.deleteProjectApi(body);
+  if (isPbMode() && Array.isArray(data?.shareIds)) {
+    for (const id of data.shareIds) {
+      await deleteShareRecord(id);
+    }
+  }
+  return after(data);
 }
 
 export async function bridgePutProjectOrder(body) {
@@ -174,7 +196,11 @@ export async function bridgePutTab(body) {
 }
 
 export async function bridgeDeleteTab(body) {
-  return after(await eng.deleteTabApi(body));
+  const data = await eng.deleteTabApi(body);
+  if (isPbMode() && data?.shareId) {
+    await deleteShareRecord(data.shareId);
+  }
+  return after(data);
 }
 
 export async function bridgePutTabOrder(body) {

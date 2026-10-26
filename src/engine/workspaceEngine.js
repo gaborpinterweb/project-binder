@@ -560,9 +560,10 @@ function deleteTab(projectId, type, id) {
   if (type === "database") {
     const idx = (project.databases || []).findIndex((d) => d.id === id);
     if (idx < 0) return { ok: false, error: "tab not found" };
+    const shareId = project.databases[idx].shareId || null;
     project.databases.splice(idx, 1);
     removeTabOrder(project, type, id);
-    return { ok: true };
+    return { ok: true, shareId };
   }
   return { ok: false, error: "invalid type" };
 }
@@ -665,6 +666,11 @@ function normalizeColumns(columns) {
     .filter(Boolean);
 }
 
+function applyShareMetaOut(target, source) {
+  if (source?.shareId) target.shareId = source.shareId;
+  if (source?.shareEnabled) target.shareEnabled = true;
+}
+
 function projectToApi(p) {
   const out = {
     id: p.id,
@@ -703,11 +709,12 @@ function projectToApi(p) {
         }),
       };
       if (isDemoValue(b.isDemo)) board.isDemo = true;
+      applyShareMetaOut(board, b);
       return board;
     }),
     databases: (p.databases || []).map((d) => {
       const customViews = normalizeCustomViews(d.customViews);
-      return {
+      const db = {
         id: d.id,
         name: d.name || d.id,
         columns: normalizeDbColumns(d.columns),
@@ -719,40 +726,128 @@ function projectToApi(p) {
           body: item.body || "",
         })),
       };
+      applyShareMetaOut(db, d);
+      return db;
     }),
-    notesTabs: (p.notesTabs || []).map((t) => ({
-      id: t.id,
-      name: t.name || t.id,
-      notes: (t.notes || []).map((n) => {
-        const note = {
-          id: n.id,
-          title: n.title || n.id,
-          body: n.body || "",
-          createdAt: n.createdAt || n.updatedAt || "",
-          updatedAt: n.updatedAt || "",
-        };
-        if (n.pinned) note.pinned = true;
-        const images = normalizeCardFiles(n.images);
-        if (images.length) note.images = images;
-        return note;
-      }),
-    })),
-    filesTabs: (p.filesTabs || []).map((t) => ({
-      id: t.id,
-      name: t.name || t.id,
-      files: (t.files || []).map((f) => ({
-        id: f.id,
-        name: f.name || f.id,
-        mime: f.mime || "application/octet-stream",
-        size: Number(f.size) || 0,
-        createdAt: f.createdAt || "",
-      })),
-    })),
+    notesTabs: (p.notesTabs || []).map((t) => {
+      const tab = {
+        id: t.id,
+        name: t.name || t.id,
+        notes: (t.notes || []).map((n) => {
+          const note = {
+            id: n.id,
+            title: n.title || n.id,
+            body: n.body || "",
+            createdAt: n.createdAt || n.updatedAt || "",
+            updatedAt: n.updatedAt || "",
+          };
+          if (n.pinned) note.pinned = true;
+          const images = normalizeCardFiles(n.images);
+          if (images.length) note.images = images;
+          return note;
+        }),
+      };
+      applyShareMetaOut(tab, t);
+      return tab;
+    }),
+    filesTabs: (p.filesTabs || []).map((t) => {
+      const tab = {
+        id: t.id,
+        name: t.name || t.id,
+        files: (t.files || []).map((f) => ({
+          id: f.id,
+          name: f.name || f.id,
+          mime: f.mime || "application/octet-stream",
+          size: Number(f.size) || 0,
+          createdAt: f.createdAt || "",
+        })),
+      };
+      applyShareMetaOut(tab, t);
+      return tab;
+    }),
     tabOrder: normalizeTabOrder(p).map((e) => ({ type: e.type, id: e.id })),
   };
   if (isDemoValue(p.isDemo)) out.isDemo = true;
   if (isArchivedValue(p.archived)) out.archived = true;
+  applyShareMetaOut(out, p);
   return out;
+}
+
+function findTabEntity(project, tabId) {
+  if (!project || !tabId) return null;
+  return (
+    findBoard(project, tabId) ||
+    findNotesTab(project, tabId) ||
+    findFilesTab(project, tabId) ||
+    findDatabase(project, tabId) ||
+    null
+  );
+}
+
+/** Project/Cover share meta lives on the project; tab shares on the tab entity. */
+function setShareMeta(projectId, tabId, { shareId, shareEnabled } = {}) {
+  const p = findProject(projectId);
+  if (!p) return false;
+  const target =
+    !tabId || tabId === COVER_TAB_ID ? p : findTabEntity(p, tabId);
+  if (!target) return false;
+  if (shareId != null && shareId !== "") target.shareId = String(shareId);
+  if (shareEnabled !== undefined) {
+    if (shareEnabled) target.shareEnabled = true;
+    else delete target.shareEnabled;
+  }
+  return true;
+}
+
+function clearShareMeta(projectId, tabId) {
+  const p = findProject(projectId);
+  if (!p) return null;
+  const target =
+    !tabId || tabId === COVER_TAB_ID ? p : findTabEntity(p, tabId);
+  if (!target) return null;
+  const prev = target.shareId || null;
+  delete target.shareId;
+  delete target.shareEnabled;
+  return prev;
+}
+
+function listEnabledShares() {
+  const out = [];
+  for (const p of store.projects || []) {
+    if (p.shareId && p.shareEnabled) {
+      out.push({
+        shareId: p.shareId,
+        scope: "project",
+        projectId: p.id,
+        tabId: "",
+      });
+    }
+    const pushTab = (tabId, entity) => {
+      if (entity?.shareId && entity.shareEnabled) {
+        out.push({
+          shareId: entity.shareId,
+          scope: "tab",
+          projectId: p.id,
+          tabId,
+        });
+      }
+    };
+    for (const b of p.boards || []) pushTab(b.id, b);
+    for (const t of p.notesTabs || []) pushTab(t.id, t);
+    for (const t of p.filesTabs || []) pushTab(t.id, t);
+    for (const d of p.databases || []) pushTab(d.id, d);
+  }
+  return out;
+}
+
+function collectShareIdsFromProject(p) {
+  const ids = [];
+  if (p?.shareId) ids.push(p.shareId);
+  for (const b of p?.boards || []) if (b.shareId) ids.push(b.shareId);
+  for (const t of p?.notesTabs || []) if (t.shareId) ids.push(t.shareId);
+  for (const t of p?.filesTabs || []) if (t.shareId) ids.push(t.shareId);
+  for (const d of p?.databases || []) if (d.shareId) ids.push(d.shareId);
+  return ids;
 }
 
 function readWorkspace() {
@@ -807,8 +902,9 @@ function softDeleteProject(projectId) {
     return false;
   }
   const idx = store.projects.findIndex((p) => p.id === projectId);
-  if (idx < 0) return false;
+  if (idx < 0) return { ok: false };
   const [project] = store.projects.splice(idx, 1);
+  const shareIds = collectShareIdsFromProject(project);
   ensureTrash();
   const entry = {
     kind: "project",
@@ -822,7 +918,7 @@ function softDeleteProject(projectId) {
   };
   if (isDemoValue(project.isDemo)) entry.isDemo = true;
   store.trash.push(entry);
-  return true;
+  return { ok: true, shareIds };
 }
 
 function syncTimelogCardTitle(projectId, boardId, cardId, title) {
@@ -1499,9 +1595,10 @@ function softDeleteBoard(projectId, boardId) {
     title: board.name || board.id,
   });
   if (isDemoValue(board.isDemo)) store.trash[store.trash.length - 1].isDemo = true;
+  const shareId = board.shareId || null;
   project.boards.splice(idx, 1);
   removeTabOrder(project, "board", boardId);
-  return { ok: true };
+  return { ok: true, shareId };
 }
 
 function softDeleteNotesTab(projectId, notesTabId) {
@@ -1525,9 +1622,10 @@ function softDeleteNotesTab(projectId, notesTabId) {
     color: project.color || "#3c3c40",
     title: tab.name || tab.id,
   });
+  const shareId = tab.shareId || null;
   project.notesTabs.splice(idx, 1);
   removeTabOrder(project, "notes", notesTabId);
-  return { ok: true };
+  return { ok: true, shareId };
 }
 
 function softDeleteUploadedFile(projectId, filesTabId, fileId) {
@@ -1585,9 +1683,10 @@ function softDeleteFilesTab(projectId, filesTabId) {
     color: project.color || "#3c3c40",
     title: tab.name || tab.id,
   });
+  const shareId = tab.shareId || null;
   project.filesTabs.splice(idx, 1);
   removeTabOrder(project, "files", filesTabId);
-  return { ok: true };
+  return { ok: true, shareId };
 }
 
 function hardDeleteCard(projectId, boardId, cardId, { purgeFiles = true } = {}) {
@@ -2462,8 +2561,9 @@ const core = {
   },
   deleteProjectApi(b) {
     if (!b.project) return missing();
-    if (!softDeleteProject(b.project)) return err(404, "project not found");
-    return wsRes(200);
+    const r = softDeleteProject(b.project);
+    if (!r.ok) return err(404, "project not found");
+    return wsRes(200, { shareIds: r.shareIds || [] });
   },
   putProjectOrder(b) {
     if (!Array.isArray(b.order)) return missing();
@@ -2636,7 +2736,9 @@ const core = {
     if (!b.project || !b.type || !b.id) return missing();
     if (projectIsArchived(b.project)) return archived();
     const r = deleteTab(b.project, b.type, b.id);
-    return r.ok ? wsRes(200) : err(tabErrorStatus(r.error), r.error);
+    return r.ok
+      ? wsRes(200, { shareId: r.shareId || null })
+      : err(tabErrorStatus(r.error), r.error);
   },
   putTabOrder(b) {
     if (!b.project || !Array.isArray(b.order)) return missing();
@@ -2872,6 +2974,28 @@ export const workspaceEngine = {
   getArchivedProjects: () => readArchivedProjectsMeta().projects,
   setFileBlob: (project, tab, file, blob) => fileBlobStore.set(blobKey(project, tab, file), blob),
   getFileBlob: (project, tab, file) => fileBlobStore.get(blobKey(project, tab, file)),
+  setShareMeta: (projectId, tabId, meta) => {
+    const ok = setShareMeta(projectId, tabId, meta);
+    if (ok) onChange?.();
+    return ok;
+  },
+  clearShareMeta: (projectId, tabId) => {
+    const prev = clearShareMeta(projectId, tabId);
+    if (prev != null) onChange?.();
+    return prev;
+  },
+  listEnabledShares: () => listEnabledShares(),
+  peekShareMeta: (projectId, tabId) => {
+    const p = findProject(projectId);
+    if (!p) return { shareId: null, shareEnabled: false };
+    const target =
+      !tabId || tabId === COVER_TAB_ID ? p : findTabEntity(p, tabId);
+    if (!target) return { shareId: null, shareEnabled: false };
+    return {
+      shareId: target.shareId || null,
+      shareEnabled: !!target.shareEnabled,
+    };
+  },
 
   fetchWorkspace: async () => deepClone(readWorkspace()),
   fetchArchivedProjects: async () => readArchivedProjectsMeta().projects,

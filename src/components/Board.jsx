@@ -399,7 +399,7 @@ function TaskCard({
 }) {
   const pc = color || folder?.color || PC[0];
   const done = isDone(row);
-  const canDrag = !boardEdit && !noDrag;
+  const canDrag = !boardEdit && !noDrag && !readonly;
   const key = cardKey || cardDragKey(row, folder, mod);
   const dragging = dragKey === key;
   const canCtxMenu =
@@ -495,11 +495,19 @@ function TaskCard({
           type="checkbox"
           className="card-check"
           checked={done}
-          title={done ? "Mark active" : "Mark completed"}
+          disabled={readonly}
+          title={
+            readonly
+              ? "Read-only"
+              : done
+                ? "Mark active"
+                : "Mark completed"
+          }
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onChange={async (e) => {
             e.stopPropagation();
+            if (readonly) return;
             await onToggleDone(row, folder, mod, e.target.checked);
           }}
         />
@@ -1043,7 +1051,7 @@ function ProjectBoard({
 
   const resolveDrop = useCallback(
     async (payload, hint) => {
-      if (!hint || boardEdit) return;
+      if (!hint || boardEdit || readonly) return;
       const row = payload.row || payload;
       if (!row?.id) return;
 
@@ -1096,6 +1104,7 @@ function ProjectBoard({
     },
     [
       boardEdit,
+      readonly,
       data.rows,
       folder,
       mod,
@@ -1837,12 +1846,14 @@ function DbColHeader({
   onInsertAfter,
   onEdit,
   onResize,
+  readOnly = false,
 }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const [resizing, setResizing] = useState(false);
   const locked = isNameCol(col);
+  const menuOff = locked || readOnly;
 
   const place = () => {
     const r = wrapRef.current?.getBoundingClientRect();
@@ -1851,7 +1862,7 @@ function DbColHeader({
   };
 
   useEffect(() => {
-    if (!open || locked) return;
+    if (!open || menuOff) return;
     place();
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
@@ -1865,7 +1876,7 @@ function DbColHeader({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open, locked]);
+  }, [open, menuOff]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -1885,6 +1896,7 @@ function DbColHeader({
   };
 
   const startResize = (e) => {
+    if (readOnly || !onResize) return;
     e.preventDefault();
     e.stopPropagation();
     setOpen(false);
@@ -1892,7 +1904,7 @@ function DbColHeader({
     const startW = clampColWidth(width);
     setResizing(true);
     const onMove = (ev) => {
-      onResize?.(col.id, clampColWidth(startW + (ev.clientX - startX)));
+      onResize(col.id, clampColWidth(startW + (ev.clientX - startX)));
     };
     const onUp = () => {
       setResizing(false);
@@ -1913,21 +1925,23 @@ function DbColHeader({
       }
       style={colWidthStyle(width)}
       ref={wrapRef}
-      onClick={locked ? undefined : () => setOpen((o) => !o)}
+      onClick={menuOff ? undefined : () => setOpen((o) => !o)}
     >
       <span className="db-col-lab">
         <Icon name={fieldTypeIcon(col.type)} size={14} />
         <span className="db-col-name">{col.label}</span>
       </span>
-      <span
-        className="db-col-resize"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={`Resize ${col.label || "column"}`}
-        onMouseDown={startResize}
-        onClick={(e) => e.stopPropagation()}
-      />
-      {!locked && open && pos ? (
+      {!readOnly ? (
+        <span
+          className="db-col-resize"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize ${col.label || "column"}`}
+          onMouseDown={startResize}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : null}
+      {!menuOff && open && pos ? (
         <div
           className="pop db-col-menu"
           role="menu"
@@ -2032,6 +2046,7 @@ function DbTable({
   verticalBorders = true,
   colWidths = {},
   onColWidthChange,
+  readonly = false,
 }) {
   const [editCol, setEditCol] = useState(null);
   const [editIsNew, setEditIsNew] = useState(false);
@@ -2047,6 +2062,7 @@ function DbTable({
   const widths = normalizeColWidths(colWidths);
 
   const openNewCol = (insertAt = null) => {
+    if (readonly) return;
     setEditIsNew(true);
     setEditInsertAt(insertAt);
     setEditCol({
@@ -2076,6 +2092,7 @@ function DbTable({
   };
 
   const moveCol = async (index, dir) => {
+    if (readonly) return;
     const list = ensureNameColumn(d.cols);
     const item = list[index];
     if (!item || isNameCol(item)) return;
@@ -2090,6 +2107,7 @@ function DbTable({
   };
 
   const saveCol = async (saved) => {
+    if (readonly) return;
     if (isNameCol(saved) && !editIsNew) return;
     const list = ensureNameColumn(d.cols);
     const idx = list.findIndex((c) => c.id === saved.id);
@@ -2120,6 +2138,7 @@ function DbTable({
   };
 
   const deleteCol = async (col) => {
+    if (readonly) return;
     if (isNameCol(col) || allCols.length <= 1) return;
     const list = ensureNameColumn(d.cols.filter((c) => c.id !== col.id));
     d.cols = list;
@@ -2135,6 +2154,7 @@ function DbTable({
   };
 
   const setCell = async (row, col, next) => {
+    if (readonly) return;
     row[col.id] = next;
     bump((n) => n + 1);
     await persistDbRow(folder, mod, row, allCols);
@@ -2160,15 +2180,16 @@ function DbTable({
                   key={c.id}
                   col={c}
                   width={width}
-                  canLeft={i > 1}
-                  canRight={i >= 1 && i < allCols.length - 1}
+                  readOnly={readonly}
+                  canLeft={!readonly && i > 1}
+                  canRight={!readonly && i >= 1 && i < allCols.length - 1}
                   onMoveLeft={() => moveCol(i, -1)}
                   onMoveRight={() => moveCol(i, 1)}
                   onInsertBefore={() => openNewCol(i)}
                   onInsertAfter={() => openNewCol(i + 1)}
-                  onResize={onColWidthChange}
+                  onResize={readonly ? undefined : onColWidthChange}
                   onEdit={() => {
-                    if (isNameCol(c)) return;
+                    if (readonly || isNameCol(c)) return;
                     setEditIsNew(false);
                     setEditInsertAt(null);
                     setEditCol(c);
@@ -2176,9 +2197,13 @@ function DbTable({
                 />
               );
             })}
-            <th className="addcol" onClick={() => openNewCol(null)}>
-              + Add column
-            </th>
+            {!readonly ? (
+              <th className="addcol" onClick={() => openNewCol(null)}>
+                + Add column
+              </th>
+            ) : (
+              <th className="addcol" aria-hidden="true" />
+            )}
           </tr>
         </thead>
         <tbody>
@@ -2222,8 +2247,10 @@ function DbTable({
                     stages={stages}
                     variant="cell"
                     wrapLines={wrapLines}
-                    autoFocus={isNameCol(c) && r.id === focusNameId}
+                    readOnly={readonly}
+                    autoFocus={!readonly && isNameCol(c) && r.id === focusNameId}
                     onCommit={(next) => {
+                      if (readonly) return;
                       if (r.id === focusNameId) setFocusNameId(null);
                       setCell(r, c, next);
                     }}
@@ -2233,29 +2260,31 @@ function DbTable({
               <td className="db-td-trail" />
             </tr>
           ))}
-          <tr className="new">
-            <td
-              colSpan={cols.length + 2}
-              onClick={async () => {
-                const fields = {};
-                ensureNameColumn(d.cols).forEach((c) => {
-                  fields[c.id] = emptyFieldValue(c, stages);
-                });
-                const data = await postItem({
-                  project: folder.id,
-                  database: mod[2].id,
-                  fields,
-                });
-                onApplyWorkspace(data, {
-                  project: folder.id,
-                  board: mod[2].id,
-                });
-                setFocusNameId(data.id);
-              }}
-            >
-              + New
-            </td>
-          </tr>
+          {!readonly ? (
+            <tr className="new">
+              <td
+                colSpan={cols.length + 2}
+                onClick={async () => {
+                  const fields = {};
+                  ensureNameColumn(d.cols).forEach((c) => {
+                    fields[c.id] = emptyFieldValue(c, stages);
+                  });
+                  const data = await postItem({
+                    project: folder.id,
+                    database: mod[2].id,
+                    fields,
+                  });
+                  onApplyWorkspace(data, {
+                    project: folder.id,
+                    board: mod[2].id,
+                  });
+                  setFocusNameId(data.id);
+                }}
+              >
+                + New
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
       {editCol ? (
@@ -2469,6 +2498,7 @@ export function DatabaseView({
   };
 
   const schedulePersistViews = () => {
+    if (readonly) return;
     clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
       persistDbCustomViews(folder, mod).catch(() => {});
@@ -2613,6 +2643,7 @@ export function DatabaseView({
         folder={folder}
         mod={mod}
         stages={stages}
+        readonly={readonly}
         onOpen={onOpenCard}
         onApplyWorkspace={onApplyWorkspace}
         onDuplicateRecord={readonly ? undefined : onDuplicateRecord}
@@ -2628,16 +2659,18 @@ export function DatabaseView({
     >
       <div className="modbar">
         <div className="modbar-start">
-          <button
-            type="button"
-            className="mod-act"
-            title="Add record"
-            aria-label="Add record"
-            onClick={addEntry}
-          >
-            <Icon name="plus" size={18} />
-            <span className="mod-act-lab">Add record</span>
-          </button>
+          {!readonly ? (
+            <button
+              type="button"
+              className="mod-act"
+              title="Add record"
+              aria-label="Add record"
+              onClick={addEntry}
+            >
+              <Icon name="plus" size={18} />
+              <span className="mod-act-lab">Add record</span>
+            </button>
+          ) : null}
           <DbViewDropdown
             cols={d.cols || []}
             hiddenCols={hiddenCols}

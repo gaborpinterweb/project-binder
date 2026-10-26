@@ -1388,9 +1388,16 @@ function DbFieldGroups({
                     value={row[c.id]}
                     stages={stages}
                     variant="prop"
+                    readOnly={readonly}
                     autoFocus={!readonly && c.id === focusId}
-                    onChange={(next) => onPatch({ [c.id]: next })}
-                    onCommit={() => onPersist()}
+                    onChange={(next) => {
+                      if (readonly) return;
+                      onPatch({ [c.id]: next });
+                    }}
+                    onCommit={() => {
+                      if (readonly) return;
+                      onPersist();
+                    }}
                   />
                 )}
               </div>

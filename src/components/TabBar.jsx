@@ -108,6 +108,7 @@ function TabMoreMenu({
   onMoveLeft,
   onMoveRight,
   onRename,
+  onShare,
   onDelete,
 }) {
   return (
@@ -149,6 +150,19 @@ function TabMoreMenu({
             <Icon name="pencil" size={14} />
             Rename
           </button>
+          {onShare ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                run(onShare);
+              }}
+            >
+              <Icon name="share" size={14} />
+              Share
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -167,7 +181,7 @@ function TabMoreMenu({
   );
 }
 
-function CoverTabMoreMenu({ visible, editing, onEdit, onArchive, onDelete }) {
+function CoverTabMoreMenu({ visible, editing, onEdit, onShare, onArchive, onDelete }) {
   return (
     <TabMoreShell visible={visible} title="Project options">
       {(run) => (
@@ -184,6 +198,19 @@ function CoverTabMoreMenu({ visible, editing, onEdit, onArchive, onDelete }) {
             <Icon name="pencil" size={14} />
             Edit project
           </button>
+          {onShare ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                run(onShare);
+              }}
+            >
+              <Icon name="share" size={14} />
+              Share
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -229,9 +256,11 @@ function TabBtn({
   onMoveLeft,
   onMoveRight,
   onRename,
+  onShare,
   onDelete,
   coverEditing,
   onCoverEdit,
+  onCoverShare,
   onCoverArchive,
   onCoverDelete,
 }) {
@@ -255,6 +284,7 @@ function TabBtn({
             visible={!!menuVisible}
             editing={coverEditing}
             onEdit={onCoverEdit}
+            onShare={onCoverShare}
             onArchive={onCoverArchive}
             onDelete={onCoverDelete}
           />
@@ -266,6 +296,7 @@ function TabBtn({
             onMoveLeft={onMoveLeft}
             onMoveRight={onMoveRight}
             onRename={onRename}
+            onShare={onShare}
             onDelete={onDelete}
           />
         )
@@ -539,8 +570,10 @@ export default function TabBar({
   onAddTab,
   onMoveTab,
   onRenameTab,
+  onShareTab,
   onDeleteTab,
   onCoverEdit,
+  onCoverShare,
   onCoverArchive,
   onCoverDelete,
 }) {
@@ -699,8 +732,10 @@ export default function TabBar({
         onMoveLeft={() => moveAnimated(i, -1)}
         onMoveRight={() => moveAnimated(i, 1)}
         onRename={() => onRenameTab?.(i)}
+        onShare={onShareTab ? () => onShareTab(i) : undefined}
         onDelete={() => onDeleteTab?.(i)}
         onCoverEdit={onCoverEdit}
+        onCoverShare={onCoverShare}
         onCoverArchive={onCoverArchive}
         onCoverDelete={onCoverDelete}
       />

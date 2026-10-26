@@ -207,11 +207,22 @@ const RteImage = Image.extend({
       if (!img.style.width && !img.getAttribute("width")) {
         img.style.maxWidth = `${RTE_IMAGE_MAX_W}px`;
       }
+      const rawSrc = img.getAttribute("src") || "";
+      let cancelled = false;
+      if (rawSrc.startsWith("pb-blob://")) {
+        import("../api.js")
+          .then(({ resolvePbBlobUrl }) => resolvePbBlobUrl(rawSrc))
+          .then((url) => {
+            if (!cancelled && url && url !== rawSrc) img.src = url;
+          })
+          .catch(() => {});
+      }
       sync();
       requestAnimationFrame(sync);
 
       const origDestroy = view.destroy?.bind(view);
       view.destroy = () => {
+        cancelled = true;
         ro?.disconnect();
         img.removeEventListener("load", sync);
         origDestroy?.();

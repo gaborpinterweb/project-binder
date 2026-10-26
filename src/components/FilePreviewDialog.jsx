@@ -284,9 +284,19 @@ export default function FilePreviewDialog({
 
     (async () => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Could not load file");
-        const blob = await res.blob();
+        let blob;
+        if (String(url).startsWith("pb-blob://")) {
+          const { resolvePbBlobUrl } = await import("../api.js");
+          const obj = await resolvePbBlobUrl(url);
+          if (!obj || obj === url) throw new Error("Could not load file");
+          const res = await fetch(obj);
+          if (!res.ok) throw new Error("Could not load file");
+          blob = await res.blob();
+        } else {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Could not load file");
+          blob = await res.blob();
+        }
         if (cancelled || !host) return;
         const { mount } = await import("shrimp-doc-viewer");
         const viewer = await mount(host, blob, {

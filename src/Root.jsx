@@ -2,12 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import App from "./App.jsx";
 import AuthGate from "./components/AuthGate.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import ShareViewer from "./components/ShareViewer.jsx";
 import Snackbar from "./components/Snackbar.jsx";
 import { getPb, isPbMode } from "./pb/client.js";
 import { loadUserDocs, saveUserDocs } from "./pb/persist.js";
 import { workspaceEngine } from "./engine/workspaceEngine.js";
 import { ensurePersistHook } from "./engine/apiBridge.js";
 import { showSnackbar } from "./snackbar.js";
+import { currentPathname, parsePath } from "./routes.js";
+
+function readShareId() {
+  const parsed = parsePath(currentPathname());
+  return parsed?.kind === "share" ? parsed.shareId : "";
+}
 
 function readAuthParams() {
   const q = new URLSearchParams(window.location.search);
@@ -54,9 +61,11 @@ function sessionIsVerified() {
 }
 
 export default function Root() {
+  const [shareId, setShareId] = useState(() => readShareId());
   const [ready, setReady] = useState(!isPbMode());
   const [authed, setAuthed] = useState(() => {
     if (!isPbMode()) return true;
+    if (readShareId()) return false;
     const { reset, emailChange } = readAuthParams();
     if (reset || emailChange) return false;
     return sessionIsVerified();
@@ -71,6 +80,12 @@ export default function Root() {
     if (reset) return "reset";
     return "login";
   });
+
+  useEffect(() => {
+    const onPop = () => setShareId(readShareId());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const finishAuth = useCallback(async () => {
     setBooting(true);
@@ -95,6 +110,7 @@ export default function Root() {
 
   useEffect(() => {
     if (!isPbMode()) return;
+    if (shareId) return;
     let cancelled = false;
     (async () => {
       const { verify, reset, emailChange } = readAuthParams();
@@ -148,10 +164,10 @@ export default function Root() {
     return () => {
       cancelled = true;
     };
-  }, [finishAuth]);
+  }, [finishAuth, shareId]);
 
   useEffect(() => {
-    if (!isPbMode()) return;
+    if (!shareId && !isPbMode()) return;
     const onClick = async (e) => {
       const a = e.target.closest?.("a[href^='pb-blob://']");
       if (!a) return;
@@ -171,7 +187,7 @@ export default function Root() {
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, []);
+  }, [shareId]);
 
   const hosts = (
     <>
@@ -179,6 +195,15 @@ export default function Root() {
       <Snackbar />
     </>
   );
+
+  if (shareId) {
+    return (
+      <>
+        {hosts}
+        <ShareViewer shareId={shareId} />
+      </>
+    );
+  }
 
   if (isPbMode() && !authed) {
     return (

@@ -93,6 +93,7 @@ import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
 import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
+import SharingSettingsDialog from "./components/SharingSettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
@@ -162,6 +163,7 @@ export default function App() {
   const [timelogRefresh, setTimelogRefresh] = useState(0);
   const [trashRefresh, setTrashRefresh] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sharingTarget, setSharingTarget] = useState(null);
   /** Note/file entity segments driven by the URL (null = tab-only path). */
   const [routeNoteId, setRouteNoteId] = useState(null);
   const [routeFileId, setRouteFileId] = useState(null);
@@ -1603,6 +1605,57 @@ export default function App() {
     [applyWorkspace, keepNav]
   );
 
+  const openShareSettings = useCallback(
+    (
+      scope,
+      projectId,
+      tabId,
+      enabled,
+      { projectShareEnabled = false, targetName = "" } = {}
+    ) => {
+      if (!isPbMode()) return;
+      setSharingTarget({
+        scope,
+        projectId,
+        tabId: tabId || null,
+        initiallyEnabled: !!enabled,
+        projectShareEnabled: !!projectShareEnabled,
+        targetName: String(targetName || "").trim(),
+      });
+    },
+    []
+  );
+
+  const onShareTab = useCallback(
+    (index) => {
+      const folder = foldersRef.current[pRef.current];
+      if (!folder || isProjectArchived(folder)) return;
+      const mod = folder.mods?.[index];
+      if (!mod || mod[0] === "Cover") return;
+      const projectShareEnabled = !!(folder.shareEnabled && folder.shareId);
+      openShareSettings(
+        "tab",
+        folder.id,
+        mod[2]?.id,
+        !!(mod[2]?.shareEnabled && mod[2]?.shareId),
+        { projectShareEnabled, targetName: mod[1] || "Tab" }
+      );
+    },
+    [openShareSettings]
+  );
+
+  const onCoverShare = useCallback(() => {
+    const folder = foldersRef.current[pRef.current];
+    if (!folder || isProjectArchived(folder)) return;
+    openShareSettings(
+      "project",
+      folder.id,
+      null,
+      !!(folder.shareEnabled && folder.shareId),
+      { targetName: folder.name || "Project" }
+    );
+  }, [openShareSettings]);
+
   const onDeleteTab = useCallback(
     async (index) => {
       const folder = foldersRef.current[pRef.current];
@@ -1791,6 +1844,7 @@ export default function App() {
               onAddTab={onAddTab}
               onMoveTab={onMoveTab}
               onRenameTab={onRenameTab}
+              onShareTab={isPbMode() ? onShareTab : undefined}
               onDeleteTab={onDeleteTab}
               onCoverEdit={() => {
                 if (!folder || archived) return;
@@ -1804,6 +1858,7 @@ export default function App() {
                   color: folder.color || tabC || PC[0],
                 });
               }}
+              onCoverShare={isPbMode() ? onCoverShare : undefined}
               onCoverArchive={() => confirmArchiveProject(folder)}
               onCoverDelete={() => confirmDeleteProject(folder)}
             />
@@ -2441,6 +2496,35 @@ export default function App() {
             clearClientAppState();
             window.location.reload();
             await new Promise(() => {});
+          }}
+        />
+      )}
+      {sharingTarget && (
+        <SharingSettingsDialog
+          projectId={sharingTarget.projectId}
+          tabId={sharingTarget.tabId}
+          scope={sharingTarget.scope}
+          targetName={sharingTarget.targetName}
+          initiallyEnabled={sharingTarget.initiallyEnabled}
+          projectShareEnabled={!!sharingTarget.projectShareEnabled}
+          onClose={() => setSharingTarget(null)}
+          onGoToCoverShare={() => {
+            setSharingTarget(null);
+            discardCoverEdit();
+            clearEntityOverlays();
+            setM(0);
+            mRef.current = 0;
+            syncUrl({
+              m: 0,
+              dialog: null,
+              routeNoteId: null,
+              routeFileId: null,
+            });
+            queueMicrotask(() => onCoverShare());
+          }}
+          onApplied={async () => {
+            const data = await fetchWorkspace();
+            applyWorkspace(data, keepNav(sharingTarget.projectId, sharingTarget.tabId));
           }}
         />
       )}

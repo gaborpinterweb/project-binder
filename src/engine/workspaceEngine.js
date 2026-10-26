@@ -5,6 +5,7 @@
 import { normalizeImpact, normalizeEffort } from "../cardMeta.js";
 import { NAME_COL_ID, nameColumn } from "../dbFields.js";
 import { normalizeColWidths, normalizeHiddenCols } from "../dbViews.js";
+import { COVER_TAB_ID, isSafePathId, newId } from "../ids.js";
 import { fileBlobStore, blobKey } from "./fileBlobStore.js";
 
 const DEFAULT_STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
@@ -43,9 +44,6 @@ const DB_SELECT_COLORS = [
 const SEED_ANCHOR_YMD = "2026-09-30";
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** Same fixed id as client COVER_TAB_ID: cover RTE images live under this tab folder. */
-const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 const emptyArchiveDoc = () => ({ version: 2, projects: [] });
@@ -67,7 +65,6 @@ let onChange = null;
 const pendingCardFiles = new Map();
 const pendingCardImages = new Map();
 
-const newId = () => crypto.randomUUID();
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 const isDemoValue = (v) => v === true || String(v || "").toLowerCase() === "true";
 const isArchivedValue = isDemoValue;
@@ -460,10 +457,6 @@ function findNotesTab(project, tabId) {
 function findFilesTab(project, tabId) {
   if (!project) return null;
   return (project.filesTabs || []).find((t) => t.id === tabId) || null;
-}
-
-function isSafePathId(s) {
-  return typeof s === "string" && UUID_RE.test(s);
 }
 
 function tabKey(type, id) {
@@ -1075,7 +1068,7 @@ function discardCardFiles(projectId, boardId, cardId) {
   return { ok: true };
 }
 
-/** Move card attachment blobs between tab folders (board UUID = folder). */
+/** Move card attachment blobs between tab folders (board id = folder). */
 function moveCardFileBlobs(fromProject, fromBoard, toProject, toBoard, files) {
   if (fromProject === toProject && fromBoard === toBoard) return { ok: true };
   if (

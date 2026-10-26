@@ -2,7 +2,8 @@
 /**
  * Build UI → pocketbase/pb_public, then serve with the PocketBase binary.
  * Community by default; Commercial when VITE_COMMERCIAL=true|1 or --commercial.
- * If pocketbase/mail.env has RESEND_API_KEY, apply SMTP after health check.
+ * --wipe: delete pb_data first (fresh migrations). Stop any running PB first.
+ * If pocketbase/mail.env has RESEND_API_KEY + PB_ADMIN_*, upsert superuser and apply SMTP.
  */
 const fs = require("fs");
 const path = require("path");
@@ -23,6 +24,7 @@ const commercial =
   process.env.VITE_COMMERCIAL === "true" ||
   process.env.VITE_COMMERCIAL === "1" ||
   process.argv.includes("--commercial");
+const wipe = process.argv.includes("--wipe");
 
 function runNode(script, args = []) {
   const r = spawnSync(process.execPath, [script, ...args], {
@@ -44,11 +46,72 @@ function copyDir(src, dest) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
-function mailEnvHasKey() {
-  if (!fs.existsSync(MAIL_ENV)) return false;
-  const text = fs.readFileSync(MAIL_ENV, "utf8");
-  const m = text.match(/^RESEND_API_KEY=(.*)$/m);
-  return !!(m && m[1] && m[1].trim() && !m[1].trim().startsWith("#"));
+function parseEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  const out = {};
+  for (const line of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const i = t.indexOf("=");
+    if (i < 0) continue;
+    const key = t.slice(0, i).trim();
+    let val = t.slice(i + 1).trim();
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    out[key] = val;
+  }
+  return out;
+}
+
+function mailCfg() {
+  const file = parseEnvFile(MAIL_ENV);
+  const g = (k) =>
+    process.env[k] != null && process.env[k] !== "" ? process.env[k] : file[k] || "";
+  return {
+    apiKey: g("RESEND_API_KEY"),
+    adminEmail: g("PB_ADMIN_EMAIL"),
+    adminPassword: g("PB_ADMIN_PASSWORD"),
+  };
+}
+
+function wipeData() {
+  if (!fs.existsSync(DATA)) {
+    console.log(`No pb_data yet at ${DATA}`);
+    return;
+  }
+  console.log(`Wiping ${DATA}…`);
+  try {
+    fs.rmSync(DATA, { recursive: true, force: false });
+  } catch (err) {
+    console.error(
+      `Could not delete pb_data (${err.code || err.message}). Stop npm start / PocketBase first, then retry.`
+    );
+    process.exit(1);
+  }
+}
+
+function upsertSuperuser(cfg) {
+  if (!cfg.adminEmail || !cfg.adminPassword) {
+    console.warn(
+      "PB_ADMIN_EMAIL/PASSWORD missing in mail.env — skip superuser upsert (mail configure will fail until you create one at /_/)."
+    );
+    return;
+  }
+  fs.mkdirSync(DATA, { recursive: true });
+  console.log(`Upserting superuser ${cfg.adminEmail}…`);
+  const r = spawnSync(
+    BIN_PATH,
+    ["superuser", "upsert", cfg.adminEmail, cfg.adminPassword, `--dir=${DATA}`],
+    { cwd: PB_DIR, stdio: "inherit" }
+  );
+  if (r.status !== 0) {
+    console.error("superuser upsert failed");
+    process.exit(r.status || 1);
+  }
 }
 
 async function waitHealthy(timeoutMs = 60000) {
@@ -64,6 +127,24 @@ async function waitHealthy(timeoutMs = 60000) {
   }
   throw new Error("PocketBase health check timed out");
 }
+
+function applyMail() {
+  console.log("Applying Resend mail settings…");
+  const r = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "configure-pb-mail.cjs")],
+    { cwd: ROOT, stdio: "inherit" }
+  );
+  if (r.status !== 0) {
+    console.warn(
+      "Mail configure failed (app still running). Fix mail.env or run npm run pb:mail"
+    );
+  }
+}
+
+const cfg = mailCfg();
+
+if (wipe) wipeData();
 
 runNode(path.join(__dirname, "fetch-pocketbase.cjs"));
 if (commercial) {
@@ -85,6 +166,10 @@ fs.mkdirSync(DATA, { recursive: true });
 if (!fs.existsSync(MIGRATIONS)) {
   console.error(`missing migrations dir: ${MIGRATIONS}`);
   process.exit(1);
+}
+
+if (wipe || cfg.adminEmail) {
+  upsertSuperuser(cfg);
 }
 
 console.log(`Build: ${commercial ? "Commercial" : "Community"}`);
@@ -110,20 +195,14 @@ child.on("exit", (code, signal) => {
   process.exit(code ?? 1);
 });
 
-if (mailEnvHasKey()) {
+if (cfg.apiKey) {
   waitHealthy()
-    .then(() => {
-      console.log("Applying Resend mail settings…");
-      const r = spawnSync(
-        process.execPath,
-        [path.join(__dirname, "configure-pb-mail.cjs")],
-        { cwd: ROOT, stdio: "inherit" }
-      );
-      if (r.status !== 0) {
-        console.warn("Mail configure failed (app still running). Fix mail.env or run npm run pb:mail");
-      }
-    })
+    .then(() => applyMail())
     .catch((err) => {
       console.warn(String(err.message || err));
     });
+} else if (wipe) {
+  console.warn(
+    "RESEND_API_KEY empty in mail.env — skipped mail configure. Fill mail.env and run npm run pb:mail."
+  );
 }

@@ -7,6 +7,9 @@ import {
 } from "./cardMeta.js";
 import { ensureNameColumn, normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
+import { COVER_TAB_ID, newId, isSafePathId } from "./ids.js";
+
+export { COVER_TAB_ID, newId, isSafePathId };
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 export const APP_NAME = "Project Binder";
@@ -60,11 +63,6 @@ export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const BOARD_SORTS = ["custom", "project", "impact", "effort", "weight"];
 export const DEFAULT_BOARD_SORT = "custom";
 export const GACC = "#3c3c40";
-/** Client-only Cover tab identity (not stored on the server). */
-export const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
-export function newId() {
-  return crypto.randomUUID();
-}
 
 /** 16 cover colors: hue-spaced, no grays, each ≥4.5:1 with white text. */
 export const PC = [

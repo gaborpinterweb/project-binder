@@ -1525,7 +1525,10 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .auth-card{width:min(400px,100%);background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:28px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 28px #00000014}
 .auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:4px}
 .auth-logo{display:block;width:56px;height:56px;border-radius:14px}
+.auth-icon{display:grid;place-items:center;width:56px;height:56px;border-radius:14px;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
 .auth-card h1{margin:0;font-size:22px}
+.auth-sub{margin:0;color:var(--mute);font-size:14px;font-weight:400;line-height:1.45;text-align:center}
+.auth-email{display:block;margin:2px 0;color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .auth-card label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--mute)}
 .auth-card input{font:inherit;font-weight:400;color:var(--ink);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
 .auth-submit{margin-top:8px;padding:10px 14px;border-radius:10px;background:var(--acc);color:#fff;font-weight:600}

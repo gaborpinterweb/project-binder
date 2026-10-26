@@ -116,21 +116,21 @@ async function main() {
     subject: "Verify your Project Binder email",
     body: `<p>Hello,</p>
 <p>Please verify your email for Project Binder by clicking the link below:</p>
-<p><a href="${c.appUrl}/?verify={TOKEN}">Verify email</a></p>
+<p><a href="${c.appUrl}/sign-in?verify={TOKEN}">Verify email</a></p>
 <p>If you did not create an account, you can ignore this email.</p>`,
   };
   const resetPasswordTemplate = {
     subject: "Reset your Project Binder password",
     body: `<p>Hello,</p>
 <p>Reset your password by clicking the link below:</p>
-<p><a href="${c.appUrl}/?reset={TOKEN}">Reset password</a></p>
+<p><a href="${c.appUrl}/reset-password?reset={TOKEN}">Reset password</a></p>
 <p>If you did not request this, you can ignore this email.</p>`,
   };
   const confirmEmailChangeTemplate = {
     subject: "Confirm your new Project Binder email",
     body: `<p>Hello,</p>
 <p>Confirm your new email for Project Binder by clicking the link below:</p>
-<p><a href="${c.appUrl}/?emailChange={TOKEN}">Confirm email change</a></p>
+<p><a href="${c.appUrl}/sign-in?emailChange={TOKEN}">Confirm email change</a></p>
 <p>If you did not request this, you can ignore this email.</p>`,
   };
 

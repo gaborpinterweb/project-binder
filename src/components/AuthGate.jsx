@@ -1,38 +1,80 @@
 import { useEffect, useState } from "react";
 import { getPb } from "../pb/client.js";
-import { askConfirm } from "../confirmDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import { APP_NAME } from "../utils.js";
+import { Icon } from "../icons.jsx";
+import { authModeToPath, navigatePath } from "../routes.js";
+
+const PENDING_EMAIL_KEY = "project-binder:pendingVerifyEmail";
+
+function readPendingEmail() {
+  try {
+    return sessionStorage.getItem(PENDING_EMAIL_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writePendingEmail(addr) {
+  try {
+    if (addr) sessionStorage.setItem(PENDING_EMAIL_KEY, addr);
+    else sessionStorage.removeItem(PENDING_EMAIL_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * @param {{
  *   onAuthed?: () => void,
- *   initialMode?: "login" | "register" | "forgot" | "reset" | "emailChange",
+ *   initialMode?: "login" | "register" | "forgot" | "reset" | "emailChange" | "pendingVerification",
  *   resetToken?: string,
  *   onConsumedResetToken?: () => void,
  *   emailChangeToken?: string,
  *   onConsumedEmailChangeToken?: () => void,
+ *   onModeChange?: (mode: string) => void,
  * }} props
  */
 export default function AuthGate({
   onAuthed,
-  initialMode = "login",
+  initialMode = "register",
   resetToken = "",
   onConsumedResetToken,
   emailChangeToken = "",
   onConsumedEmailChangeToken,
+  onModeChange,
 }) {
   const [mode, setMode] = useState(initialMode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => readPendingEmail());
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const goMode = (next, { replace = false, clearTokens = false } = {}) => {
+    setMode(next);
+    setError("");
+    if (clearTokens) {
+      onConsumedResetToken?.();
+      onConsumedEmailChangeToken?.();
+    }
+    onModeChange?.(next);
+    navigatePath(authModeToPath(next), { replace });
+  };
+
   useEffect(() => {
     if (initialMode) setMode(initialMode);
   }, [initialMode]);
+
+  useEffect(() => {
+    if (mode !== "pendingVerification") return;
+    if (email) return;
+    const fromStore = getPb().authStore.record?.email || "";
+    const stored = readPendingEmail();
+    const next = stored || fromStore;
+    if (next) setEmail(next);
+  }, [mode, email]);
 
   useEffect(() => {
     if (resetToken) {
@@ -54,40 +96,38 @@ export default function AuthGate({
     }
   }, [emailChangeToken]);
 
-  const handleUnverified = async (addr) => {
-    const choice = await askConfirm({
-      title: "Email not verified",
-      message:
-        "Confirm your email before signing in. We can send the verification link again, or you can create a new account.",
-      confirmLabel: "Send again",
-      altLabel: "Create new account",
-      cancelLabel: "Cancel",
-    });
-    if (choice === true) {
-      try {
-        await getPb().collection("users").requestVerification(addr);
-        showSnackbar({
-          icon: "check",
-          tone: "success",
-          center: true,
-          message: "Verification email sent. Check your inbox.",
-          durationMs: 5000,
-        });
-      } catch (err) {
-        showSnackbar({
-          icon: "bell",
-          tone: "error",
-          center: true,
-          message: err?.message || "Could not send verification email",
-          durationMs: 5000,
-        });
-      }
-    } else if (choice === "alt") {
-      setMode("register");
-      setPassword("");
-      setPassword2("");
-      setInfo("");
-      setError("");
+  const resendVerification = async (addr) => {
+    const target = String(addr || email || "").trim();
+    if (!target) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "Missing email address.",
+        durationMs: 4000,
+      });
+      return;
+    }
+    setBusy(true);
+    try {
+      await getPb().collection("users").requestVerification(target);
+      showSnackbar({
+        icon: "check",
+        tone: "success",
+        center: true,
+        message: "Verification email sent. Check your inbox.",
+        durationMs: 5000,
+      });
+    } catch (err) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: err?.message || "Could not send verification email",
+        durationMs: 5000,
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -117,10 +157,10 @@ export default function AuthGate({
         if (password !== password2) throw new Error("Passwords do not match");
         await pb.collection("users").confirmPasswordReset(resetToken, password, password2);
         onConsumedResetToken?.();
-        setMode("login");
         setPassword("");
         setPassword2("");
         setInfo("Password updated. Sign in.");
+        goMode("login", { replace: true });
         showSnackbar({
           icon: "check",
           tone: "success",
@@ -136,9 +176,9 @@ export default function AuthGate({
         await pb.collection("users").confirmEmailChange(emailChangeToken, password);
         pb.authStore.clear();
         onConsumedEmailChangeToken?.();
-        setMode("login");
         setPassword("");
         setInfo("Email updated. Sign in with your new email.");
+        goMode("login", { replace: true });
         showSnackbar({
           icon: "check",
           tone: "success",
@@ -157,6 +197,12 @@ export default function AuthGate({
           password,
           passwordConfirm: password2,
         });
+        // Keep an unverified session so the email link can mark verified and enter the app.
+        try {
+          await pb.collection("users").authWithPassword(email, password);
+        } catch {
+          /* pending page + sign-in after verify still work without a local session */
+        }
         let mailOk = true;
         try {
           await pb.collection("users").requestVerification(email);
@@ -170,21 +216,18 @@ export default function AuthGate({
             durationMs: 7000,
           });
         }
-        setMode("login");
+        writePendingEmail(email);
         setPassword("");
         setPassword2("");
-        setInfo(
-          mailOk
-            ? "Check your email to verify your account, then sign in."
-            : "Account created, but email did not send. Try Sign in → Send again, or check mail.env."
-        );
+        setInfo("");
+        goMode("pendingVerification", { replace: true });
         if (mailOk) {
           showSnackbar({
             icon: "check",
             tone: "success",
             center: true,
-            message: "Account created. Verify your email, then sign in.",
-            durationMs: 6000,
+            message: "Account created. Check your email to verify.",
+            durationMs: 5000,
           });
         }
         return;
@@ -192,10 +235,11 @@ export default function AuthGate({
 
       const auth = await pb.collection("users").authWithPassword(email, password);
       if (!auth?.record?.verified) {
-        pb.authStore.clear();
-        await handleUnverified(email);
+        writePendingEmail(email);
+        goMode("pendingVerification", { replace: true });
         return;
       }
+      writePendingEmail("");
       onAuthed?.();
     } catch (err) {
       setError(err?.message || String(err) || "Authentication failed");
@@ -204,14 +248,65 @@ export default function AuthGate({
     }
   };
 
+  if (mode === "pendingVerification") {
+    const shownEmail = email || readPendingEmail() || getPb().authStore.record?.email || "";
+    return (
+      <div className="auth-gate">
+        <div className="auth-card">
+          <div className="auth-brand">
+            <div className="auth-icon" aria-hidden="true">
+              <Icon name="mail" size={28} />
+            </div>
+            <h1>Verify your email</h1>
+            <p className="auth-sub">
+              {shownEmail ? (
+                <>
+                  We&apos;ve sent a verification email to
+                  <span className="auth-email" title={shownEmail}>
+                    {shownEmail}
+                  </span>
+                  Please click the link to finish your registration.
+                </>
+              ) : (
+                <>
+                  We&apos;ve sent a verification email. Please click the link to finish your
+                  registration.
+                </>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="auth-submit"
+            disabled={busy || !shownEmail}
+            onClick={() => resendVerification(shownEmail)}
+          >
+            {busy ? "…" : "Resend email"}
+          </button>
+          <button
+            type="button"
+            className="auth-switch"
+            disabled={busy}
+            onClick={() => {
+              setInfo("");
+              goMode("login");
+            }}
+          >
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const title =
     mode === "forgot" || mode === "reset"
       ? "Reset password"
       : mode === "emailChange"
         ? "Confirm email change"
         : mode === "register"
-          ? "Sign-up"
-          : "Sign-in";
+          ? `Welcome to ${APP_NAME}`
+          : "Sign in";
 
   const hideEmail = mode === "reset" || mode === "emailChange";
 
@@ -298,9 +393,8 @@ export default function AuthGate({
               className="auth-switch"
               disabled={busy}
               onClick={() => {
-                setMode("forgot");
-                setError("");
                 setInfo("");
+                goMode("forgot");
               }}
             >
               Forgot password?
@@ -310,27 +404,35 @@ export default function AuthGate({
               className="auth-switch"
               disabled={busy}
               onClick={() => {
-                setMode("register");
-                setError("");
                 setInfo("");
                 setPassword("");
                 setPassword2("");
+                goMode("register");
               }}
             >
-              Need an account? Register
+              Need an account? Sign up
             </button>
           </>
+        ) : mode === "register" ? (
+          <button
+            type="button"
+            className="auth-switch"
+            disabled={busy}
+            onClick={() => {
+              setInfo("");
+              goMode("login");
+            }}
+          >
+            Already a user? Sign in
+          </button>
         ) : (
           <button
             type="button"
             className="auth-switch"
             disabled={busy}
             onClick={() => {
-              setMode("login");
-              setError("");
               setInfo("");
-              onConsumedResetToken?.();
-              onConsumedEmailChangeToken?.();
+              goMode("login", { clearTokens: true });
             }}
           >
             Back to sign in

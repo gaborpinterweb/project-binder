@@ -58,7 +58,7 @@ export default function SettingsDialog({
       list.push({ id: "account", label: "Account", icon: "Account" });
     }
     if (isCommercialMode()) {
-      list.push({ id: "pro", label: "Pro", icon: "Pro" });
+      list.push({ id: "billing", label: "Billing", icon: "Billing" });
     }
     list.push(
       { id: "data", label: "Data", icon: "Workspace" },
@@ -106,7 +106,7 @@ export default function SettingsDialog({
   useEffect(() => {
     if (!import.meta.env.DEV && tab === "developer") setTab("experience");
     if (!isPbMode() && tab === "account") setTab("experience");
-    if (!isCommercialMode() && tab === "pro") setTab("experience");
+    if (!isCommercialMode() && tab === "billing") setTab("experience");
   }, [tab]);
 
   const openProUrl = (url, missingLabel) => {
@@ -533,7 +533,7 @@ export default function SettingsDialog({
             </section>
           )}
 
-          {tab === "pro" && isCommercialMode() && (
+          {tab === "billing" && isCommercialMode() && (
             <section className="settings-section">
               <div className="settings-rows">
                 <div className="settings-row">

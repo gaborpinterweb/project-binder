@@ -3,6 +3,7 @@ const http = require("http");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
 const AdmZip = require("adm-zip");
 const {
   createUserDataStore,
@@ -313,8 +314,29 @@ let store = null;
 /** @type {{ version: number, projects: object[] }} */
 let archiveStore = emptyArchiveDoc();
 
+const ID_LENGTH = 12;
+const ID_ALPHABET =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const ID_RE = new RegExp(`^[${ID_ALPHABET}]{${ID_LENGTH}}$`);
+const ID_BYTE_MAX = 256 - (256 % ID_ALPHABET.length);
+/** Same fixed id as client COVER_TAB_ID — cover RTE images live under this upload folder. */
+const COVER_TAB_ID = "0000000000c0";
+
 function newId() {
-  return crypto.randomUUID();
+  let out = "";
+  while (out.length < ID_LENGTH) {
+    const bytes = crypto.randomBytes(ID_LENGTH - out.length + 4);
+    for (const b of bytes) {
+      if (b >= ID_BYTE_MAX) continue;
+      out += ID_ALPHABET[b % ID_ALPHABET.length];
+      if (out.length === ID_LENGTH) break;
+    }
+  }
+  return out;
+}
+
+function isSafePathId(s) {
+  return typeof s === "string" && ID_RE.test(s);
 }
 
 function isDemoValue(v) {
@@ -557,7 +579,7 @@ function ensureStore() {
     if (looksLikeLegacySlugWorkspace(USER_WORKSPACE)) {
       console.error(
         `Refusing to replace legacy slug workspace at ${USER_WORKSPACE}.\n` +
-          "Migrate to UUID ids first — see docs/migrate-slugs-to-uids.md"
+          "Migrate to entity ids first — see docs/migrate-slugs-to-uids.md"
       );
       process.exit(1);
     }
@@ -631,14 +653,6 @@ function findNotesTab(project, tabId) {
 function findFilesTab(project, tabId) {
   if (!project) return null;
   return (project.filesTabs || []).find((t) => t.id === tabId) || null;
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** Same fixed id as client COVER_TAB_ID — cover RTE images live under this upload folder. */
-const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
-
-function isSafePathId(s) {
-  return typeof s === "string" && UUID_RE.test(s);
 }
 
 function removeUploadTree(projectId, tabId) {
@@ -1242,7 +1256,7 @@ function readCardFileBytes(projectId, boardId, cardId, fileId) {
   };
 }
 
-/** Move card attachment blobs between tab folders (board UUID = folder). */
+  /** Move card attachment blobs between tab folders (board id = folder). */
 function moveCardFileBlobs(fromProject, fromBoard, toProject, toBoard, files) {
   if (fromProject === toProject && fromBoard === toBoard) return { ok: true };
   if (

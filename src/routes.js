@@ -1,9 +1,34 @@
-/** Path-based app routes (no hash). IDs are workspace UUIDs. */
+/** Path-based app routes (no hash). IDs are workspace entity ids (see src/ids.js). */
 
 export const ENTITY_TASKS = "tasks";
 export const ENTITY_RECORDS = "records";
 export const ENTITY_NOTES = "notes";
 export const ENTITY_FILES = "files";
+
+export const AUTH_SIGN_IN = "/sign-in";
+export const AUTH_SIGN_UP = "/sign-up";
+export const AUTH_RESET_PASSWORD = "/reset-password";
+export const AUTH_PENDING_VERIFICATION = "/pending-verification";
+
+/** AuthGate mode → path (emailChange stays on sign-in). */
+export function authModeToPath(mode) {
+  if (mode === "register") return AUTH_SIGN_UP;
+  if (mode === "forgot" || mode === "reset") return AUTH_RESET_PASSWORD;
+  if (mode === "pendingVerification") return AUTH_PENDING_VERIFICATION;
+  return AUTH_SIGN_IN;
+}
+
+/** Path → AuthGate mode (token modes overlay in Root). */
+export function pathToAuthMode(pathname) {
+  const raw = String(pathname || "/").split("?")[0].split("#")[0];
+  const parts = raw.replace(/\/+$/, "").split("/").filter(Boolean);
+  if (parts.length !== 1) return null;
+  if (parts[0] === "sign-up") return "register";
+  if (parts[0] === "sign-in") return "login";
+  if (parts[0] === "reset-password") return "forgot";
+  if (parts[0] === "pending-verification") return "pendingVerification";
+  return null;
+}
 
 const GLOBAL_PATH = {
   "master-board": "Masterboard",
@@ -37,14 +62,17 @@ export function entityKindToModType(entityKind) {
 
 /**
  * @returns {null | {
- *   kind: "global" | "settings" | "project" | "cover" | "tab" | "entity" | "share",
+ *   kind: "global" | "globalEntity" | "settings" | "project" | "cover" | "tab" | "entity" | "share" | "auth",
  *   g?: string,
  *   projectId?: string,
  *   tabId?: string,
  *   entityKind?: string,
  *   entityId?: string,
  *   shareId?: string,
+ *   mode?: "login" | "register" | "forgot" | "pendingVerification",
  * }}
+ * `cover` is legacy `/projects/:id/cover` (app redirects to project root).
+ * Project root `/projects/:id` opens the cover tab.
  */
 export function parsePath(pathname) {
   const raw = String(pathname || "/").split("?")[0].split("#")[0];
@@ -53,9 +81,26 @@ export function parsePath(pathname) {
 
   if (parts.length === 1) {
     if (parts[0] === "settings") return { kind: "settings" };
+    const authMode = pathToAuthMode("/" + parts[0]);
+    if (authMode) return { kind: "auth", mode: authMode };
     const g = GLOBAL_PATH[parts[0]];
     if (g) return { kind: "global", g };
     return null;
+  }
+
+  // /master-board/tasks/:cardId
+  if (
+    parts.length === 3 &&
+    parts[0] === "master-board" &&
+    parts[1] === ENTITY_TASKS &&
+    parts[2]
+  ) {
+    return {
+      kind: "globalEntity",
+      g: "Masterboard",
+      entityKind: ENTITY_TASKS,
+      entityId: parts[2],
+    };
   }
 
   if (parts[0] === "share" && parts[1] && parts.length === 2) {
@@ -104,11 +149,20 @@ export function parsePath(pathname) {
 export function buildPath(state = {}) {
   if (state.settings) return "/settings";
   if (state.g) {
-    return GLOBAL_TO_PATH[state.g] || "/master-board";
+    const base = GLOBAL_TO_PATH[state.g] || "/master-board";
+    if (
+      state.g === "Masterboard" &&
+      state.entityKind === ENTITY_TASKS &&
+      state.entityId
+    ) {
+      return `${base}/${ENTITY_TASKS}/${state.entityId}`;
+    }
+    return base;
   }
   const projectId = state.projectId;
   if (!projectId) return "/master-board";
-  if (state.cover) return `/projects/${projectId}/cover`;
+  // Cover is the project root; `/projects/:id/cover` is accepted as a redirect only.
+  if (state.cover) return `/projects/${projectId}`;
   const tabId = state.tabId;
   if (!tabId) return `/projects/${projectId}`;
   const base = `/projects/${projectId}/tabs/${tabId}`;

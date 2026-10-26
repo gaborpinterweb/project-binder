@@ -31,7 +31,7 @@ Deep links use path URLs (e.g. `/projects/<id>/tabs/<id>/tasks/<id>`). PocketBas
 
 Fetch binary only: `npm run pb:fetch`. Optional Docker: `docker compose up` (see `docker-compose.yml`).
 
-If migrations changed and you already have `pocketbase/pb_data`, delete that folder once so migrations re-apply (loses local PB data).
+If migrations changed and you already have `pocketbase/pb_data`, delete that folder once so migrations re-apply (loses local PB data). Or: `npm run pb:fresh` / `npm run pb:fresh:commercial` (wipe + rebuild + mail).
 
 ### Email (Resend) — verify + password reset
 

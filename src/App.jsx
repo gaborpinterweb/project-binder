@@ -111,6 +111,7 @@ import {
   entityKindToModType,
   ENTITY_NOTES,
   ENTITY_FILES,
+  ENTITY_TASKS,
 } from "./routes.js";
 
 function currentLaunchUserId() {
@@ -221,7 +222,25 @@ export default function App() {
       if (settings) return buildPath({ settings: true });
 
       const gVal = overrides.g !== undefined ? overrides.g : gRef.current;
-      if (gVal) return buildPath({ g: gVal });
+      if (gVal) {
+        const dialogNow =
+          overrides.dialog !== undefined ? overrides.dialog : dialogRef.current;
+        if (
+          gVal === "Masterboard" &&
+          dialogNow &&
+          !dialogNow.isDraft &&
+          !dialogNow.readonly &&
+          dialogNow.row?.id &&
+          dialogNow.loc?.mod?.[0] === "Board"
+        ) {
+          return buildPath({
+            g: gVal,
+            entityKind: ENTITY_TASKS,
+            entityId: dialogNow.row.id,
+          });
+        }
+        return buildPath({ g: gVal });
+      }
 
       const foldersNow = overrides.folders || foldersRef.current;
       const pVal = overrides.p !== undefined ? overrides.p : pRef.current;
@@ -304,7 +323,7 @@ export default function App() {
 
       applyingRouteRef.current = true;
       try {
-        if (!route) {
+        if (!route || route.kind === "auth") {
           setSettingsOpen(false);
           settingsOpenRef.current = false;
           // Session already applied on initial load; canonicalize address bar.
@@ -330,6 +349,46 @@ export default function App() {
           return;
         }
 
+        if (route.kind === "globalEntity") {
+          setG(route.g);
+          gRef.current = route.g;
+          setRouteNoteId(null);
+          setRouteFileId(null);
+          routeNoteIdRef.current = null;
+          routeFileIdRef.current = null;
+          if (route.entityKind !== ENTITY_TASKS) {
+            clearEntityOverlays();
+            navigatePath(buildPath({ g: route.g }), { replace: true });
+            return;
+          }
+          const loc = locateRow(foldersNow, { id: route.entityId });
+          const row =
+            loc?.mod?.[0] === "Board"
+              ? (loc.mod[2]?.rows || []).find((r) => r.id === route.entityId)
+              : null;
+          if (!loc || !row) {
+            clearEntityOverlays();
+            navigatePath(buildPath({ g: route.g }), { replace: true });
+            return;
+          }
+          const nextDialog = {
+            row: { ...row },
+            isDraft: false,
+            loc: { folder: loc.folder, mod: loc.mod },
+          };
+          setDialog(nextDialog);
+          dialogRef.current = nextDialog;
+          navigatePath(
+            buildPath({
+              g: route.g,
+              entityKind: ENTITY_TASKS,
+              entityId: route.entityId,
+            }),
+            { replace: true }
+          );
+          return;
+        }
+
         const pi = foldersNow.findIndex((f) => f.id === route.projectId);
         if (pi < 0) {
           clearEntityOverlays();
@@ -346,31 +405,12 @@ export default function App() {
         const project = foldersNow[pi];
         const mods = project.mods || [];
 
-        if (route.kind === "project") {
-          clearEntityOverlays();
-          const nextM = restoreTabIndex(project);
-          setM(nextM);
-          mRef.current = nextM;
-          navigatePath(
-            buildAppPath({
-              g: null,
-              p: pi,
-              m: nextM,
-              settings: false,
-              dialog: null,
-              routeNoteId: null,
-              routeFileId: null,
-            }),
-            { replace: true }
-          );
-          return;
-        }
-
-        if (route.kind === "cover") {
+        // Project root and legacy `/cover` both open the cover tab.
+        if (route.kind === "project" || route.kind === "cover") {
           clearEntityOverlays();
           setM(0);
           mRef.current = 0;
-          navigatePath(buildPath({ projectId: project.id, cover: true }), {
+          navigatePath(buildPath({ projectId: project.id }), {
             replace: true,
           });
           return;
@@ -381,7 +421,7 @@ export default function App() {
           clearEntityOverlays();
           setM(0);
           mRef.current = 0;
-          navigatePath(buildPath({ projectId: project.id, cover: true }), {
+          navigatePath(buildPath({ projectId: project.id }), {
             replace: true,
           });
           return;
@@ -1133,7 +1173,10 @@ export default function App() {
       routeFileIdRef.current = null;
       setSettingsOpen(false);
       settingsOpenRef.current = false;
-      if (loc?.folder && loc?.mod) {
+      // Master board / Timelogs / Trash: keep the global view; only jump into the
+      // project tab when opening from inside a project.
+      const stayGlobal = !!gRef.current;
+      if (!stayGlobal && loc?.folder && loc?.mod) {
         const pi = foldersRef.current.findIndex((f) => f.id === loc.folder.id);
         const mi = (foldersRef.current[pi]?.mods || []).findIndex(
           (mod) => mod?.[2]?.id === loc.mod[2]?.id
@@ -1149,13 +1192,14 @@ export default function App() {
           }
         }
       }
-      // Drafts stay on the tab URL; persisted cards get an entity path.
+      // Drafts stay on the tab URL; persisted cards get an entity path
+      // (Masterboard → /master-board/tasks/:id).
       syncUrl({
         dialog: isDraft ? null : nextDialog,
         routeNoteId: null,
         routeFileId: null,
         settings: false,
-        g: null,
+        g: stayGlobal ? gRef.current : null,
       });
     },
     [syncUrl]

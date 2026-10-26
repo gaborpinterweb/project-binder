@@ -16,7 +16,9 @@
     "pb:mail": "node scripts/configure-pb-mail.cjs",
     "pb:ui": "node scripts/rebuild-pb-ui.cjs",
     "pb:ui:commercial": "VITE_COMMERCIAL=true node scripts/rebuild-pb-ui.cjs",
-    "pb": "node scripts/run-pocketbase.cjs"
+    "pb": "node scripts/run-pocketbase.cjs",
+    "pb:fresh": "node scripts/run-pocketbase.cjs --wipe",
+    "pb:fresh:commercial": "VITE_COMMERCIAL=true node scripts/run-pocketbase.cjs --wipe --commercial"
   },
   "dependencies": {
     "@tiptap/extension-highlight": "^3.31.4",

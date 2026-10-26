@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import App from "./App.jsx";
 import AuthGate from "./components/AuthGate.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
@@ -9,7 +9,15 @@ import { loadUserDocs, saveUserDocs } from "./pb/persist.js";
 import { workspaceEngine } from "./engine/workspaceEngine.js";
 import { ensurePersistHook } from "./engine/apiBridge.js";
 import { showSnackbar } from "./snackbar.js";
-import { currentPathname, parsePath } from "./routes.js";
+import {
+  AUTH_RESET_PASSWORD,
+  AUTH_SIGN_IN,
+  AUTH_SIGN_UP,
+  currentPathname,
+  navigatePath,
+  parsePath,
+  pathToAuthMode,
+} from "./routes.js";
 
 function readShareId() {
   const parsed = parsePath(currentPathname());
@@ -32,6 +40,27 @@ function clearAuthParams() {
   url.searchParams.delete("emailChange");
   const next = url.pathname + (url.searchParams.toString() ? `?${url.searchParams}` : "") + url.hash;
   window.history.replaceState({}, "", next);
+}
+
+function modeFromLocation() {
+  const { reset, emailChange } = readAuthParams();
+  if (emailChange) return "emailChange";
+  if (reset) return "reset";
+  return pathToAuthMode(currentPathname()) || "register";
+}
+
+/**
+ * Logged out: `/` and any non-auth app path → `/sign-up`.
+ * Keep `/sign-in`, `/sign-up`, `/reset-password`, `/pending-verification` as-is.
+ * @returns {string} AuthGate mode after sync
+ */
+function redirectLoggedOutToSignUp() {
+  const { verify, reset, emailChange } = readAuthParams();
+  if (verify || reset || emailChange) return modeFromLocation();
+  const mode = pathToAuthMode(currentPathname());
+  if (mode) return mode;
+  navigatePath(AUTH_SIGN_UP, { replace: true });
+  return "register";
 }
 
 async function loadSeed() {
@@ -66,26 +95,33 @@ export default function Root() {
   const [authed, setAuthed] = useState(() => {
     if (!isPbMode()) return true;
     if (readShareId()) return false;
-    const { reset, emailChange } = readAuthParams();
-    if (reset || emailChange) return false;
+    const { verify, reset, emailChange } = readAuthParams();
+    // Token links must run through the boot effect before treating the session as ready.
+    if (verify || reset || emailChange) return false;
     return sessionIsVerified();
   });
   const [bootError, setBootError] = useState("");
   const [booting, setBooting] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [emailChangeToken, setEmailChangeToken] = useState("");
-  const [authGateMode, setAuthGateMode] = useState(() => {
-    const { reset, emailChange } = readAuthParams();
-    if (emailChange) return "emailChange";
-    if (reset) return "reset";
-    return "login";
-  });
+  const [authGateMode, setAuthGateMode] = useState(() => modeFromLocation());
 
   useEffect(() => {
-    const onPop = () => setShareId(readShareId());
+    const onPop = () => {
+      setShareId(readShareId());
+      if (!sessionIsVerified() && isPbMode() && !readShareId()) {
+        setAuthGateMode(redirectLoggedOutToSignUp());
+      }
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  // Address bar: logged-out non-auth paths become /sign-up before paint.
+  useLayoutEffect(() => {
+    if (!isPbMode() || authed || shareId) return;
+    setAuthGateMode(redirectLoggedOutToSignUp());
+  }, [authed, shareId]);
 
   const finishAuth = useCallback(async () => {
     setBooting(true);
@@ -95,11 +131,16 @@ export default function Root() {
         getPb().authStore.clear();
         setAuthed(false);
         setReady(false);
+        setAuthGateMode(redirectLoggedOutToSignUp());
         return;
       }
       await bootstrapPbSession();
       setAuthed(true);
       setReady(true);
+      // Leave auth URLs so App can canonicalize to the workspace.
+      if (parsePath(currentPathname())?.kind === "auth") {
+        navigatePath("/master-board", { replace: true });
+      }
     } catch (err) {
       setBootError(err?.message || String(err));
       setAuthed(false);
@@ -119,14 +160,27 @@ export default function Root() {
           await getPb().collection("users").confirmVerification(verify);
           if (cancelled) return;
           clearAuthParams();
+          // SDK marks authStore.record.verified when an unverified session matches the token.
+          if (sessionIsVerified()) {
+            showSnackbar({
+              icon: "check",
+              tone: "success",
+              center: true,
+              message: "Email verified.",
+              durationMs: 4000,
+            });
+            await finishAuth();
+            return;
+          }
           showSnackbar({
             icon: "check",
             tone: "success",
             center: true,
-            message: "Email verified. You can sign in.",
+            message: "Email verified. Sign in to continue.",
             durationMs: 5000,
           });
           setAuthGateMode("login");
+          navigatePath(AUTH_SIGN_IN, { replace: true });
         } catch (err) {
           if (cancelled) return;
           clearAuthParams();
@@ -137,6 +191,12 @@ export default function Root() {
             message: err?.message || "Could not verify email",
             durationMs: 6000,
           });
+          if (sessionIsVerified()) {
+            await finishAuth();
+            return;
+          }
+          setAuthGateMode("login");
+          navigatePath(AUTH_SIGN_IN, { replace: true });
         }
         return;
       }
@@ -144,6 +204,7 @@ export default function Root() {
         clearAuthParams();
         setResetToken(reset);
         setAuthGateMode("reset");
+        navigatePath(AUTH_RESET_PASSWORD, { replace: true });
         return;
       }
       if (emailChange) {
@@ -153,13 +214,18 @@ export default function Root() {
         setReady(false);
         setEmailChangeToken(emailChange);
         setAuthGateMode("emailChange");
+        navigatePath(AUTH_SIGN_IN, { replace: true });
         return;
       }
       if (sessionIsVerified()) {
         await finishAuth();
-      } else if (getPb().authStore.isValid) {
+        return;
+      }
+      if (getPb().authStore.isValid) {
         getPb().authStore.clear();
       }
+      if (cancelled) return;
+      setAuthGateMode(redirectLoggedOutToSignUp());
     })();
     return () => {
       cancelled = true;
@@ -213,6 +279,7 @@ export default function Root() {
           onAuthed={finishAuth}
           initialMode={authGateMode}
           resetToken={resetToken}
+          onModeChange={setAuthGateMode}
           onConsumedResetToken={() => {
             setResetToken("");
             setAuthGateMode("login");

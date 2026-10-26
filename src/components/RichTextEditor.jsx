@@ -967,27 +967,25 @@ export default function RichTextEditor({
 
   return (
     <div className="rte">
-      {showToolbar &&
-        (showLabel ? (
-          <div className="dlg-desc-head">
+      {(showLabel || showToolbar) && (
+        <div
+          className={
+            "dlg-desc-head" + (showLabel ? "" : " notes-rte-head")
+          }
+        >
+          {showLabel ? (
             <span className="dlg-desc-label">{label}</span>
+          ) : null}
+          {showToolbar ? (
             <RteToolbar
               editor={editor}
               variant={variant}
               hasRaisedIslands={hasRaisedIslands}
               imageUpload={imageUpload}
             />
-          </div>
-        ) : (
-          <div className="dlg-desc-head notes-rte-head">
-            <RteToolbar
-              editor={editor}
-              variant={variant}
-              hasRaisedIslands={hasRaisedIslands}
-              imageUpload={imageUpload}
-            />
-          </div>
-        ))}
+          ) : null}
+        </div>
+      )}
       <EditorContent editor={editor} />
       {feat.table && editable ? <TableFloat editor={editor} /> : null}
     </div>

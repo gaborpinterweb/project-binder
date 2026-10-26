@@ -411,6 +411,7 @@ export default function CardDialog({
   keepNav,
   showMasterColumn = true,
   showTimelogs = true,
+  compact = false,
   activeTimerKey = null,
   activePomo = null,
   logsRefreshKey = 0,
@@ -1162,7 +1163,7 @@ export default function CardDialog({
                     value={draft.body || ""}
                     placeholder="Write something…"
                     editable={!readonly}
-                    showToolbar={!readonly}
+                    showToolbar={!readonly && !compact}
                     variant="mini"
                     imageUpload={imageUpload}
                     onChange={(html) => {
@@ -1293,6 +1294,15 @@ export default function CardDialog({
         {!readonly && isDraft ? (
           <div className="dlg-controls">
             <div className="actions">
+              {compact ? (
+                <button
+                  type="button"
+                  className="dlg-delete"
+                  onClick={() => close(false)}
+                >
+                  Cancel
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="dlg-create"
@@ -1300,6 +1310,19 @@ export default function CardDialog({
                 onClick={() => close(true)}
               >
                 Add task
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!readonly && !isDraft && compact ? (
+          <div className="dlg-controls">
+            <div className="actions">
+              <button
+                type="button"
+                className="dlg-create"
+                onClick={() => close(false)}
+              >
+                Done
               </button>
             </div>
           </div>

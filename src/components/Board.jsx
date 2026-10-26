@@ -1406,6 +1406,7 @@ function MasterBoard({
   boardSortByScope,
   uiTick,
   activeTimerKey = null,
+  compact = false,
   onBump,
   onSetCompletedView,
   onSetBoardSort,
@@ -1423,7 +1424,7 @@ function MasterBoard({
   onDeleteCard,
 }) {
   const tasks = allBoardTasks(folders).filter(
-    (t) => !masterOff.has(boardKey(t.folder, t.mod))
+    (t) => compact || !masterOff.has(boardKey(t.folder, t.mod))
   );
   const mode = getCompletedView("master", completedViewByScope);
   const show = getBoardShow("master", boardShowByScope);
@@ -1645,7 +1646,9 @@ function MasterBoard({
   };
 
   const masterCreateTarget = () => {
-    const boards = allBoards(folders).filter((b) => !masterOff.has(b.key));
+    const boards = allBoards(folders).filter(
+      (b) => compact || !masterOff.has(b.key)
+    );
     if (!boards.length) return null;
     return boards.find((b) => b.folder === currentFolder) || boards[0];
   };
@@ -1799,7 +1802,7 @@ function MasterBoard({
           </BoardCol>
         )}
       </div>
-      {!boardEdit && (
+      {!boardEdit && !compact && (
         <div className="mb-foot">
           {allBoards(folders).map(({ folder, mod, color, key }) => {
             const label = boardLabel(folder, mod);
@@ -2796,6 +2799,8 @@ export default function Board({
   locateRow,
   keepNav,
   activeTimerKey = null,
+  compact = false,
+  onOpenSettings,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -2804,9 +2809,15 @@ export default function Board({
 }) {
   if (mode === "master") {
     const addMasterTask = () => {
-      const boards = allBoards(folders).filter((b) => !masterOff.has(b.key));
+      const boards = allBoards(folders).filter(
+        (b) => compact || !masterOff.has(b.key)
+      );
       if (!boards.length) {
-        alert("Enable at least one board in the footer to create a card.");
+        alert(
+          compact
+            ? "Create a project board on desktop before adding tasks."
+            : "Enable at least one board in the footer to create a card."
+        );
         return;
       }
       const target = boards.find((b) => b.folder === folder) || boards[0];
@@ -2819,40 +2830,54 @@ export default function Board({
 
     return (
       <div id="view" className="db" style={{ ["--tab"]: tabC }}>
-        <GlobalBar name="Masterboard">
-          {!boardEdit && (
+        <GlobalBar name="Masterboard" titleRainbow={compact}>
+          {compact ? (
             <button
               type="button"
               className="mod-act"
-              title="Add task"
-              aria-label="Add task"
-              onClick={addMasterTask}
+              title="Settings"
+              aria-label="Settings"
+              onClick={onOpenSettings}
             >
-              <Icon name="plus" size={18} />
-              <span className="mod-act-lab">Add task</span>
+              <Icon name="settings" size={18} />
             </button>
+          ) : (
+            <>
+              {!boardEdit && (
+                <button
+                  type="button"
+                  className="mod-act"
+                  title="Add task"
+                  aria-label="Add task"
+                  onClick={addMasterTask}
+                >
+                  <Icon name="plus" size={18} />
+                  <span className="mod-act-lab">Add task</span>
+                </button>
+              )}
+              {!boardEdit && (
+                <CompletedViewBtn
+                  scope="master"
+                  completedViewByScope={completedViewByScope}
+                  boardShowByScope={boardShowByScope}
+                  onChange={onSetCompletedView}
+                  onSetBoardShow={onSetBoardShow}
+                  triggerLabel="View"
+                  align="right"
+                />
+              )}
+              {!boardEdit && (
+                <BoardSortBtn
+                  scope="master"
+                  boardSortByScope={boardSortByScope}
+                  onChange={onSetBoardSort}
+                  allowProject
+                  align="right"
+                />
+              )}
+              <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
+            </>
           )}
-          {!boardEdit && (
-            <CompletedViewBtn
-              scope="master"
-              completedViewByScope={completedViewByScope}
-              boardShowByScope={boardShowByScope}
-              onChange={onSetCompletedView}
-              onSetBoardShow={onSetBoardShow}
-              triggerLabel="View"
-              align="right"
-            />
-          )}
-          {!boardEdit && (
-            <BoardSortBtn
-              scope="master"
-              boardSortByScope={boardSortByScope}
-              onChange={onSetBoardSort}
-              allowProject
-              align="right"
-            />
-          )}
-          <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
         </GlobalBar>
         <MasterBoard
           folders={folders}
@@ -2864,6 +2889,7 @@ export default function Board({
           boardShowByScope={boardShowByScope}
           boardSortByScope={boardSortByScope}
           uiTick={uiTick}
+          compact={compact}
           onBump={onBump}
           onSetCompletedView={onSetCompletedView}
           onSetBoardSort={onSetBoardSort}
@@ -2881,6 +2907,17 @@ export default function Board({
           onDuplicateCard={onDuplicateCard}
           onDeleteCard={onDeleteCard}
         />
+        {compact && (
+          <button
+            type="button"
+            className="mobile-fab"
+            title="Add task"
+            aria-label="Add task"
+            onClick={addMasterTask}
+          >
+            <Icon name="plus" size={24} />
+          </button>
+        )}
       </div>
     );
   }

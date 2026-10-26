@@ -93,6 +93,8 @@ import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
 import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
+import MobileSettingsDialog from "./components/MobileSettingsDialog.jsx";
+import MobileShell from "./components/MobileShell.jsx";
 import SharingSettingsDialog from "./components/SharingSettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import { askPrompt } from "./promptDialog.js";
@@ -102,6 +104,7 @@ import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
 import { getPb, isPbMode } from "./pb/client.js";
+import useIsPhone from "./hooks/useIsPhone.js";
 import {
   parsePath,
   buildPath,
@@ -128,6 +131,7 @@ function nextTabName(mods, base) {
 }
 
 export default function App() {
+  const isPhone = useIsPhone();
   const [folders, setFolders] = useState([]);
   const [stages, setStages] = useState(STAGES.slice());
   const [p, setP] = useState(0);
@@ -199,6 +203,7 @@ export default function App() {
   const settingsPushedRef = useRef(false);
   const routeReadyRef = useRef(false);
   const applyingRouteRef = useRef(false);
+  const isPhoneRef = useRef(isPhone);
 
   foldersRef.current = folders;
   stagesRef.current = stages;
@@ -210,8 +215,14 @@ export default function App() {
   settingsOpenRef.current = settingsOpen;
   routeNoteIdRef.current = routeNoteId;
   routeFileIdRef.current = routeFileId;
+  isPhoneRef.current = isPhone;
 
   const bump = useCallback(() => setUiTick((n) => n + 1), []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("is-phone", isPhone);
+    return () => document.documentElement.classList.remove("is-phone");
+  }, [isPhone]);
 
   const buildAppPath = useCallback(
     (overrides = {}) => {
@@ -307,6 +318,25 @@ export default function App() {
     [buildAppPath]
   );
 
+  useEffect(() => {
+    if (!isPhone) return;
+    setBoardEdit(false);
+    setDraftProject(null);
+    setCoverEdit(false);
+    setCoverDraft(null);
+    if (gRef.current !== "Masterboard") {
+      setG("Masterboard");
+      gRef.current = "Masterboard";
+      if (routeReadyRef.current) {
+        syncUrl({
+          g: "Masterboard",
+          settings: settingsOpenRef.current,
+          replace: true,
+        });
+      }
+    }
+  }, [isPhone, syncUrl]);
+
   const clearEntityOverlays = useCallback(() => {
     setDialog(null);
     setRouteNoteId(null);
@@ -342,23 +372,31 @@ export default function App() {
         settingsPushedRef.current = false;
 
         if (route.kind === "global") {
+          const nextG =
+            isPhoneRef.current && route.g !== "Masterboard"
+              ? "Masterboard"
+              : route.g;
           clearEntityOverlays();
-          setG(route.g);
-          gRef.current = route.g;
-          navigatePath(buildPath({ g: route.g }), { replace: true });
+          setG(nextG);
+          gRef.current = nextG;
+          navigatePath(buildPath({ g: nextG }), { replace: true });
           return;
         }
 
         if (route.kind === "globalEntity") {
-          setG(route.g);
-          gRef.current = route.g;
+          const nextG =
+            isPhoneRef.current && route.g !== "Masterboard"
+              ? "Masterboard"
+              : route.g;
+          setG(nextG);
+          gRef.current = nextG;
           setRouteNoteId(null);
           setRouteFileId(null);
           routeNoteIdRef.current = null;
           routeFileIdRef.current = null;
           if (route.entityKind !== ENTITY_TASKS) {
             clearEntityOverlays();
-            navigatePath(buildPath({ g: route.g }), { replace: true });
+            navigatePath(buildPath({ g: nextG }), { replace: true });
             return;
           }
           const loc = locateRow(foldersNow, { id: route.entityId });
@@ -368,7 +406,7 @@ export default function App() {
               : null;
           if (!loc || !row) {
             clearEntityOverlays();
-            navigatePath(buildPath({ g: route.g }), { replace: true });
+            navigatePath(buildPath({ g: nextG }), { replace: true });
             return;
           }
           const nextDialog = {
@@ -380,12 +418,51 @@ export default function App() {
           dialogRef.current = nextDialog;
           navigatePath(
             buildPath({
-              g: route.g,
+              g: nextG,
               entityKind: ENTITY_TASKS,
               entityId: route.entityId,
             }),
             { replace: true }
           );
+          return;
+        }
+
+        // Phone shell is Masterboard-only: project/tab URLs redirect there.
+        // Task entity deep links still open the card on Masterboard.
+        if (isPhoneRef.current) {
+          setG("Masterboard");
+          gRef.current = "Masterboard";
+          setRouteNoteId(null);
+          setRouteFileId(null);
+          routeNoteIdRef.current = null;
+          routeFileIdRef.current = null;
+          if (route.entityKind === ENTITY_TASKS && route.entityId) {
+            const loc = locateRow(foldersNow, { id: route.entityId });
+            const row =
+              loc?.mod?.[0] === "Board"
+                ? (loc.mod[2]?.rows || []).find((r) => r.id === route.entityId)
+                : null;
+            if (loc && row) {
+              const nextDialog = {
+                row: { ...row },
+                isDraft: false,
+                loc: { folder: loc.folder, mod: loc.mod },
+              };
+              setDialog(nextDialog);
+              dialogRef.current = nextDialog;
+              navigatePath(
+                buildPath({
+                  g: "Masterboard",
+                  entityKind: ENTITY_TASKS,
+                  entityId: route.entityId,
+                }),
+                { replace: true }
+              );
+              return;
+            }
+          }
+          clearEntityOverlays();
+          navigatePath(buildPath({ g: "Masterboard" }), { replace: true });
           return;
         }
 
@@ -927,6 +1004,7 @@ export default function App() {
   }
 
   function openTimelogs(filter) {
+    if (isPhoneRef.current) return;
     setTimelogFilter(filter);
     clearEntityOverlays();
     setSettingsOpen(false);
@@ -1173,9 +1251,13 @@ export default function App() {
       routeFileIdRef.current = null;
       setSettingsOpen(false);
       settingsOpenRef.current = false;
-      // Master board / Timelogs / Trash: keep the global view; only jump into the
-      // project tab when opening from inside a project.
-      const stayGlobal = !!gRef.current;
+      // Phone always stays on Masterboard. Desktop: keep Timelogs/Trash/Masterboard;
+      // only jump into the project tab when opening from inside a project.
+      if (isPhoneRef.current) {
+        setG("Masterboard");
+        gRef.current = "Masterboard";
+      }
+      const stayGlobal = isPhoneRef.current || !!gRef.current;
       if (!stayGlobal && loc?.folder && loc?.mod) {
         const pi = foldersRef.current.findIndex((f) => f.id === loc.folder.id);
         const mi = (foldersRef.current[pi]?.mods || []).findIndex(
@@ -1199,7 +1281,11 @@ export default function App() {
         routeNoteId: null,
         routeFileId: null,
         settings: false,
-        g: stayGlobal ? gRef.current : null,
+        g: isPhoneRef.current
+          ? "Masterboard"
+          : stayGlobal
+            ? gRef.current
+            : null,
       });
     },
     [syncUrl]
@@ -1765,8 +1851,93 @@ export default function App() {
 
   void uiTick; // force re-render when Sets mutate
 
+  const openSettings = () => {
+    settingsPushedRef.current = true;
+    setSettingsOpen(true);
+    settingsOpenRef.current = true;
+    syncUrl({ settings: true });
+  };
+
+  const closeSettings = () => {
+    setSettingsOpen(false);
+    settingsOpenRef.current = false;
+    if (currentPathname() === "/settings") {
+      if (settingsPushedRef.current && window.history.length > 1) {
+        settingsPushedRef.current = false;
+        window.history.back();
+      } else {
+        settingsPushedRef.current = false;
+        syncUrl({ settings: false, replace: true });
+      }
+    }
+  };
+
+  const masterBoard = (
+    <Board
+      mode="master"
+      folder={folder}
+      folders={folders}
+      stages={stages}
+      tabC={GACC}
+      boardEdit={isPhone ? false : boardEdit}
+      onToggleBoardEdit={() => setBoardEdit((v) => !v)}
+      masterOff={masterOff.current}
+      colCollapsed={colCollapsed.current}
+      completedViewByScope={completedViewByScope.current}
+      boardShowByScope={boardShowByScope.current}
+      boardSortByScope={boardSortByScope.current}
+      uiTick={uiTick}
+      compact={isPhone}
+      onBump={bump}
+      onSetCompletedView={setCompletedView}
+      onSetBoardShow={setBoardShow}
+      onSetBoardSort={setBoardSort}
+      onOpenCard={openItem}
+      onToggleDone={onToggleDone}
+      onSetCardMeta={onSetCardMeta}
+      onStartNewCard={startNewCard}
+      onApplyWorkspace={applyWorkspace}
+      locateRow={(r) => locateRow(foldersRef.current, r)}
+      activeTimerKey={
+        activePomo
+          ? taskKey(activePomo.project, activePomo.board, activePomo.card)
+          : null
+      }
+      onStartPomo={startPomodoro}
+      onAddManualTimelog={addManualTimelog}
+      onOpenTimelogs={openTimelogs}
+      onDuplicateCard={duplicateCard}
+      onDeleteCard={deleteCard}
+      onOpenSettings={isPhone ? openSettings : undefined}
+    />
+  );
+
   return (
     <>
+      {isPhone ? (
+        <MobileShell>
+          {!loaded && (
+            <div id="view" className="mod">
+              <div style={{ padding: 24, color: "var(--mute)" }}>
+                Loading projects…
+              </div>
+            </div>
+          )}
+          {loaded && loadError && (
+            <div id="view" className="mod">
+              <div style={{ padding: 24, color: "var(--mute)" }}>
+                Start the app with <code>npm start</code>, then open{" "}
+                <code>http://localhost:3457</code>.
+                <br />
+                <br />
+                {loadError}
+              </div>
+            </div>
+          )}
+          {loaded && !loadError && masterBoard}
+        </MobileShell>
+      ) : (
+        <>
       <Sidebar
         folders={folders}
         p={p}
@@ -1825,12 +1996,7 @@ export default function App() {
           );
           if (hit) openItem(hit.row);
         }}
-        onOpenSettings={() => {
-          settingsPushedRef.current = true;
-          setSettingsOpen(true);
-          settingsOpenRef.current = true;
-          syncUrl({ settings: true });
-        }}
+        onOpenSettings={openSettings}
         updateAvailable={!!updateInfo}
         onOpenUpdate={() => setUpdateOpen(true)}
       />
@@ -1934,43 +2100,7 @@ export default function App() {
               onCommitDraft={commitDraftProject}
             />
           )}
-          {loaded && !loadError && !draftProject && g === "Masterboard" && (
-            <Board
-              mode="master"
-              folder={folder}
-              folders={folders}
-              stages={stages}
-              tabC={GACC}
-              boardEdit={boardEdit}
-              onToggleBoardEdit={() => setBoardEdit((v) => !v)}
-              masterOff={masterOff.current}
-              colCollapsed={colCollapsed.current}
-              completedViewByScope={completedViewByScope.current}
-              boardShowByScope={boardShowByScope.current}
-              boardSortByScope={boardSortByScope.current}
-              uiTick={uiTick}
-              onBump={bump}
-              onSetCompletedView={setCompletedView}
-              onSetBoardShow={setBoardShow}
-              onSetBoardSort={setBoardSort}
-              onOpenCard={openItem}
-              onToggleDone={onToggleDone}
-              onSetCardMeta={onSetCardMeta}
-              onStartNewCard={startNewCard}
-              onApplyWorkspace={applyWorkspace}
-              locateRow={(r) => locateRow(foldersRef.current, r)}
-              activeTimerKey={
-                activePomo
-                  ? taskKey(activePomo.project, activePomo.board, activePomo.card)
-                  : null
-              }
-              onStartPomo={startPomodoro}
-              onAddManualTimelog={addManualTimelog}
-              onOpenTimelogs={openTimelogs}
-              onDuplicateCard={duplicateCard}
-              onDeleteCard={deleteCard}
-            />
-          )}
+          {loaded && !loadError && !draftProject && g === "Masterboard" && masterBoard}
           {loaded && !loadError && !draftProject && g === "Timelogs" && (
             <Timelogs
               tabC={GACC}
@@ -2299,6 +2429,8 @@ export default function App() {
           )}
         </div>
       </main>
+        </>
+      )}
 
       {dialog && (
         <CardDialog
@@ -2309,6 +2441,7 @@ export default function App() {
           stages={stages}
           g={g}
           readonly={!!dialog.readonly}
+          compact={isPhone}
           activeTimerKey={
             activePomo
               ? taskKey(activePomo.project, activePomo.board, activePomo.card)
@@ -2483,66 +2616,57 @@ export default function App() {
         />
       )}
 
-      {settingsOpen && (
-        <SettingsDialog
-          countdownDurationMin={countdownDurationMin}
-          onCountdownDurationChange={(value) =>
-            setCountdownDurationMin(saveCountdownDurationMin(value))
-          }
-          stoptimerMaxMin={stoptimerMaxMin}
-          onStoptimerMaxChange={(value) =>
-            setStoptimerMaxMin(saveStoptimerMaxMin(value))
-          }
-          uiSounds={uiSounds}
-          onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
-          onReactivate={confirmUnarchiveProject}
-          onClose={() => {
-            setSettingsOpen(false);
-            settingsOpenRef.current = false;
-            if (currentPathname() === "/settings") {
-              if (settingsPushedRef.current && window.history.length > 1) {
-                settingsPushedRef.current = false;
-                window.history.back();
-              } else {
-                settingsPushedRef.current = false;
-                syncUrl({ settings: false, replace: true });
-              }
+      {settingsOpen &&
+        (isPhone ? (
+          <MobileSettingsDialog onClose={closeSettings} />
+        ) : (
+          <SettingsDialog
+            countdownDurationMin={countdownDurationMin}
+            onCountdownDurationChange={(value) =>
+              setCountdownDurationMin(saveCountdownDurationMin(value))
             }
-          }}
-          onResetSeed={async () => {
-            const data = await resetWorkspaceToSeed();
-            applyWorkspace(data, { initial: true });
-            setBoardEdit(false);
-            setDraftProject(null);
-            setCoverEdit(false);
-            setCoverDraft(null);
-            clearEntityOverlays();
-            setTimelogFilter(null);
-            setTrashRefresh((n) => n + 1);
-            setTimelogRefresh((n) => n + 1);
-            queueMicrotask(() => applyLocation({ replace: true }));
-          }}
-          onResetEmpty={async () => {
-            const data = await resetWorkspaceToEmpty();
-            applyWorkspace(data, { initial: true });
-            setBoardEdit(false);
-            setDraftProject(null);
-            setCoverEdit(false);
-            setCoverDraft(null);
-            clearEntityOverlays();
-            setTimelogFilter(null);
-            setTrashRefresh((n) => n + 1);
-            setTimelogRefresh((n) => n + 1);
-            queueMicrotask(() => applyLocation({ replace: true }));
-          }}
-          onResetFirstLaunch={async () => {
-            await resetWorkspaceToSeed();
-            clearClientAppState();
-            window.location.reload();
-            await new Promise(() => {});
-          }}
-        />
-      )}
+            stoptimerMaxMin={stoptimerMaxMin}
+            onStoptimerMaxChange={(value) =>
+              setStoptimerMaxMin(saveStoptimerMaxMin(value))
+            }
+            uiSounds={uiSounds}
+            onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
+            onReactivate={confirmUnarchiveProject}
+            onClose={closeSettings}
+            onResetSeed={async () => {
+              const data = await resetWorkspaceToSeed();
+              applyWorkspace(data, { initial: true });
+              setBoardEdit(false);
+              setDraftProject(null);
+              setCoverEdit(false);
+              setCoverDraft(null);
+              clearEntityOverlays();
+              setTimelogFilter(null);
+              setTrashRefresh((n) => n + 1);
+              setTimelogRefresh((n) => n + 1);
+              queueMicrotask(() => applyLocation({ replace: true }));
+            }}
+            onResetEmpty={async () => {
+              const data = await resetWorkspaceToEmpty();
+              applyWorkspace(data, { initial: true });
+              setBoardEdit(false);
+              setDraftProject(null);
+              setCoverEdit(false);
+              setCoverDraft(null);
+              clearEntityOverlays();
+              setTimelogFilter(null);
+              setTrashRefresh((n) => n + 1);
+              setTimelogRefresh((n) => n + 1);
+              queueMicrotask(() => applyLocation({ replace: true }));
+            }}
+            onResetFirstLaunch={async () => {
+              await resetWorkspaceToSeed();
+              clearClientAppState();
+              window.location.reload();
+              await new Promise(() => {});
+            }}
+          />
+        ))}
       {sharingTarget && (
         <SharingSettingsDialog
           projectId={sharingTarget.projectId}

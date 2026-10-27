@@ -286,6 +286,7 @@ export const IC = {
   sortDesc: ArrowDownWideNarrow,
   chevronsUp: ChevronsUp,
   chevronUp: ChevronUp,
+  chevronDown: ChevronDown,
   sortAlphaAsc: ArrowUpAZ,
   sortAlphaDesc: ArrowDownAZ,
   grip: GripVertical,

@@ -248,6 +248,56 @@ function CardAddChip({
               </span>
             </button>
           ) : null}
+          {canAddFile ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onAddFile?.();
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="Files" size={14} />
+                File
+              </span>
+            </button>
+          ) : null}
+          {canTimelog ? (
+            <div className="card-add-sub">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                className="card-add-sub-trigger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="dd-opt">
+                  <Icon name="Timelogs" size={14} />
+                  Timelogs
+                </span>
+                <Icon name="arrow" size={12} />
+              </button>
+              <div className="pop card-add-sub-menu" role="menu">
+                <TimelogMenuButtons
+                  options={options}
+                  onPick={async (v) => {
+                    setOpen(false);
+                    await runTimelogAction(v, {
+                      folder,
+                      mod,
+                      row,
+                      onStartPomo,
+                      onAddManualTimelog,
+                      onOpenTimelogs,
+                    });
+                    await onAfterTimelogAction?.(v);
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
           {canAddEffort ? (
             <div className="card-add-sub">
               <button
@@ -327,56 +377,6 @@ function CardAddChip({
                     </span>
                   </button>
                 ))}
-              </div>
-            </div>
-          ) : null}
-          {canAddFile ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpen(false);
-                onAddFile?.();
-              }}
-            >
-              <span className="dd-opt">
-                <Icon name="Files" size={14} />
-                File
-              </span>
-            </button>
-          ) : null}
-          {canTimelog ? (
-            <div className="card-add-sub">
-              <button
-                type="button"
-                role="menuitem"
-                aria-haspopup="menu"
-                className="card-add-sub-trigger"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="dd-opt">
-                  <Icon name="Timelogs" size={14} />
-                  Timelogs
-                </span>
-                <Icon name="arrow" size={12} />
-              </button>
-              <div className="pop card-add-sub-menu" role="menu">
-                <TimelogMenuButtons
-                  options={options}
-                  onPick={async (v) => {
-                    setOpen(false);
-                    await runTimelogAction(v, {
-                      folder,
-                      mod,
-                      row,
-                      onStartPomo,
-                      onAddManualTimelog,
-                      onOpenTimelogs,
-                    });
-                    await onAfterTimelogAction?.(v);
-                  }}
-                />
               </div>
             </div>
           ) : null}
@@ -1001,6 +1001,34 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
+                  {cardFiles.map((file) => (
+                    <div key={file.id} className="prop-chip card-file-chip">
+                      <button
+                        type="button"
+                        className="card-file-chip-open"
+                        title={file.name}
+                        onClick={() => setPreviewFile(file)}
+                      >
+                        <FileTypeIcon name={file.name} mime={file.mime} size={14} />
+                        <span className="lab">{file.name}</span>
+                      </button>
+                      {!readonly ? (
+                        <button
+                          type="button"
+                          className="card-file-chip-del"
+                          title="Delete file"
+                          aria-label={`Delete ${file.name}`}
+                          disabled={fileBusy}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeCardFile(file);
+                          }}
+                        >
+                          <Icon name="close" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
                   {normalizeEffort(draft.effort) ? (
                     <div className="prop-chip card-file-chip">
                       <CardMetaPicker
@@ -1083,34 +1111,6 @@ export default function CardDialog({
                       ) : null}
                     </div>
                   ) : null}
-                  {cardFiles.map((file) => (
-                    <div key={file.id} className="prop-chip card-file-chip">
-                      <button
-                        type="button"
-                        className="card-file-chip-open"
-                        title={file.name}
-                        onClick={() => setPreviewFile(file)}
-                      >
-                        <FileTypeIcon name={file.name} mime={file.mime} size={14} />
-                        <span className="lab">{file.name}</span>
-                      </button>
-                      {!readonly ? (
-                        <button
-                          type="button"
-                          className="card-file-chip-del"
-                          title="Delete file"
-                          aria-label={`Delete ${file.name}`}
-                          disabled={fileBusy}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeCardFile(file);
-                          }}
-                        >
-                          <Icon name="close" size={12} />
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
                   {!readonly ? (
                     <CardAddChip
                       canAddDescription={!showDescription}

@@ -34,6 +34,7 @@ export default function PaywallDialog() {
   const [open, setOpen] = useState(null);
   const ctaRef = useRef(null);
   const underExistingOverlay = !!open?.underExistingOverlay;
+  const highlightFree = open?.highlightFree || "";
 
   useEffect(() => {
     bindPaywallHost(setOpen);
@@ -122,7 +123,15 @@ export default function PaywallDialog() {
                     </button>
                   ) : null}
                 </div>
-                <div className="paywall-plan paywall-plan-free" role="cell">
+                <div
+                  className={
+                    "paywall-plan paywall-plan-free" +
+                    (highlightFree && row.free === highlightFree
+                      ? " paywall-free-hit"
+                      : "")
+                  }
+                  role="cell"
+                >
                   {row.free}
                 </div>
                 <div className="paywall-plan paywall-plan-pro" role="cell">

@@ -17,3 +17,11 @@ export function shouldBlockNewActiveProject(folders) {
   if (!isCommercialMode() || isProUser()) return false;
   return activeProjectCount(folders) >= FREE_ACTIVE_PROJECT_LIMIT;
 }
+
+/**
+ * Commercial Free users cannot enable public read-only share links.
+ * Community builds and Pro users are never blocked.
+ */
+export function shouldBlockPublicShare() {
+  return isCommercialMode() && !isProUser();
+}

@@ -1418,7 +1418,7 @@ export default function App() {
       }
     }
     if (shouldBlockNewActiveProject(foldersRef.current)) {
-      await askPaywall();
+      await askPaywall({ highlightFree: "3" });
       return;
     }
     const color = nextUnusedProjectColor(foldersRef.current);
@@ -1436,7 +1436,7 @@ export default function App() {
       return;
     }
     if (shouldBlockNewActiveProject(foldersRef.current)) {
-      await askPaywall();
+      await askPaywall({ highlightFree: "3" });
       return;
     }
     const { ok, data } = await postProject({
@@ -1612,7 +1612,7 @@ export default function App() {
   const confirmUnarchiveProject = async (folder) => {
     if (!folder) return;
     if (shouldBlockNewActiveProject(foldersRef.current)) {
-      await askPaywall();
+      await askPaywall({ highlightFree: "3" });
       return;
     }
     const ok = await askConfirm({
@@ -2174,7 +2174,7 @@ export default function App() {
                   entry.kind === "project" &&
                   shouldBlockNewActiveProject(foldersRef.current)
                 ) {
-                  await askPaywall();
+                  await askPaywall({ highlightFree: "3" });
                   return;
                 }
                 let data = await restoreTrashApi({ id: entry.id });
@@ -2183,7 +2183,7 @@ export default function App() {
                     data.parentKind === "project" &&
                     shouldBlockNewActiveProject(foldersRef.current)
                   ) {
-                    await askPaywall();
+                    await askPaywall({ highlightFree: "3" });
                     return;
                   }
                   const parentLabel =

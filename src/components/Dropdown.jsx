@@ -1,5 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
+
+/**
+ * Cap a downward-opening menu to the remaining viewport below the anchor.
+ * Content scrolls only when it does not fit.
+ */
+export function fitMenuToViewport(anchorEl, menuEl, { pad = 8, gap = 4 } = {}) {
+  if (!anchorEl || !menuEl) return;
+  const r = anchorEl.getBoundingClientRect();
+  const below = window.innerHeight - r.bottom - gap - pad;
+  menuEl.style.maxHeight = `${Math.max(80, Math.floor(below))}px`;
+}
 
 function optionValue(o) {
   return typeof o === "object" && o != null && "value" in o ? o.value : o;
@@ -219,8 +230,11 @@ export default function Dropdown({
   children,
   renderOption,
   caret = true,
+  /** Grow to fit options; scroll only when the viewport is too short. */
+  fitToViewport = false,
 }) {
   const wrapRef = useRef(null);
+  const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
   const highlightRef = useRef(onHighlight);
   highlightRef.current = onHighlight;
@@ -238,6 +252,21 @@ export default function Dropdown({
     if (open) return;
     highlightRef.current?.(null);
   }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open || !fitToViewport) return;
+    const menu = menuRef.current;
+    const anchor = wrapRef.current;
+    const apply = () => fitMenuToViewport(anchor, menu);
+    apply();
+    window.addEventListener("resize", apply);
+    window.addEventListener("scroll", apply, true);
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("scroll", apply, true);
+      if (menu) menu.style.maxHeight = "";
+    };
+  }, [open, fitToViewport, options, sections]);
 
   const selected = options.find((o) => optionValue(o) === value);
   const display = children ?? (selected != null ? optionLabel(selected) : value);
@@ -277,6 +306,7 @@ export default function Dropdown({
       </button>
       {open && !disabled && (
         <div
+          ref={menuRef}
           className={"pop dd-menu" + (menuClassName ? " " + menuClassName : "")}
           style={{ display: "block" }}
           role="listbox"

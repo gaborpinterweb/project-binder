@@ -47,7 +47,11 @@ export function CardMetaIcon({ kind, level, size = 20, decorative = false }) {
       }}
     >
       {Array.from({ length: count }, (_, i) => (
-        <Icon key={i} name="chevronUp" size={glyphSize} />
+        <Icon
+          key={i}
+          name={kind === "effort" ? "chevronDown" : "chevronUp"}
+          size={glyphSize}
+        />
       ))}
     </span>
   );
@@ -184,7 +188,7 @@ function shortFileLabel(name, max = 8) {
   return `${s.slice(0, max)}…`;
 }
 
-/** Board preview meta row: project → effort → impact → time → file. */
+/** Board preview meta row: project → time → file → effort → impact. */
 export function CardPreviewMeta({
   impact = "",
   effort = "",
@@ -229,26 +233,6 @@ export function CardPreviewMeta({
           <span className="card-meta-chip-lab">{project}</span>
         </span>
       ) : null}
-      {canEditEffort ? (
-        <CardMetaPicker
-          kind="effort"
-          level={effort}
-          size={size}
-          onChange={onEffortChange}
-        />
-      ) : hasEffort ? (
-        <CardMetaIcon kind="effort" level={effort} size={size} />
-      ) : null}
-      {canEditImpact ? (
-        <CardMetaPicker
-          kind="impact"
-          level={impact}
-          size={size}
-          onChange={onImpactChange}
-        />
-      ) : hasImpact ? (
-        <CardMetaIcon kind="impact" level={impact} size={size} />
-      ) : null}
       {hasSpent ? (
         <span className="card-meta-chip" title="Time spent">
           <Icon name="Timelogs" size={chipIcon} />
@@ -269,6 +253,26 @@ export function CardPreviewMeta({
               : ""}
           </span>
         </span>
+      ) : null}
+      {canEditEffort ? (
+        <CardMetaPicker
+          kind="effort"
+          level={effort}
+          size={size}
+          onChange={onEffortChange}
+        />
+      ) : hasEffort ? (
+        <CardMetaIcon kind="effort" level={effort} size={size} />
+      ) : null}
+      {canEditImpact ? (
+        <CardMetaPicker
+          kind="impact"
+          level={impact}
+          size={size}
+          onChange={onImpactChange}
+        />
+      ) : hasImpact ? (
+        <CardMetaIcon kind="impact" level={impact} size={size} />
       ) : null}
     </div>
   );

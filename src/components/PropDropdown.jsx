@@ -39,6 +39,7 @@ export default function PropDropdown({
       sections={sections}
       title={title}
       caret={false}
+      fitToViewport
     >
       {children}
       <PropAffix kind="caret" />

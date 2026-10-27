@@ -7,11 +7,19 @@ export function bindPaywallHost(setter) {
 
 /**
  * Show the Cloud Pro paywall. Resolves when the dialog closes.
- * @param {{ underExistingOverlay?: boolean }} [opts]
- *   When underExistingOverlay, skip the dimmed backdrop (caller keeps theirs).
+ * @param {{
+ *   underExistingOverlay?: boolean,
+ *   highlightFree?: string,
+ * }} [opts]
+ *   underExistingOverlay — skip the dimmed backdrop (caller keeps theirs).
+ *   highlightFree — Free-column cell value to emphasize in red (e.g. "3", "None").
  */
 export function askPaywall(opts = {}) {
   const underExistingOverlay = !!opts.underExistingOverlay;
+  const highlightFree =
+    opts.highlightFree != null && opts.highlightFree !== ""
+      ? String(opts.highlightFree)
+      : "";
   return new Promise((resolve) => {
     if (resolvePaywall) {
       resolvePaywall();
@@ -23,7 +31,7 @@ export function askPaywall(opts = {}) {
       resolvePaywall = null;
       return;
     }
-    setPaywallState({ underExistingOverlay });
+    setPaywallState({ underExistingOverlay, highlightFree });
   });
 }
 

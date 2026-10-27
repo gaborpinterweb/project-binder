@@ -317,12 +317,6 @@ function CardCtxAddFlyout({
         </button>
         {open ? (
           <div className="pop card-ctx-add-pop" role="menu" aria-label="Add">
-            {canAddEffort ? (
-              <CardCtxAddLevelSub kind="effort" onPick={onAddEffort} />
-            ) : null}
-            {canAddImpact ? (
-              <CardCtxAddLevelSub kind="impact" onPick={onAddImpact} />
-            ) : null}
             {canAddFile ? (
               <button
                 type="button"
@@ -337,6 +331,12 @@ function CardCtxAddFlyout({
                   File
                 </span>
               </button>
+            ) : null}
+            {canAddEffort ? (
+              <CardCtxAddLevelSub kind="effort" onPick={onAddEffort} />
+            ) : null}
+            {canAddImpact ? (
+              <CardCtxAddLevelSub kind="impact" onPick={onAddImpact} />
             ) : null}
           </div>
         ) : null}

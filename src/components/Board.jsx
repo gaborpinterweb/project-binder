@@ -78,7 +78,7 @@ import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
 const BOARD_SORT_OPTIONS_BASE = [
   { value: "custom", label: "Custom", icon: "grip" },
-  { value: "effort", label: "By effort", icon: "chevronUp" },
+  { value: "effort", label: "By effort", icon: "chevronDown" },
   { value: "impact", label: "By impact", icon: "chevronUp" },
   {
     value: "weight",

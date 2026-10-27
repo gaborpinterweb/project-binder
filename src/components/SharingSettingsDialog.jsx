@@ -5,6 +5,8 @@ import {
   enableTabShare,
   getShareLink,
 } from "../api.js";
+import { shouldBlockPublicShare } from "../billingLimits.js";
+import { askPaywall } from "../paywallDialog.js";
 
 /**
  * @param {{
@@ -36,6 +38,7 @@ export default function SharingSettingsDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [paywallCovering, setPaywallCovering] = useState(false);
   const copiedTimer = useRef(0);
 
   useEffect(() => {
@@ -51,7 +54,19 @@ export default function SharingSettingsDialog({
   }, []);
 
   const apply = async (next) => {
-    if (busy || lockedByProject || next === mode) return;
+    if (busy || lockedByProject || next === mode || paywallCovering) return;
+    if (next === "anyone" && shouldBlockPublicShare()) {
+      setPaywallCovering(true);
+      try {
+        await askPaywall({
+          underExistingOverlay: true,
+          highlightFree: "None",
+        });
+      } finally {
+        setPaywallCovering(false);
+      }
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -104,7 +119,7 @@ export default function SharingSettingsDialog({
     <div
       className="ov ov-prompt"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
+        if (e.target === e.currentTarget && !busy && !paywallCovering) onClose();
       }}
     >
       <div
@@ -112,6 +127,8 @@ export default function SharingSettingsDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        hidden={paywallCovering}
+        aria-hidden={paywallCovering || undefined}
       >
         <div className="sharing-panel">
           <div className="sharing-panel-head">

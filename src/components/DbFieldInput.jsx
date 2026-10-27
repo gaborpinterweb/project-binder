@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   coerceFieldValue,
   findSelectOption,
@@ -11,6 +12,7 @@ import {
 import { Icon } from "../icons.jsx";
 import Dropdown from "./Dropdown.jsx";
 import PropDropdown from "./PropDropdown.jsx";
+import RichTextEditor from "./RichTextEditor.jsx";
 
 function SelectChip({ label, color, className = "" }) {
   const c = selectColor(color);
@@ -199,47 +201,342 @@ function MultiSelectField({
   );
 }
 
-function TextCell({
+function asDraftText(v) {
+  return v === "" || v == null ? "" : String(v);
+}
+
+function parseNumberCommit(raw) {
+  if (raw === "" || raw == null) return "";
+  const n = Number(String(raw).trim().replace(/,/g, ""));
+  return Number.isFinite(n) ? n : "";
+}
+
+function stripNewlines(s) {
+  return String(s ?? "").replace(/[\r\n]+/g, "");
+}
+
+/** Shared Notion-style cell float — keeps table row height stable. */
+function useCellFloat({
   value,
-  multiline = false,
+  readOnly = false,
   autoFocus = false,
+  minWidth = 280,
+  toDraft = asDraftText,
+  fromDraft = (d) => d,
+  onCommit,
+}) {
+  const anchorRef = useRef(null);
+  const floatRef = useRef(null);
+  const draftRef = useRef(toDraft(value));
+  const valueRef = useRef(value);
+  const onCommitRef = useRef(onCommit);
+  const toDraftRef = useRef(toDraft);
+  const fromDraftRef = useRef(fromDraft);
+  const [open, setOpen] = useState(false);
+  const [box, setBox] = useState(null);
+  const [draft, setDraft] = useState(() => toDraft(value));
+
+  valueRef.current = value;
+  onCommitRef.current = onCommit;
+  toDraftRef.current = toDraft;
+  fromDraftRef.current = fromDraft;
+
+  const measure = () => {
+    const el = anchorRef.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const width = Math.min(
+      Math.max(r.width, minWidth),
+      Math.max(160, window.innerWidth - 16)
+    );
+    let left = Math.min(r.left, window.innerWidth - width - 8);
+    left = Math.max(8, left);
+    const top = Math.min(Math.max(8, r.top), window.innerHeight - 120);
+    return { left, top, width };
+  };
+
+  const openEditor = () => {
+    if (readOnly) return;
+    const nextDraft = toDraftRef.current(valueRef.current);
+    draftRef.current = nextDraft;
+    setDraft(nextDraft);
+    const next = measure();
+    if (!next) return;
+    setBox(next);
+    setOpen(true);
+  };
+
+  const closeEditor = (save) => {
+    setOpen((was) => {
+      if (!was) return false;
+      if (save && !readOnly) {
+        const next = fromDraftRef.current(draftRef.current);
+        if (next !== valueRef.current) onCommitRef.current?.(next);
+      }
+      setBox(null);
+      return false;
+    });
+  };
+
+  const setDraftValue = (next) => {
+    draftRef.current = next;
+    setDraft(next);
+  };
+
+  useEffect(() => {
+    if (!autoFocus || readOnly || open) return;
+    openEditor();
+  }, [autoFocus, readOnly]); // open once when autofocus mounts
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeEditor(true);
+    };
+    const onDown = (e) => {
+      const t = e.target;
+      if (floatRef.current?.contains(t)) return;
+      if (anchorRef.current?.contains(t)) return;
+      if (t?.closest?.(".ov, .rte-table-float")) return;
+      closeEditor(true);
+    };
+    const onReposition = () => {
+      const next = measure();
+      if (next) setBox(next);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey, true);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open, readOnly]);
+
+  return {
+    open,
+    box,
+    draft,
+    setDraftValue,
+    draftRef,
+    anchorRef,
+    floatRef,
+    openEditor,
+    closeEditor,
+  };
+}
+
+function CellFloatShell({
+  open,
+  box,
+  floatRef,
   className = "",
+  children,
+}) {
+  if (!open || !box) return null;
+  return createPortal(
+    <div
+      ref={floatRef}
+      className={"db-cell-float" + (className ? " " + className : "")}
+      style={{
+        left: box.left,
+        top: box.top,
+        width: box.width,
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
+
+function CellPreview({
+  anchorRef,
+  open,
+  readOnly,
+  className = "",
+  children,
+  onOpen,
+}) {
+  return (
+    <div
+      ref={anchorRef}
+      className={
+        "db-cell-text db-cell-preview" +
+        (open ? " is-editing" : "") +
+        (className ? " " + className : "")
+      }
+      role={readOnly ? undefined : "button"}
+      tabIndex={readOnly ? undefined : 0}
+      onClick={() => {
+        if (!open) onOpen();
+      }}
+      onKeyDown={(e) => {
+        if (readOnly || open) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Single-line floating input for text / url / number / date cells. */
+function PlainFloatCell({
+  value,
+  autoFocus = false,
+  readOnly = false,
+  placeholder = "",
+  inputType = "text",
+  inputMode,
+  className = "",
+  displayValue,
+  toDraft = asDraftText,
+  fromDraft = (d) => d,
+  onCommit,
+}) {
+  const {
+    open,
+    box,
+    draft,
+    setDraftValue,
+    anchorRef,
+    floatRef,
+    openEditor,
+    closeEditor,
+  } = useCellFloat({
+    value,
+    readOnly,
+    autoFocus,
+    minWidth: 200,
+    toDraft,
+    fromDraft,
+    onCommit,
+  });
+  const inputRef = useRef(null);
+  const preview =
+    displayValue != null ? displayValue : asDraftText(value);
+
+  useEffect(() => {
+    if (!open || !inputRef.current) return;
+    const el = inputRef.current;
+    el.focus();
+    if (inputType !== "date") el.select();
+  }, [open, inputType]);
+
+  return (
+    <>
+      <CellPreview
+        anchorRef={anchorRef}
+        open={open}
+        readOnly={readOnly}
+        className={className}
+        onOpen={openEditor}
+      >
+        {preview}
+      </CellPreview>
+      <CellFloatShell
+        open={open}
+        box={box}
+        floatRef={floatRef}
+        className="is-plain"
+      >
+        <input
+          ref={inputRef}
+          className="db-cell-float-input"
+          type={inputType}
+          inputMode={inputMode}
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => {
+            const next =
+              inputType === "date"
+                ? e.target.value
+                : stripNewlines(e.target.value);
+            setDraftValue(next);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              closeEditor(true);
+            }
+          }}
+        />
+      </CellFloatShell>
+    </>
+  );
+}
+
+/** Notion-style floating rich editor — keeps table row height stable. */
+function LongTextCell({
+  value,
+  wrapLines = false,
+  autoFocus = false,
   readOnly = false,
   onCommit,
 }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (readOnly || !autoFocus || !ref.current) return;
-    const el = ref.current;
-    el.focus();
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  }, [autoFocus, readOnly]);
+  const {
+    open,
+    box,
+    draftRef,
+    anchorRef,
+    floatRef,
+    openEditor,
+  } = useCellFloat({
+    value,
+    readOnly,
+    autoFocus,
+    minWidth: 280,
+    toDraft: (v) => v ?? "",
+    fromDraft: (d) => d ?? "",
+    onCommit,
+  });
+  const preview = plainFromHtml(value) || "";
 
   return (
-    <div
-      ref={ref}
-      className={
-        "db-cell-text" +
-        (multiline ? " multiline" : "") +
-        (className ? " " + className : "")
-      }
-      contentEditable={!readOnly}
-      suppressContentEditableWarning
-      onBlur={() => {
-        if (readOnly) return;
-        const next = multiline
-          ? ref.current?.innerText ?? ""
-          : ref.current?.textContent ?? "";
-        if (next !== (value ?? "")) onCommit?.(next);
-      }}
-    >
-      {value ?? ""}
-    </div>
+    <>
+      <CellPreview
+        anchorRef={anchorRef}
+        open={open}
+        readOnly={readOnly}
+        className={
+          "db-rich-preview" + (wrapLines ? " multiline" : "")
+        }
+        onOpen={openEditor}
+      >
+        {preview}
+      </CellPreview>
+      <CellFloatShell
+        open={open}
+        box={box}
+        floatRef={floatRef}
+        className="is-rich"
+      >
+        <RichTextEditor
+          value={draftRef.current}
+          label="Rich text"
+          showLabel={false}
+          showToolbar={!readOnly}
+          editable={!readOnly}
+          autofocus
+          variant="mini"
+          placeholder="Write something…"
+          onChange={(html) => {
+            draftRef.current = html;
+          }}
+        />
+      </CellFloatShell>
+    </>
   );
 }
 
@@ -253,31 +550,18 @@ function NumberField({
   onChange,
   onCommit,
 }) {
-  const asText = (v) => (v === "" || v == null ? "" : String(v));
-  const [text, setText] = useState(() => asText(value));
+  const [text, setText] = useState(() => asDraftText(value));
   const focused = useRef(false);
 
   useEffect(() => {
-    if (!focused.current) setText(asText(value));
+    if (!focused.current) setText(asDraftText(value));
   }, [value]);
 
   const parseCommit = (raw) => {
-    if (raw === "" || raw == null) {
-      setText("");
-      onChange?.("");
-      onCommit?.("");
-      return;
-    }
-    const n = Number(String(raw).trim().replace(/,/g, ""));
-    if (Number.isFinite(n)) {
-      setText(String(n));
-      onChange?.(n);
-      onCommit?.(n);
-    } else {
-      setText("");
-      onChange?.("");
-      onCommit?.("");
-    }
+    const next = parseNumberCommit(raw);
+    setText(asDraftText(next));
+    onChange?.(next);
+    onCommit?.(next);
   };
 
   return (
@@ -294,7 +578,7 @@ function NumberField({
       }}
       onChange={(e) => {
         if (readOnly) return;
-        const raw = e.target.value;
+        const raw = stripNewlines(e.target.value);
         setText(raw);
         if (raw === "") {
           onChange?.("");
@@ -424,44 +708,67 @@ export default function DbFieldInput({
   }
 
   if (col.type === "number") {
+    if (variant === "prop") {
+      return (
+        <NumberField
+          className="db-num prop"
+          value={coerced}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          readOnly={readOnly}
+          onChange={onChange}
+          onCommit={onCommit}
+        />
+      );
+    }
     return (
-      <NumberField
-        className={"db-num" + (variant === "prop" ? " prop" : "")}
+      <PlainFloatCell
         value={coerced}
-        placeholder={placeholder}
         autoFocus={autoFocus}
         readOnly={readOnly}
-        onChange={onChange}
-        onCommit={onCommit}
+        placeholder={placeholder || formatNumberValue(1234.56)}
+        inputMode="decimal"
+        className="db-num-preview"
+        fromDraft={parseNumberCommit}
+        onCommit={(next) => commit(next)}
       />
     );
   }
 
   if (col.type === "date") {
+    if (variant === "prop") {
+      return (
+        <input
+          className="db-date prop"
+          type="date"
+          value={coerced || ""}
+          autoFocus={autoFocus}
+          readOnly={readOnly}
+          disabled={readOnly}
+          onChange={(e) => commit(e.target.value)}
+        />
+      );
+    }
     return (
-      <input
-        className={"db-date" + (variant === "prop" ? " prop" : "")}
-        type="date"
+      <PlainFloatCell
         value={coerced || ""}
         autoFocus={autoFocus}
         readOnly={readOnly}
-        disabled={readOnly}
-        onChange={(e) => commit(e.target.value)}
+        inputType="date"
+        className="db-date-preview"
+        onCommit={(next) => commit(next)}
       />
     );
   }
 
   if (col.type === "longtext") {
     if (variant === "prop") return null;
-    // Table edits plain text; card dialog keeps full rich editing.
-    const preview = plainFromHtml(coerced) || "";
     return (
-      <TextCell
-        value={preview}
-        multiline={!!wrapLines}
+      <LongTextCell
+        value={coerced}
+        wrapLines={!!wrapLines}
         autoFocus={autoFocus}
         readOnly={readOnly}
-        className="db-rich-preview"
         onCommit={(next) => commit(next)}
       />
     );
@@ -477,11 +784,11 @@ export default function DbFieldInput({
           readOnly={readOnly}
           onChange={(e) => {
             if (readOnly) return;
-            onChange?.(e.target.value);
+            onChange?.(stripNewlines(e.target.value));
           }}
           onBlur={(e) => {
             if (readOnly) return;
-            onCommit?.(e.target.value);
+            onCommit?.(stripNewlines(e.target.value));
           }}
         />
       );
@@ -490,10 +797,14 @@ export default function DbFieldInput({
     const href = raw ? hrefForUrlField(raw) : "";
     return (
       <div className="db-url-cell">
-        <TextCell
+        <PlainFloatCell
           value={coerced || ""}
           autoFocus={autoFocus}
           readOnly={readOnly}
+          placeholder={placeholder || "https://"}
+          inputType="url"
+          className="db-url-preview"
+          fromDraft={(d) => stripNewlines(d)}
           onCommit={(next) => commit(next)}
         />
         {href ? (
@@ -523,21 +834,23 @@ export default function DbFieldInput({
         readOnly={readOnly}
         onChange={(e) => {
           if (readOnly) return;
-          onChange?.(e.target.value);
+          onChange?.(stripNewlines(e.target.value));
         }}
         onBlur={(e) => {
           if (readOnly) return;
-          onCommit?.(e.target.value);
+          onCommit?.(stripNewlines(e.target.value));
         }}
       />
     );
   }
 
   return (
-    <TextCell
+    <PlainFloatCell
       value={coerced}
       autoFocus={autoFocus}
       readOnly={readOnly}
+      placeholder={placeholder}
+      fromDraft={(d) => stripNewlines(d)}
       onCommit={(next) => commit(next)}
     />
   );

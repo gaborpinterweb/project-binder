@@ -23,6 +23,8 @@ PUBLIC = ROOT / "public"
 OUT_FAVICON = PUBLIC / "favicon.ico"
 OUT_APP_ICON = PUBLIC / "app-icon.png"
 OUT_APPLE_TOUCH = PUBLIC / "apple-touch-icon.png"
+OUT_ICON_192 = PUBLIC / "icon-192.png"
+OUT_ICON_512 = PUBLIC / "icon-512.png"
 
 ICON_SIZE = 1024
 # Nearly fill the canvas; leftover rim is frame-colored for OS masking.
@@ -110,6 +112,8 @@ def main():
     PUBLIC.mkdir(parents=True, exist_ok=True)
     resize(plate, 256).save(OUT_APP_ICON, "PNG", optimize=True)
     resize(plate, 180).save(OUT_APPLE_TOUCH, "PNG", optimize=True)
+    resize(plate, 192).save(OUT_ICON_192, "PNG", optimize=True)
+    resize(plate, 512).save(OUT_ICON_512, "PNG", optimize=True)
     plate_1024.save(OUT_FAVICON, format="ICO", sizes=ICO_SIZES)
 
     bg_rgb = frame_fill_color(plate)
@@ -133,6 +137,8 @@ def main():
     print("wrote", OUT_FAVICON.relative_to(ROOT))
     print("wrote", OUT_APP_ICON.relative_to(ROOT))
     print("wrote", OUT_APPLE_TOUCH.relative_to(ROOT))
+    print("wrote", OUT_ICON_192.relative_to(ROOT))
+    print("wrote", OUT_ICON_512.relative_to(ROOT))
     if OUT_ICNS.exists():
         print("wrote", OUT_ICNS.relative_to(ROOT))
 

@@ -75,8 +75,6 @@ function applyCardMeta(target, src) {
 const NAME_COL_ID = "n";
 const DEFAULT_DB_COLS = [
   { id: NAME_COL_ID, label: "Name", type: "text" },
-  { id: "r", label: "Role", type: "text" },
-  { id: "s", label: "Stage", type: "stage" },
 ];
 
 const DEFAULT_CUSTOM_VIEW_ID = "default";
@@ -247,7 +245,6 @@ const DB_FIELD_TYPES = new Set([
   "checkbox",
   "number",
   "date",
-  "stage",
 ]);
 
 const DB_SELECT_COLORS = [
@@ -288,7 +285,9 @@ function nameColumn() {
 function normalizeDbColumn(c) {
   if (!c || !c.id) return null;
   if (String(c.id) === NAME_COL_ID) return nameColumn();
-  const type = DB_FIELD_TYPES.has(c.type) ? c.type : "text";
+  // Legacy "stage" (masterboard-linked) → plain select.
+  let type = c.type === "stage" ? "select" : c.type;
+  type = DB_FIELD_TYPES.has(type) ? type : "text";
   const out = { id: String(c.id), label: c.label || String(c.id), type };
   if (type === "select" || type === "multiselect") {
     out.options = Array.isArray(c.options)
@@ -3659,7 +3658,7 @@ const server = http.createServer(async (req, res) => {
       const cols = loadDbColumns(body.project, body.database);
       const fields = body.fields || {};
       cols.forEach((c) => {
-        if (fields[c.id] == null) fields[c.id] = c.type === "stage" ? "Applied" : "";
+        if (fields[c.id] == null) fields[c.id] = "";
       });
       const id = uniqueItemId();
       writeItem(body.project, body.database, { id, fields, body: body.body || "" }, cols);

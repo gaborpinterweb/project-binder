@@ -28,10 +28,65 @@ function ChipOption({ o }) {
   return <SelectChip label={o.label} color={o.color} />;
 }
 
+/** Inline create control for select / multiselect menus. */
+function SelectOptionAdd({ onAdd }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const label = text.trim();
+    if (!label || busy) return;
+    setBusy(true);
+    try {
+      await onAdd?.(label);
+      setText("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="db-opt-add"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        className="db-opt-add-input"
+        type="text"
+        value={text}
+        placeholder="New option"
+        disabled={busy}
+        aria-label="New option"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            submit();
+          }
+        }}
+      />
+      <button
+        type="button"
+        className="db-opt-add-btn"
+        disabled={busy || !text.trim()}
+        onClick={(e) => {
+          e.stopPropagation();
+          submit();
+        }}
+      >
+        Add
+      </button>
+    </div>
+  );
+}
+
 function MultiSelectField({
   value,
   options,
   onChange,
+  onAddOption,
   className = "",
   readOnly = false,
 }) {
@@ -39,6 +94,7 @@ function MultiSelectField({
   const [open, setOpen] = useState(false);
   const selected = Array.isArray(value) ? value.map(String) : [];
   const byValue = new Map((options || []).map((o) => [o.value, o]));
+  const canAdd = !readOnly && typeof onAddOption === "function";
 
   useEffect(() => {
     if (!open) return;
@@ -101,7 +157,7 @@ function MultiSelectField({
       {open ? (
         <div className="pop dd-menu" style={{ display: "block" }} role="listbox">
           {(options || []).length === 0 ? (
-            <div className="dd-heading">No options</div>
+            <div className="dd-heading">{canAdd ? "No options yet" : "No options"}</div>
           ) : (
             options.map((opt) => {
               const on = selected.includes(opt.value);
@@ -127,6 +183,16 @@ function MultiSelectField({
               );
             })
           )}
+          {canAdd ? (
+            <SelectOptionAdd
+              onAdd={async (label) => {
+                await onAddOption(label);
+                if (!selected.includes(label)) {
+                  onChange?.([...selected, label]);
+                }
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -261,6 +327,8 @@ export default function DbFieldInput({
   readOnly = false,
   onChange,
   onCommit,
+  /** Persist a new select/multiselect option on the column; receives the label. */
+  onAddOption,
 }) {
   const commit = (next) => {
     if (readOnly) return;
@@ -269,6 +337,22 @@ export default function DbFieldInput({
   };
   const coerced = coerceFieldValue(col, value);
   const opts = selectOptions(col, stages);
+  const canAddOption =
+    !readOnly &&
+    typeof onAddOption === "function" &&
+    (col.type === "select" || col.type === "multiselect");
+
+  const addOptionFooter = canAddOption
+    ? (close) => (
+        <SelectOptionAdd
+          onAdd={async (label) => {
+            await onAddOption(label);
+            commit(label);
+            close?.();
+          }}
+        />
+      )
+    : null;
 
   if (col.type === "checkbox") {
     return (
@@ -283,7 +367,7 @@ export default function DbFieldInput({
     );
   }
 
-  if (col.type === "select" || col.type === "stage") {
+  if (col.type === "select") {
     const cur = coerced || "";
     const selected = findSelectOption(col, cur, stages);
     const chip = cur ? (
@@ -306,6 +390,7 @@ export default function DbFieldInput({
           options={opts}
           onChange={(next) => commit(next)}
           renderOption={(o) => <ChipOption o={o} />}
+          menuFooter={addOptionFooter}
         >
           <span className="lab db-chip-row">{chip}</span>
         </PropDropdown>
@@ -318,6 +403,7 @@ export default function DbFieldInput({
         options={opts}
         onChange={(next) => commit(next)}
         renderOption={(o) => <ChipOption o={o} />}
+        menuFooter={addOptionFooter}
       >
         <span className="db-chip-row">{chip}</span>
       </Dropdown>
@@ -331,6 +417,7 @@ export default function DbFieldInput({
         value={coerced}
         options={opts}
         readOnly={readOnly}
+        onAddOption={canAddOption ? onAddOption : undefined}
         onChange={(next) => commit(next)}
       />
     );

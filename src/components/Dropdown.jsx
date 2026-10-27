@@ -232,6 +232,8 @@ export default function Dropdown({
   caret = true,
   /** Grow to fit options; scroll only when the viewport is too short. */
   fitToViewport = false,
+  /** Extra content below options. May be a node or `(close) => node`. */
+  menuFooter = null,
 }) {
   const wrapRef = useRef(null);
   const menuRef = useRef(null);
@@ -335,6 +337,7 @@ export default function Dropdown({
                 renderOption,
                 close,
               })}
+          {typeof menuFooter === "function" ? menuFooter(close) : menuFooter}
         </div>
       )}
     </div>

@@ -14,6 +14,8 @@ import {
 import { isPaywallAbortError } from "../billingLimits.js";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
+  appendSelectOption,
+  defaultColumnLabel,
   emptyFieldValue,
   ensureNameColumn,
   fieldTypeIcon,
@@ -2073,7 +2075,7 @@ function DbTable({
     setEditInsertAt(insertAt);
     setEditCol({
       id: "f" + Date.now(),
-      label: "",
+      label: defaultColumnLabel("text"),
       type: "text",
     });
   };
@@ -2166,6 +2168,21 @@ function DbTable({
     await persistDbRow(folder, mod, row, allCols);
   };
 
+  const addSelectOption = async (col, label) => {
+    if (readonly) return;
+    const result = appendSelectOption(col, label);
+    if (!result.created) return;
+    const next = normalizeDbCol(result.col);
+    const list = ensureNameColumn(d.cols);
+    const idx = list.findIndex((c) => c.id === col.id);
+    if (idx < 0) return;
+    list[idx] = next;
+    d.cols = list;
+    // Keep the mounted field's col ref in sync before the next render.
+    col.options = next.options;
+    await persistDbColumns(folder, mod, d.cols);
+  };
+
   return (
     <div className="scroll db-scroll">
       <table
@@ -2255,6 +2272,11 @@ function DbTable({
                     wrapLines={wrapLines}
                     readOnly={readonly}
                     autoFocus={!readonly && isNameCol(c) && r.id === focusNameId}
+                    onAddOption={
+                      readonly
+                        ? undefined
+                        : (label) => addSelectOption(c, label)
+                    }
                     onCommit={(next) => {
                       if (readonly) return;
                       if (r.id === focusNameId) setFocusNameId(null);
@@ -2464,11 +2486,7 @@ export function DatabaseView({
     rows: [],
   };
   if (!d.cols) {
-    d.cols = [
-      { id: NAME_COL_ID, label: "Name", type: "text" },
-      { id: "r", label: "Role", type: "text" },
-      { id: "s", label: "Stage", type: "stage" },
-    ];
+    d.cols = [{ id: NAME_COL_ID, label: "Name", type: "text" }];
   } else {
     d.cols = ensureNameColumn(d.cols);
   }

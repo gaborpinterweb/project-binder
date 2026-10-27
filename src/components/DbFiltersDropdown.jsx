@@ -29,7 +29,7 @@ function FieldOption({ col }) {
 function FilterValueInput({ col, stages, value, onChange }) {
   if (!col) return null;
 
-  if (col.type === "select" || col.type === "stage") {
+  if (col.type === "select") {
     const opts = selectOptions(col, stages);
     return (
       <Dropdown

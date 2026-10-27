@@ -4,7 +4,9 @@ import {
   deleteCardFileApi,
   deleteTimelogApi,
   fetchCardTimelogs,
+  fetchWorkspace,
   postCardFile,
+  putDatabase,
 } from "../api.js";
 import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
@@ -31,7 +33,13 @@ import {
   pomoRemainingSec,
   taskKey,
 } from "../utils.js";
-import { fieldTypeIcon } from "../dbFields.js";
+import {
+  appendSelectOption,
+  ensureNameColumn,
+  fieldTypeIcon,
+  normalizeDbCol,
+  serializeDbCol,
+} from "../dbFields.js";
 import {
   normalizeCustomViews,
   normalizeHiddenCols,
@@ -859,6 +867,8 @@ export default function CardDialog({
               readonly={readonly}
               onPatch={patch}
               onPersist={persist}
+              onApplyWorkspace={onApplyWorkspace}
+              keepNav={keepNav}
               onDuplicate={
                 !readonly && onDuplicate && draft.id
                   ? async () => {
@@ -1375,6 +1385,7 @@ function DbFieldGroups({
   focusId,
   onPatch,
   onPersist,
+  onAddOption,
   leading = null,
 }) {
   if (!cols.length && !leading) return null;
@@ -1416,6 +1427,11 @@ function DbFieldGroups({
                     variant="prop"
                     readOnly={readonly}
                     autoFocus={!readonly && c.id === focusId}
+                    onAddOption={
+                      readonly || !onAddOption
+                        ? undefined
+                        : (label) => onAddOption(c, label)
+                    }
                     onChange={(next) => {
                       if (readonly) return;
                       onPatch({ [c.id]: next });
@@ -1444,8 +1460,13 @@ function DbFields({
   onPersist,
   onDuplicate,
   onDelete,
+  onApplyWorkspace,
+  keepNav,
 }) {
+  const [, bumpCols] = useState(0);
   const modData = loc?.mod?.[2];
+  const folder = loc?.folder;
+  const mod = loc?.mod;
   const cols = (modData?.cols || []).filter(Boolean);
   const hiddenList = activeDbHiddenCols(modData);
   const hiddenIds = new Set(hiddenList);
@@ -1465,6 +1486,33 @@ function DbFields({
       null;
   const canOrganise = !!(onDuplicate || onDelete);
 
+  const addSelectOption = async (col, label) => {
+    if (readonly || !folder || !mod || mod[0] !== "Database" || !modData) return;
+    const result = appendSelectOption(col, label);
+    if (!result.created) return;
+    const next = normalizeDbCol(result.col);
+    const list = ensureNameColumn(modData.cols || []);
+    const idx = list.findIndex((c) => c.id === col.id);
+    if (idx < 0) return;
+    list[idx] = next;
+    modData.cols = list;
+    col.options = next.options;
+    bumpCols((n) => n + 1);
+    const data = await putDatabase({
+      project: folder.id,
+      database: mod[2].id,
+      name: mod[1],
+      columns: list.map(serializeDbCol).filter(Boolean),
+      customViews: normalizeCustomViews(modData.customViews),
+      customViewId: resolveCustomViewId(
+        modData.customViewId,
+        modData.customViews
+      ),
+    });
+    const ws = data || (await fetchWorkspace());
+    onApplyWorkspace?.(ws, keepNav?.(folder.id, mod[2].id));
+  };
+
   if (!cols.length && !canOrganise) return null;
 
   return (
@@ -1478,6 +1526,7 @@ function DbFields({
           focusId={focusId}
           onPatch={onPatch}
           onPersist={onPersist}
+          onAddOption={readonly ? undefined : addSelectOption}
           leading={
             titleCol ? (
               <div className="db-entry-row is-title">
@@ -1538,6 +1587,7 @@ function DbFields({
             focusId={focusId}
             onPatch={onPatch}
             onPersist={onPersist}
+            onAddOption={readonly ? undefined : addSelectOption}
           />
         </div>
       ) : null}

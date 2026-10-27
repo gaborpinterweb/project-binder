@@ -1506,6 +1506,12 @@ td.db-enlarge-col+td,th.db-enlarge-col+th{border-left:0}
 .db-select-dd .dd-btn,.db-multi-dd .dd-btn.db-chip-trigger{background:transparent;padding:2px 4px}
 .db-select-dd .dd-btn:hover,.db-multi-dd .dd-btn.db-chip-trigger:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
 .table-dd.db-select-dd .dd-btn{background:transparent}
+.db-opt-add{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:6px 8px 4px;margin-top:4px;border-top:1px solid var(--line);position:sticky;bottom:0;background:inherit}
+.db-opt-add-input{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px);background:color-mix(in srgb,var(--ink) 4%,transparent);font:inherit;font-size:13px;color:var(--ink)}
+.db-opt-add-input:focus{outline:2px solid var(--tab,var(--acc));outline-offset:-1px;background:#fff}
+.db-opt-add-btn{width:100%;padding:6px 10px;border-radius:calc(var(--radius) - 6px);font:inherit;font-size:12px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.db-opt-add-btn:hover:not(:disabled){background:var(--sel)}
+.db-opt-add-btn:disabled{opacity:.4;cursor:default}
 .field-opt-color{position:relative;flex:none}
 .field-opt-color-btn{width:22px;height:22px;border-radius:4px;border:1px solid color-mix(in srgb,#000 12%,transparent);cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px #fff6}
 .field-opt-color-btn:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--ink) 18%,transparent)}

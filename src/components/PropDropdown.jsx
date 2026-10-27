@@ -27,6 +27,7 @@ export default function PropDropdown({
   className,
   sections,
   title,
+  menuFooter,
 }) {
   return (
     <Dropdown
@@ -38,6 +39,7 @@ export default function PropDropdown({
       renderOption={renderOption}
       sections={sections}
       title={title}
+      menuFooter={menuFooter}
       caret={false}
       fitToViewport
     >

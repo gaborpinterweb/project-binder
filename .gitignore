@@ -6,3 +6,13 @@ release/
 *.log
 npm-debug.log*
 userWorkspace.json
+# PocketBase runtime + binary; keep committed migrations, hooks, mail example
+/pocketbase/*
+!/pocketbase/pb_migrations/
+!/pocketbase/pb_migrations/**
+!/pocketbase/pb_hooks/
+!/pocketbase/pb_hooks/**
+!/pocketbase/mail.env.example
+/pocketbase/mail.env
+# Do not track local Lemon Squeezy leftover hook if present
+/pocketbase/pb_hooks/ls_webhook.pb.js

@@ -1,52 +1,9 @@
 /**
- * User-data storage: real OS Application Support only for packaged Electron.
- * CLI / browser / unpackaged Electron use an in-memory store seeded from the repo.
+ * User-data storage: in-memory by default (seed from repo).
+ * Set PROJECT_BINDER_USER_DATA to a directory for on-disk workspace/archive/uploads.
  */
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
-
-function isPackagedElectron() {
-  try {
-    const electron = require("electron");
-    const app = electron && electron.app;
-    if (app && typeof app.isPackaged === "boolean") return app.isPackaged;
-  } catch {
-    /* not running inside Electron */
-  }
-  return false;
-}
-
-function defaultUserDataDir(appName) {
-  if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", appName);
-  }
-  if (process.platform === "win32") {
-    return path.join(
-      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
-      appName
-    );
-  }
-  return path.join(
-    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"),
-    appName
-  );
-}
-
-function resolvePackagedUserDataDir(appName) {
-  const envDir = String(process.env.PROJECT_BINDER_USER_DATA || "").trim();
-  if (envDir) return envDir;
-  try {
-    const electron = require("electron");
-    const app = electron && electron.app;
-    if (app && typeof app.getPath === "function") {
-      return app.getPath("userData");
-    }
-  } catch {
-    /* fall through */
-  }
-  return defaultUserDataDir(appName);
-}
 
 function isValidStore(doc) {
   return (
@@ -112,7 +69,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
   fs.mkdirSync(userDataDir, { recursive: true });
   const workspacePath = path.join(userDataDir, "userWorkspace.json");
   const archivePath = path.join(userDataDir, "userArchive.json");
-  const settingsPath = path.join(userDataDir, "appSettings.json");
   const uploadsRoot = path.join(userDataDir, "uploads");
 
   return {
@@ -120,7 +76,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
     dir: userDataDir,
     workspacePath,
     archivePath,
-    settingsPath,
     readWorkspaceFile() {
       return readJsonFromDisk(workspacePath, isValidStore);
     },
@@ -132,17 +87,6 @@ function createDiskStore(userDataDir, seedUploadsDir) {
     },
     writeArchiveFile(doc) {
       atomicWriteJson(archivePath, doc);
-    },
-    readAppSettingsFile() {
-      if (!fs.existsSync(settingsPath)) return null;
-      try {
-        return JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-      } catch {
-        return null;
-      }
-    },
-    writeAppSettingsFile(doc) {
-      atomicWriteJson(settingsPath, doc);
     },
     uploadPath(projectId, tabId, fileId) {
       return path.join(uploadsRoot, projectId, tabId, fileId);
@@ -227,25 +171,18 @@ function createDiskStore(userDataDir, seedUploadsDir) {
         fs.cpSync(srcUploadsDir, uploadsRoot, { recursive: true });
       }
     },
-    ensureUserDataDir() {
-      fs.mkdirSync(userDataDir, { recursive: true });
-      return userDataDir;
-    },
   };
 }
 
 function createMemoryStore(seedUploadsDir) {
   /** @type {Map<string, Buffer>} */
   const uploads = new Map();
-  /** @type {object|null} */
-  let appSettings = null;
 
   return {
     persistent: false,
     dir: null,
     workspacePath: null,
     archivePath: null,
-    settingsPath: null,
     readWorkspaceFile() {
       // Always missing so the server boots from seed; mutations live in the process `store`.
       return { ok: false, reason: "memory" };
@@ -258,12 +195,6 @@ function createMemoryStore(seedUploadsDir) {
     },
     writeArchiveFile() {
       /* ephemeral — server keeps `archiveStore` in RAM */
-    },
-    readAppSettingsFile() {
-      return appSettings;
-    },
-    writeAppSettingsFile(doc) {
-      appSettings = doc;
     },
     uploadPath() {
       return null;
@@ -319,29 +250,23 @@ function createMemoryStore(seedUploadsDir) {
         uploads.set(rel.replace(/\\/g, "/"), fs.readFileSync(abs));
       });
     },
-    ensureUserDataDir() {
-      return null;
-    },
   };
 }
 
 /**
- * @param {{ appName: string, seedUploadsDir: string }} opts
+ * @param {{ seedUploadsDir: string }} opts
  */
 function createUserDataStore(opts) {
-  const appName = opts.appName || "Project Binder";
   const seedUploadsDir = opts.seedUploadsDir;
-  const packaged = isPackagedElectron();
-  if (packaged) {
-    const dir = resolvePackagedUserDataDir(appName);
-    return createDiskStore(dir, seedUploadsDir);
+  const envDir = String(process.env.PROJECT_BINDER_USER_DATA || "").trim();
+  if (envDir) {
+    return createDiskStore(envDir, seedUploadsDir);
   }
   return createMemoryStore(seedUploadsDir);
 }
 
 module.exports = {
   createUserDataStore,
-  isPackagedElectron,
   isValidStore,
   isValidArchive,
   emptyArchiveDoc,

@@ -4,7 +4,9 @@ import { Icon } from "../icons.jsx";
 import {
   FIELD_TYPES,
   SELECT_COLORS,
+  defaultColumnLabel,
   fieldTypeMeta,
+  isDefaultColumnLabel,
   nextSelectColor,
   normalizeDbCol,
   selectColor,
@@ -16,7 +18,7 @@ import { askConfirm } from "../confirmDialog.js";
 function blankCol() {
   return {
     id: "",
-    label: "",
+    label: defaultColumnLabel("text"),
     type: "text",
     options: [],
   };
@@ -124,6 +126,9 @@ export default function FieldEditDialog({
       ) {
         next.options = [];
       }
+      if (isNew && isDefaultColumnLabel(d.label)) {
+        next.label = defaultColumnLabel(type);
+      }
       return next;
     });
   };
@@ -169,7 +174,7 @@ export default function FieldEditDialog({
 
   return createPortal(
     <div
-      className="ov ov-prompt"
+      className="ov ov-prompt ov-top"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
@@ -207,11 +212,9 @@ export default function FieldEditDialog({
               <Dropdown
                 className="field-type-dd"
                 value={
-                  draft.type === "stage"
-                    ? "select"
-                    : FIELD_TYPES.some((t) => t.value === draft.type)
-                      ? draft.type
-                      : "text"
+                  FIELD_TYPES.some((t) => t.value === draft.type)
+                    ? draft.type
+                    : "text"
                 }
                 options={FIELD_TYPES}
                 onChange={setType}

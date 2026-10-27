@@ -4,8 +4,11 @@ import {
   deleteCardFileApi,
   deleteTimelogApi,
   fetchCardTimelogs,
+  fetchWorkspace,
   postCardFile,
+  putDatabase,
 } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
 import {
   EFFORT_LEVELS,
@@ -30,7 +33,13 @@ import {
   pomoRemainingSec,
   taskKey,
 } from "../utils.js";
-import { fieldTypeIcon } from "../dbFields.js";
+import {
+  appendSelectOption,
+  ensureNameColumn,
+  fieldTypeIcon,
+  normalizeDbCol,
+  serializeDbCol,
+} from "../dbFields.js";
 import {
   normalizeCustomViews,
   normalizeHiddenCols,
@@ -248,6 +257,56 @@ function CardAddChip({
               </span>
             </button>
           ) : null}
+          {canAddFile ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onAddFile?.();
+              }}
+            >
+              <span className="dd-opt">
+                <Icon name="Files" size={14} />
+                File
+              </span>
+            </button>
+          ) : null}
+          {canTimelog ? (
+            <div className="card-add-sub">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                className="card-add-sub-trigger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="dd-opt">
+                  <Icon name="Timelogs" size={14} />
+                  Timelogs
+                </span>
+                <Icon name="arrow" size={12} />
+              </button>
+              <div className="pop card-add-sub-menu" role="menu">
+                <TimelogMenuButtons
+                  options={options}
+                  onPick={async (v) => {
+                    setOpen(false);
+                    await runTimelogAction(v, {
+                      folder,
+                      mod,
+                      row,
+                      onStartPomo,
+                      onAddManualTimelog,
+                      onOpenTimelogs,
+                    });
+                    await onAfterTimelogAction?.(v);
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
           {canAddEffort ? (
             <div className="card-add-sub">
               <button
@@ -330,56 +389,6 @@ function CardAddChip({
               </div>
             </div>
           ) : null}
-          {canAddFile ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpen(false);
-                onAddFile?.();
-              }}
-            >
-              <span className="dd-opt">
-                <Icon name="Files" size={14} />
-                File
-              </span>
-            </button>
-          ) : null}
-          {canTimelog ? (
-            <div className="card-add-sub">
-              <button
-                type="button"
-                role="menuitem"
-                aria-haspopup="menu"
-                className="card-add-sub-trigger"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="dd-opt">
-                  <Icon name="Timelogs" size={14} />
-                  Timelogs
-                </span>
-                <Icon name="arrow" size={12} />
-              </button>
-              <div className="pop card-add-sub-menu" role="menu">
-                <TimelogMenuButtons
-                  options={options}
-                  onPick={async (v) => {
-                    setOpen(false);
-                    await runTimelogAction(v, {
-                      folder,
-                      mod,
-                      row,
-                      onStartPomo,
-                      onAddManualTimelog,
-                      onOpenTimelogs,
-                    });
-                    await onAfterTimelogAction?.(v);
-                  }}
-                />
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>
@@ -411,6 +420,7 @@ export default function CardDialog({
   keepNav,
   showMasterColumn = true,
   showTimelogs = true,
+  compact = false,
   activeTimerKey = null,
   activePomo = null,
   logsRefreshKey = 0,
@@ -658,7 +668,9 @@ export default function CardDialog({
         onApplyWorkspace?.(res, keepNav?.(curLoc.folder.id, curLoc.mod[2].id));
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload file");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload file");
+      }
     } finally {
       setFileBusy(false);
     }
@@ -855,6 +867,8 @@ export default function CardDialog({
               readonly={readonly}
               onPatch={patch}
               onPersist={persist}
+              onApplyWorkspace={onApplyWorkspace}
+              keepNav={keepNav}
               onDuplicate={
                 !readonly && onDuplicate && draft.id
                   ? async () => {
@@ -1000,6 +1014,34 @@ export default function CardDialog({
                         <span className="lab">{draft.ms || ""}</span>
                       </PropDropdown>
                     ))}
+                  {cardFiles.map((file) => (
+                    <div key={file.id} className="prop-chip card-file-chip">
+                      <button
+                        type="button"
+                        className="card-file-chip-open"
+                        title={file.name}
+                        onClick={() => setPreviewFile(file)}
+                      >
+                        <FileTypeIcon name={file.name} mime={file.mime} size={14} />
+                        <span className="lab">{file.name}</span>
+                      </button>
+                      {!readonly ? (
+                        <button
+                          type="button"
+                          className="card-file-chip-del"
+                          title="Delete file"
+                          aria-label={`Delete ${file.name}`}
+                          disabled={fileBusy}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeCardFile(file);
+                          }}
+                        >
+                          <Icon name="close" size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
                   {normalizeEffort(draft.effort) ? (
                     <div className="prop-chip card-file-chip">
                       <CardMetaPicker
@@ -1082,34 +1124,6 @@ export default function CardDialog({
                       ) : null}
                     </div>
                   ) : null}
-                  {cardFiles.map((file) => (
-                    <div key={file.id} className="prop-chip card-file-chip">
-                      <button
-                        type="button"
-                        className="card-file-chip-open"
-                        title={file.name}
-                        onClick={() => setPreviewFile(file)}
-                      >
-                        <FileTypeIcon name={file.name} mime={file.mime} size={14} />
-                        <span className="lab">{file.name}</span>
-                      </button>
-                      {!readonly ? (
-                        <button
-                          type="button"
-                          className="card-file-chip-del"
-                          title="Delete file"
-                          aria-label={`Delete ${file.name}`}
-                          disabled={fileBusy}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeCardFile(file);
-                          }}
-                        >
-                          <Icon name="close" size={12} />
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
                   {!readonly ? (
                     <CardAddChip
                       canAddDescription={!showDescription}
@@ -1162,7 +1176,7 @@ export default function CardDialog({
                     value={draft.body || ""}
                     placeholder="Write something…"
                     editable={!readonly}
-                    showToolbar={!readonly}
+                    showToolbar={!readonly && !compact}
                     variant="mini"
                     imageUpload={imageUpload}
                     onChange={(html) => {
@@ -1293,6 +1307,15 @@ export default function CardDialog({
         {!readonly && isDraft ? (
           <div className="dlg-controls">
             <div className="actions">
+              {compact ? (
+                <button
+                  type="button"
+                  className="dlg-delete"
+                  onClick={() => close(false)}
+                >
+                  Cancel
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="dlg-create"
@@ -1300,6 +1323,19 @@ export default function CardDialog({
                 onClick={() => close(true)}
               >
                 Add task
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!readonly && !isDraft && compact ? (
+          <div className="dlg-controls">
+            <div className="actions">
+              <button
+                type="button"
+                className="dlg-create"
+                onClick={() => close(false)}
+              >
+                Done
               </button>
             </div>
           </div>
@@ -1317,8 +1353,6 @@ export default function CardDialog({
         files={cardFiles}
         onFileChange={setPreviewFile}
         project={curLoc.folder.id}
-        board={curLoc.mod[2].id}
-        card={draft.id}
         downloadUrl={cardFileDownloadUrl(
           curLoc.folder.id,
           curLoc.mod[2].id,
@@ -1351,6 +1385,7 @@ function DbFieldGroups({
   focusId,
   onPatch,
   onPersist,
+  onAddOption,
   leading = null,
 }) {
   if (!cols.length && !leading) return null;
@@ -1390,9 +1425,21 @@ function DbFieldGroups({
                     value={row[c.id]}
                     stages={stages}
                     variant="prop"
+                    readOnly={readonly}
                     autoFocus={!readonly && c.id === focusId}
-                    onChange={(next) => onPatch({ [c.id]: next })}
-                    onCommit={() => onPersist()}
+                    onAddOption={
+                      readonly || !onAddOption
+                        ? undefined
+                        : (label) => onAddOption(c, label)
+                    }
+                    onChange={(next) => {
+                      if (readonly) return;
+                      onPatch({ [c.id]: next });
+                    }}
+                    onCommit={() => {
+                      if (readonly) return;
+                      onPersist();
+                    }}
                   />
                 )}
               </div>
@@ -1413,8 +1460,13 @@ function DbFields({
   onPersist,
   onDuplicate,
   onDelete,
+  onApplyWorkspace,
+  keepNav,
 }) {
+  const [, bumpCols] = useState(0);
   const modData = loc?.mod?.[2];
+  const folder = loc?.folder;
+  const mod = loc?.mod;
   const cols = (modData?.cols || []).filter(Boolean);
   const hiddenList = activeDbHiddenCols(modData);
   const hiddenIds = new Set(hiddenList);
@@ -1434,6 +1486,33 @@ function DbFields({
       null;
   const canOrganise = !!(onDuplicate || onDelete);
 
+  const addSelectOption = async (col, label) => {
+    if (readonly || !folder || !mod || mod[0] !== "Database" || !modData) return;
+    const result = appendSelectOption(col, label);
+    if (!result.created) return;
+    const next = normalizeDbCol(result.col);
+    const list = ensureNameColumn(modData.cols || []);
+    const idx = list.findIndex((c) => c.id === col.id);
+    if (idx < 0) return;
+    list[idx] = next;
+    modData.cols = list;
+    col.options = next.options;
+    bumpCols((n) => n + 1);
+    const data = await putDatabase({
+      project: folder.id,
+      database: mod[2].id,
+      name: mod[1],
+      columns: list.map(serializeDbCol).filter(Boolean),
+      customViews: normalizeCustomViews(modData.customViews),
+      customViewId: resolveCustomViewId(
+        modData.customViewId,
+        modData.customViews
+      ),
+    });
+    const ws = data || (await fetchWorkspace());
+    onApplyWorkspace?.(ws, keepNav?.(folder.id, mod[2].id));
+  };
+
   if (!cols.length && !canOrganise) return null;
 
   return (
@@ -1447,6 +1526,7 @@ function DbFields({
           focusId={focusId}
           onPatch={onPatch}
           onPersist={onPersist}
+          onAddOption={readonly ? undefined : addSelectOption}
           leading={
             titleCol ? (
               <div className="db-entry-row is-title">
@@ -1507,6 +1587,7 @@ function DbFields({
             focusId={focusId}
             onPatch={onPatch}
             onPersist={onPersist}
+            onAddOption={readonly ? undefined : addSelectOption}
           />
         </div>
       ) : null}

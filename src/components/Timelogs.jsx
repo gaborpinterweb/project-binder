@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { deleteTimelogApi, fetchTimelogs, postTimelog, putTimelog } from "../api.js";
 import {
   DEFAULT_TIMELOG_GROUP_BY,
@@ -24,7 +24,7 @@ import {
 } from "../utils.js";
 import { Icon } from "../icons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
-import Dropdown from "./Dropdown.jsx";
+import Dropdown, { fitMenuToViewport } from "./Dropdown.jsx";
 import TimelogDialog from "./TimelogDialog.jsx";
 import { TimelogMoreMenu } from "./TimelogDropdown.jsx";
 import { askConfirm } from "../confirmDialog.js";
@@ -212,6 +212,7 @@ function projectsAriaLabel(projects) {
 
 function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
   const wrapRef = useRef(null);
+  const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
   const projects = selectedProjects(boards, boardOff);
   const label = projectsAriaLabel(projects);
@@ -224,6 +225,21 @@ function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const menu = menuRef.current;
+    const anchor = wrapRef.current;
+    const apply = () => fitMenuToViewport(anchor, menu);
+    apply();
+    window.addEventListener("resize", apply);
+    window.addEventListener("scroll", apply, true);
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("scroll", apply, true);
+      if (menu) menu.style.maxHeight = "";
+    };
+  }, [open, boards]);
 
   return (
     <div
@@ -281,7 +297,12 @@ function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
         )}
       </button>
       {open && (
-        <div className="pop" role="listbox" aria-multiselectable="true">
+        <div
+          ref={menuRef}
+          className="pop"
+          role="listbox"
+          aria-multiselectable="true"
+        >
           {!boards.length && (
             <div className="board-filter-empty">No task boards yet</div>
           )}
@@ -326,6 +347,7 @@ function LogViewInlineDd({
       options={options}
       onChange={onChange}
       caret
+      fitToViewport
     >
       <span className="dd-lab">{value}</span>
     </Dropdown>
@@ -352,7 +374,7 @@ function TimelogAggHead({ label, totalSec }) {
   );
 }
 
-/** View summary: “[Period] for [N projects] grouped by [Day], [Newest first]”. */
+/** View summary: “[Period] for [N projects] grouped by [Day] sorted by [Newest first]”. */
 function TimelogViewHead({
   totalSec,
   period,
@@ -388,12 +410,12 @@ function TimelogViewHead({
           onChange={onGroupByChange}
           ariaLabel={`Group by ${groupBy}`}
         />
-        <span className="log-view-lit">, </span>
+        <span className="log-view-lit"> sorted by </span>
         <LogViewInlineDd
           value={sort}
           options={TIMELOG_SORTS}
           onChange={onSortChange}
-          ariaLabel={sort}
+          ariaLabel={`Sorted by ${sort}`}
         />
       </div>
       <div className="timelog-time">

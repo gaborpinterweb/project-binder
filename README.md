@@ -2,166 +2,123 @@
 
 ## Quick overview
 
-- Free, open-source (MIT), offline
-- Local workspace for freelance projects (macOS / Windows desktop via Electron; also runs in the browser)
-- **0.1.0 includes:** task boards, master board, notes, files, databases, timelogs, trash, export / import (desktop), auto backup (desktop)
-- **Not in 0.1.0 yet:** Google Calendar, Docs/Links/Chat/etc. tab types, auto-update download
+- Free, open-source (MIT)
+- Web workspace for freelance projects
+- **Self-host** with one PocketBase binary (**Community** build), or run a **Commercial** hosted instance (`VITE_COMMERCIAL=true`)
+- Boards, master board, notes, files, databases, timelogs, trash, archive, export/import
+- Electron desktop has been removed
 
-## Description
-
-`server.cjs` serves the React UI and JSON API. Seed data ships in the repo. Packaged Electron persists to the OS user-data folder; CLI/browser (`npm start` / `npm run dev`) keep changes in memory only.
+## Run (product path)
 
 ```bash
 npm install
-npm run build
-npm start
-# → http://localhost:3457  (CLI / browser; in-memory seed)
+npm start                 # Community (default); same as npm run pb
+npm run start:commercial  # Commercial (Settings → Pro); pass VITE_POLAR_* if desired
+# → http://127.0.0.1:8090
+
+# While PB is already running, rebuild UI only (no restart):
+npm run pb:ui
+npm run pb:ui:commercial
 ```
 
-Packaged Electron listens on **:3456** (OS user-data). CLI / `npm start` / unpackaged Electron use **:3457** so both can run at once without sharing a port or workspace.
+1. Open the app URL (not `/_/` — that is the PocketBase admin).
+2. First PocketBase boot: create a superuser at the install link if prompted (admin only).
+3. **Register** an account, then sign in. New accounts must **verify email** before sign-in (needs Resend/`mail.env` locally, or cloud mail).
+4. Workspace JSON is stored per user in PocketBase (`user_data` file fields). Backup = copy `pocketbase/pb_data`.
+5. Sign out: Settings → Data → Account.
 
-Dev (Vite HMR + API on :3457):
+Deep links use path URLs (e.g. `/projects/<id>/tabs/<id>/tasks/<id>`). PocketBase’s default `--indexFallback` serves `index.html` for unknown paths so refresh works; do not start the binary with `--indexFallback=0`.
+
+Fetch binary only: `npm run pb:fetch`. Optional Docker: `docker compose up` (see `docker-compose.yml`).
+
+If migrations changed and you already have `pocketbase/pb_data`, delete that folder once so migrations re-apply (loses local PB data). Or: `npm run pb:fresh` / `npm run pb:fresh:commercial` (wipe + rebuild + mail).
+
+### Email (Resend) — verify + password reset
+
+Optional for local; recommended for hosted cloud.
+
+1. Copy [`pocketbase/mail.env.example`](pocketbase/mail.env.example) → `pocketbase/mail.env`.
+2. Fill `RESEND_API_KEY`, `MAIL_FROM` (verified domain), `APP_URL`, and your PocketBase superuser `PB_ADMIN_*`.
+3. With PB running: `npm run pb:mail` (or restart `npm start` — it applies mail.env automatically when the key is set).
+
+Without `mail.env`, the app still runs; verification/reset emails simply will not send.
+
+### Community vs Commercial builds
+
+- **Community** (default): `npm start` / `npm run build` / Docker without commercial build-args. Full features; no payment UI.
+- **Commercial**: `npm run start:commercial` (or `build:commercial`). Settings → Billing; Polar checkout/portal + webhooks for Free/Pro status.
 
 ```bash
-npm start          # API + static on :3457 (build first)
-npm run dev        # Vite on :5173, proxies /api → :3457
+# Local serve
+npm start
+VITE_POLAR_CHECKOUT_URL=https://… VITE_POLAR_PORTAL_URL=https://… npm run start:commercial
+
+# Build only
+npm run build
+VITE_POLAR_CHECKOUT_URL=https://… VITE_POLAR_PORTAL_URL=https://… npm run build:commercial
 ```
 
-Override either with `PROJECT_BINDER_PORT` (or `PORT`).
+Auth mail (Resend) is independent of the commercial flag.
 
-## Storage
+#### Polar billing (Commercial / sandbox)
 
-| Mode | Role |
-|------|------|
-| **Packaged Electron** (app in Applications / Program Files) | Live data under the OS user-data folder (`Application Support` / `%APPDATA%` / `~/.config`): `userWorkspace.json`, `userArchive.json`, `uploads/`, `appSettings.json`. |
-| **CLI / browser** (`npm start`, `npm run dev`, unpackaged Electron) | Boots from [`seedWorkspace.json`](seedWorkspace.json) + [`seedUploads/`](seedUploads); workspace, archive, and uploads stay **in memory** for that process. Never writes OS Application Support. Restart → back to seed. |
+1. In Polar, create a **subscription** product, then a **Checkout Link** with **`require_billing_address: true`**. Portal URL is `https://polar.sh/<org-slug>/portal`.
+2. Set build-args `VITE_POLAR_CHECKOUT_URL` (Checkout Link) and `VITE_POLAR_PORTAL_URL`.
+3. Set runtime secret: `fly secrets set POLAR_WEBHOOK_SECRET=…` (same value as the Polar webhook endpoint secret).
+4. In Polar (prefer **sandbox** while testing) → Webhooks → URL `https://cloud.projectbinder.app/api/polar-webhook`, events: `subscription.created`, `subscription.updated`, `subscription.active`, `subscription.canceled`, `subscription.uncanceled`, `subscription.revoked`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`, …
+5. Deploy so migrations + `pb_hooks` are live. Unsigned POSTs to the webhook should return 401/503.
+6. Sign in → Settings → Billing → **Subscribe** (checkout appends `reference_id` = PocketBase user id + `customer_email`). Complete a test purchase.
+7. Settings → Billing should show **Pro** after **Refresh** (or reopen the tab). PB Admin: user `pro` / `proStatus` / `polar*` fields.
+8. Cancel / revoke in Polar sandbox → Refresh → **Free** when entitlement ends.
+9. Escape hatch: set `pro` in PB Admin to exercise the status UI without a purchase.
 
-| File | Role |
-|------|------|
-| [`seedWorkspace.json`](seedWorkspace.json) | Read-only seed for a fresh start. The app never writes this file. |
-| `userWorkspace.json` | Packaged app only: live workspace (active projects) under OS user data. |
-| `userArchive.json` | Packaged app only: archived projects (kept out of the active workspace file). |
+Local commercial with webhooks: export `POLAR_WEBHOOK_SECRET` before `npm run start:commercial`, and point a sandbox webhook at a tunnel to `http://127.0.0.1:8090/api/polar-webhook` (or use `polar webhook listen`), or test against Fly only.
 
-Entity identity is UUID `id` (`version: 2`). Legacy slug workspaces must be migrated offline — see [docs/migrate-slugs-to-uids.md](docs/migrate-slugs-to-uids.md).
+### Deploy on Fly.io
 
-Packaged app: if `userWorkspace.json` is missing, empty, or corrupt/invalid, the server deep-clones `seedWorkspace.json` into a new file on disk. A detectable legacy slug workspace is **not** overwritten (process exits; migrate first).
+Preferred hosted path (same Docker image keeps a **`/data` volume** across deploys so users/workspace survive new app versions). Config: [`fly.toml`](fly.toml) (Commercial build by default). Deploy from your machine with [flyctl](https://fly.io/docs/hands-on/install-flyctl/).
 
-Restore the demo (dev / CLI): Settings → Developer → **Reset to seed workspace**, or restart the server (memory mode always reseeds on boot).
+1. `fly auth login`, then `fly apps create project-binder` (skip if the app already exists).
+2. Create a volume once: `fly volumes create pb_data --region ams --size 3` (mount name must match `fly.toml`).
+3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://cloud.projectbinder.app`). Add Resend vars for verify/reset mail, and `POLAR_WEBHOOK_SECRET` for billing (`fly secrets set …`).
+4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Set `VITE_POLAR_CHECKOUT_URL` / `VITE_POLAR_PORTAL_URL` there or via `fly deploy --build-arg`.
+5. `fly deploy`. Open the public URL; register after migrations run. Point Polar webhooks at `/api/polar-webhook` (see Commercial billing above).
+
+Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data. Keep a **single machine** (SQLite).
+
+Local image check:
+
+```bash
+docker build --build-arg VITE_COMMERCIAL=true -t project-binder .
+docker run --rm -p 8090:8090 -v binder-data:/data \
+  -e PB_ADMIN_EMAIL=admin@example.com -e PB_ADMIN_PASSWORD=changeme \
+  -e APP_URL=http://127.0.0.1:8090 project-binder
+```
+
+### Legacy Node API (dev only)
+
+```bash
+npm run start:node   # http://localhost:3457 in-memory seed
+npm run dev          # Vite :5173 → proxies /api to :3457
+```
+
+Prefer `npm start` (PocketBase) for the real product path.
+
+## Storage (PocketBase)
+
+| Piece | Role |
+|-------|------|
+| `users` | Email/password auth |
+| `user_data` | Per-user `userWorkspace` + `userArchive` JSON files |
+| `attachments` | Uploaded file bytes keyed by project/tab/file id |
+| [`public/seedWorkspace.json`](public/seedWorkspace.json) | Seed for first login |
+
+Roadmap notes: [docs/pocketbase-master-plan.md](docs/pocketbase-master-plan.md).
 
 ## Demo data (`isDemo`)
 
-The seed is sample freelancer work. Every **project**, **task board**, and **task card** in `seedWorkspace.json` is marked:
+Seed projects/boards/cards may include `"isDemo": true` (hidden in UI). User-created entities omit it.
 
-```json
-"isDemo": true
-```
+## License
 
-- Not shown in the UI.
-- Exposed on the API (`project.isDemo`, `board.isDemo`, `card.isDemo`) so a future “Remove demo data” control can delete only flagged items and leave user-created work alone.
-- User-created projects / boards / cards omit `isDemo`. Writes preserve an existing `isDemo: true` when editing demo entities so saves don’t strip the flag.
-
-### Planned UX (not implemented yet)
-
-New users start from this demo state. A button should:
-
-1. Delete all projects with `isDemo: true` (and their boards/cards), **or** delete only boards/cards flagged `isDemo` inside mixed projects if that model is preferred later.
-2. Leave anything without `isDemo` untouched.
-
-Until that exists, restore via Settings → Developer → **Reset to seed workspace** (dev builds only), or by deleting `userWorkspace.json` (see above).
-
-## Seed snapshot (revert target)
-
-Master board stages:
-
-`Backlog, This week, Today, Tomorrow, Next week`
-
-Entities use UUID `id` (see `seedWorkspace.json`). Display names below:
-
-| Project | Color | Tab | Tab columns |
-|---|---|---|---|
-| Freelancing | `#2f7a6e` | Ops | Admin, Marketing, Finance |
-| Client project A | `#b45a3c` | Delivery | Design, Frontend, Content |
-| Client project B | `#6b4f8c` | Launch | Design, Development, Content |
-
-### Freelancing — Ops
-
-| Title | Task board column | Master board column | Done |
-|---|---|---|---|
-| Update invoice template | Finance | Today | |
-| Quarterly tax checklist | Finance | This week | |
-| LinkedIn post cadence | Marketing | Today | |
-| Portfolio site refresh | Marketing | Next week | |
-| CRM cleanup | Admin | Backlog | |
-| Client contract template | Admin | This week | yes |
-
-### Client project A — Delivery
-
-| Title | Task board column | Master board column | Done |
-|---|---|---|---|
-| Homepage wireframes | Design | Today | |
-| Type & color system | Design | This week | |
-| Services page draft | Content | Today | |
-| Frontend component kit | Frontend | Next week | |
-| Case study template | Content | This week | yes |
-| Accessibility pass | Frontend | Backlog | |
-
-### Client project B — Launch
-
-| Title | Task board column | Master board column | Done |
-|---|---|---|---|
-| Landing hero copy | Content | Today | |
-| Waitlist signup flow | Development | Today | |
-| Pricing section | Development | Backlog | yes |
-| Press kit PDF | Content | This week | yes |
-| Launch day checklist | Development | This week | |
-| Onboarding email sequence | Content | Next week | |
-
-Each project also has matching Notes, Files, and Database demo tabs. Descriptions live in each project’s `description` field in the JSON.
-
-### Notes
-
-- Database tabs are available in the UI (`Database` tab type).
-- New task boards default to columns `Design, Frontend dev, Backend dev, Content` until customized.
-
-## Release assets
-
-Desktop update downloads match GitHub Release assets by filename:
-
-```text
-Project-Binder-<version>-<os>-<arch>.zip
-```
-
-Examples: `Project-Binder-0.1.0-mac-arm64.zip`, `Project-Binder-0.2.0-win-x64.zip`.
-
-`<os>` is `mac` | `win` | `linux`; `<arch>` is `arm64` | `x64`. Tag releases as `v<version>`. Keep this naming stable — the in-app updater picks the asset for the running platform/arch and otherwise opens the release page.
-
-### macOS download (unsigned build)
-
-Builds are not signed or notarized yet, so macOS may say **Project Binder** is damaged and cannot be opened. The download is fine — unblock it once:
-
-1. Unzip the download and open the folder so you see **Project Binder**.
-2. Open **Terminal** (Spotlight → type `Terminal` → Enter).
-3. Type this exactly, including the space at the end (don’t press Enter yet):
-
-   ```text
-   xattr -cr 
-   ```
-
-4. Drag **Project Binder** from the Finder window into the Terminal window. The path appears automatically.
-5. Press **Enter**.
-6. Double-click **Project Binder** again.
-
-Optional: move it into **Applications** first, then drag that copy into Terminal in step 4.
-
-## Should polish (pre-/post-publish)
-
-Tracked polish items — not blockers for a honest 0.1.0, but worth doing soon:
-
-- **Releases:** add Windows (and Intel Mac) zips using the naming above; optional CI for `build:desktop`
-- **Version sync:** one source of truth for version (`package.json` ↔ `APP_VERSION` in `src/utils.js` ↔ server log string)
-- **Desktop networking:** bind the API to `127.0.0.1` by default (don’t listen on all interfaces)
-- **Electron UX:** clearer load/error copy for packaged app users (avoid `npm start` / localhost-only messaging)
-- **Onboarding visuals:** real screenshots or product images in the launch flow (placeholders removed)
-- **Error UX:** replace widespread `alert()` with in-app confirm/prompt dialogs where it matters
-- **Demo cleanup:** “Remove demo data” button that deletes `isDemo: true` entities only (see Demo data above)
-- **Auto-update:** direct asset download when the platform matches is enough for MVP; full `electron-updater` + signing/notarization is later
+MIT — see [LICENSE](LICENSE).

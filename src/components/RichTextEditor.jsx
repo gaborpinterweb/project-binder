@@ -23,6 +23,7 @@ import {
   selectedRect,
 } from "@tiptap/pm/tables";
 import { postRteImage, rteImageUrl } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
 
@@ -207,11 +208,22 @@ const RteImage = Image.extend({
       if (!img.style.width && !img.getAttribute("width")) {
         img.style.maxWidth = `${RTE_IMAGE_MAX_W}px`;
       }
+      const rawSrc = img.getAttribute("src") || "";
+      let cancelled = false;
+      if (rawSrc.startsWith("pb-blob://")) {
+        import("../api.js")
+          .then(({ resolvePbBlobUrl }) => resolvePbBlobUrl(rawSrc))
+          .then((url) => {
+            if (!cancelled && url && url !== rawSrc) img.src = url;
+          })
+          .catch(() => {});
+      }
       sync();
       requestAnimationFrame(sync);
 
       const origDestroy = view.destroy?.bind(view);
       view.destroy = () => {
+        cancelled = true;
         ro?.disconnect();
         img.removeEventListener("load", sync);
         origDestroy?.();
@@ -585,7 +597,9 @@ export function RteToolbar({
           imageUpload.onApplyWorkspace?.(res);
         }
       } catch (err) {
-        window.alert(err.message || "Could not upload image");
+        if (!isPaywallAbortError(err)) {
+          window.alert(err.message || "Could not upload image");
+        }
       } finally {
         imageBusyRef.current = false;
         setImageBusy(false);
@@ -820,7 +834,9 @@ export default function RichTextEditor({
         ctx.onApplyWorkspace?.(res);
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload image");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload image");
+      }
     } finally {
       uploadBusyRef.current = false;
     }
@@ -956,27 +972,25 @@ export default function RichTextEditor({
 
   return (
     <div className="rte">
-      {showToolbar &&
-        (showLabel ? (
-          <div className="dlg-desc-head">
+      {(showLabel || showToolbar) && (
+        <div
+          className={
+            "dlg-desc-head" + (showLabel ? "" : " notes-rte-head")
+          }
+        >
+          {showLabel ? (
             <span className="dlg-desc-label">{label}</span>
+          ) : null}
+          {showToolbar ? (
             <RteToolbar
               editor={editor}
               variant={variant}
               hasRaisedIslands={hasRaisedIslands}
               imageUpload={imageUpload}
             />
-          </div>
-        ) : (
-          <div className="dlg-desc-head notes-rte-head">
-            <RteToolbar
-              editor={editor}
-              variant={variant}
-              hasRaisedIslands={hasRaisedIslands}
-              imageUpload={imageUpload}
-            />
-          </div>
-        ))}
+          ) : null}
+        </div>
+      )}
       <EditorContent editor={editor} />
       {feat.table && editable ? <TableFloat editor={editor} /> : null}
     </div>

@@ -11,8 +11,11 @@ import {
   fetchWorkspace,
   fetchTimelogs,
 } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
+  appendSelectOption,
+  defaultColumnLabel,
   emptyFieldValue,
   ensureNameColumn,
   fieldTypeIcon,
@@ -78,7 +81,7 @@ import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
 const BOARD_SORT_OPTIONS_BASE = [
   { value: "custom", label: "Custom", icon: "grip" },
-  { value: "effort", label: "By effort", icon: "chevronUp" },
+  { value: "effort", label: "By effort", icon: "chevronDown" },
   { value: "impact", label: "By impact", icon: "chevronUp" },
   {
     value: "weight",
@@ -399,7 +402,7 @@ function TaskCard({
 }) {
   const pc = color || folder?.color || PC[0];
   const done = isDone(row);
-  const canDrag = !boardEdit && !noDrag;
+  const canDrag = !boardEdit && !noDrag && !readonly;
   const key = cardKey || cardDragKey(row, folder, mod);
   const dragging = dragKey === key;
   const canCtxMenu =
@@ -436,7 +439,9 @@ function TaskCard({
         onApplyWorkspace(res, keepNav?.(folder.id, mod[2].id));
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload file");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload file");
+      }
     } finally {
       fileBusyRef.current = false;
     }
@@ -495,11 +500,19 @@ function TaskCard({
           type="checkbox"
           className="card-check"
           checked={done}
-          title={done ? "Mark active" : "Mark completed"}
+          disabled={readonly}
+          title={
+            readonly
+              ? "Read-only"
+              : done
+                ? "Mark active"
+                : "Mark completed"
+          }
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onChange={async (e) => {
             e.stopPropagation();
+            if (readonly) return;
             await onToggleDone(row, folder, mod, e.target.checked);
           }}
         />
@@ -1043,7 +1056,7 @@ function ProjectBoard({
 
   const resolveDrop = useCallback(
     async (payload, hint) => {
-      if (!hint || boardEdit) return;
+      if (!hint || boardEdit || readonly) return;
       const row = payload.row || payload;
       if (!row?.id) return;
 
@@ -1096,6 +1109,7 @@ function ProjectBoard({
     },
     [
       boardEdit,
+      readonly,
       data.rows,
       folder,
       mod,
@@ -1397,6 +1411,7 @@ function MasterBoard({
   boardSortByScope,
   uiTick,
   activeTimerKey = null,
+  compact = false,
   onBump,
   onSetCompletedView,
   onSetBoardSort,
@@ -1414,7 +1429,7 @@ function MasterBoard({
   onDeleteCard,
 }) {
   const tasks = allBoardTasks(folders).filter(
-    (t) => !masterOff.has(boardKey(t.folder, t.mod))
+    (t) => compact || !masterOff.has(boardKey(t.folder, t.mod))
   );
   const mode = getCompletedView("master", completedViewByScope);
   const show = getBoardShow("master", boardShowByScope);
@@ -1636,7 +1651,9 @@ function MasterBoard({
   };
 
   const masterCreateTarget = () => {
-    const boards = allBoards(folders).filter((b) => !masterOff.has(b.key));
+    const boards = allBoards(folders).filter(
+      (b) => compact || !masterOff.has(b.key)
+    );
     if (!boards.length) return null;
     return boards.find((b) => b.folder === currentFolder) || boards[0];
   };
@@ -1790,7 +1807,7 @@ function MasterBoard({
           </BoardCol>
         )}
       </div>
-      {!boardEdit && (
+      {!boardEdit && !compact && (
         <div className="mb-foot">
           {allBoards(folders).map(({ folder, mod, color, key }) => {
             const label = boardLabel(folder, mod);
@@ -1837,12 +1854,14 @@ function DbColHeader({
   onInsertAfter,
   onEdit,
   onResize,
+  readOnly = false,
 }) {
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const [resizing, setResizing] = useState(false);
   const locked = isNameCol(col);
+  const menuOff = locked || readOnly;
 
   const place = () => {
     const r = wrapRef.current?.getBoundingClientRect();
@@ -1851,7 +1870,7 @@ function DbColHeader({
   };
 
   useEffect(() => {
-    if (!open || locked) return;
+    if (!open || menuOff) return;
     place();
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
@@ -1865,7 +1884,7 @@ function DbColHeader({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open, locked]);
+  }, [open, menuOff]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -1885,6 +1904,7 @@ function DbColHeader({
   };
 
   const startResize = (e) => {
+    if (readOnly || !onResize) return;
     e.preventDefault();
     e.stopPropagation();
     setOpen(false);
@@ -1892,7 +1912,7 @@ function DbColHeader({
     const startW = clampColWidth(width);
     setResizing(true);
     const onMove = (ev) => {
-      onResize?.(col.id, clampColWidth(startW + (ev.clientX - startX)));
+      onResize(col.id, clampColWidth(startW + (ev.clientX - startX)));
     };
     const onUp = () => {
       setResizing(false);
@@ -1913,21 +1933,23 @@ function DbColHeader({
       }
       style={colWidthStyle(width)}
       ref={wrapRef}
-      onClick={locked ? undefined : () => setOpen((o) => !o)}
+      onClick={menuOff ? undefined : () => setOpen((o) => !o)}
     >
       <span className="db-col-lab">
         <Icon name={fieldTypeIcon(col.type)} size={14} />
         <span className="db-col-name">{col.label}</span>
       </span>
-      <span
-        className="db-col-resize"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={`Resize ${col.label || "column"}`}
-        onMouseDown={startResize}
-        onClick={(e) => e.stopPropagation()}
-      />
-      {!locked && open && pos ? (
+      {!readOnly ? (
+        <span
+          className="db-col-resize"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize ${col.label || "column"}`}
+          onMouseDown={startResize}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : null}
+      {!menuOff && open && pos ? (
         <div
           className="pop db-col-menu"
           role="menu"
@@ -2032,6 +2054,7 @@ function DbTable({
   verticalBorders = true,
   colWidths = {},
   onColWidthChange,
+  readonly = false,
 }) {
   const [editCol, setEditCol] = useState(null);
   const [editIsNew, setEditIsNew] = useState(false);
@@ -2047,11 +2070,12 @@ function DbTable({
   const widths = normalizeColWidths(colWidths);
 
   const openNewCol = (insertAt = null) => {
+    if (readonly) return;
     setEditIsNew(true);
     setEditInsertAt(insertAt);
     setEditCol({
       id: "f" + Date.now(),
-      label: "",
+      label: defaultColumnLabel("text"),
       type: "text",
     });
   };
@@ -2076,6 +2100,7 @@ function DbTable({
   };
 
   const moveCol = async (index, dir) => {
+    if (readonly) return;
     const list = ensureNameColumn(d.cols);
     const item = list[index];
     if (!item || isNameCol(item)) return;
@@ -2090,6 +2115,7 @@ function DbTable({
   };
 
   const saveCol = async (saved) => {
+    if (readonly) return;
     if (isNameCol(saved) && !editIsNew) return;
     const list = ensureNameColumn(d.cols);
     const idx = list.findIndex((c) => c.id === saved.id);
@@ -2120,6 +2146,7 @@ function DbTable({
   };
 
   const deleteCol = async (col) => {
+    if (readonly) return;
     if (isNameCol(col) || allCols.length <= 1) return;
     const list = ensureNameColumn(d.cols.filter((c) => c.id !== col.id));
     d.cols = list;
@@ -2135,9 +2162,25 @@ function DbTable({
   };
 
   const setCell = async (row, col, next) => {
+    if (readonly) return;
     row[col.id] = next;
     bump((n) => n + 1);
     await persistDbRow(folder, mod, row, allCols);
+  };
+
+  const addSelectOption = async (col, label) => {
+    if (readonly) return;
+    const result = appendSelectOption(col, label);
+    if (!result.created) return;
+    const next = normalizeDbCol(result.col);
+    const list = ensureNameColumn(d.cols);
+    const idx = list.findIndex((c) => c.id === col.id);
+    if (idx < 0) return;
+    list[idx] = next;
+    d.cols = list;
+    // Keep the mounted field's col ref in sync before the next render.
+    col.options = next.options;
+    await persistDbColumns(folder, mod, d.cols);
   };
 
   return (
@@ -2160,15 +2203,16 @@ function DbTable({
                   key={c.id}
                   col={c}
                   width={width}
-                  canLeft={i > 1}
-                  canRight={i >= 1 && i < allCols.length - 1}
+                  readOnly={readonly}
+                  canLeft={!readonly && i > 1}
+                  canRight={!readonly && i >= 1 && i < allCols.length - 1}
                   onMoveLeft={() => moveCol(i, -1)}
                   onMoveRight={() => moveCol(i, 1)}
                   onInsertBefore={() => openNewCol(i)}
                   onInsertAfter={() => openNewCol(i + 1)}
-                  onResize={onColWidthChange}
+                  onResize={readonly ? undefined : onColWidthChange}
                   onEdit={() => {
-                    if (isNameCol(c)) return;
+                    if (readonly || isNameCol(c)) return;
                     setEditIsNew(false);
                     setEditInsertAt(null);
                     setEditCol(c);
@@ -2176,9 +2220,13 @@ function DbTable({
                 />
               );
             })}
-            <th className="addcol" onClick={() => openNewCol(null)}>
-              + Add column
-            </th>
+            {!readonly ? (
+              <th className="addcol" onClick={() => openNewCol(null)}>
+                + Add column
+              </th>
+            ) : (
+              <th className="addcol" aria-hidden="true" />
+            )}
           </tr>
         </thead>
         <tbody>
@@ -2222,8 +2270,15 @@ function DbTable({
                     stages={stages}
                     variant="cell"
                     wrapLines={wrapLines}
-                    autoFocus={isNameCol(c) && r.id === focusNameId}
+                    readOnly={readonly}
+                    autoFocus={!readonly && isNameCol(c) && r.id === focusNameId}
+                    onAddOption={
+                      readonly
+                        ? undefined
+                        : (label) => addSelectOption(c, label)
+                    }
                     onCommit={(next) => {
+                      if (readonly) return;
                       if (r.id === focusNameId) setFocusNameId(null);
                       setCell(r, c, next);
                     }}
@@ -2233,29 +2288,31 @@ function DbTable({
               <td className="db-td-trail" />
             </tr>
           ))}
-          <tr className="new">
-            <td
-              colSpan={cols.length + 2}
-              onClick={async () => {
-                const fields = {};
-                ensureNameColumn(d.cols).forEach((c) => {
-                  fields[c.id] = emptyFieldValue(c, stages);
-                });
-                const data = await postItem({
-                  project: folder.id,
-                  database: mod[2].id,
-                  fields,
-                });
-                onApplyWorkspace(data, {
-                  project: folder.id,
-                  board: mod[2].id,
-                });
-                setFocusNameId(data.id);
-              }}
-            >
-              + New
-            </td>
-          </tr>
+          {!readonly ? (
+            <tr className="new">
+              <td
+                colSpan={cols.length + 2}
+                onClick={async () => {
+                  const fields = {};
+                  ensureNameColumn(d.cols).forEach((c) => {
+                    fields[c.id] = emptyFieldValue(c, stages);
+                  });
+                  const data = await postItem({
+                    project: folder.id,
+                    database: mod[2].id,
+                    fields,
+                  });
+                  onApplyWorkspace(data, {
+                    project: folder.id,
+                    board: mod[2].id,
+                  });
+                  setFocusNameId(data.id);
+                }}
+              >
+                + New
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
       {editCol ? (
@@ -2429,11 +2486,7 @@ export function DatabaseView({
     rows: [],
   };
   if (!d.cols) {
-    d.cols = [
-      { id: NAME_COL_ID, label: "Name", type: "text" },
-      { id: "r", label: "Role", type: "text" },
-      { id: "s", label: "Stage", type: "stage" },
-    ];
+    d.cols = [{ id: NAME_COL_ID, label: "Name", type: "text" }];
   } else {
     d.cols = ensureNameColumn(d.cols);
   }
@@ -2469,6 +2522,7 @@ export function DatabaseView({
   };
 
   const schedulePersistViews = () => {
+    if (readonly) return;
     clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
       persistDbCustomViews(folder, mod).catch(() => {});
@@ -2613,6 +2667,7 @@ export function DatabaseView({
         folder={folder}
         mod={mod}
         stages={stages}
+        readonly={readonly}
         onOpen={onOpenCard}
         onApplyWorkspace={onApplyWorkspace}
         onDuplicateRecord={readonly ? undefined : onDuplicateRecord}
@@ -2628,16 +2683,18 @@ export function DatabaseView({
     >
       <div className="modbar">
         <div className="modbar-start">
-          <button
-            type="button"
-            className="mod-act"
-            title="Add record"
-            aria-label="Add record"
-            onClick={addEntry}
-          >
-            <Icon name="plus" size={18} />
-            <span className="mod-act-lab">Add record</span>
-          </button>
+          {!readonly ? (
+            <button
+              type="button"
+              className="mod-act"
+              title="Add record"
+              aria-label="Add record"
+              onClick={addEntry}
+            >
+              <Icon name="plus" size={18} />
+              <span className="mod-act-lab">Add record</span>
+            </button>
+          ) : null}
           <DbViewDropdown
             cols={d.cols || []}
             hiddenCols={hiddenCols}
@@ -2763,6 +2820,8 @@ export default function Board({
   locateRow,
   keepNav,
   activeTimerKey = null,
+  compact = false,
+  onOpenSettings,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -2771,9 +2830,15 @@ export default function Board({
 }) {
   if (mode === "master") {
     const addMasterTask = () => {
-      const boards = allBoards(folders).filter((b) => !masterOff.has(b.key));
+      const boards = allBoards(folders).filter(
+        (b) => compact || !masterOff.has(b.key)
+      );
       if (!boards.length) {
-        alert("Enable at least one board in the footer to create a card.");
+        alert(
+          compact
+            ? "Create a project board on desktop before adding tasks."
+            : "Enable at least one board in the footer to create a card."
+        );
         return;
       }
       const target = boards.find((b) => b.folder === folder) || boards[0];
@@ -2786,40 +2851,54 @@ export default function Board({
 
     return (
       <div id="view" className="db" style={{ ["--tab"]: tabC }}>
-        <GlobalBar name="Masterboard">
-          {!boardEdit && (
+        <GlobalBar name="Masterboard" titleRainbow={compact}>
+          {compact ? (
             <button
               type="button"
               className="mod-act"
-              title="Add task"
-              aria-label="Add task"
-              onClick={addMasterTask}
+              title="Settings"
+              aria-label="Settings"
+              onClick={onOpenSettings}
             >
-              <Icon name="plus" size={18} />
-              <span className="mod-act-lab">Add task</span>
+              <Icon name="settings" size={18} />
             </button>
+          ) : (
+            <>
+              {!boardEdit && (
+                <button
+                  type="button"
+                  className="mod-act"
+                  title="Add task"
+                  aria-label="Add task"
+                  onClick={addMasterTask}
+                >
+                  <Icon name="plus" size={18} />
+                  <span className="mod-act-lab">Add task</span>
+                </button>
+              )}
+              {!boardEdit && (
+                <CompletedViewBtn
+                  scope="master"
+                  completedViewByScope={completedViewByScope}
+                  boardShowByScope={boardShowByScope}
+                  onChange={onSetCompletedView}
+                  onSetBoardShow={onSetBoardShow}
+                  triggerLabel="View"
+                  align="right"
+                />
+              )}
+              {!boardEdit && (
+                <BoardSortBtn
+                  scope="master"
+                  boardSortByScope={boardSortByScope}
+                  onChange={onSetBoardSort}
+                  allowProject
+                  align="right"
+                />
+              )}
+              <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
+            </>
           )}
-          {!boardEdit && (
-            <CompletedViewBtn
-              scope="master"
-              completedViewByScope={completedViewByScope}
-              boardShowByScope={boardShowByScope}
-              onChange={onSetCompletedView}
-              onSetBoardShow={onSetBoardShow}
-              triggerLabel="View"
-              align="right"
-            />
-          )}
-          {!boardEdit && (
-            <BoardSortBtn
-              scope="master"
-              boardSortByScope={boardSortByScope}
-              onChange={onSetBoardSort}
-              allowProject
-              align="right"
-            />
-          )}
-          <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
         </GlobalBar>
         <MasterBoard
           folders={folders}
@@ -2831,6 +2910,7 @@ export default function Board({
           boardShowByScope={boardShowByScope}
           boardSortByScope={boardSortByScope}
           uiTick={uiTick}
+          compact={compact}
           onBump={onBump}
           onSetCompletedView={onSetCompletedView}
           onSetBoardSort={onSetBoardSort}
@@ -2848,6 +2928,17 @@ export default function Board({
           onDuplicateCard={onDuplicateCard}
           onDeleteCard={onDeleteCard}
         />
+        {compact && (
+          <button
+            type="button"
+            className="mobile-fab"
+            title="Add task"
+            aria-label="Add task"
+            onClick={addMasterTask}
+          >
+            <Icon name="plus" size={24} />
+          </button>
+        )}
       </div>
     );
   }

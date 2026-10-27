@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { fileDownloadUrl, revealCardFile, revealFile } from "../api.js";
+import { fileDownloadUrl } from "../api.js";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 import pdfiumWasmUrl from "@embedpdf/pdfium/pdfium.wasm?url";
 
@@ -46,13 +46,6 @@ function formatFromName(name) {
 
 function fitsContent(format) {
   return format === "image" || format === "pptx" || format === "pdf" || format === "docx";
-}
-
-function showInFolderLabel() {
-  const platform = navigator.userAgentData?.platform || navigator.platform || "";
-  if (/mac/i.test(platform)) return "Show in Finder";
-  if (/win/i.test(platform)) return "Show in File Explorer";
-  return "Show in folder";
 }
 
 function pagerMeta(viewer) {
@@ -248,10 +241,7 @@ export default function FilePreviewDialog({
   onFileChange,
   project,
   filesTab,
-  board,
-  card,
   downloadUrl,
-  showReveal = true,
   onClose,
 }) {
   const hostRef = useRef(null);
@@ -294,9 +284,19 @@ export default function FilePreviewDialog({
 
     (async () => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Could not load file");
-        const blob = await res.blob();
+        let blob;
+        if (String(url).startsWith("pb-blob://")) {
+          const { resolvePbBlobUrl } = await import("../api.js");
+          const obj = await resolvePbBlobUrl(url);
+          if (!obj || obj === url) throw new Error("Could not load file");
+          const res = await fetch(obj);
+          if (!res.ok) throw new Error("Could not load file");
+          blob = await res.blob();
+        } else {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Could not load file");
+          blob = await res.blob();
+        }
         if (cancelled || !host) return;
         const { mount } = await import("shrimp-doc-viewer");
         const viewer = await mount(host, blob, {
@@ -386,23 +386,6 @@ export default function FilePreviewDialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose, canStepFiles, fileList, fileIndex, onFileChange, paged, page, pageCount]);
 
-  const showInFolder = async () => {
-    try {
-      if (board && card) {
-        await revealCardFile({
-          project,
-          board,
-          card,
-          file: file.id,
-        });
-      } else {
-        await revealFile({ project, filesTab, file: file.id });
-      }
-    } catch (err) {
-      window.alert(err.message || "Could not show the file");
-    }
-  };
-
   return (
     <div
       className="ov ov-file-preview"
@@ -489,15 +472,6 @@ export default function FilePreviewDialog({
                 <Icon name="arrowRight" size={16} />
               </button>
             </div>
-          ) : null}
-          {showReveal ? (
-            <button
-              type="button"
-              className="file-preview-finder"
-              onClick={showInFolder}
-            >
-              {showInFolderLabel()}
-            </button>
           ) : null}
         </div>
         <div className="file-preview-stage">

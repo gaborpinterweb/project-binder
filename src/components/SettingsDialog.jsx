@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
+import { exportWorkspace, fetchArchivedProjects, importBackup } from "../api.js";
 import {
-  exportWorkspace,
-  fetchAppInfo,
-  fetchArchivedProjects,
-  saveBackupSettings,
-  runBackupNow,
-  pickBackupFolder,
-  importBackup,
-} from "../api.js";
+  getPb,
+  isCommercialMode,
+  isPbMode,
+  isProUser,
+  polarPortalUrl,
+} from "../pb/client.js";
 import {
   APP_NAME,
   APP_COMMIT,
@@ -18,15 +17,12 @@ import {
   PC,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
-import { askBackupFolderFailed } from "../backupFolderDialog.js";
+import { askPrompt } from "../promptDialog.js";
+import { askPaywall } from "../paywallDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
+import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
 
-const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
-const AUTO_BACKUP_KEEP_DAYS = 3;
-
-const BMC_URL = "https://buymeacoffee.com/gaborpinterweb";
-const BMC_BTN = "/bmc-button.png";
 const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL =
   "https://gaborpinter.com/?utm_source=project-binder&utm_medium=app&utm_campaign=settings-about";
@@ -43,19 +39,6 @@ const STOPTIMER_MAX_DD_OPTIONS = STOPTIMER_MAX_OPTIONS_MIN.map((min) => ({
   label: min === 0 ? "No limit" : `${min / 60}h`,
 }));
 
-function formatBackupTime(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export default function SettingsDialog({
   countdownDurationMin,
   onCountdownDurationChange,
@@ -63,23 +46,28 @@ export default function SettingsDialog({
   onStoptimerMaxChange,
   uiSounds,
   onUiSoundsChange,
-  menuBarTimer,
-  onMenuBarTimerChange,
   onReactivate,
   onClose,
   onResetSeed,
   onResetEmpty,
   onResetFirstLaunch,
-  onImportBackup,
 }) {
   const tabs = useMemo(() => {
     const list = [
       { id: "experience", label: "Experience", icon: "Experience" },
+    ];
+    if (isPbMode()) {
+      list.push({ id: "account", label: "Account", icon: "Account" });
+    }
+    if (isCommercialMode()) {
+      list.push({ id: "billing", label: "Billing", icon: "Billing" });
+    }
+    list.push(
       { id: "data", label: "Data", icon: "Workspace" },
       { id: "archive", label: "Archive", icon: "Archive" },
       { id: "help", label: "Help", icon: "Help" },
-      { id: "about", label: "About", icon: "About" },
-    ];
+      { id: "about", label: "About", icon: "About" }
+    );
     if (import.meta.env.DEV) {
       list.push({ id: "developer", label: "Developer", icon: "Developer" });
     }
@@ -90,17 +78,60 @@ export default function SettingsDialog({
   const [archivedProjects, setArchivedProjects] = useState([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [resetting, setResetting] = useState(null);
-  const [desktop, setDesktop] = useState(false);
-  const [menuBarSupported, setMenuBarSupported] = useState(false);
-  const [backup, setBackup] = useState({
-    enabled: false,
-    folderPath: "",
-    lastBackupAt: null,
-    lastError: null,
-    filename: AUTO_BACKUP_FILENAME_PATTERN,
-    keepDays: AUTO_BACKUP_KEEP_DAYS,
-  });
-  const [backupBusy, setBackupBusy] = useState(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNext, setPwNext] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [billingPro, setBillingPro] = useState(() => isProUser());
+  const [billingRefreshBusy, setBillingRefreshBusy] = useState(false);
+  const [billingLastRefreshedAt, setBillingLastRefreshedAt] = useState(null);
+  const [paywallCovering, setPaywallCovering] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const pwCurrentRef = useRef(null);
+
+  const openPaywallFromSettings = async () => {
+    setPaywallCovering(true);
+    try {
+      await askPaywall({ underExistingOverlay: true });
+    } finally {
+      setPaywallCovering(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab !== "billing" || !isCommercialMode()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await getPb().collection("users").authRefresh();
+        if (!cancelled) {
+          setBillingPro(isProUser());
+          setBillingLastRefreshedAt(new Date());
+        }
+      } catch {
+        if (!cancelled) setBillingPro(isProUser());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  const refreshBillingStatus = async () => {
+    if (billingRefreshBusy) return;
+    setBillingRefreshBusy(true);
+    try {
+      await getPb().collection("users").authRefresh();
+      setBillingPro(isProUser());
+      setBillingLastRefreshedAt(new Date());
+    } catch {
+      showSnackbar("Could not refresh billing status");
+    } finally {
+      setBillingRefreshBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (tab !== "archive") return;
@@ -122,74 +153,24 @@ export default function SettingsDialog({
   }, [tab]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const info = await fetchAppInfo();
-        if (cancelled) return;
-        setDesktop(!!info.desktop);
-        setMenuBarSupported(!!info.menuBar);
-        if (info.backup) {
-          setBackup((prev) => ({
-            ...prev,
-            ...info.backup,
-            filename: info.autoBackupFilename || prev.filename,
-            keepDays:
-              info.autoBackupKeepDays != null
-                ? Number(info.autoBackupKeepDays) || prev.keepDays
-                : prev.keepDays,
-          }));
-        }
-      } catch {
-        if (!cancelled) {
-          setDesktop(false);
-          setMenuBarSupported(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!import.meta.env.DEV && tab === "developer") setTab("experience");
+    if (!isPbMode() && tab === "account") setTab("experience");
+    if (!isCommercialMode() && tab === "billing") setTab("experience");
   }, [tab]);
 
-  useEffect(() => {
-    const esc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
-  }, [onClose]);
-
-  const applyBackupState = (data) => {
-    if (!data || typeof data !== "object") return;
-    setBackup((prev) => ({
-      ...prev,
-      enabled: !!data.enabled,
-      folderPath: data.folderPath != null ? String(data.folderPath) : prev.folderPath,
-      lastBackupAt: data.lastBackupAt !== undefined ? data.lastBackupAt : prev.lastBackupAt,
-      lastError: data.lastError !== undefined ? data.lastError : prev.lastError,
-      filename: data.filename || prev.filename,
-      keepDays:
-        data.keepDays != null ? Number(data.keepDays) || prev.keepDays : prev.keepDays,
-    }));
-  };
-
-  const persistBackup = async (patch) => {
-    setBackupBusy("save");
-    try {
-      const data = await saveBackupSettings(patch);
-      applyBackupState(data);
-      return { ok: true, data };
-    } catch (e) {
-      return { ok: false, error: e.message || "Could not save backup settings." };
-    } finally {
-      setBackupBusy(null);
+  const openProUrl = (url, missingLabel) => {
+    if (url) {
+      window.open(url, "_blank", "noopener");
+      return;
     }
+    alert(`${missingLabel} URL is not configured for this build.`);
   };
+
+  useEffect(() => {
+    if (!pwOpen) return;
+    const t = requestAnimationFrame(() => pwCurrentRef.current?.focus());
+    return () => cancelAnimationFrame(t);
+  }, [pwOpen]);
 
   const handleExport = async () => {
     try {
@@ -199,94 +180,183 @@ export default function SettingsDialog({
     }
   };
 
-  const handleBrowseFolder = async () => {
-    for (;;) {
-      setBackupBusy("folder");
-      try {
-        const picked = await pickBackupFolder();
-        if (picked.cancelled || !picked.path) return false;
-        const data = await saveBackupSettings({
-          enabled: true,
-          folderPath: picked.path,
-        });
-        applyBackupState(data);
-        return true;
-      } catch {
-        setBackupBusy(null);
-        const retry = await askBackupFolderFailed();
-        if (!retry) return false;
-      } finally {
-        setBackupBusy(null);
-      }
-    }
-  };
-
-  const handleToggleAutoBackup = async (checked) => {
-    if (checked && !backup.folderPath) {
-      await handleBrowseFolder();
-      return;
-    }
-    const result = await persistBackup({
-      enabled: checked,
-      folderPath: backup.folderPath,
-    });
-    if (result.ok) return;
-    if (checked) {
-      const retry = await askBackupFolderFailed();
-      if (retry) await handleBrowseFolder();
-      return;
-    }
-    alert(result.error);
-  };
-
-  const handleBackupNow = async () => {
-    setBackupBusy("now");
-    try {
-      const data = await runBackupNow();
-      applyBackupState(data);
-    } catch (e) {
-      alert(e.message || "Backup failed.");
-    } finally {
-      setBackupBusy(null);
-    }
-  };
-
-  const runImportZip = async () => {
-    setBackupBusy("import");
-    try {
-      const data = await importBackup();
-      if (data?.cancelled) return;
-      await onImportBackup?.(data);
-      onClose();
-    } catch (e) {
-      alert(e.message || "Could not import workspace.");
-    } finally {
-      setBackupBusy(null);
-    }
-  };
-
-  const handleImport = async () => {
-    const choice = await askConfirm({
+  const handleImportZip = async (file) => {
+    if (!file) return;
+    const ok = await askConfirm({
       title: "Import workspace data?",
       message:
-        "Importing a .zip replaces your current workspace and uploaded files. Export a .zip of your current data first if you might need it.",
-      confirmLabel: "Continue without exporting",
-      altLabel: "Export current workspace data",
-      cancelLabel: "Cancel",
+        "This replaces your current workspace from the backup zip. Export first if you might need it.",
+      confirmLabel: "Import",
       danger: true,
     });
-    if (!choice) return;
-    if (choice === "alt") {
-      try {
-        await exportWorkspace();
-      } catch {
-        alert("Could not export workspace.");
-        return;
-      }
-      await runImportZip();
+    if (!ok) return;
+    try {
+      await importBackup({ file });
+      window.location.reload();
+    } catch (e) {
+      alert(e.message || "Could not import workspace.");
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    const current = String(getPb().authStore.record?.email || "").trim();
+    const entered = await askPrompt({
+      title: "Change email",
+      message: "Enter the new email address. We will send a confirmation link there.",
+      defaultValue: "",
+      placeholder: "you@example.com",
+      confirmLabel: "Send link",
+    });
+    if (entered == null) return;
+    const newEmail = String(entered).trim();
+    if (!newEmail) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "Enter a new email address.",
+        durationMs: 4000,
+      });
       return;
     }
-    await runImportZip();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "That does not look like a valid email.",
+        durationMs: 4000,
+      });
+      return;
+    }
+    if (current && newEmail.toLowerCase() === current.toLowerCase()) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: "That is already your current email.",
+        durationMs: 4000,
+      });
+      return;
+    }
+    try {
+      await getPb().collection("users").requestEmailChange(newEmail);
+      showSnackbar({
+        icon: "check",
+        tone: "success",
+        center: true,
+        message: "Confirmation email sent. Check the new inbox.",
+        durationMs: 6000,
+      });
+    } catch (err) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message: err?.message || "Could not request email change",
+        durationMs: 6000,
+      });
+    }
+  };
+
+  const closePasswordDialog = () => {
+    if (pwBusy) return;
+    setPwOpen(false);
+    setPwCurrent("");
+    setPwNext("");
+    setPwConfirm("");
+    setPwError("");
+  };
+
+  useEffect(() => {
+    const esc = (e) => {
+      if (e.key !== "Escape") return;
+      if (pwOpen) {
+        e.preventDefault();
+        if (pwBusy) return;
+        setPwOpen(false);
+        setPwCurrent("");
+        setPwNext("");
+        setPwConfirm("");
+        setPwError("");
+        return;
+      }
+      onClose();
+    };
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose, pwOpen, pwBusy]);
+
+  const openPasswordDialog = () => {
+    setPwCurrent("");
+    setPwNext("");
+    setPwConfirm("");
+    setPwError("");
+    setPwBusy(false);
+    setPwOpen(true);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwError("");
+    const oldPassword = pwCurrent;
+    const password = pwNext;
+    const passwordConfirm = pwConfirm;
+    if (!oldPassword || !password || !passwordConfirm) {
+      setPwError("Fill in all password fields.");
+      return;
+    }
+    if (password.length < 8) {
+      setPwError("New password must be at least 8 characters.");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setPwError("New passwords do not match.");
+      return;
+    }
+    const pb = getPb();
+    const userId = pb.authStore.record?.id;
+    const email = String(pb.authStore.record?.email || "").trim();
+    if (!userId || !email) {
+      setPwError("Not signed in.");
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await pb.collection("users").update(userId, {
+        oldPassword,
+        password,
+        passwordConfirm,
+      });
+      await pb.collection("users").authWithPassword(email, password);
+      setPwBusy(false);
+      setPwOpen(false);
+      setPwCurrent("");
+      setPwNext("");
+      setPwConfirm("");
+      setPwError("");
+      showSnackbar({
+        icon: "check",
+        tone: "success",
+        center: true,
+        message: "Password updated.",
+        durationMs: 4000,
+      });
+    } catch (err) {
+      setPwBusy(false);
+      setPwError(err?.message || "Could not update password");
+    }
+  };
+
+  const handleSignOut = async () => {
+    const ok = await askConfirm({
+      title: "Sign out?",
+      message: "You will need to sign in again to open this workspace.",
+      confirmLabel: "Sign out",
+    });
+    if (!ok) return;
+    getPb().authStore.clear();
+    window.location.reload();
   };
 
   const runReset = async (kind, title, message, action) => {
@@ -332,17 +402,22 @@ export default function SettingsDialog({
       onResetFirstLaunch
     );
 
-  const lastBackupLabel = formatBackupTime(backup.lastBackupAt);
-  const backupDisabled = !!backupBusy;
-
   return (
+    <>
     <div
       className="ov"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target !== e.currentTarget || pwOpen || paywallCovering) return;
+        onClose();
       }}
     >
-      <div className="dlg settings-dlg" role="dialog" aria-label="Settings">
+      <div
+        className="dlg settings-dlg"
+        role="dialog"
+        aria-label="Settings"
+        hidden={paywallCovering}
+        aria-hidden={paywallCovering || undefined}
+      >
         <div className="settings-tabs" role="tablist" aria-label="Settings sections">
           {tabs.map((t) => (
             <button
@@ -408,23 +483,6 @@ export default function SettingsDialog({
                     <span className="settings-toggle-ui" aria-hidden="true" />
                   </label>
                 </div>
-                {menuBarSupported && (
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Menu bar timer</b>
-                      <span>Show the active session in the system tray</span>
-                    </div>
-                    <label className="settings-toggle">
-                      <input
-                        type="checkbox"
-                        checked={!!menuBarTimer}
-                        onChange={(e) => onMenuBarTimerChange?.(e.target.checked)}
-                        aria-label="Menu bar timer"
-                      />
-                      <span className="settings-toggle-ui" aria-hidden="true" />
-                    </label>
-                  </div>
-                )}
               </div>
             </section>
           )}
@@ -470,111 +528,148 @@ export default function SettingsDialog({
             </section>
           )}
 
-          {tab === "data" && (
-            <>
-              {desktop && (
-                <section className="settings-section">
-                  <h3 className="settings-heading">Backup</h3>
-                  <div className="settings-backup-block">
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Enable backup</b>
-                        <span>Backs up your workspace every 5 minutes and on launch</span>
-                      </div>
-                      <label className="settings-toggle">
-                        <input
-                          type="checkbox"
-                          checked={!!backup.enabled}
-                          disabled={backupDisabled}
-                          onChange={(e) => handleToggleAutoBackup(e.target.checked)}
-                          aria-label="Enable backup"
-                        />
-                        <span className="settings-toggle-ui" aria-hidden="true" />
-                      </label>
-                    </div>
-                    <div
-                      className={`settings-backup-details${backup.enabled ? " in" : ""}`}
-                      aria-hidden={!backup.enabled}
-                    >
-                      <div className="settings-backup-details-clip">
-                        <div className="settings-backup-details-inner">
-                          <div className="settings-row">
-                            <div className="settings-row-copy">
-                              <b>Set backup folder</b>
-                              {backup.folderPath ? (
-                                <span className="settings-path" title={backup.folderPath}>
-                                  {backup.folderPath}
-                                </span>
-                              ) : (
-                                <span>No folder selected</span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              className="settings-row-btn"
-                              disabled={backupDisabled || !backup.enabled}
-                              tabIndex={backup.enabled ? undefined : -1}
-                              onClick={handleBrowseFolder}
-                            >
-                              {backupBusy === "folder" ? "…" : "Browse"}
-                            </button>
-                          </div>
-                          <div className="settings-backup-meta">
-                            <span>
-                              Last backup {lastBackupLabel || "not yet"}
-                              {backup.lastError ? ` · Error: ${backup.lastError}` : ""}
-                            </span>
-                            <span aria-hidden="true">·</span>
-                            <button
-                              type="button"
-                              className="settings-text-btn"
-                              disabled={
-                                backupDisabled || !backup.enabled || !backup.folderPath
-                              }
-                              tabIndex={backup.enabled ? undefined : -1}
-                              onClick={handleBackupNow}
-                            >
-                              {backupBusy === "now" ? "…" : "Backup now"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+          {tab === "account" && isPbMode() && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Change Email</b>
+                    <span>Update the email on this account</span>
                   </div>
-                </section>
-              )}
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    onClick={() => void handleChangeEmail()}
+                  >
+                    Change Email
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Change password</b>
+                    <span>Set a new password for this account</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    onClick={openPasswordDialog}
+                  >
+                    Change password
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Sign out</b>
+                    <span>
+                      {getPb().authStore.record?.email || "End this session"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn"
+                    onClick={() => void handleSignOut()}
+                  >
+                    Sign out
+                  </button>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Delete account</b>
+                    <span>Permanently remove this account and its data</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-row-btn settings-row-btn-danger"
+                    onClick={() => setDeleteAccountOpen(true)}
+                  >
+                    Delete account
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
 
-              <section className="settings-section">
-                <h3 className="settings-heading">Workspace</h3>
-                <div className="settings-rows">
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Export workspace data</b>
-                      <span>Download a .zip of your workspace and files</span>
-                    </div>
-                    <button type="button" className="settings-row-btn" onClick={handleExport}>
-                      Export
-                    </button>
+          {tab === "billing" && isCommercialMode() && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Plan</b>
+                    <span>{billingPro ? "Cloud Pro" : "Cloud Free"}</span>
                   </div>
-                  {desktop && (
-                    <div className="settings-row">
-                      <div className="settings-row-copy">
-                        <b>Import workspace data</b>
-                        <span>Replace this workspace from a backup .zip</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="settings-row-btn settings-row-btn-danger"
-                        disabled={backupDisabled}
-                        onClick={handleImport}
-                      >
-                        {backupBusy === "import" ? "…" : "Import"}
-                      </button>
-                    </div>
+                  {billingPro ? (
+                    <button
+                      type="button"
+                      className="settings-row-btn"
+                      disabled={!polarPortalUrl()}
+                      onClick={() => openProUrl(polarPortalUrl(), "Portal")}
+                    >
+                      Manage
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="settings-row-btn settings-row-btn-pro"
+                      onClick={() => void openPaywallFromSettings()}
+                    >
+                      Get Cloud Pro
+                    </button>
                   )}
                 </div>
-              </section>
-            </>
+              </div>
+              <p className="settings-billing-meta">
+                Last refreshed{" "}
+                {billingLastRefreshedAt
+                  ? billingLastRefreshedAt.toLocaleString()
+                  : "—"}
+                {" · "}
+                <button
+                  type="button"
+                  className="settings-billing-refresh"
+                  disabled={billingRefreshBusy}
+                  onClick={() => void refreshBillingStatus()}
+                >
+                  {billingRefreshBusy ? "Refreshing…" : "Refresh"}
+                </button>
+              </p>
+            </section>
+          )}
+
+          {tab === "data" && (
+            <section className="settings-section">
+              <div className="settings-rows">
+                <div className="settings-row">
+                  <div className="settings-row-copy">
+                    <b>Export workspace data</b>
+                    <span>Download a .zip of your workspace and files</span>
+                  </div>
+                  <button type="button" className="settings-row-btn" onClick={handleExport}>
+                    Export
+                  </button>
+                </div>
+                {isPbMode() && (
+                  <div className="settings-row">
+                    <div className="settings-row-copy">
+                      <b>Import workspace data</b>
+                      <span>Replace this workspace from a backup .zip</span>
+                    </div>
+                    <label className="settings-row-btn">
+                      Import
+                      <input
+                        type="file"
+                        accept=".zip,application/zip"
+                        hidden
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          void handleImportZip(f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </section>
           )}
 
           {tab === "help" && (
@@ -653,7 +748,8 @@ export default function SettingsDialog({
                   <div className="settings-about-copy">
                     <b>{APP_NAME}</b>
                     <p className="settings-about-byline">
-                      Version {APP_VERSION}
+                      {isCommercialMode() ? "Commercial" : "Community"} build{" "}
+                      {APP_VERSION}
                       {APP_COMMIT ? ` (${APP_COMMIT})` : ""}
                     </p>
                     <p className="settings-about-byline">
@@ -662,16 +758,6 @@ export default function SettingsDialog({
                         Gábor Pintér
                       </a>
                     </p>
-                  </div>
-                  <div className="settings-bmc-wrap">
-                    <a
-                      className="settings-bmc"
-                      href={BMC_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <img src={BMC_BTN} alt="Buy me a coffee" width={217} height={60} />
-                    </a>
                   </div>
                 </div>
                   <div className="settings-about-credits">
@@ -723,21 +809,6 @@ export default function SettingsDialog({
                             },
                           },
                         });
-                      }}
-                    >
-                      Show
-                    </button>
-                  </div>
-                  <div className="settings-row">
-                    <div className="settings-row-copy">
-                      <b>Preview backup folder error</b>
-                      <span>Dialog shown when a backup folder fails the write check</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="settings-row-btn"
-                      onClick={() => {
-                        void askBackupFolderFailed();
                       }}
                     >
                       Show
@@ -797,5 +868,86 @@ export default function SettingsDialog({
         </div>
       </div>
     </div>
+    <DeleteAccountDialog
+      open={deleteAccountOpen}
+      onClose={() => setDeleteAccountOpen(false)}
+    />
+    {pwOpen ? (
+      <div
+        className="ov ov-prompt"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget && !pwBusy) closePasswordDialog();
+        }}
+      >
+        <div
+          className="dlg prompt-dlg"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Change password"
+        >
+          <div className="dlg-content prompt-body">
+            <h2 className="prompt-title">Change password</h2>
+            <p className="prompt-msg">
+              Enter your current password, then choose a new one.
+            </p>
+            <form className="prompt-form" onSubmit={handleChangePassword}>
+              <label className="prompt-field">
+                Current password
+                <input
+                  ref={pwCurrentRef}
+                  className="prompt-input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={pwCurrent}
+                  onChange={(e) => setPwCurrent(e.target.value)}
+                  disabled={pwBusy}
+                  required
+                />
+              </label>
+              <label className="prompt-field">
+                New password
+                <input
+                  className="prompt-input"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
+                  value={pwNext}
+                  onChange={(e) => setPwNext(e.target.value)}
+                  disabled={pwBusy}
+                  required
+                />
+              </label>
+              <label className="prompt-field">
+                Confirm new password
+                <input
+                  className="prompt-input"
+                  type="password"
+                  autoComplete="new-password"
+                  value={pwConfirm}
+                  onChange={(e) => setPwConfirm(e.target.value)}
+                  disabled={pwBusy}
+                  required
+                />
+              </label>
+              {pwError ? <p className="auth-error">{pwError}</p> : null}
+              <div className="actions prompt-actions">
+                <button
+                  type="button"
+                  className="dlg-delete"
+                  onClick={closePasswordDialog}
+                  disabled={pwBusy}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="dlg-create" disabled={pwBusy}>
+                  {pwBusy ? "…" : "Update"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }

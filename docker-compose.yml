@@ -1,0 +1,21 @@
+# Optional self-host convenience. Primary path remains: npm run pb
+services:
+  binder:
+    image: node:22-bookworm
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - pb_data:/app/pocketbase/pb_data
+    ports:
+      - "8090:8090"
+    command: >
+      bash -lc "npm ci && npm run pb:fetch && npm run build &&
+      cp -R dist pocketbase/pb_public &&
+      ./pocketbase/pocketbase serve --http=0.0.0.0:8090
+      --dir=/app/pocketbase/pb_data
+      --publicDir=/app/pocketbase/pb_public
+      --migrationsDir=/app/pocketbase/pb_migrations"
+    restart: unless-stopped
+
+volumes:
+  pb_data:

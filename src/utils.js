@@ -7,6 +7,10 @@ import {
 } from "./cardMeta.js";
 import { ensureNameColumn, normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
+import { COVER_TAB_ID, newId, isSafePathId } from "./ids.js";
+import { getPb, isPbMode } from "./pb/client.js";
+
+export { COVER_TAB_ID, newId, isSafePathId };
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 export const APP_NAME = "Project Binder";
@@ -42,12 +46,10 @@ const POMO_KEY = `${STORAGE_PREFIX}pomodoro`;
 const COUNTDOWN_DURATION_KEY = `${STORAGE_PREFIX}countdownDurationMin`;
 const STOPTIMER_MAX_KEY = `${STORAGE_PREFIX}stoptimerMaxMin`;
 const UI_SOUNDS_KEY = `${STORAGE_PREFIX}uiSounds`;
-const MENU_BAR_TIMER_KEY = `${STORAGE_PREFIX}menuBarTimer`;
 const LAUNCH_SEEN_KEY = `${STORAGE_PREFIX}launchSeen`;
 const NOTES_UNLOCKED_KEY = `${STORAGE_PREFIX}notesUnlocked`;
 const NOTES_SELECTED_KEY = `${STORAGE_PREFIX}notesSelected`;
 const DEFAULT_UI_SOUNDS = true;
-const DEFAULT_MENU_BAR_TIMER = true;
 export const WORKSPACE_ITEMS = ["Masterboard", "Timelogs", "Trash"];
 export const DEFAULT_COUNTDOWN_DURATION_MIN = 25;
 export const COUNTDOWN_DURATION_OPTIONS = [10, 15, 20, 25, 30, 45, 50, 60];
@@ -62,23 +64,7 @@ export const COMPLETED_VIEWS = ["hide", "virtual", "inplace"];
 export const BOARD_SORTS = ["custom", "project", "impact", "effort", "weight"];
 export const DEFAULT_BOARD_SORT = "custom";
 export const GACC = "#3c3c40";
-/** Client-only Cover tab identity (not stored on the server). */
-export const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
-export function newId() {
-  return crypto.randomUUID();
-}
 
-/** OS file-manager label for “Show in …” actions. */
-export function folderAppLabel() {
-  const platform = navigator.userAgentData?.platform || navigator.platform || "";
-  if (/mac/i.test(platform)) return "Finder";
-  if (/win/i.test(platform)) return "File Explorer";
-  return "Folder";
-}
-
-export function showInFolderLabel() {
-  return `Show in ${folderAppLabel()}`;
-}
 /** 16 cover colors: hue-spaced, no grays, each ≥4.5:1 with white text. */
 export const PC = [
   "#e42737",
@@ -140,6 +126,8 @@ export function fromApi(data, loadStagesFn) {
         b.name,
         {
           id: b.id,
+          ...(b.shareId ? { shareId: b.shareId } : {}),
+          ...(b.shareEnabled ? { shareEnabled: true } : {}),
           columns: b.columns && b.columns.length ? b.columns : undefined,
           rows: (b.cards || []).map((c) => {
             const msRaw = c.master || c.status;
@@ -189,6 +177,8 @@ export function fromApi(data, loadStagesFn) {
         nt.name,
         {
           id: nt.id,
+          ...(nt.shareId ? { shareId: nt.shareId } : {}),
+          ...(nt.shareEnabled ? { shareEnabled: true } : {}),
           notes: (nt.notes || []).map((n) => {
             const note = {
               id: n.id,
@@ -219,6 +209,8 @@ export function fromApi(data, loadStagesFn) {
         ft.name,
         {
           id: ft.id,
+          ...(ft.shareId ? { shareId: ft.shareId } : {}),
+          ...(ft.shareEnabled ? { shareEnabled: true } : {}),
           files: (ft.files || []).map((f) => ({
             id: f.id,
             name: f.name || f.id,
@@ -236,6 +228,8 @@ export function fromApi(data, loadStagesFn) {
         db.name,
         {
           id: db.id,
+          ...(db.shareId ? { shareId: db.shareId } : {}),
+          ...(db.shareEnabled ? { shareEnabled: true } : {}),
           cols: ensureNameColumn(
             (db.columns || []).map(normalizeDbCol).filter(Boolean),
           ),
@@ -307,6 +301,8 @@ export function fromApi(data, loadStagesFn) {
       color: pr.color || GACC,
       archived: !!pr.archived,
       isDemo: !!pr.isDemo,
+      ...(pr.shareId ? { shareId: pr.shareId } : {}),
+      ...(pr.shareEnabled ? { shareEnabled: true } : {}),
       mods,
     };
   });
@@ -580,21 +576,6 @@ export function formatTimer(sec) {
   return mm + ":" + ss;
 }
 
-/** Fixed-width hh:mm:ss for the macOS menu bar (avoids tray width jumps). */
-export function formatMenuBarTimer(sec) {
-  const s = Math.max(0, Math.floor(sec || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
-  return (
-    String(h).padStart(2, "0") +
-    ":" +
-    String(m).padStart(2, "0") +
-    ":" +
-    String(r).padStart(2, "0")
-  );
-}
-
 export function formatClock(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
@@ -742,24 +723,28 @@ export function matchesTimelogFilter(entry, filter) {
 }
 
 export const TIMELOG_PERIODS = [
-  "Today",
-  "Yesterday",
-  "This week",
-  "Last week",
-  "This month",
-  "Last month",
-  "This quarter",
-  "Last quarter",
-  "This year",
-  "Last year",
-  "All time",
+  { value: "Today", label: "Today", icon: "sun" },
+  { value: "Yesterday", label: "Yesterday", icon: "sunset" },
+  { value: "This week", label: "This week", icon: "calendarDays" },
+  { value: "Last week", label: "Last week", icon: "calendarDays" },
+  { value: "This month", label: "This month", icon: "Calendar" },
+  { value: "Last month", label: "Last month", icon: "Calendar" },
+  { value: "This quarter", label: "This quarter", icon: "calendarRange" },
+  { value: "Last quarter", label: "Last quarter", icon: "calendarRange" },
+  { value: "This year", label: "This year", icon: "calendars" },
+  { value: "Last year", label: "Last year", icon: "calendars" },
+  { value: "All time", label: "All time", icon: "infinity" },
 ];
 export const DEFAULT_TIMELOG_PERIOD = "This week";
+
+function isTimelogPeriod(period) {
+  return TIMELOG_PERIODS.some((o) => o.value === period);
+}
 
 export function loadTimelogView() {
   const stored = readStorageJson(TIMELOG_VIEW_KEY, null);
   const period =
-    stored && TIMELOG_PERIODS.includes(stored.period)
+    stored && isTimelogPeriod(stored.period)
       ? stored.period
       : DEFAULT_TIMELOG_PERIOD;
   const groupBy =
@@ -777,7 +762,7 @@ export function loadTimelogView() {
 }
 
 export function saveTimelogView(view) {
-  const period = TIMELOG_PERIODS.includes(view?.period)
+  const period = isTimelogPeriod(view?.period)
     ? view.period
     : DEFAULT_TIMELOG_PERIOD;
   const groupBy = TIMELOG_GROUP_BYS.includes(view?.groupBy)
@@ -875,7 +860,7 @@ function timelogPeriodRange(period, now = new Date()) {
 }
 
 export function matchesTimelogPeriod(entry, period) {
-  if (!period || period === "All time" || !TIMELOG_PERIODS.includes(period)) {
+  if (!period || period === "All time" || !isTimelogPeriod(period)) {
     return true;
   }
   const stamp = entry.endedAt || entry.startedAt || "";
@@ -964,23 +949,6 @@ export function saveUiSounds(enabled) {
   return next;
 }
 
-export function loadMenuBarTimer() {
-  try {
-    const stored = localStorage.getItem(MENU_BAR_TIMER_KEY);
-    if (stored === "0") return false;
-    if (stored === "1") return true;
-  } catch {}
-  return DEFAULT_MENU_BAR_TIMER;
-}
-
-export function saveMenuBarTimer(enabled) {
-  const next = !!enabled;
-  try {
-    localStorage.setItem(MENU_BAR_TIMER_KEY, next ? "1" : "0");
-  } catch {}
-  return next;
-}
-
 export function playSound(src) {
   if (!loadUiSounds()) return;
   try {
@@ -1012,18 +980,143 @@ export function clearClientAppState() {
   } catch {}
 }
 
-export function hasSeenLaunch() {
+/** Key in users.history for finishing the welcome / launch dialog. */
+export const HISTORY_ONBOARDING_DIALOG_FINISHED = "onboarding_dialog_finished";
+
+function launchSeenStorageKey(userId) {
+  const id = userId != null ? String(userId).trim() : "";
+  return id ? `${LAUNCH_SEEN_KEY}:${id}` : LAUNCH_SEEN_KEY;
+}
+
+function readLocalLaunchSeen(userId) {
   try {
-    return localStorage.getItem(LAUNCH_SEEN_KEY) === "1";
+    return localStorage.getItem(launchSeenStorageKey(userId)) === "1";
   } catch {
     return false;
   }
 }
 
-export function markLaunchSeen() {
+function writeLocalLaunchSeen(userId, marked) {
   try {
-    localStorage.setItem(LAUNCH_SEEN_KEY, "1");
+    const key = launchSeenStorageKey(userId);
+    if (marked) localStorage.setItem(key, "1");
+    else localStorage.removeItem(key);
   } catch {}
+}
+
+function currentAuthUserId() {
+  if (!isPbMode()) return "";
+  return getPb().authStore.record?.id || "";
+}
+
+/** Normalize users.history JSON to a plain object of string timestamps. */
+export function normalizeUserHistory(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k || v == null || v === false) continue;
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+    else if (typeof v === "number" && Number.isFinite(v)) {
+      out[k] = new Date(v).toISOString();
+    } else if (v === true) {
+      out[k] = new Date(0).toISOString();
+    }
+  }
+  return out;
+}
+
+function readAuthHistory() {
+  return normalizeUserHistory(getPb().authStore.record?.history);
+}
+
+async function writeAuthHistory(next) {
+  const pb = getPb();
+  const userId = pb.authStore.record?.id;
+  if (!userId) return;
+  const history = normalizeUserHistory(next);
+  const record = await pb.collection("users").update(userId, { history });
+  pb.authStore.save(pb.authStore.token, {
+    ...pb.authStore.record,
+    ...record,
+    history,
+  });
+}
+
+/** True when this account (or legacy local flag) has a timestamp for `key`. */
+export function hasUserHistory(key) {
+  const k = String(key || "").trim();
+  if (!k) return false;
+  if (isPbMode()) {
+    if (readAuthHistory()[k]) return true;
+    if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) {
+      return readLocalLaunchSeen(currentAuthUserId());
+    }
+    return false;
+  }
+  if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) return readLocalLaunchSeen("");
+  return false;
+}
+
+/** Record `key` on users.history with an ISO timestamp. */
+export async function markUserHistory(key) {
+  const k = String(key || "").trim();
+  if (!k) return;
+  const userId = currentAuthUserId();
+  if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) writeLocalLaunchSeen(userId, true);
+  if (!isPbMode() || !userId) return;
+  try {
+    const at = new Date().toISOString();
+    await writeAuthHistory({ ...readAuthHistory(), [k]: at });
+  } catch {}
+}
+
+/** Remove `key` from users.history (e.g. dev reset). */
+export async function clearUserHistory(key) {
+  const k = String(key || "").trim();
+  if (!k) return;
+  const userId = currentAuthUserId();
+  if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) {
+    writeLocalLaunchSeen(userId, false);
+    writeLocalLaunchSeen("", false);
+  }
+  if (!isPbMode() || !userId) return;
+  try {
+    const next = { ...readAuthHistory() };
+    delete next[k];
+    await writeAuthHistory(next);
+  } catch {}
+}
+
+/**
+ * Promote a pre-migration device-local onboarding dismissal onto users.history
+ * so other devices stop showing the dialog.
+ */
+export async function syncUserHistoryFromLocal(
+  key = HISTORY_ONBOARDING_DIALOG_FINISHED
+) {
+  if (!isPbMode()) return;
+  const k = String(key || "").trim();
+  if (k !== HISTORY_ONBOARDING_DIALOG_FINISHED) return;
+  const record = getPb().authStore.record;
+  if (!record?.id || readAuthHistory()[k]) return;
+  if (!readLocalLaunchSeen(record.id)) return;
+  await markUserHistory(k);
+}
+
+export function hasSeenLaunch() {
+  return hasUserHistory(HISTORY_ONBOARDING_DIALOG_FINISHED);
+}
+
+export async function markLaunchSeen() {
+  return markUserHistory(HISTORY_ONBOARDING_DIALOG_FINISHED);
+}
+
+export async function clearLaunchSeen() {
+  return clearUserHistory(HISTORY_ONBOARDING_DIALOG_FINISHED);
+}
+
+export async function syncLaunchSeenFromLocal() {
+  return syncUserHistoryFromLocal(HISTORY_ONBOARDING_DIALOG_FINISHED);
 }
 
 export function colCollapseKey(scope, s) {

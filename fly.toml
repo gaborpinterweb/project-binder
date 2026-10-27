@@ -1,0 +1,43 @@
+# Project Binder — Fly.io (Commercial). Deploy locally: fly deploy
+# Attach volume once: fly volumes create pb_data --region ams --size 3
+
+app = "project-binder"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+  [build.args]
+    VITE_COMMERCIAL = "true"
+    # Polar (rebuild required when changing). Paste Checkout Link + portal URLs:
+    VITE_POLAR_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_jraoGQKA35jP7DwIwthkNpIjsDBDxLDmCY1q93k4n6h"
+    VITE_POLAR_PORTAL_URL = "https://polar.sh/gabor-pinter/portal"
+# Runtime secret (not a build-arg): fly secrets set POLAR_WEBHOOK_SECRET=…
+# Webhook URL: https://cloud.projectbinder.app/api/polar-webhook
+# Checkout Link must be created with require_billing_address = true
+
+[env]
+  PORT = "8090"
+  DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 8090
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/api/health"
+
+[[mounts]]
+  source = "pb_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

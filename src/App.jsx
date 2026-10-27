@@ -71,9 +71,6 @@ import {
   saveStoptimerMaxMin,
   loadUiSounds,
   saveUiSounds,
-  loadMenuBarTimer,
-  saveMenuBarTimer,
-  formatMenuBarTimer,
   playSound,
   playTaskCompleteSound,
   playTimerCompleteSound,
@@ -81,6 +78,8 @@ import {
   clearClientAppState,
   hasSeenLaunch,
   markLaunchSeen,
+  clearLaunchSeen,
+  syncLaunchSeenFromLocal,
   nextUnusedProjectColor,
   taskKey,
   formatDuration,
@@ -96,15 +95,31 @@ import Files from "./components/Files.jsx";
 import CardDialog from "./components/CardDialog.jsx";
 import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
+import MobileSettingsDialog from "./components/MobileSettingsDialog.jsx";
+import MobileShell from "./components/MobileShell.jsx";
+import SharingSettingsDialog from "./components/SharingSettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
-import ConfirmDialog from "./components/ConfirmDialog.jsx";
-import Snackbar from "./components/Snackbar.jsx";
 import { askPrompt } from "./promptDialog.js";
 import { askConfirm } from "./confirmDialog.js";
+import { askPaywall } from "./paywallDialog.js";
+import { shouldBlockNewActiveProject } from "./billingLimits.js";
 import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
+import { isPbMode } from "./pb/client.js";
+import useIsPhone from "./hooks/useIsPhone.js";
+import {
+  parsePath,
+  buildPath,
+  navigatePath,
+  currentPathname,
+  modTypeToEntityKind,
+  entityKindToModType,
+  ENTITY_NOTES,
+  ENTITY_FILES,
+  ENTITY_TASKS,
+} from "./routes.js";
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -115,6 +130,7 @@ function nextTabName(mods, base) {
 }
 
 export default function App() {
+  const isPhone = useIsPhone();
   const [folders, setFolders] = useState([]);
   const [stages, setStages] = useState(STAGES.slice());
   const [p, setP] = useState(0);
@@ -151,6 +167,10 @@ export default function App() {
   const [timelogRefresh, setTimelogRefresh] = useState(0);
   const [trashRefresh, setTrashRefresh] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sharingTarget, setSharingTarget] = useState(null);
+  /** Note/file entity segments driven by the URL (null = tab-only path). */
+  const [routeNoteId, setRouteNoteId] = useState(null);
+  const [routeFileId, setRouteFileId] = useState(null);
   const [countdownDurationMin, setCountdownDurationMin] = useState(() =>
     loadCountdownDurationMin()
   );
@@ -158,7 +178,6 @@ export default function App() {
     loadStoptimerMaxMin()
   );
   const [uiSounds, setUiSounds] = useState(() => loadUiSounds());
-  const [menuBarTimer, setMenuBarTimer] = useState(() => loadMenuBarTimer());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -176,6 +195,14 @@ export default function App() {
   const mRef = useRef(m);
   const gRef = useRef(g);
   const activePomoRef = useRef(activePomo);
+  const dialogRef = useRef(dialog);
+  const settingsOpenRef = useRef(settingsOpen);
+  const routeNoteIdRef = useRef(routeNoteId);
+  const routeFileIdRef = useRef(routeFileId);
+  const settingsPushedRef = useRef(false);
+  const routeReadyRef = useRef(false);
+  const applyingRouteRef = useRef(false);
+  const isPhoneRef = useRef(isPhone);
 
   foldersRef.current = folders;
   stagesRef.current = stages;
@@ -183,8 +210,409 @@ export default function App() {
   mRef.current = m;
   gRef.current = g;
   activePomoRef.current = activePomo;
+  dialogRef.current = dialog;
+  settingsOpenRef.current = settingsOpen;
+  routeNoteIdRef.current = routeNoteId;
+  routeFileIdRef.current = routeFileId;
+  isPhoneRef.current = isPhone;
 
   const bump = useCallback(() => setUiTick((n) => n + 1), []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("is-phone", isPhone);
+    return () => document.documentElement.classList.remove("is-phone");
+  }, [isPhone]);
+
+  const buildAppPath = useCallback(
+    (overrides = {}) => {
+      const settings =
+        overrides.settings !== undefined
+          ? overrides.settings
+          : settingsOpenRef.current;
+      if (settings) return buildPath({ settings: true });
+
+      const gVal = overrides.g !== undefined ? overrides.g : gRef.current;
+      if (gVal) {
+        const dialogNow =
+          overrides.dialog !== undefined ? overrides.dialog : dialogRef.current;
+        if (
+          gVal === "Masterboard" &&
+          dialogNow &&
+          !dialogNow.isDraft &&
+          !dialogNow.readonly &&
+          dialogNow.row?.id &&
+          dialogNow.loc?.mod?.[0] === "Board"
+        ) {
+          return buildPath({
+            g: gVal,
+            entityKind: ENTITY_TASKS,
+            entityId: dialogNow.row.id,
+          });
+        }
+        return buildPath({ g: gVal });
+      }
+
+      const foldersNow = overrides.folders || foldersRef.current;
+      const pVal = overrides.p !== undefined ? overrides.p : pRef.current;
+      const mVal = overrides.m !== undefined ? overrides.m : mRef.current;
+      const folder = foldersNow[pVal];
+      if (!folder) return buildPath({});
+
+      const mod = folder.mods?.[mVal];
+      if (!mod) return buildPath({ projectId: folder.id });
+
+      if (mod[0] === "Cover" || mod[2]?.id === COVER_TAB_ID) {
+        return buildPath({ projectId: folder.id, cover: true });
+      }
+
+      const tabId = mod[2]?.id;
+      if (!tabId) return buildPath({ projectId: folder.id });
+
+      const dialogNow =
+        overrides.dialog !== undefined ? overrides.dialog : dialogRef.current;
+      const noteId =
+        overrides.routeNoteId !== undefined
+          ? overrides.routeNoteId
+          : routeNoteIdRef.current;
+      const fileId =
+        overrides.routeFileId !== undefined
+          ? overrides.routeFileId
+          : routeFileIdRef.current;
+
+      let entityKind = null;
+      let entityId = null;
+      if (
+        dialogNow &&
+        !dialogNow.isDraft &&
+        !dialogNow.readonly &&
+        dialogNow.row?.id &&
+        dialogNow.loc?.folder?.id === folder.id &&
+        dialogNow.loc?.mod?.[2]?.id === tabId
+      ) {
+        entityKind = modTypeToEntityKind(dialogNow.loc.mod[0]);
+        entityId = dialogNow.row.id;
+      } else if (mod[0] === "Notes" && noteId) {
+        entityKind = ENTITY_NOTES;
+        entityId = noteId;
+      } else if (mod[0] === "Files" && fileId) {
+        entityKind = ENTITY_FILES;
+        entityId = fileId;
+      }
+
+      return buildPath({
+        projectId: folder.id,
+        tabId,
+        entityKind,
+        entityId,
+      });
+    },
+    []
+  );
+
+  const syncUrl = useCallback(
+    ({ replace = false, ...overrides } = {}) => {
+      if (applyingRouteRef.current) return;
+      navigatePath(buildAppPath(overrides), { replace });
+    },
+    [buildAppPath]
+  );
+
+  useEffect(() => {
+    if (!isPhone) return;
+    setBoardEdit(false);
+    setDraftProject(null);
+    setCoverEdit(false);
+    setCoverDraft(null);
+    if (gRef.current !== "Masterboard") {
+      setG("Masterboard");
+      gRef.current = "Masterboard";
+      if (routeReadyRef.current) {
+        syncUrl({
+          g: "Masterboard",
+          settings: settingsOpenRef.current,
+          replace: true,
+        });
+      }
+    }
+  }, [isPhone, syncUrl]);
+
+  const clearEntityOverlays = useCallback(() => {
+    setDialog(null);
+    setRouteNoteId(null);
+    setRouteFileId(null);
+    dialogRef.current = null;
+    routeNoteIdRef.current = null;
+    routeFileIdRef.current = null;
+  }, []);
+
+  const applyLocation = useCallback(
+    ({ replace = true } = {}) => {
+      const foldersNow = foldersRef.current;
+      const route = parsePath(currentPathname());
+
+      applyingRouteRef.current = true;
+      try {
+        if (!route || route.kind === "auth") {
+          setSettingsOpen(false);
+          settingsOpenRef.current = false;
+          // Session already applied on initial load; canonicalize address bar.
+          navigatePath(buildAppPath({ settings: false }), { replace: true });
+          return;
+        }
+
+        if (route.kind === "settings") {
+          setSettingsOpen(true);
+          settingsOpenRef.current = true;
+          return;
+        }
+
+        setSettingsOpen(false);
+        settingsOpenRef.current = false;
+        settingsPushedRef.current = false;
+
+        if (route.kind === "global") {
+          const nextG =
+            isPhoneRef.current && route.g !== "Masterboard"
+              ? "Masterboard"
+              : route.g;
+          clearEntityOverlays();
+          setG(nextG);
+          gRef.current = nextG;
+          navigatePath(buildPath({ g: nextG }), { replace: true });
+          return;
+        }
+
+        if (route.kind === "globalEntity") {
+          const nextG =
+            isPhoneRef.current && route.g !== "Masterboard"
+              ? "Masterboard"
+              : route.g;
+          setG(nextG);
+          gRef.current = nextG;
+          setRouteNoteId(null);
+          setRouteFileId(null);
+          routeNoteIdRef.current = null;
+          routeFileIdRef.current = null;
+          if (route.entityKind !== ENTITY_TASKS) {
+            clearEntityOverlays();
+            navigatePath(buildPath({ g: nextG }), { replace: true });
+            return;
+          }
+          const loc = locateRow(foldersNow, { id: route.entityId });
+          const row =
+            loc?.mod?.[0] === "Board"
+              ? (loc.mod[2]?.rows || []).find((r) => r.id === route.entityId)
+              : null;
+          if (!loc || !row) {
+            clearEntityOverlays();
+            navigatePath(buildPath({ g: nextG }), { replace: true });
+            return;
+          }
+          const nextDialog = {
+            row: { ...row },
+            isDraft: false,
+            loc: { folder: loc.folder, mod: loc.mod },
+          };
+          setDialog(nextDialog);
+          dialogRef.current = nextDialog;
+          navigatePath(
+            buildPath({
+              g: nextG,
+              entityKind: ENTITY_TASKS,
+              entityId: route.entityId,
+            }),
+            { replace: true }
+          );
+          return;
+        }
+
+        // Phone shell is Masterboard-only: project/tab URLs redirect there.
+        // Task entity deep links still open the card on Masterboard.
+        if (isPhoneRef.current) {
+          setG("Masterboard");
+          gRef.current = "Masterboard";
+          setRouteNoteId(null);
+          setRouteFileId(null);
+          routeNoteIdRef.current = null;
+          routeFileIdRef.current = null;
+          if (route.entityKind === ENTITY_TASKS && route.entityId) {
+            const loc = locateRow(foldersNow, { id: route.entityId });
+            const row =
+              loc?.mod?.[0] === "Board"
+                ? (loc.mod[2]?.rows || []).find((r) => r.id === route.entityId)
+                : null;
+            if (loc && row) {
+              const nextDialog = {
+                row: { ...row },
+                isDraft: false,
+                loc: { folder: loc.folder, mod: loc.mod },
+              };
+              setDialog(nextDialog);
+              dialogRef.current = nextDialog;
+              navigatePath(
+                buildPath({
+                  g: "Masterboard",
+                  entityKind: ENTITY_TASKS,
+                  entityId: route.entityId,
+                }),
+                { replace: true }
+              );
+              return;
+            }
+          }
+          clearEntityOverlays();
+          navigatePath(buildPath({ g: "Masterboard" }), { replace: true });
+          return;
+        }
+
+        const pi = foldersNow.findIndex((f) => f.id === route.projectId);
+        if (pi < 0) {
+          clearEntityOverlays();
+          setG("Masterboard");
+          gRef.current = "Masterboard";
+          navigatePath(buildPath({ g: "Masterboard" }), { replace: true });
+          return;
+        }
+
+        setG(null);
+        gRef.current = null;
+        setP(pi);
+        pRef.current = pi;
+        const project = foldersNow[pi];
+        const mods = project.mods || [];
+
+        // Project root and legacy `/cover` both open the cover tab.
+        if (route.kind === "project" || route.kind === "cover") {
+          clearEntityOverlays();
+          setM(0);
+          mRef.current = 0;
+          navigatePath(buildPath({ projectId: project.id }), {
+            replace: true,
+          });
+          return;
+        }
+
+        const tabIndex = mods.findIndex((mod) => mod?.[2]?.id === route.tabId);
+        if (tabIndex < 0) {
+          clearEntityOverlays();
+          setM(0);
+          mRef.current = 0;
+          navigatePath(buildPath({ projectId: project.id }), {
+            replace: true,
+          });
+          return;
+        }
+
+        const mod = mods[tabIndex];
+        setM(tabIndex);
+        mRef.current = tabIndex;
+
+        if (route.kind === "tab") {
+          clearEntityOverlays();
+          navigatePath(
+            buildPath({ projectId: project.id, tabId: route.tabId }),
+            { replace: true }
+          );
+          return;
+        }
+
+        // entity
+        const expectedType = entityKindToModType(route.entityKind);
+        if (!expectedType || mod[0] !== expectedType) {
+          clearEntityOverlays();
+          navigatePath(
+            buildPath({ projectId: project.id, tabId: route.tabId }),
+            { replace: true }
+          );
+          return;
+        }
+
+        if (route.entityKind === ENTITY_NOTES) {
+          setDialog(null);
+          dialogRef.current = null;
+          setRouteFileId(null);
+          routeFileIdRef.current = null;
+          const exists = (mod[2]?.notes || []).some(
+            (n) => n.id === route.entityId
+          );
+          if (!exists) {
+            setRouteNoteId(null);
+            routeNoteIdRef.current = null;
+            navigatePath(
+              buildPath({ projectId: project.id, tabId: route.tabId }),
+              { replace: true }
+            );
+            return;
+          }
+          setRouteNoteId(route.entityId);
+          routeNoteIdRef.current = route.entityId;
+          return;
+        }
+
+        if (route.entityKind === ENTITY_FILES) {
+          setDialog(null);
+          dialogRef.current = null;
+          setRouteNoteId(null);
+          routeNoteIdRef.current = null;
+          const exists = (mod[2]?.files || []).some(
+            (f) => f.id === route.entityId
+          );
+          if (!exists) {
+            setRouteFileId(null);
+            routeFileIdRef.current = null;
+            navigatePath(
+              buildPath({ projectId: project.id, tabId: route.tabId }),
+              { replace: true }
+            );
+            return;
+          }
+          setRouteFileId(route.entityId);
+          routeFileIdRef.current = route.entityId;
+          return;
+        }
+
+        // tasks / records → CardDialog
+        setRouteNoteId(null);
+        setRouteFileId(null);
+        routeNoteIdRef.current = null;
+        routeFileIdRef.current = null;
+        const hit =
+          mod[0] === "Board"
+            ? findCardByIds(
+                foldersNow,
+                project.id,
+                route.tabId,
+                route.entityId
+              )
+            : findDbItemByIds(
+                foldersNow,
+                project.id,
+                route.tabId,
+                route.entityId
+              );
+        if (!hit) {
+          setDialog(null);
+          dialogRef.current = null;
+          navigatePath(
+            buildPath({ projectId: project.id, tabId: route.tabId }),
+            { replace: true }
+          );
+          return;
+        }
+        const nextDialog = {
+          row: { ...hit.row },
+          isDraft: false,
+          loc: { folder: hit.folder, mod: hit.mod },
+        };
+        setDialog(nextDialog);
+        dialogRef.current = nextDialog;
+      } finally {
+        applyingRouteRef.current = false;
+        void replace;
+      }
+    },
+    [buildAppPath, clearEntityOverlays]
+  );
 
   const discardCoverEdit = useCallback(() => {
     setCoverEdit(false);
@@ -318,6 +746,22 @@ export default function App() {
   }, [reload]);
 
   useEffect(() => {
+    if (!loaded || loadError) return;
+    if (routeReadyRef.current) return;
+    routeReadyRef.current = true;
+    applyLocation({ replace: true });
+  }, [loaded, loadError, applyLocation]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (!routeReadyRef.current) return;
+      applyLocation({ replace: true });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [applyLocation]);
+
+  useEffect(() => {
     let cancelled = false;
     checkForUpdate().then((info) => {
       if (!cancelled && info.available) setUpdateInfo(info);
@@ -328,7 +772,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (loaded && !loadError && !hasSeenLaunch()) setLaunchOpen(true);
+    if (!loaded || loadError) return;
+    let cancelled = false;
+    (async () => {
+      await syncLaunchSeenFromLocal();
+      if (cancelled) return;
+      if (!hasSeenLaunch()) setLaunchOpen(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loaded, loadError]);
 
   useEffect(() => {
@@ -374,30 +827,6 @@ export default function App() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!activePomo]);
-
-  useEffect(() => {
-    window.desktop?.setTrayVisible?.(menuBarTimer);
-  }, [menuBarTimer]);
-
-  useEffect(() => {
-    if (!menuBarTimer) return;
-    const syncTitle = () => {
-      const cur = activePomoRef.current;
-      if (!cur) {
-        window.desktop?.setTrayTitle?.("No timer");
-        return;
-      }
-      const sec = isStoptimerSession(cur)
-        ? pomoElapsedSec(cur)
-        : pomoRemainingSec(cur);
-      window.desktop?.setTrayTitle?.(formatMenuBarTimer(sec));
-    };
-    syncTitle();
-    if (!activePomo) return;
-    const id = setInterval(syncTitle, 1000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuBarTimer, !!activePomo]);
 
   useEffect(() => {
     const closeMenus = () => {
@@ -581,8 +1010,14 @@ export default function App() {
   }
 
   function openTimelogs(filter) {
+    if (isPhoneRef.current) return;
     setTimelogFilter(filter);
+    clearEntityOverlays();
+    setSettingsOpen(false);
+    settingsOpenRef.current = false;
     setG("Timelogs");
+    gRef.current = "Timelogs";
+    syncUrl({ g: "Timelogs", settings: false, dialog: null });
   }
 
   const saveCard = useCallback(
@@ -813,9 +1248,53 @@ export default function App() {
       if ((!loc || isDraft) && opts?.folder && opts?.mod) {
         loc = { folder: opts.folder, mod: opts.mod };
       }
-      setDialog({ row: { ...r }, isDraft, loc });
+      const nextDialog = { row: { ...r }, isDraft, loc };
+      setDialog(nextDialog);
+      dialogRef.current = nextDialog;
+      setRouteNoteId(null);
+      setRouteFileId(null);
+      routeNoteIdRef.current = null;
+      routeFileIdRef.current = null;
+      setSettingsOpen(false);
+      settingsOpenRef.current = false;
+      // Phone always stays on Masterboard. Desktop: keep Timelogs/Trash/Masterboard;
+      // only jump into the project tab when opening from inside a project.
+      if (isPhoneRef.current) {
+        setG("Masterboard");
+        gRef.current = "Masterboard";
+      }
+      const stayGlobal = isPhoneRef.current || !!gRef.current;
+      if (!stayGlobal && loc?.folder && loc?.mod) {
+        const pi = foldersRef.current.findIndex((f) => f.id === loc.folder.id);
+        const mi = (foldersRef.current[pi]?.mods || []).findIndex(
+          (mod) => mod?.[2]?.id === loc.mod[2]?.id
+        );
+        if (pi >= 0) {
+          setG(null);
+          gRef.current = null;
+          setP(pi);
+          pRef.current = pi;
+          if (mi >= 0) {
+            setM(mi);
+            mRef.current = mi;
+          }
+        }
+      }
+      // Drafts stay on the tab URL; persisted cards get an entity path
+      // (Masterboard → /master-board/tasks/:id).
+      syncUrl({
+        dialog: isDraft ? null : nextDialog,
+        routeNoteId: null,
+        routeFileId: null,
+        settings: false,
+        g: isPhoneRef.current
+          ? "Masterboard"
+          : stayGlobal
+            ? gRef.current
+            : null,
+      });
     },
-    []
+    [syncUrl]
   );
 
   const startNewCard = useCallback(
@@ -913,8 +1392,40 @@ export default function App() {
   );
 
   // --- project actions ---
-  const startNewProject = () => {
-    const color = nextUnusedProjectColor(folders);
+  const startNewProject = async () => {
+    const demos = foldersRef.current.filter(
+      (f) => !isProjectArchived(f) && f.isDemo
+    );
+    if (demos.length) {
+      const ok = await askConfirm({
+        title: "Creating your first project? Let's clean up first!",
+        message:
+          "Your binder still has demo projects. Delete them before creating your own project?",
+        confirmLabel: "Delete and continue",
+        confirmIcon: "Trash",
+        danger: true,
+      });
+      if (!ok) return;
+      let lastOk = null;
+      for (const demo of demos) {
+        const data = await deleteProjectApi({ project: demo.id });
+        if (data?.error) {
+          if (lastOk) applyWorkspace(lastOk);
+          alert(data.error || "Could not delete demo projects.");
+          return;
+        }
+        lastOk = data;
+      }
+      if (lastOk) {
+        applyWorkspace(lastOk);
+        setTrashRefresh((n) => n + 1);
+      }
+    }
+    if (shouldBlockNewActiveProject(foldersRef.current)) {
+      await askPaywall({ highlightFree: "3" });
+      return;
+    }
+    const color = nextUnusedProjectColor(foldersRef.current);
     discardCoverEdit();
     setDraftProject({ name: "", color, description: "" });
     setG(null);
@@ -926,6 +1437,10 @@ export default function App() {
     const name = (draftProject.name || "").trim();
     if (!name) {
       alert("Add a project title first.");
+      return;
+    }
+    if (shouldBlockNewActiveProject(foldersRef.current)) {
+      await askPaywall({ highlightFree: "3" });
       return;
     }
     const { ok, data } = await postProject({
@@ -943,7 +1458,21 @@ export default function App() {
     setP(pi);
     setM(0);
     setG(null);
+    pRef.current = pi;
+    mRef.current = 0;
+    gRef.current = null;
+    clearEntityOverlays();
     rememberCurrentTab(next, pi, 0);
+    syncUrl({
+      folders: next,
+      p: pi,
+      m: 0,
+      g: null,
+      dialog: null,
+      routeNoteId: null,
+      routeFileId: null,
+      settings: false,
+    });
   };
 
   const setProjectArchived = async (folder, archived) => {
@@ -954,6 +1483,7 @@ export default function App() {
     setBoardEdit(false);
     if (archived) {
       const next = applyWorkspace(data);
+      clearEntityOverlays();
       if (!next.length) {
         setP(0);
         setM(0);
@@ -961,6 +1491,7 @@ export default function App() {
         pRef.current = 0;
         mRef.current = 0;
         gRef.current = "Masterboard";
+        syncUrl({ g: "Masterboard", settings: false, dialog: null });
       } else {
         const nextM = restoreTabIndex(next[0]);
         setP(0);
@@ -969,11 +1500,31 @@ export default function App() {
         pRef.current = 0;
         mRef.current = nextM;
         gRef.current = null;
+        syncUrl({
+          folders: next,
+          p: 0,
+          m: nextM,
+          g: null,
+          dialog: null,
+          routeNoteId: null,
+          routeFileId: null,
+          settings: false,
+        });
       }
       return;
     }
     applyWorkspace(data, { project: projectId, board: null, g: null });
     setG(null);
+    gRef.current = null;
+    clearEntityOverlays();
+    syncUrl({
+      g: null,
+      dialog: null,
+      routeNoteId: null,
+      routeFileId: null,
+      settings: false,
+      replace: true,
+    });
   };
 
   const onReorderProjects = useCallback(
@@ -1018,6 +1569,7 @@ export default function App() {
     discardCoverEdit();
     setBoardEdit(false);
     const next = applyWorkspace(data);
+    clearEntityOverlays();
     if (!next.length) {
       setP(0);
       setM(0);
@@ -1025,6 +1577,7 @@ export default function App() {
       pRef.current = 0;
       mRef.current = 0;
       gRef.current = "Masterboard";
+      syncUrl({ g: "Masterboard", settings: false, dialog: null });
     } else {
       const nextM = restoreTabIndex(next[0]);
       setP(0);
@@ -1033,6 +1586,16 @@ export default function App() {
       pRef.current = 0;
       mRef.current = nextM;
       gRef.current = null;
+      syncUrl({
+        folders: next,
+        p: 0,
+        m: nextM,
+        g: null,
+        dialog: null,
+        routeNoteId: null,
+        routeFileId: null,
+        settings: false,
+      });
     }
     setTrashRefresh((n) => n + 1);
   };
@@ -1052,6 +1615,10 @@ export default function App() {
 
   const confirmUnarchiveProject = async (folder) => {
     if (!folder) return;
+    if (shouldBlockNewActiveProject(foldersRef.current)) {
+      await askPaywall({ highlightFree: "3" });
+      return;
+    }
     const ok = await askConfirm({
       title: `Reactivate "${folder.name}"?`,
       message: "The project will become editable again.",
@@ -1109,8 +1676,19 @@ export default function App() {
     const next = applyWorkspace(data, { project: folder.id, board: data.id });
     const pi = next.findIndex((f) => f.id === folder.id);
     const mi = next[pi]?.mods.findIndex((mod) => mod[2]?.id === data.id);
-    setM(mi >= 0 ? mi : (next[pi]?.mods.length || 1) - 1);
-    rememberCurrentTab(next, pi, mi);
+    const nextM = mi >= 0 ? mi : (next[pi]?.mods.length || 1) - 1;
+    setM(nextM);
+    mRef.current = nextM;
+    clearEntityOverlays();
+    rememberCurrentTab(next, pi, nextM);
+    syncUrl({
+      folders: next,
+      p: pi,
+      m: nextM,
+      dialog: null,
+      routeNoteId: null,
+      routeFileId: null,
+    });
   };
 
   const onMoveTab = useCallback(
@@ -1130,7 +1708,15 @@ export default function App() {
       setFolders(nextFolders);
       setM(j);
       mRef.current = j;
+      clearEntityOverlays();
       rememberCurrentTab(nextFolders, pRef.current, j);
+      syncUrl({
+        folders: nextFolders,
+        m: j,
+        dialog: null,
+        routeNoteId: null,
+        routeFileId: null,
+      });
       putTabOrder({
         project: folder.id,
         order: tabsOrderPayload(nextMods),
@@ -1138,7 +1724,7 @@ export default function App() {
         applyWorkspace(data, keepNav(folder.id, nextMods[j][2]?.id));
       });
     },
-    [applyWorkspace, keepNav, rememberCurrentTab]
+    [applyWorkspace, keepNav, rememberCurrentTab, clearEntityOverlays, syncUrl]
   );
 
   const onRenameTab = useCallback(
@@ -1166,6 +1752,57 @@ export default function App() {
     },
     [applyWorkspace, keepNav]
   );
+
+  const openShareSettings = useCallback(
+    (
+      scope,
+      projectId,
+      tabId,
+      enabled,
+      { projectShareEnabled = false, targetName = "" } = {}
+    ) => {
+      if (!isPbMode()) return;
+      setSharingTarget({
+        scope,
+        projectId,
+        tabId: tabId || null,
+        initiallyEnabled: !!enabled,
+        projectShareEnabled: !!projectShareEnabled,
+        targetName: String(targetName || "").trim(),
+      });
+    },
+    []
+  );
+
+  const onShareTab = useCallback(
+    (index) => {
+      const folder = foldersRef.current[pRef.current];
+      if (!folder || isProjectArchived(folder)) return;
+      const mod = folder.mods?.[index];
+      if (!mod || mod[0] === "Cover") return;
+      const projectShareEnabled = !!(folder.shareEnabled && folder.shareId);
+      openShareSettings(
+        "tab",
+        folder.id,
+        mod[2]?.id,
+        !!(mod[2]?.shareEnabled && mod[2]?.shareId),
+        { projectShareEnabled, targetName: mod[1] || "Tab" }
+      );
+    },
+    [openShareSettings]
+  );
+
+  const onCoverShare = useCallback(() => {
+    const folder = foldersRef.current[pRef.current];
+    if (!folder || isProjectArchived(folder)) return;
+    openShareSettings(
+      "project",
+      folder.id,
+      null,
+      !!(folder.shareEnabled && folder.shareId),
+      { targetName: folder.name || "Project" }
+    );
+  }, [openShareSettings]);
 
   const onDeleteTab = useCallback(
     async (index) => {
@@ -1207,9 +1844,16 @@ export default function App() {
       applyWorkspace(data, keepNav(folder.id, fallbackId));
       setBoardEdit(false);
       discardCoverEdit();
+      clearEntityOverlays();
       setTrashRefresh((n) => n + 1);
+      syncUrl({
+        dialog: null,
+        routeNoteId: null,
+        routeFileId: null,
+        replace: true,
+      });
     },
-    [applyWorkspace, keepNav, discardCoverEdit]
+    [applyWorkspace, keepNav, discardCoverEdit, clearEntityOverlays, syncUrl]
   );
 
   const folder = folders[p];
@@ -1225,8 +1869,93 @@ export default function App() {
 
   void uiTick; // force re-render when Sets mutate
 
+  const openSettings = () => {
+    settingsPushedRef.current = true;
+    setSettingsOpen(true);
+    settingsOpenRef.current = true;
+    syncUrl({ settings: true });
+  };
+
+  const closeSettings = () => {
+    setSettingsOpen(false);
+    settingsOpenRef.current = false;
+    if (currentPathname() === "/settings") {
+      if (settingsPushedRef.current && window.history.length > 1) {
+        settingsPushedRef.current = false;
+        window.history.back();
+      } else {
+        settingsPushedRef.current = false;
+        syncUrl({ settings: false, replace: true });
+      }
+    }
+  };
+
+  const masterBoard = (
+    <Board
+      mode="master"
+      folder={folder}
+      folders={folders}
+      stages={stages}
+      tabC={GACC}
+      boardEdit={isPhone ? false : boardEdit}
+      onToggleBoardEdit={() => setBoardEdit((v) => !v)}
+      masterOff={masterOff.current}
+      colCollapsed={colCollapsed.current}
+      completedViewByScope={completedViewByScope.current}
+      boardShowByScope={boardShowByScope.current}
+      boardSortByScope={boardSortByScope.current}
+      uiTick={uiTick}
+      compact={isPhone}
+      onBump={bump}
+      onSetCompletedView={setCompletedView}
+      onSetBoardShow={setBoardShow}
+      onSetBoardSort={setBoardSort}
+      onOpenCard={openItem}
+      onToggleDone={onToggleDone}
+      onSetCardMeta={onSetCardMeta}
+      onStartNewCard={startNewCard}
+      onApplyWorkspace={applyWorkspace}
+      locateRow={(r) => locateRow(foldersRef.current, r)}
+      activeTimerKey={
+        activePomo
+          ? taskKey(activePomo.project, activePomo.board, activePomo.card)
+          : null
+      }
+      onStartPomo={startPomodoro}
+      onAddManualTimelog={addManualTimelog}
+      onOpenTimelogs={openTimelogs}
+      onDuplicateCard={duplicateCard}
+      onDeleteCard={deleteCard}
+      onOpenSettings={isPhone ? openSettings : undefined}
+    />
+  );
+
   return (
     <>
+      {isPhone ? (
+        <MobileShell>
+          {!loaded && (
+            <div id="view" className="mod">
+              <div style={{ padding: 24, color: "var(--mute)" }}>
+                Loading projects…
+              </div>
+            </div>
+          )}
+          {loaded && loadError && (
+            <div id="view" className="mod">
+              <div style={{ padding: 24, color: "var(--mute)" }}>
+                Start the app with <code>npm start</code>, then open{" "}
+                <code>http://localhost:3457</code>.
+                <br />
+                <br />
+                {loadError}
+              </div>
+            </div>
+          )}
+          {loaded && !loadError && masterBoard}
+        </MobileShell>
+      ) : (
+        <>
       <Sidebar
         folders={folders}
         p={p}
@@ -1240,15 +1969,36 @@ export default function App() {
           discardDraft();
           discardCoverEdit();
           setBoardEdit(false);
+          clearEntityOverlays();
+          setSettingsOpen(false);
+          settingsOpenRef.current = false;
           setG(n);
+          gRef.current = n;
+          syncUrl({ g: n, settings: false, dialog: null });
         }}
         onSelectProject={(i, { cover } = {}) => {
           discardDraft();
           discardCoverEdit();
-          setG(null);
-          setP(i);
-          setM(cover ? 0 : restoreTabIndex(folders[i]));
           setBoardEdit(false);
+          clearEntityOverlays();
+          setSettingsOpen(false);
+          settingsOpenRef.current = false;
+          setG(null);
+          gRef.current = null;
+          setP(i);
+          pRef.current = i;
+          const nextM = cover ? 0 : restoreTabIndex(folders[i]);
+          setM(nextM);
+          mRef.current = nextM;
+          syncUrl({
+            g: null,
+            p: i,
+            m: nextM,
+            settings: false,
+            dialog: null,
+            routeNoteId: null,
+            routeFileId: null,
+          });
         }}
         onAddProject={startNewProject}
         onReorderProjects={onReorderProjects}
@@ -1264,7 +2014,7 @@ export default function App() {
           );
           if (hit) openItem(hit.row);
         }}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={openSettings}
         updateAvailable={!!updateInfo}
         onOpenUpdate={() => setUpdateOpen(true)}
       />
@@ -1292,7 +2042,15 @@ export default function App() {
               onSelectTab={(i) => {
                 if (boardEdit) return;
                 if (i !== m) discardCoverEdit();
+                clearEntityOverlays();
                 setM(i);
+                mRef.current = i;
+                syncUrl({
+                  m: i,
+                  dialog: null,
+                  routeNoteId: null,
+                  routeFileId: null,
+                });
               }}
               onOpenAddMenu={(e) => {
                 if (boardEdit) return;
@@ -1314,6 +2072,7 @@ export default function App() {
               onAddTab={onAddTab}
               onMoveTab={onMoveTab}
               onRenameTab={onRenameTab}
+              onShareTab={isPbMode() ? onShareTab : undefined}
               onDeleteTab={onDeleteTab}
               onCoverEdit={() => {
                 if (!folder || archived) return;
@@ -1327,6 +2086,7 @@ export default function App() {
                   color: folder.color || tabC || PC[0],
                 });
               }}
+              onCoverShare={isPbMode() ? onCoverShare : undefined}
               onCoverArchive={() => confirmArchiveProject(folder)}
               onCoverDelete={() => confirmDeleteProject(folder)}
             />
@@ -1358,43 +2118,7 @@ export default function App() {
               onCommitDraft={commitDraftProject}
             />
           )}
-          {loaded && !loadError && !draftProject && g === "Masterboard" && (
-            <Board
-              mode="master"
-              folder={folder}
-              folders={folders}
-              stages={stages}
-              tabC={GACC}
-              boardEdit={boardEdit}
-              onToggleBoardEdit={() => setBoardEdit((v) => !v)}
-              masterOff={masterOff.current}
-              colCollapsed={colCollapsed.current}
-              completedViewByScope={completedViewByScope.current}
-              boardShowByScope={boardShowByScope.current}
-              boardSortByScope={boardSortByScope.current}
-              uiTick={uiTick}
-              onBump={bump}
-              onSetCompletedView={setCompletedView}
-              onSetBoardShow={setBoardShow}
-              onSetBoardSort={setBoardSort}
-              onOpenCard={openItem}
-              onToggleDone={onToggleDone}
-              onSetCardMeta={onSetCardMeta}
-              onStartNewCard={startNewCard}
-              onApplyWorkspace={applyWorkspace}
-              locateRow={(r) => locateRow(foldersRef.current, r)}
-              activeTimerKey={
-                activePomo
-                  ? taskKey(activePomo.project, activePomo.board, activePomo.card)
-                  : null
-              }
-              onStartPomo={startPomodoro}
-              onAddManualTimelog={addManualTimelog}
-              onOpenTimelogs={openTimelogs}
-              onDuplicateCard={duplicateCard}
-              onDeleteCard={deleteCard}
-            />
-          )}
+          {loaded && !loadError && !draftProject && g === "Masterboard" && masterBoard}
           {loaded && !loadError && !draftProject && g === "Timelogs" && (
             <Timelogs
               tabC={GACC}
@@ -1450,8 +2174,22 @@ export default function App() {
                 });
               }}
               onRestore={async (entry) => {
+                if (
+                  entry.kind === "project" &&
+                  shouldBlockNewActiveProject(foldersRef.current)
+                ) {
+                  await askPaywall({ highlightFree: "3" });
+                  return;
+                }
                 let data = await restoreTrashApi({ id: entry.id });
                 if (data.needsParent) {
+                  if (
+                    data.parentKind === "project" &&
+                    shouldBlockNewActiveProject(foldersRef.current)
+                  ) {
+                    await askPaywall({ highlightFree: "3" });
+                    return;
+                  }
                   const parentLabel =
                     data.parentKind === "project"
                       ? "project"
@@ -1484,6 +2222,7 @@ export default function App() {
                     g: "Trash",
                   },
                 });
+                syncUrl({ g: "Trash", settings: false, replace: true });
                 setTrashRefresh((n) => n + 1);
               }}
             />
@@ -1627,6 +2366,20 @@ export default function App() {
                 tabC={tabC}
                 readonly={archived}
                 onApplyWorkspace={applyWorkspace}
+                routeNoteId={routeNoteId}
+                onNoteRouteSelect={(id) => {
+                  setRouteNoteId(id || null);
+                  routeNoteIdRef.current = id || null;
+                  setRouteFileId(null);
+                  routeFileIdRef.current = null;
+                  setDialog(null);
+                  dialogRef.current = null;
+                  syncUrl({
+                    routeNoteId: id || null,
+                    routeFileId: null,
+                    dialog: null,
+                  });
+                }}
               />
             )}
           {loaded &&
@@ -1642,6 +2395,20 @@ export default function App() {
                 tabC={tabC}
                 readonly={archived}
                 onApplyWorkspace={applyWorkspace}
+                routeFileId={routeFileId}
+                onFilePreview={(id) => {
+                  setRouteFileId(id || null);
+                  routeFileIdRef.current = id || null;
+                  setRouteNoteId(null);
+                  routeNoteIdRef.current = null;
+                  setDialog(null);
+                  dialogRef.current = null;
+                  syncUrl({
+                    routeFileId: id || null,
+                    routeNoteId: null,
+                    dialog: null,
+                  });
+                }}
               />
             )}
           {loaded &&
@@ -1694,6 +2461,8 @@ export default function App() {
           )}
         </div>
       </main>
+        </>
+      )}
 
       {dialog && (
         <CardDialog
@@ -1704,6 +2473,7 @@ export default function App() {
           stages={stages}
           g={g}
           readonly={!!dialog.readonly}
+          compact={isPhone}
           activeTimerKey={
             activePomo
               ? taskKey(activePomo.project, activePomo.board, activePomo.card)
@@ -1733,6 +2503,8 @@ export default function App() {
               });
             }
             setDialog(null);
+            dialogRef.current = null;
+            syncUrl({ dialog: null });
             bump();
           }}
           onPersist={dialog.readonly ? async () => {} : saveCard}
@@ -1860,8 +2632,8 @@ export default function App() {
       {launchOpen && (
         <LaunchDialog
           onStart={() => {
-            markLaunchSeen();
             setLaunchOpen(false);
+            void markLaunchSeen();
           }}
         />
       )}
@@ -1876,70 +2648,88 @@ export default function App() {
         />
       )}
 
-      {settingsOpen && (
-        <SettingsDialog
-          countdownDurationMin={countdownDurationMin}
-          onCountdownDurationChange={(value) =>
-            setCountdownDurationMin(saveCountdownDurationMin(value))
-          }
-          stoptimerMaxMin={stoptimerMaxMin}
-          onStoptimerMaxChange={(value) =>
-            setStoptimerMaxMin(saveStoptimerMaxMin(value))
-          }
-          uiSounds={uiSounds}
-          onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
-          menuBarTimer={menuBarTimer}
-          onMenuBarTimerChange={(enabled) =>
-            setMenuBarTimer(saveMenuBarTimer(enabled))
-          }
-          onReactivate={confirmUnarchiveProject}
-          onClose={() => setSettingsOpen(false)}
-          onResetSeed={async () => {
-            const data = await resetWorkspaceToSeed();
-            applyWorkspace(data, { initial: true });
-            setBoardEdit(false);
-            setDraftProject(null);
-            setCoverEdit(false);
-            setCoverDraft(null);
-            setDialog(null);
-            setTimelogFilter(null);
-            setTrashRefresh((n) => n + 1);
-            setTimelogRefresh((n) => n + 1);
+      {settingsOpen &&
+        (isPhone ? (
+          <MobileSettingsDialog onClose={closeSettings} />
+        ) : (
+          <SettingsDialog
+            countdownDurationMin={countdownDurationMin}
+            onCountdownDurationChange={(value) =>
+              setCountdownDurationMin(saveCountdownDurationMin(value))
+            }
+            stoptimerMaxMin={stoptimerMaxMin}
+            onStoptimerMaxChange={(value) =>
+              setStoptimerMaxMin(saveStoptimerMaxMin(value))
+            }
+            uiSounds={uiSounds}
+            onUiSoundsChange={(enabled) => setUiSounds(saveUiSounds(enabled))}
+            onReactivate={confirmUnarchiveProject}
+            onClose={closeSettings}
+            onResetSeed={async () => {
+              const data = await resetWorkspaceToSeed();
+              applyWorkspace(data, { initial: true });
+              setBoardEdit(false);
+              setDraftProject(null);
+              setCoverEdit(false);
+              setCoverDraft(null);
+              clearEntityOverlays();
+              setTimelogFilter(null);
+              setTrashRefresh((n) => n + 1);
+              setTimelogRefresh((n) => n + 1);
+              queueMicrotask(() => applyLocation({ replace: true }));
+            }}
+            onResetEmpty={async () => {
+              const data = await resetWorkspaceToEmpty();
+              applyWorkspace(data, { initial: true });
+              setBoardEdit(false);
+              setDraftProject(null);
+              setCoverEdit(false);
+              setCoverDraft(null);
+              clearEntityOverlays();
+              setTimelogFilter(null);
+              setTrashRefresh((n) => n + 1);
+              setTimelogRefresh((n) => n + 1);
+              queueMicrotask(() => applyLocation({ replace: true }));
+            }}
+            onResetFirstLaunch={async () => {
+              await clearLaunchSeen();
+              await resetWorkspaceToSeed();
+              clearClientAppState();
+              window.location.reload();
+              await new Promise(() => {});
+            }}
+          />
+        ))}
+      {sharingTarget && (
+        <SharingSettingsDialog
+          projectId={sharingTarget.projectId}
+          tabId={sharingTarget.tabId}
+          scope={sharingTarget.scope}
+          targetName={sharingTarget.targetName}
+          initiallyEnabled={sharingTarget.initiallyEnabled}
+          projectShareEnabled={!!sharingTarget.projectShareEnabled}
+          onClose={() => setSharingTarget(null)}
+          onGoToCoverShare={() => {
+            setSharingTarget(null);
+            discardCoverEdit();
+            clearEntityOverlays();
+            setM(0);
+            mRef.current = 0;
+            syncUrl({
+              m: 0,
+              dialog: null,
+              routeNoteId: null,
+              routeFileId: null,
+            });
+            queueMicrotask(() => onCoverShare());
           }}
-          onResetEmpty={async () => {
-            const data = await resetWorkspaceToEmpty();
-            applyWorkspace(data, { initial: true });
-            setBoardEdit(false);
-            setDraftProject(null);
-            setCoverEdit(false);
-            setCoverDraft(null);
-            setDialog(null);
-            setTimelogFilter(null);
-            setTrashRefresh((n) => n + 1);
-            setTimelogRefresh((n) => n + 1);
-          }}
-          onImportBackup={async (data) => {
-            applyWorkspace(data, { initial: true });
-            setBoardEdit(false);
-            setDraftProject(null);
-            setCoverEdit(false);
-            setCoverDraft(null);
-            setDialog(null);
-            setTimelogFilter(null);
-            setTrashRefresh((n) => n + 1);
-            setTimelogRefresh((n) => n + 1);
-          }}
-          onResetFirstLaunch={async () => {
-            await resetWorkspaceToSeed();
-            clearClientAppState();
-            window.location.reload();
-            await new Promise(() => {});
+          onApplied={async () => {
+            const data = await fetchWorkspace();
+            applyWorkspace(data, keepNav(sharingTarget.projectId, sharingTarget.tabId));
           }}
         />
       )}
       <PromptDialog />
-      <ConfirmDialog />
-      <Snackbar />
     </>
   );
 }

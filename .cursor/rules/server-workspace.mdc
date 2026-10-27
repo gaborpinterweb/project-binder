@@ -1,31 +1,24 @@
 ---
 description: Server workspace persistence and isDemo rules
-globs: server.cjs,userDataStore.cjs
+globs: server.cjs,userDataStore.cjs,src/engine/**
 alwaysApply: false
 ---
 
-# Server workspace (`server.cjs` / `userDataStore.cjs`)
+# Workspace persistence
 
-## Storage
+## Product path (PocketBase)
 
-- Packaged Electron → OS user data (`userWorkspace.json`, `userArchive.json`, uploads, settings).
-- Active projects live in `userWorkspace.json`; archived projects live in `userArchive.json` (never both).
-- CLI / browser / unpackaged → in-memory store seeded from `seedWorkspace.json` (never OS Application Support).
-- **Never write** `seedWorkspace.json` (read-only seed / demo).
-- Packaged: if `userWorkspace.json` is missing/empty/corrupt, clone from seed onto disk; peel any `archived` projects into `userArchive.json` on boot.
-- Backup/export zip includes `userWorkspace.json`, `userArchive.json` (optional on import for older zips), and `uploads/`.
+- Auth + `user_data` JSON files + `attachments` via PocketBase.
+- Client mutations: `src/engine/workspaceEngine.js` + debounced `src/pb/persist.js`.
+- Run: `npm start` / `npm run pb`.
+
+## Legacy Node (`npm run start:node`)
+
+- Default → in-memory store seeded from `seedWorkspace.json`.
+- Optional disk → `PROJECT_BINDER_USER_DATA`.
+- **Never write** `seedWorkspace.json`.
 
 ## Demo flag
 
 - Preserve `isDemo: true` on edit when the entity already has it.
-- User-created entities omit `isDemo`. Do not strip the flag on save of demo data.
-
-## Alignment with client
-
-- Entity identity is UUID `id` (`newId()` / `crypto.randomUUID()`). Upload paths: `uploads/<projectId>/<tabId>/<fileId>` (tab UUID for Files and board card attachments).
-- DB column normalize and custom-view normalize exist on both server and client (`src/db*` / `utils`).
-- Changing behavior on one side requires checking the other so API and UI stay consistent.
-
-## Routes
-
-- Prefer extending existing `/api/*` handlers and write helpers over adding parallel write paths for the same resource.
+- User-created entities omit `isDemo`.

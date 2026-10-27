@@ -3,38 +3,27 @@ const http = require("http");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
 const AdmZip = require("adm-zip");
 const {
   createUserDataStore,
-  isPackagedElectron,
   isValidStore,
-  isValidArchive,
   emptyArchiveDoc,
 } = require("./userDataStore.cjs");
 
-const APP_USER_DATA_NAME = "Project Binder";
 const SEED_WORKSPACE = path.join(__dirname, "seedWorkspace.json");
 const SEED_UPLOADS = path.join(__dirname, "seedUploads");
 const userData = createUserDataStore({
-  appName: APP_USER_DATA_NAME,
   seedUploadsDir: SEED_UPLOADS,
 });
 const USER_DATA_DIR = userData.dir;
 const USER_WORKSPACE = userData.workspacePath;
-const AUTO_BACKUP_PREFIX = "project-binder-backup-";
-const AUTO_BACKUP_SUFFIX = ".zip";
-const AUTO_BACKUP_FILENAME_PATTERN = "project-binder-backup-YYYY-MM-DD.zip";
-const AUTO_BACKUP_KEEP_DAYS = 3;
-const AUTO_BACKUP_DAY_RE = /^project-binder-backup-(\d{4}-\d{2}-\d{2})\.zip$/i;
-const AUTO_BACKUP_INTERVAL_MS = 5 * 60 * 1000;
-// Packaged desktop keeps 3456; CLI / unpackaged use 3457 so both can run at once.
-const DEFAULT_PORT_PACKAGED = 3456;
-const DEFAULT_PORT_CLI = 3457;
+const DEFAULT_PORT = 3457;
 function resolvePort() {
   const raw = process.env.PROJECT_BINDER_PORT || process.env.PORT;
   const n = Number(raw);
   if (Number.isFinite(n) && n > 0) return Math.floor(n);
-  return isPackagedElectron() ? DEFAULT_PORT_PACKAGED : DEFAULT_PORT_CLI;
+  return DEFAULT_PORT;
 }
 const PORT = resolvePort();
 const DIST = path.join(__dirname, "dist");
@@ -86,8 +75,6 @@ function applyCardMeta(target, src) {
 const NAME_COL_ID = "n";
 const DEFAULT_DB_COLS = [
   { id: NAME_COL_ID, label: "Name", type: "text" },
-  { id: "r", label: "Role", type: "text" },
-  { id: "s", label: "Stage", type: "stage" },
 ];
 
 const DEFAULT_CUSTOM_VIEW_ID = "default";
@@ -258,7 +245,6 @@ const DB_FIELD_TYPES = new Set([
   "checkbox",
   "number",
   "date",
-  "stage",
 ]);
 
 const DB_SELECT_COLORS = [
@@ -299,7 +285,9 @@ function nameColumn() {
 function normalizeDbColumn(c) {
   if (!c || !c.id) return null;
   if (String(c.id) === NAME_COL_ID) return nameColumn();
-  const type = DB_FIELD_TYPES.has(c.type) ? c.type : "text";
+  // Legacy "stage" (masterboard-linked) → plain select.
+  let type = c.type === "stage" ? "select" : c.type;
+  type = DB_FIELD_TYPES.has(type) ? type : "text";
   const out = { id: String(c.id), label: c.label || String(c.id), type };
   if (type === "select" || type === "multiselect") {
     out.options = Array.isArray(c.options)
@@ -325,8 +313,29 @@ let store = null;
 /** @type {{ version: number, projects: object[] }} */
 let archiveStore = emptyArchiveDoc();
 
+const ID_LENGTH = 12;
+const ID_ALPHABET =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const ID_RE = new RegExp(`^[${ID_ALPHABET}]{${ID_LENGTH}}$`);
+const ID_BYTE_MAX = 256 - (256 % ID_ALPHABET.length);
+/** Same fixed id as client COVER_TAB_ID — cover RTE images live under this upload folder. */
+const COVER_TAB_ID = "0000000000c0";
+
 function newId() {
-  return crypto.randomUUID();
+  let out = "";
+  while (out.length < ID_LENGTH) {
+    const bytes = crypto.randomBytes(ID_LENGTH - out.length + 4);
+    for (const b of bytes) {
+      if (b >= ID_BYTE_MAX) continue;
+      out += ID_ALPHABET[b % ID_ALPHABET.length];
+      if (out.length === ID_LENGTH) break;
+    }
+  }
+  return out;
+}
+
+function isSafePathId(s) {
+  return typeof s === "string" && ID_RE.test(s);
 }
 
 function isDemoValue(v) {
@@ -569,7 +578,7 @@ function ensureStore() {
     if (looksLikeLegacySlugWorkspace(USER_WORKSPACE)) {
       console.error(
         `Refusing to replace legacy slug workspace at ${USER_WORKSPACE}.\n` +
-          "Migrate to UUID ids first — see docs/migrate-slugs-to-uids.md"
+          "Migrate to entity ids first — see docs/migrate-slugs-to-uids.md"
       );
       process.exit(1);
     }
@@ -643,14 +652,6 @@ function findNotesTab(project, tabId) {
 function findFilesTab(project, tabId) {
   if (!project) return null;
   return (project.filesTabs || []).find((t) => t.id === tabId) || null;
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** Same fixed id as client COVER_TAB_ID — cover RTE images live under this upload folder. */
-const COVER_TAB_ID = "00000000-0000-4000-8000-0000000000c0";
-
-function isSafePathId(s) {
-  return typeof s === "string" && UUID_RE.test(s);
 }
 
 function removeUploadTree(projectId, tabId) {
@@ -1254,7 +1255,7 @@ function readCardFileBytes(projectId, boardId, cardId, fileId) {
   };
 }
 
-/** Move card attachment blobs between tab folders (board UUID = folder). */
+  /** Move card attachment blobs between tab folders (board id = folder). */
 function moveCardFileBlobs(fromProject, fromBoard, toProject, toBoard, files) {
   if (fromProject === toProject && fromBoard === toBoard) return { ok: true };
   if (
@@ -2901,240 +2902,11 @@ function deleteTimelog(id) {
   return store.timelogs.length < before;
 }
 
-function revealPath(targetPath, { select = false } = {}) {
-  try {
-    const electron = require("electron");
-    const shell = electron && electron.shell;
-    if (select && shell && typeof shell.showItemInFolder === "function") {
-      shell.showItemInFolder(targetPath);
-      return Promise.resolve("");
-    }
-    if (!select && shell && typeof shell.openPath === "function") {
-      return shell.openPath(targetPath);
-    }
-  } catch {
-    /* fall through to OS opener */
-  }
-  const { spawn } = require("child_process");
-  const cmd = select
-    ? process.platform === "darwin"
-      ? ["open", ["-R", targetPath]]
-      : process.platform === "win32"
-        ? ["explorer", ["/select,", targetPath]]
-        : ["xdg-open", [path.dirname(targetPath)]]
-    : process.platform === "darwin"
-      ? ["open", [targetPath]]
-      : process.platform === "win32"
-        ? ["explorer", [targetPath]]
-        : ["xdg-open", [targetPath]];
-  spawn(cmd[0], cmd[1], { detached: true, stdio: "ignore" }).unref();
-  return Promise.resolve("");
-}
-
-function revealUserDataDir() {
-  if (!userData.persistent) {
-    return Promise.reject(new Error("no on-disk user data in this mode"));
-  }
-  // Prefer selecting the live workspace JSON so Finder/Explorer highlights it.
-  if (USER_WORKSPACE && fs.existsSync(USER_WORKSPACE)) {
-    return revealPath(USER_WORKSPACE, { select: true });
-  }
-  const dir = userData.ensureUserDataDir();
-  return revealPath(dir);
-}
-
-function revealUploadedFile(projectId, filesTabId, fileId) {
-  if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  const result = readUploadedFile(projectId, filesTabId, fileId);
-  if (!result.ok) return result;
-  const filePath = userData.uploadPath(projectId, filesTabId, fileId);
-  if (!filePath) return { ok: false, error: "file not found" };
-  revealPath(filePath, { select: true });
-  return { ok: true };
-}
-
-function revealCardFile(projectId, boardId, cardId, fileId) {
-  if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  const result = readCardFileBytes(projectId, boardId, cardId, fileId);
-  if (!result.ok) return result;
-  const filePath = userData.uploadPath(projectId, boardId, fileId);
-  if (!filePath || !userData.uploadExists(projectId, boardId, fileId)) {
-    return { ok: false, error: "file not found" };
-  }
-  revealPath(filePath, { select: true });
-  return { ok: true };
-}
-
-/** Open the on-disk folder for any tab (board / notes / files / database). Folder name = tab UUID. */
-function revealTabDir(projectId, tabType, tabId) {
-  if (!userData.persistent) return { ok: false, error: "no on-disk user data in this mode" };
-  if (!isSafePathId(projectId) || !isSafePathId(tabId)) {
-    return { ok: false, error: "invalid path" };
-  }
-  const project = findProject(projectId);
-  if (!project) return { ok: false, error: "project not found" };
-  let tab = null;
-  if (tabType === "board") tab = findBoard(project, tabId);
-  else if (tabType === "notes") tab = findNotesTab(project, tabId);
-  else if (tabType === "files") tab = findFilesTab(project, tabId);
-  else if (tabType === "database") tab = findDatabase(project, tabId);
-  else return { ok: false, error: "invalid type" };
-  if (!tab) return { ok: false, error: "tab not found" };
-  userData.ensureUploadDir(projectId, tabId);
-  const dir = userData.uploadDir(projectId, tabId);
-  revealPath(dir);
-  return { ok: true, dir };
-}
-
-function revealFilesTabDir(projectId, filesTabId) {
-  return revealTabDir(projectId, "files", filesTabId);
-}
-
-function isDesktopApp() {
-  return Boolean(process.versions && process.versions.electron);
-}
-
-function defaultAppSettings() {
-  return {
-    autoBackup: {
-      enabled: false,
-      folderPath: "",
-      lastBackupAt: null,
-      lastError: null,
-    },
-  };
-}
-
-function normalizeAppSettings(raw) {
-  const base = defaultAppSettings();
-  const ab = raw && typeof raw === "object" ? raw.autoBackup : null;
-  if (!ab || typeof ab !== "object") return base;
-  return {
-    autoBackup: {
-      enabled: !!ab.enabled,
-      folderPath: typeof ab.folderPath === "string" ? ab.folderPath.trim() : "",
-      lastBackupAt: typeof ab.lastBackupAt === "string" ? ab.lastBackupAt : null,
-      lastError: typeof ab.lastError === "string" ? ab.lastError : null,
-    },
-  };
-}
-
-function loadAppSettings() {
-  try {
-    const raw = userData.readAppSettingsFile();
-    if (!raw) return defaultAppSettings();
-    return normalizeAppSettings(raw);
-  } catch {
-    return defaultAppSettings();
-  }
-}
-
-function saveAppSettings(settings) {
-  const next = normalizeAppSettings(settings);
-  userData.writeAppSettingsFile(next);
-  return next;
-}
-
-function localDayStamp(date = new Date()) {
+function exportZipFilename(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function backupZipFilenameForDay(stamp = localDayStamp()) {
-  return `${AUTO_BACKUP_PREFIX}${stamp}${AUTO_BACKUP_SUFFIX}`;
-}
-
-function backupZipPathForDay(folderPath, stamp = localDayStamp()) {
-  return path.join(folderPath, backupZipFilenameForDay(stamp));
-}
-
-function listDayBackupZips(folderPath) {
-  let names;
-  try {
-    names = fs.readdirSync(folderPath);
-  } catch {
-    return [];
-  }
-  const out = [];
-  for (const name of names) {
-    const m = AUTO_BACKUP_DAY_RE.exec(name);
-    if (!m) continue;
-    const full = path.join(folderPath, name);
-    try {
-      if (!fs.statSync(full).isFile()) continue;
-    } catch {
-      continue;
-    }
-    out.push({ stamp: m[1], name, path: full });
-  }
-  out.sort((a, b) => (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : 0));
-  return out;
-}
-
-function pruneDayBackups(folderPath, keep = AUTO_BACKUP_KEEP_DAYS) {
-  const files = listDayBackupZips(folderPath);
-  const removed = [];
-  while (files.length > keep) {
-    const oldest = files.shift();
-    try {
-      fs.rmSync(oldest.path, { force: true });
-      removed.push(oldest.name);
-    } catch {
-      /* ignore */
-    }
-  }
-  return removed;
-}
-
-function backupFolderProbeError(err) {
-  const code = err && err.code;
-  if (code === "EACCES" || code === "EPERM") return "backup folder is not writable";
-  if (code === "EROFS") return "backup folder is on a read-only volume";
-  if (code === "ENOSPC") return "not enough free space in backup folder";
-  if (code === "ENOENT") return "backup folder does not exist";
-  return "backup folder write check failed";
-}
-
-/** Real write/read/unlink — access(W_OK) alone misses cloud / mount / ACL cases. */
-function probeBackupFolderWritable(dir) {
-  const probePath = path.join(
-    dir,
-    `.project-binder-write-test-${process.pid}-${Date.now()}`
-  );
-  const payload = "ok\n";
-  try {
-    fs.writeFileSync(probePath, payload, { flag: "wx" });
-    const got = fs.readFileSync(probePath, "utf8");
-    if (got !== payload) return { ok: false, error: "backup folder write check failed" };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: backupFolderProbeError(e) };
-  } finally {
-    try {
-      fs.unlinkSync(probePath);
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-function validateBackupFolder(folderPath) {
-  const dir = String(folderPath || "").trim();
-  if (!dir) return { ok: false, error: "backup folder not set" };
-  if (!path.isAbsolute(dir)) return { ok: false, error: "backup folder must be an absolute path" };
-  if (!fs.existsSync(dir)) return { ok: false, error: "backup folder does not exist" };
-  let st;
-  try {
-    st = fs.statSync(dir);
-  } catch {
-    return { ok: false, error: "cannot access backup folder" };
-  }
-  if (!st.isDirectory()) return { ok: false, error: "backup path is not a folder" };
-  const probe = probeBackupFolderWritable(dir);
-  if (!probe.ok) return probe;
-  return { ok: true, dir };
+  return `project-binder-backup-${y}-${m}-${d}.zip`;
 }
 
 function writeWorkspaceZip(destZip) {
@@ -3150,238 +2922,6 @@ function writeWorkspaceZip(destZip) {
   if (fs.existsSync(tmp)) fs.rmSync(tmp, { force: true });
   zip.writeZip(tmp);
   fs.renameSync(tmp, destZip);
-}
-
-let backupInFlight = false;
-
-function runAutoBackup() {
-  if (!isDesktopApp()) {
-    return { ok: false, error: "auto backup is desktop only" };
-  }
-  if (backupInFlight) return { ok: false, error: "backup already in progress", busy: true };
-  const settings = loadAppSettings();
-  const ab = settings.autoBackup;
-  if (!ab.enabled) {
-    return { ok: false, error: "auto backup is disabled", disabled: true };
-  }
-  const folder = validateBackupFolder(ab.folderPath);
-  if (!folder.ok) {
-    const next = saveAppSettings({
-      ...settings,
-      autoBackup: { ...ab, lastError: folder.error },
-    });
-    return { ok: false, error: folder.error, settings: next };
-  }
-  backupInFlight = true;
-  try {
-    const stamp = localDayStamp();
-    const dest = backupZipPathForDay(folder.dir, stamp);
-    writeWorkspaceZip(dest);
-    pruneDayBackups(folder.dir, AUTO_BACKUP_KEEP_DAYS);
-    const next = saveAppSettings({
-      ...settings,
-      autoBackup: {
-        ...ab,
-        folderPath: folder.dir,
-        lastBackupAt: new Date().toISOString(),
-        lastError: null,
-      },
-    });
-    return { ok: true, file: dest, filename: path.basename(dest), settings: next };
-  } catch (e) {
-    const msg = String(e.message || e);
-    const next = saveAppSettings({
-      ...settings,
-      autoBackup: { ...ab, lastError: msg },
-    });
-    return { ok: false, error: msg, settings: next };
-  } finally {
-    backupInFlight = false;
-  }
-}
-
-function isSafeZipEntryName(name) {
-  if (!name || typeof name !== "string") return false;
-  if (path.isAbsolute(name)) return false;
-  if (name.includes("\0")) return false;
-  const norm = name.replace(/\\/g, "/");
-  if (norm.split("/").some((p) => p === "..")) return false;
-  return (
-    norm === "userWorkspace.json" ||
-    norm === "userArchive.json" ||
-    norm === "uploads" ||
-    norm.startsWith("uploads/")
-  );
-}
-
-function extractBackupZip(zipPath, destDir) {
-  const zip = new AdmZip(zipPath);
-  const entries = zip.getEntries();
-  let hasWorkspace = false;
-  for (const entry of entries) {
-    const name = String(entry.entryName || "").replace(/\\/g, "/");
-    if (!isSafeZipEntryName(name)) {
-      throw new Error("backup contains unsafe paths");
-    }
-    if (name === "userWorkspace.json" && !entry.isDirectory) hasWorkspace = true;
-  }
-  if (!hasWorkspace) throw new Error("backup missing userWorkspace.json");
-  fs.mkdirSync(destDir, { recursive: true });
-  for (const entry of entries) {
-    const name = String(entry.entryName || "").replace(/\\/g, "/");
-    if (!isSafeZipEntryName(name)) continue;
-    const target = path.join(destDir, ...name.split("/"));
-    if (entry.isDirectory) {
-      fs.mkdirSync(target, { recursive: true });
-      continue;
-    }
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, entry.getData());
-  }
-}
-
-function readArchiveJsonFile(file) {
-  if (!fs.existsSync(file)) return { ok: false, reason: "missing" };
-  const raw = fs.readFileSync(file, "utf8");
-  if (!String(raw).trim()) return { ok: false, reason: "empty" };
-  try {
-    const doc = JSON.parse(raw);
-    if (!isValidArchive(doc)) return { ok: false, reason: "invalid" };
-    return { ok: true, doc };
-  } catch {
-    return { ok: false, reason: "corrupt" };
-  }
-}
-
-function importFromBackupZip(zipPath) {
-  if (!isDesktopApp()) return { ok: false, error: "import is desktop only" };
-  const file = String(zipPath || "").trim();
-  if (!file) return { ok: false, error: "missing backup file" };
-  if (!path.isAbsolute(file)) return { ok: false, error: "backup path must be absolute" };
-  if (!file.toLowerCase().endsWith(".zip")) return { ok: false, error: "backup must be a .zip file" };
-  if (!fs.existsSync(file)) return { ok: false, error: "backup file not found" };
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pb-restore-"));
-  try {
-    extractBackupZip(file, tmp);
-    const wsFile = path.join(tmp, "userWorkspace.json");
-    const result = readJsonFile(wsFile);
-    if (!result.ok) return { ok: false, error: `invalid workspace in backup (${result.reason})` };
-    const archFile = path.join(tmp, "userArchive.json");
-    const archResult = readArchiveJsonFile(archFile);
-    clearUploads();
-    userData.replaceUploadsFromDirectory(path.join(tmp, "uploads"));
-    archiveStore = archResult.ok ? deepClone(archResult.doc) : emptyArchiveDoc();
-    if (!Array.isArray(archiveStore.projects)) archiveStore.projects = [];
-    store = deepClone(result.doc);
-    ensureTrash();
-    migrateArchivedOutOfWorkspace();
-    saveStore();
-    return { ok: true, workspace: readWorkspace() };
-  } catch (e) {
-    return { ok: false, error: String(e.message || e) };
-  } finally {
-    try {
-      fs.rmSync(tmp, { recursive: true, force: true });
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-async function electronDialog(method, options) {
-  if (!isDesktopApp()) return { ok: false, error: "desktop only" };
-  let dialog;
-  let BrowserWindow;
-  try {
-    const electron = require("electron");
-    dialog = electron.dialog;
-    BrowserWindow = electron.BrowserWindow;
-  } catch {
-    return { ok: false, error: "electron dialog unavailable" };
-  }
-  if (!dialog || typeof dialog[method] !== "function") {
-    return { ok: false, error: "electron dialog unavailable" };
-  }
-  const win = BrowserWindow && typeof BrowserWindow.getFocusedWindow === "function"
-    ? BrowserWindow.getFocusedWindow()
-    : null;
-  const result = win
-    ? await dialog[method](win, options)
-    : await dialog[method](options);
-  if (result.canceled) return { ok: false, cancelled: true };
-  if (method === "showSaveDialog") {
-    if (!result.filePath) return { ok: false, cancelled: true };
-    return { ok: true, path: result.filePath };
-  }
-  if (!result.filePaths || !result.filePaths[0]) {
-    return { ok: false, cancelled: true };
-  }
-  return { ok: true, path: result.filePaths[0] };
-}
-
-function electronOpenDialog(options) {
-  return electronDialog("showOpenDialog", options);
-}
-
-function electronSaveDialog(options) {
-  return electronDialog("showSaveDialog", options);
-}
-
-function pickBackupFolder() {
-  return electronOpenDialog({
-    title: "Choose auto-backup folder",
-    properties: ["openDirectory", "createDirectory"],
-  });
-}
-
-function pickBackupZip() {
-  return electronOpenDialog({
-    title: "Import workspace",
-    properties: ["openFile"],
-    filters: [{ name: "Project Binder backup", extensions: ["zip"] }],
-  });
-}
-
-/** Write text to a user-chosen path via the native Save dialog. */
-async function saveTextExport(body = {}) {
-  const rawName = String(body.filename || "export.csv").trim() || "export.csv";
-  const filename = path.basename(rawName).replace(/[/\\]/g, "-") || "export.csv";
-  const content = String(body.content ?? "");
-  const filters = Array.isArray(body.filters) && body.filters.length
-    ? body.filters
-    : [{ name: "CSV", extensions: ["csv"] }];
-  const picked = await electronSaveDialog({
-    title: String(body.title || "Save file"),
-    defaultPath: filename,
-    filters,
-  });
-  if (picked.cancelled || !picked.ok) return picked;
-  try {
-    fs.writeFileSync(picked.path, content, "utf8");
-    return { ok: true, path: picked.path };
-  } catch (e) {
-    return { ok: false, error: String(e.message || e) };
-  }
-}
-
-function backupApiMeta(ab) {
-  return {
-    filename: AUTO_BACKUP_FILENAME_PATTERN,
-    keepDays: AUTO_BACKUP_KEEP_DAYS,
-    intervalMs: AUTO_BACKUP_INTERVAL_MS,
-    ...ab,
-  };
-}
-
-function startAutoBackupScheduler() {
-  if (!isDesktopApp()) return;
-  const tick = () => {
-    const settings = loadAppSettings();
-    if (!settings.autoBackup.enabled || !settings.autoBackup.folderPath) return;
-    runAutoBackup();
-  };
-  setTimeout(tick, 1500);
-  setInterval(tick, AUTO_BACKUP_INTERVAL_MS);
 }
 
 function json(res, code, obj) {
@@ -3416,26 +2956,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/archived-projects") {
       return json(res, 200, readArchivedProjectsMeta());
     }
-    if (req.method === "GET" && url.pathname === "/api/user-data") {
-      return json(res, 200, {
-        persistent: userData.persistent,
-        dir: USER_DATA_DIR,
-        file: USER_WORKSPACE,
-      });
-    }
-    if (req.method === "POST" && url.pathname === "/api/user-data/reveal") {
-      if (!userData.persistent) {
-        return json(res, 400, { error: "no on-disk user data in this mode" });
-      }
-      await revealUserDataDir();
-      return json(res, 200, {
-        ok: true,
-        dir: USER_DATA_DIR,
-        file: USER_WORKSPACE,
-      });
-    }
     if (req.method === "GET" && url.pathname === "/api/export") {
-      const filename = backupZipFilenameForDay();
+      const filename = exportZipFilename();
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pb-export-"));
       const tmpZip = path.join(tmpDir, filename);
       try {
@@ -3456,105 +2978,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
       return;
-    }
-    if (req.method === "GET" && url.pathname === "/api/app") {
-      const desktop = isDesktopApp();
-      return json(res, 200, {
-        desktop,
-        platform: process.platform,
-        menuBar: desktop && process.platform === "darwin",
-        persistentUserData: userData.persistent,
-        autoBackupFilename: AUTO_BACKUP_FILENAME_PATTERN,
-        autoBackupKeepDays: AUTO_BACKUP_KEEP_DAYS,
-        autoBackupIntervalMs: AUTO_BACKUP_INTERVAL_MS,
-        backup: loadAppSettings().autoBackup,
-      });
-    }
-    if (req.method === "GET" && url.pathname === "/api/backup") {
-      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
-      return json(res, 200, {
-        desktop: true,
-        ...backupApiMeta(loadAppSettings().autoBackup),
-      });
-    }
-    if (req.method === "PUT" && url.pathname === "/api/backup") {
-      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
-      const body = await readBody(req);
-      const cur = loadAppSettings();
-      const nextAb = {
-        ...cur.autoBackup,
-        enabled: body.enabled != null ? !!body.enabled : cur.autoBackup.enabled,
-        folderPath:
-          body.folderPath != null
-            ? String(body.folderPath || "").trim()
-            : cur.autoBackup.folderPath,
-      };
-      if (nextAb.enabled && nextAb.folderPath) {
-        const folder = validateBackupFolder(nextAb.folderPath);
-        if (!folder.ok) return json(res, 400, { error: folder.error });
-        nextAb.folderPath = folder.dir;
-      }
-      saveAppSettings({ ...cur, autoBackup: nextAb });
-      let backupResult = null;
-      if (nextAb.enabled && nextAb.folderPath) {
-        backupResult = runAutoBackup();
-      }
-      const ab = (backupResult && backupResult.settings
-        ? backupResult.settings
-        : loadAppSettings()
-      ).autoBackup;
-      return json(res, 200, {
-        ...backupApiMeta(ab),
-        backupOk: !!(backupResult && backupResult.ok),
-        backupError: backupResult && !backupResult.ok ? backupResult.error : null,
-      });
-    }
-    if (req.method === "POST" && url.pathname === "/api/backup/now") {
-      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
-      const result = runAutoBackup();
-      if (!result.ok && !result.busy && !result.disabled) {
-        return json(res, 400, result);
-      }
-      if (!result.ok) return json(res, 400, result);
-      return json(res, 200, {
-        ok: true,
-        file: result.file,
-        ...backupApiMeta(
-          result.settings ? result.settings.autoBackup : loadAppSettings().autoBackup
-        ),
-      });
-    }
-    if (req.method === "POST" && url.pathname === "/api/backup/pick-folder") {
-      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
-      const picked = await pickBackupFolder();
-      if (picked.cancelled) return json(res, 200, { ok: false, cancelled: true });
-      if (!picked.ok) return json(res, 400, picked);
-      return json(res, 200, picked);
-    }
-    if (req.method === "POST" && url.pathname === "/api/export/save") {
-      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
-      const body = await readBody(req);
-      const result = await saveTextExport(body);
-      if (result.cancelled) return json(res, 200, { ok: false, cancelled: true });
-      if (!result.ok) return json(res, 400, result);
-      return json(res, 200, result);
-    }
-    if (
-      req.method === "POST" &&
-      (url.pathname === "/api/backup/import" || url.pathname === "/api/backup/restore")
-    ) {
-      if (!isDesktopApp()) return json(res, 403, { error: "desktop only" });
-      const body = await readBody(req);
-      let zipPath = String(body.path || "").trim();
-      if (!zipPath) {
-        const picked = await pickBackupZip();
-        if (picked.cancelled) return json(res, 200, { ok: false, cancelled: true });
-        if (!picked.ok) return json(res, 400, picked);
-        zipPath = picked.path;
-      }
-      const result = importFromBackupZip(zipPath);
-      if (!result.ok) return json(res, 400, result);
-      return json(res, 200, result.workspace);
     }
     if (req.method === "POST" && url.pathname === "/api/workspace/reset-seed") {
       resetToSeedWorkspace();
@@ -3760,49 +3183,6 @@ const server = http.createServer(async (req, res) => {
       const id = createFilesTab(body.project, body.name);
       saveStore();
       return json(res, 201, { id, ...readWorkspace() });
-    }
-    if (req.method === "POST" && url.pathname === "/api/file/reveal") {
-      const body = await readBody(req);
-      const result = revealUploadedFile(body.project, body.filesTab, body.file);
-      if (!result.ok) {
-        const status = result.error === "file not found" ? 404 : 400;
-        return json(res, status, { error: result.error });
-      }
-      return json(res, 200, { ok: true });
-    }
-    if (req.method === "POST" && url.pathname === "/api/card-file/reveal") {
-      const body = await readBody(req);
-      if (!body.project || !body.board || !body.card || !body.file) {
-        return json(res, 400, { error: "missing fields" });
-      }
-      const result = revealCardFile(body.project, body.board, body.card, body.file);
-      if (!result.ok) {
-        const status = result.error === "file not found" ? 404 : 400;
-        return json(res, status, { error: result.error });
-      }
-      return json(res, 200, { ok: true });
-    }
-    if (req.method === "POST" && url.pathname === "/api/files-tab/reveal") {
-      const body = await readBody(req);
-      const result = revealFilesTabDir(body.project, body.filesTab);
-      if (!result.ok) {
-        const status = result.error === "tab not found" || result.error === "files tab not found" ? 404 : 400;
-        return json(res, status, { error: result.error });
-      }
-      return json(res, 200, { ok: true });
-    }
-    if (req.method === "POST" && url.pathname === "/api/tab/reveal") {
-      const body = await readBody(req);
-      if (!body.project || !body.type || !body.id) {
-        return json(res, 400, { error: "missing fields" });
-      }
-      const result = revealTabDir(body.project, body.type, body.id);
-      if (!result.ok) {
-        const status =
-          result.error === "tab not found" || result.error === "project not found" ? 404 : 400;
-        return json(res, status, { error: result.error });
-      }
-      return json(res, 200, { ok: true });
     }
     if (req.method === "POST" && url.pathname === "/api/file/move") {
       const body = await readBody(req);
@@ -4278,7 +3658,7 @@ const server = http.createServer(async (req, res) => {
       const cols = loadDbColumns(body.project, body.database);
       const fields = body.fields || {};
       cols.forEach((c) => {
-        if (fields[c.id] == null) fields[c.id] = c.type === "stage" ? "Applied" : "";
+        if (fields[c.id] == null) fields[c.id] = "";
       });
       const id = uniqueItemId();
       writeItem(body.project, body.database, { id, fields, body: body.body || "" }, cols);
@@ -4365,8 +3745,4 @@ server.listen(PORT, () => {
   console.log(`Seed workspace (read-only): ${SEED_WORKSPACE}`);
   if (boot.reseeded) console.log(`Seeded workspace from seedWorkspace.json (${boot.reason})`);
   if (boot.purged) console.log(`Purged ${boot.purged} trash item(s) older than 30 days`);
-  if (isDesktopApp() && userData.persistent) {
-    console.log(`Auto backup: desktop enabled (every ${AUTO_BACKUP_INTERVAL_MS / 60000} min)`);
-    startAutoBackupScheduler();
-  }
 });

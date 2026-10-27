@@ -10,7 +10,7 @@ const LEGACY_DIFFICULTY_TO_EFFORT = {
   Hard: "High",
 };
 
-/** Arrow stack height: Low = 1 ↑, High = 3 ↑ (same for impact & effort). */
+/** Arrow stack height: Low = 1, High = 3 (impact ↑, effort ↓). */
 const LEVEL_ICON_COUNT = { Low: 1, Medium: 2, High: 3 };
 const IMPACT_COUNT = LEVEL_ICON_COUNT;
 const EFFORT_ICON_COUNT = LEVEL_ICON_COUNT;

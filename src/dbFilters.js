@@ -67,7 +67,7 @@ export function operatorsForType(type) {
   if (type === "number") return NUMBER_OPS;
   if (type === "date") return DATE_OPS;
   if (type === "multiselect") return MULTI_OPS;
-  if (type === "select" || type === "stage") return SELECT_OPS;
+  if (type === "select") return SELECT_OPS;
   return TEXT_OPS;
 }
 

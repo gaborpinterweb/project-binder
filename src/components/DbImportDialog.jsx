@@ -134,11 +134,9 @@ export default function DbImportDialog({
                 ? FIELD_TYPES.some((t) => t.value === m.type)
                   ? m.type
                   : "text"
-                : mergeCol?.type === "stage"
-                  ? "select"
-                  : FIELD_TYPES.some((t) => t.value === mergeCol?.type)
-                    ? mergeCol.type
-                    : "text";
+                : FIELD_TYPES.some((t) => t.value === mergeCol?.type)
+                  ? mergeCol.type
+                  : "text";
               return (
                 <div
                   key={m.index}

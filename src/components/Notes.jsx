@@ -287,6 +287,29 @@ function filterNotes(list, filter) {
   }
 }
 
+/** Locked empty placeholder: title style only if the first block is a heading. */
+function EmptyNotePlaceholder({ body }) {
+  const html = String(body || "").trim();
+  let tag = "p";
+  if (html) {
+    try {
+      const first = new DOMParser().parseFromString(html, "text/html").body
+        .firstElementChild;
+      if (first && /^H[1-4]$/i.test(first.tagName)) {
+        tag = first.tagName.toLowerCase();
+      }
+    } catch {
+      /* keep p */
+    }
+  }
+  const Tag = tag;
+  return (
+    <Tag className={tag === "p" ? "notes-empty-para" : "notes-empty-title"}>
+      {NOTE_PLACEHOLDER}
+    </Tag>
+  );
+}
+
 /** Wrap plain `#tags` for locked preview when marks are not yet in HTML. */
 function previewHtml(body) {
   if (!body) return "<p></p>";
@@ -844,6 +867,8 @@ export default function Notes({
   tabC,
   readonly,
   onApplyWorkspace,
+  routeNoteId = null,
+  onNoteRouteSelect = null,
 }) {
   const d = mod[2] || { id: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
@@ -904,12 +929,15 @@ export default function Notes({
   }, [folders, folder?.id, d.id]);
 
   const rememberedId = (tabKey && selectedByTab[tabKey]) || null;
+  const routeMatch =
+    routeNoteId && notes.some((n) => n.id === routeNoteId) ? routeNoteId : null;
   const selectedId =
-    rememberedId && notes.some((n) => n.id === rememberedId)
+    routeMatch ||
+    (rememberedId && notes.some((n) => n.id === rememberedId)
       ? rememberedId
-      : notes[0]?.id || null;
+      : notes[0]?.id || null);
 
-  const setSelectedId = (id) => {
+  const persistSelectedId = (id) => {
     if (!tabKey) return;
     const nextId = id || null;
     setSelectedByTab((prev) => {
@@ -920,6 +948,13 @@ export default function Notes({
       return next;
     });
     saveNotesSelected(tabKey, nextId);
+  };
+
+  /** User-driven selection — also updates the deep-link path when wired. */
+  const setSelectedId = (id) => {
+    const nextId = id || null;
+    persistSelectedId(nextId);
+    if (onNoteRouteSelect) onNoteRouteSelect(nextId);
   };
 
   const unlockKey = (noteId) =>
@@ -959,7 +994,7 @@ export default function Notes({
     if (!tabKey || !rememberedId) return;
     const all = Array.isArray(d.notes) ? d.notes : [];
     if (all.some((n) => n.id === rememberedId)) return;
-    setSelectedId(notes[0]?.id || null);
+    persistSelectedId(notes[0]?.id || null);
   }, [tabKey, d.notes, rememberedId, notes]);
 
   useEffect(() => {
@@ -1256,7 +1291,14 @@ export default function Notes({
         </div>
       </div>
       <div className="notes-layout">
-        <div className="notes-sidebar">
+        <div
+          className="notes-sidebar"
+          onDoubleClick={(e) => {
+            if (readonly) return;
+            if (e.target.closest(".notes-item")) return;
+            addNote();
+          }}
+        >
           {(d.notes || []).length === 0 ? (
             <p className="notes-empty">No notes yet</p>
           ) : notes.length === 0 ? (
@@ -1358,7 +1400,7 @@ export default function Notes({
               <div className="rte">
                 {isEmptyNoteBody(selected.body) ? (
                   <div className="tiptap">
-                    <h1 className="notes-empty-title">{NOTE_PLACEHOLDER}</h1>
+                    <EmptyNotePlaceholder body={selected.body} />
                   </div>
                 ) : (
                   <div

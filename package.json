@@ -5,12 +5,20 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server.cjs",
-    "build:desktop": "npm run build && electron-packager . \"Project Binder\" --out=release --overwrite --no-asar --icon=assets/icon --ignore=\"src|release|\\.npm-cache|\\.git|\\.cursor|userWorkspace\\.json|vite\\.config\\.js|README\\.md\" --ignore=\"node_modules/(?!adm-zip(/|$))\""
+    "build:commercial": "VITE_COMMERCIAL=true vite build",
+    "start": "npm run pb",
+    "start:commercial": "VITE_COMMERCIAL=true npm run pb",
+    "start:node": "node server.cjs",
+    "pb:fetch": "node scripts/fetch-pocketbase.cjs",
+    "pb:mail": "node scripts/configure-pb-mail.cjs",
+    "pb:ui": "node scripts/rebuild-pb-ui.cjs",
+    "pb:ui:commercial": "VITE_COMMERCIAL=true node scripts/rebuild-pb-ui.cjs",
+    "pb": "node scripts/run-pocketbase.cjs",
+    "pb:fresh": "node scripts/run-pocketbase.cjs --wipe",
+    "pb:fresh:commercial": "VITE_COMMERCIAL=true node scripts/run-pocketbase.cjs --wipe --commercial"
   },
   "dependencies": {
     "@tiptap/extension-highlight": "^3.31.4",
@@ -27,8 +35,10 @@
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
     "adm-zip": "^0.6.1",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.54.0",
     "marked": "^18.1.0",
+    "pocketbase": "^0.28.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-file-icon": "^1.6.0",
@@ -36,9 +46,7 @@
     "shrimp-doc-viewer": "^0.5.0"
   },
   "devDependencies": {
-    "@electron/packager": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "electron": "^35.0.0",
     "vite": "^6.0.0"
   }
 }

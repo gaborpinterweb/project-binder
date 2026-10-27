@@ -4,17 +4,14 @@ import {
   putFile,
   deleteFileApi,
   moveFileApi,
-  revealFile,
-  revealFilesTab,
 } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
 import {
   allFilesTabs,
   DEFAULT_FILES_SORT,
-  folderAppLabel,
   loadFilesSorts,
   saveFilesSort,
-  showInFolderLabel,
 } from "../utils.js";
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
@@ -93,7 +90,6 @@ function readFileAsBase64(file) {
 function FileMoreMenu({
   disabled,
   moveTargets = [],
-  onShowInFolder,
   onRename,
   onMove,
   onDelete,
@@ -186,17 +182,6 @@ function FileMoreMenu({
             role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
-              run(onShowInFolder);
-            }}
-          >
-            <Icon name="folder" size={14} />
-            {showInFolderLabel()}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={(e) => {
-              e.stopPropagation();
               run(onRename);
             }}
           >
@@ -275,6 +260,8 @@ export default function Files({
   tabC,
   readonly,
   onApplyWorkspace,
+  routeFileId = null,
+  onFilePreview = null,
 }) {
   const d = mod[2] || { id: "", files: [] };
   const files = d.files || [];
@@ -292,6 +279,25 @@ export default function Files({
     return allFilesTabs(folders).filter((t) => t.key !== currentKey);
   }, [folders, folder?.id, d.id]);
 
+  const openPreview = (file) => {
+    setPreview(file);
+    if (onFilePreview) onFilePreview(file?.id || null);
+  };
+  const closePreview = () => {
+    setPreview(null);
+    if (onFilePreview) onFilePreview(null);
+  };
+
+  useEffect(() => {
+    if (!routeFileId) {
+      setPreview((prev) => (prev ? null : prev));
+      return;
+    }
+    const hit = files.find((f) => f.id === routeFileId);
+    if (hit) setPreview(hit);
+    else setPreview(null);
+  }, [routeFileId, files]);
+
   const keepNav = {
     keepNav: { project: folder.id, board: d.id, g: null },
   };
@@ -308,26 +314,6 @@ export default function Files({
         : { key: col, dir: FILE_SORT_DEFAULT_DIR[col] || "asc" };
     setSorts((prev) => ({ ...prev, [tabSortKey]: next }));
     saveFilesSort(tabSortKey, next);
-  };
-
-  const openFolder = async () => {
-    try {
-      await revealFilesTab({ project: folder.id, filesTab: d.id });
-    } catch (err) {
-      window.alert(err.message || "Could not open the folder");
-    }
-  };
-
-  const showFileInFolder = async (file) => {
-    try {
-      await revealFile({
-        project: folder.id,
-        filesTab: d.id,
-        file: file.id,
-      });
-    } catch (err) {
-      window.alert(err.message || "Could not show the file");
-    }
   };
 
   const uploadFiles = async (fileList) => {
@@ -348,7 +334,9 @@ export default function Files({
         onApplyWorkspace(next, keepNav);
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload file");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload file");
+      }
     } finally {
       setBusy(false);
     }
@@ -491,16 +479,6 @@ export default function Files({
               <span className="mod-act-lab">Add file</span>
             </button>
           )}
-          <button
-            type="button"
-            className="mod-act"
-            onClick={openFolder}
-            title={folderAppLabel()}
-            aria-label={`Open in ${folderAppLabel()}`}
-          >
-            <Icon name="folder" size={18} />
-            <span className="mod-act-lab">{folderAppLabel()}</span>
-          </button>
           <input
             ref={inputRef}
             type="file"
@@ -542,7 +520,7 @@ export default function Files({
                 <li
                   key={file.id}
                   className="files-row"
-                  onClick={() => setPreview(file)}
+                  onClick={() => openPreview(file)}
                 >
                   <FileTypeIcon name={file.name} mime={file.mime} size={22} />
                   <button
@@ -551,7 +529,7 @@ export default function Files({
                     title={file.name}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setPreview(file);
+                      openPreview(file);
                     }}
                   >
                     {file.name}
@@ -567,7 +545,6 @@ export default function Files({
                     <FileMoreMenu
                       disabled={busy}
                       moveTargets={moveTargets}
-                      onShowInFolder={() => showFileInFolder(file)}
                       onRename={() => renameFile(file)}
                       onMove={(dest) => moveFile(file, dest)}
                       onDelete={() => removeFile(file)}
@@ -590,10 +567,13 @@ export default function Files({
         <FilePreviewDialog
           file={preview}
           files={sortedFiles}
-          onFileChange={setPreview}
+          onFileChange={(file) => {
+            setPreview(file);
+            if (onFilePreview) onFilePreview(file?.id || null);
+          }}
           project={folder.id}
           filesTab={d.id}
-          onClose={() => setPreview(null)}
+          onClose={closePreview}
         />
       ) : null}
     </div>

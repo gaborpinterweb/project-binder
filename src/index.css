@@ -23,7 +23,8 @@ button:focus-visible{outline:2px solid var(--acc)}
 .app-side button:focus-visible{outline-color:var(--side-ink)}
 .app-side button.on{background:var(--side-sel)}
 .app-side .side-scroll{flex:1;min-height:0;overflow:auto}
-.side-foot{margin-top:auto;padding-top:8px;}
+/* Pull down so .pomo-stop top meets .mb-foot: side pad 10 vs stage margin 6, + pomo 1px border vs mb-foot's 2px button borders */
+.side-foot{margin-top:auto;padding-top:8px;margin-bottom:-3px}
 .pomo-block{display:flex;flex-direction:column;padding:0;border-radius:16px;background:color-mix(in srgb,var(--pc,var(--acc)) 28%,var(--side));overflow:hidden;border:1px solid color-mix(in srgb,#000 32%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 20%,transparent),0 2px 6px #00000028,0 12px 28px #00000030}
 .pomo-block .pomo-body{padding:0;display:flex;flex-direction:column;min-width:0}
 .pomo-block .pomo-mini{display:block;width:100%;margin:0;padding:12px 10px 10px;border:0;border-radius:0;background:linear-gradient(180deg,color-mix(in srgb,#fff 12%,transparent),transparent 58%);color:var(--side-ink);cursor:pointer;text-align:center}

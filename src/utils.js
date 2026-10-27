@@ -723,24 +723,28 @@ export function matchesTimelogFilter(entry, filter) {
 }
 
 export const TIMELOG_PERIODS = [
-  "Today",
-  "Yesterday",
-  "This week",
-  "Last week",
-  "This month",
-  "Last month",
-  "This quarter",
-  "Last quarter",
-  "This year",
-  "Last year",
-  "All time",
+  { value: "Today", label: "Today", icon: "sun" },
+  { value: "Yesterday", label: "Yesterday", icon: "sunset" },
+  { value: "This week", label: "This week", icon: "calendarDays" },
+  { value: "Last week", label: "Last week", icon: "calendarDays" },
+  { value: "This month", label: "This month", icon: "Calendar" },
+  { value: "Last month", label: "Last month", icon: "Calendar" },
+  { value: "This quarter", label: "This quarter", icon: "calendarRange" },
+  { value: "Last quarter", label: "Last quarter", icon: "calendarRange" },
+  { value: "This year", label: "This year", icon: "calendars" },
+  { value: "Last year", label: "Last year", icon: "calendars" },
+  { value: "All time", label: "All time", icon: "infinity" },
 ];
 export const DEFAULT_TIMELOG_PERIOD = "This week";
+
+function isTimelogPeriod(period) {
+  return TIMELOG_PERIODS.some((o) => o.value === period);
+}
 
 export function loadTimelogView() {
   const stored = readStorageJson(TIMELOG_VIEW_KEY, null);
   const period =
-    stored && TIMELOG_PERIODS.includes(stored.period)
+    stored && isTimelogPeriod(stored.period)
       ? stored.period
       : DEFAULT_TIMELOG_PERIOD;
   const groupBy =
@@ -758,7 +762,7 @@ export function loadTimelogView() {
 }
 
 export function saveTimelogView(view) {
-  const period = TIMELOG_PERIODS.includes(view?.period)
+  const period = isTimelogPeriod(view?.period)
     ? view.period
     : DEFAULT_TIMELOG_PERIOD;
   const groupBy = TIMELOG_GROUP_BYS.includes(view?.groupBy)
@@ -856,7 +860,7 @@ function timelogPeriodRange(period, now = new Date()) {
 }
 
 export function matchesTimelogPeriod(entry, period) {
-  if (!period || period === "All time" || !TIMELOG_PERIODS.includes(period)) {
+  if (!period || period === "All time" || !isTimelogPeriod(period)) {
     return true;
   }
   const stamp = entry.endedAt || entry.startedAt || "";

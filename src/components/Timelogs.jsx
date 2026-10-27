@@ -374,7 +374,7 @@ function TimelogAggHead({ label, totalSec }) {
   );
 }
 
-/** View summary: “[Period] for [N projects] grouped by [Day], [Newest first]”. */
+/** View summary: “[Period] for [N projects] grouped by [Day] sorted by [Newest first]”. */
 function TimelogViewHead({
   totalSec,
   period,
@@ -410,12 +410,12 @@ function TimelogViewHead({
           onChange={onGroupByChange}
           ariaLabel={`Group by ${groupBy}`}
         />
-        <span className="log-view-lit">, </span>
+        <span className="log-view-lit"> sorted by </span>
         <LogViewInlineDd
           value={sort}
           options={TIMELOG_SORTS}
           onChange={onSortChange}
-          ariaLabel={sort}
+          ariaLabel={`Sorted by ${sort}`}
         />
       </div>
       <div className="timelog-time">

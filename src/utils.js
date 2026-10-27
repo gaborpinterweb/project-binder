@@ -8,6 +8,7 @@ import {
 import { ensureNameColumn, normalizeDbCol } from "./dbFields.js";
 import { normalizeCustomViews, resolveCustomViewId } from "./dbViews.js";
 import { COVER_TAB_ID, newId, isSafePathId } from "./ids.js";
+import { getPb, isPbMode } from "./pb/client.js";
 
 export { COVER_TAB_ID, newId, isSafePathId };
 
@@ -975,13 +976,15 @@ export function clearClientAppState() {
   } catch {}
 }
 
+/** Key in users.history for finishing the welcome / launch dialog. */
+export const HISTORY_ONBOARDING_DIALOG_FINISHED = "onboarding_dialog_finished";
+
 function launchSeenStorageKey(userId) {
   const id = userId != null ? String(userId).trim() : "";
   return id ? `${LAUNCH_SEEN_KEY}:${id}` : LAUNCH_SEEN_KEY;
 }
 
-/** @param {string} [userId] PocketBase user id when signed in; omit for legacy Node. */
-export function hasSeenLaunch(userId) {
+function readLocalLaunchSeen(userId) {
   try {
     return localStorage.getItem(launchSeenStorageKey(userId)) === "1";
   } catch {
@@ -989,11 +992,127 @@ export function hasSeenLaunch(userId) {
   }
 }
 
-/** @param {string} [userId] PocketBase user id when signed in; omit for legacy Node. */
-export function markLaunchSeen(userId) {
+function writeLocalLaunchSeen(userId, marked) {
   try {
-    localStorage.setItem(launchSeenStorageKey(userId), "1");
+    const key = launchSeenStorageKey(userId);
+    if (marked) localStorage.setItem(key, "1");
+    else localStorage.removeItem(key);
   } catch {}
+}
+
+function currentAuthUserId() {
+  if (!isPbMode()) return "";
+  return getPb().authStore.record?.id || "";
+}
+
+/** Normalize users.history JSON to a plain object of string timestamps. */
+export function normalizeUserHistory(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k || v == null || v === false) continue;
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+    else if (typeof v === "number" && Number.isFinite(v)) {
+      out[k] = new Date(v).toISOString();
+    } else if (v === true) {
+      out[k] = new Date(0).toISOString();
+    }
+  }
+  return out;
+}
+
+function readAuthHistory() {
+  return normalizeUserHistory(getPb().authStore.record?.history);
+}
+
+async function writeAuthHistory(next) {
+  const pb = getPb();
+  const userId = pb.authStore.record?.id;
+  if (!userId) return;
+  const history = normalizeUserHistory(next);
+  const record = await pb.collection("users").update(userId, { history });
+  pb.authStore.save(pb.authStore.token, {
+    ...pb.authStore.record,
+    ...record,
+    history,
+  });
+}
+
+/** True when this account (or legacy local flag) has a timestamp for `key`. */
+export function hasUserHistory(key) {
+  const k = String(key || "").trim();
+  if (!k) return false;
+  if (isPbMode()) {
+    if (readAuthHistory()[k]) return true;
+    if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) {
+      return readLocalLaunchSeen(currentAuthUserId());
+    }
+    return false;
+  }
+  if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) return readLocalLaunchSeen("");
+  return false;
+}
+
+/** Record `key` on users.history with an ISO timestamp. */
+export async function markUserHistory(key) {
+  const k = String(key || "").trim();
+  if (!k) return;
+  const userId = currentAuthUserId();
+  if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) writeLocalLaunchSeen(userId, true);
+  if (!isPbMode() || !userId) return;
+  try {
+    const at = new Date().toISOString();
+    await writeAuthHistory({ ...readAuthHistory(), [k]: at });
+  } catch {}
+}
+
+/** Remove `key` from users.history (e.g. dev reset). */
+export async function clearUserHistory(key) {
+  const k = String(key || "").trim();
+  if (!k) return;
+  const userId = currentAuthUserId();
+  if (k === HISTORY_ONBOARDING_DIALOG_FINISHED) {
+    writeLocalLaunchSeen(userId, false);
+    writeLocalLaunchSeen("", false);
+  }
+  if (!isPbMode() || !userId) return;
+  try {
+    const next = { ...readAuthHistory() };
+    delete next[k];
+    await writeAuthHistory(next);
+  } catch {}
+}
+
+/**
+ * Promote a pre-migration device-local onboarding dismissal onto users.history
+ * so other devices stop showing the dialog.
+ */
+export async function syncUserHistoryFromLocal(
+  key = HISTORY_ONBOARDING_DIALOG_FINISHED
+) {
+  if (!isPbMode()) return;
+  const k = String(key || "").trim();
+  if (k !== HISTORY_ONBOARDING_DIALOG_FINISHED) return;
+  const record = getPb().authStore.record;
+  if (!record?.id || readAuthHistory()[k]) return;
+  if (!readLocalLaunchSeen(record.id)) return;
+  await markUserHistory(k);
+}
+
+export function hasSeenLaunch() {
+  return hasUserHistory(HISTORY_ONBOARDING_DIALOG_FINISHED);
+}
+
+export async function markLaunchSeen() {
+  return markUserHistory(HISTORY_ONBOARDING_DIALOG_FINISHED);
+}
+
+export async function clearLaunchSeen() {
+  return clearUserHistory(HISTORY_ONBOARDING_DIALOG_FINISHED);
+}
+
+export async function syncLaunchSeenFromLocal() {
+  return syncUserHistoryFromLocal(HISTORY_ONBOARDING_DIALOG_FINISHED);
 }
 
 export function colCollapseKey(scope, s) {

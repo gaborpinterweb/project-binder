@@ -78,6 +78,8 @@ import {
   clearClientAppState,
   hasSeenLaunch,
   markLaunchSeen,
+  clearLaunchSeen,
+  syncLaunchSeenFromLocal,
   nextUnusedProjectColor,
   taskKey,
   formatDuration,
@@ -105,7 +107,7 @@ import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
-import { getPb, isPbMode } from "./pb/client.js";
+import { isPbMode } from "./pb/client.js";
 import useIsPhone from "./hooks/useIsPhone.js";
 import {
   parsePath,
@@ -118,11 +120,6 @@ import {
   ENTITY_FILES,
   ENTITY_TASKS,
 } from "./routes.js";
-
-function currentLaunchUserId() {
-  if (!isPbMode()) return "";
-  return getPb().authStore.record?.id || "";
-}
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -775,9 +772,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (loaded && !loadError && !hasSeenLaunch(currentLaunchUserId())) {
-      setLaunchOpen(true);
-    }
+    if (!loaded || loadError) return;
+    let cancelled = false;
+    (async () => {
+      await syncLaunchSeenFromLocal();
+      if (cancelled) return;
+      if (!hasSeenLaunch()) setLaunchOpen(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loaded, loadError]);
 
   useEffect(() => {
@@ -2628,8 +2632,8 @@ export default function App() {
       {launchOpen && (
         <LaunchDialog
           onStart={() => {
-            markLaunchSeen(currentLaunchUserId());
             setLaunchOpen(false);
+            void markLaunchSeen();
           }}
         />
       )}
@@ -2688,6 +2692,7 @@ export default function App() {
               queueMicrotask(() => applyLocation({ replace: true }));
             }}
             onResetFirstLaunch={async () => {
+              await clearLaunchSeen();
               await resetWorkspaceToSeed();
               clearClientAppState();
               window.location.reload();

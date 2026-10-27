@@ -11,6 +11,7 @@ import {
   fetchWorkspace,
   fetchTimelogs,
 } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
   emptyFieldValue,
@@ -436,7 +437,9 @@ function TaskCard({
         onApplyWorkspace(res, keepNav?.(folder.id, mod[2].id));
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload file");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload file");
+      }
     } finally {
       fileBusyRef.current = false;
     }

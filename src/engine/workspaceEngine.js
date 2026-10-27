@@ -2953,12 +2953,31 @@ function exportWorkspaceData() {
   return { workspace: deepClone(store), archive: deepClone(archiveStore) };
 }
 
+function getWorkspaceDoc() {
+  return deepClone(store);
+}
+
+function getArchiveDoc() {
+  return deepClone(archiveStore);
+}
+
+/** Pending draft card file/image lists (for storage quota summing). */
+function listPendingAttachmentLists() {
+  return {
+    pendingFiles: [...pendingCardFiles.values()].map((list) => normalizeCardFiles(list)),
+    pendingImages: [...pendingCardImages.values()].map((list) => normalizeCardFiles(list)),
+  };
+}
+
 export const workspaceEngine = {
   loadFromWorkspaceDoc,
   loadFromArchiveDoc,
   seedEmpty,
   resetToSeed,
   exportWorkspaceData,
+  getWorkspaceDoc,
+  getArchiveDoc,
+  listPendingAttachmentLists,
   /** Called after every successful mutation (persistence hook). */
   setOnChange(fn) {
     onChange = typeof fn === "function" ? fn : null;

@@ -23,6 +23,7 @@ import {
   selectedRect,
 } from "@tiptap/pm/tables";
 import { postRteImage, rteImageUrl } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
 import { askPrompt } from "../promptDialog.js";
 
@@ -596,7 +597,9 @@ export function RteToolbar({
           imageUpload.onApplyWorkspace?.(res);
         }
       } catch (err) {
-        window.alert(err.message || "Could not upload image");
+        if (!isPaywallAbortError(err)) {
+          window.alert(err.message || "Could not upload image");
+        }
       } finally {
         imageBusyRef.current = false;
         setImageBusy(false);
@@ -831,7 +834,9 @@ export default function RichTextEditor({
         ctx.onApplyWorkspace?.(res);
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload image");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload image");
+      }
     } finally {
       uploadBusyRef.current = false;
     }

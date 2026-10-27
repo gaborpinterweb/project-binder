@@ -5,6 +5,7 @@ import {
   deleteFileApi,
   moveFileApi,
 } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
 import {
   allFilesTabs,
@@ -333,7 +334,9 @@ export default function Files({
         onApplyWorkspace(next, keepNav);
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload file");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload file");
+      }
     } finally {
       setBusy(false);
     }

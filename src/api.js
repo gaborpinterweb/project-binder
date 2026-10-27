@@ -1,8 +1,39 @@
 import { isPbMode } from "./pb/client.js";
 import * as bridge from "./engine/apiBridge.js";
 import { bridgeGetFileBytes } from "./engine/apiBridge.js";
+import {
+  PaywallAbortError,
+  shouldBlockStorageUpload,
+  totalUserStorageBytes,
+} from "./billingLimits.js";
+import { askPaywall } from "./paywallDialog.js";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
+
+/** Decoded byte length of a base64 payload (padding-aware). */
+function base64DecodedBytes(data) {
+  if (typeof data !== "string" || !data) return 0;
+  const len = data.length;
+  if (!len) return 0;
+  const pad = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((len * 3) / 4) - pad);
+}
+
+async function assertStorageAllowsUpload(body) {
+  if (!isPbMode()) return;
+  const { engine } = bridge;
+  const pending = engine.listPendingAttachmentLists();
+  const used = totalUserStorageBytes({
+    workspace: engine.getWorkspaceDoc(),
+    archive: engine.getArchiveDoc(),
+    pendingFiles: pending.pendingFiles,
+    pendingImages: pending.pendingImages,
+  });
+  const incoming = base64DecodedBytes(body?.data);
+  if (!shouldBlockStorageUpload(used, incoming)) return;
+  await askPaywall({ highlightFree: "200 MB" });
+  throw new PaywallAbortError();
+}
 
 async function apiJson(path, { method = "GET", body } = {}) {
   const opts = { method };
@@ -179,17 +210,26 @@ export async function postFilesTab(body) {
 }
 
 export async function postFile(body) {
-  if (isPbMode()) return bridge.bridgePostFile(body);
+  if (isPbMode()) {
+    await assertStorageAllowsUpload(body);
+    return bridge.bridgePostFile(body);
+  }
   return apiOkData("/api/file", { method: "POST", body }, "Could not upload file");
 }
 
 export async function postCardFile(body) {
-  if (isPbMode()) return bridge.bridgePostCardFile(body);
+  if (isPbMode()) {
+    await assertStorageAllowsUpload(body);
+    return bridge.bridgePostCardFile(body);
+  }
   return apiOkData("/api/card-file", { method: "POST", body }, "Could not upload file");
 }
 
 export async function postRteImage(body) {
-  if (isPbMode()) return bridge.bridgePostRteImage(body);
+  if (isPbMode()) {
+    await assertStorageAllowsUpload(body);
+    return bridge.bridgePostRteImage(body);
+  }
   return apiOkData("/api/rte-image", { method: "POST", body }, "Could not upload image");
 }
 

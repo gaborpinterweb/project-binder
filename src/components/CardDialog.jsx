@@ -6,6 +6,7 @@ import {
   fetchCardTimelogs,
   postCardFile,
 } from "../api.js";
+import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
 import {
   EFFORT_LEVELS,
@@ -659,7 +660,9 @@ export default function CardDialog({
         onApplyWorkspace?.(res, keepNav?.(curLoc.folder.id, curLoc.mod[2].id));
       }
     } catch (err) {
-      window.alert(err.message || "Could not upload file");
+      if (!isPaywallAbortError(err)) {
+        window.alert(err.message || "Could not upload file");
+      }
     } finally {
       setFileBusy(false);
     }

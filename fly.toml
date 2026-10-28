@@ -36,6 +36,7 @@ primary_region = "ams"
 [[mounts]]
   source = "pb_data"
   destination = "/data"
+  snapshot_retention = 7
 
 [[vm]]
   size = "shared-cpu-1x"

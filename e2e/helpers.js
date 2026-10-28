@@ -271,8 +271,8 @@ export function editTimelogDialog(page) {
   return page.getByRole("dialog", { name: "Edit timelog" });
 }
 
-/** Open Add to card → Timelogs → Add timelog manually (task dialog open). */
-export async function openAddManualTimelogFromTask(page) {
+/** Open Add to card → Timelogs submenu (task dialog open, no logs yet). */
+export async function openTaskTimelogsSubmenu(page) {
   const dlg = taskDialog(page);
   await dlg.getByRole("button", { name: "Add to card" }).click();
   const sub = dlg.locator(".card-add-sub").filter({
@@ -280,34 +280,88 @@ export async function openAddManualTimelogFromTask(page) {
   });
   await sub.getByRole("menuitem", { name: "Timelogs", exact: true }).hover();
   await expect(sub.locator(".card-add-sub-menu")).toBeVisible();
-  await sub
-    .locator(".card-add-sub-menu")
-    .getByRole("menuitem", { name: "Add timelog manually" })
-    .click();
+  return sub.locator(".card-add-sub-menu");
+}
+
+/** Open Add to card → Timelogs → Add timelog manually (task dialog open). */
+export async function openAddManualTimelogFromTask(page) {
+  const menu = await openTaskTimelogsSubmenu(page);
+  await menu.getByRole("menuitem", { name: "Add timelog manually" }).click();
   await expect(addTimelogDialog(page)).toBeVisible();
+}
+
+/** Open Timelog actions ⋮ on the card Timelogs section (logs already present). */
+export async function openCardTimelogActions(page) {
+  const dlg = taskDialog(page);
+  await dlg.getByRole("button", { name: "Timelog actions" }).click();
+  // TimelogDropdown uses Dropdown → role="option" (not menuitem).
+  await expect(
+    page.getByRole("option", { name: "Add timelog manually" })
+  ).toBeVisible();
 }
 
 export async function submitTimelogDialog(page, { minutes, note } = {}) {
   const dlg = page.getByRole("dialog", { name: /^(Add|Edit) timelog$/ });
   if (note != null) await dlg.getByLabel("Note").fill(note);
   if (minutes != null) {
-    await dlg.getByLabel("Minutes").fill(String(minutes));
+    const mins = dlg.getByLabel("Minutes");
+    // Wait for the controlled default to settle (Strict Mode remount), then set.
+    await expect(mins).toHaveValue(/.+/);
+    await mins.fill(String(minutes));
+    await expect(mins).toHaveValue(String(minutes));
   }
   const submit = dlg.getByRole("button", { name: /^(Add|Save)$/ });
   await submit.click();
   await expect(dlg).toHaveCount(0);
 }
 
+/** Format like utils.formatDuration for minutes under 24h. */
+export function formatMinutesLabel(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 /** Add a manual timelog on the open task; returns after the card list reloads. */
-export async function addManualTimelogOnOpenTask(page, { minutes = 45, note = "E2E log" } = {}) {
-  await openAddManualTimelogFromTask(page);
-  await submitTimelogDialog(page, { minutes, note });
+export async function addManualTimelogOnOpenTask(
+  page,
+  { minutes = 45, note = "E2E log" } = {}
+) {
   const dlg = taskDialog(page);
-  await expect(dlg.locator(".dlg-timelog-list .dlg-timelog-item")).toHaveCount(1);
-  await expect(dlg.locator(".dlg-timelog-dur").first()).toHaveText(`${minutes}m`);
-  if (note) {
-    await expect(dlg.locator(".dlg-timelog-note").first()).toHaveText(note);
+  const before = await dlg.locator(".dlg-timelog-list .dlg-timelog-item").count();
+  if (before === 0) {
+    await openAddManualTimelogFromTask(page);
+  } else {
+    await openCardTimelogActions(page);
+    await page.getByRole("option", { name: "Add timelog manually" }).click();
+    await expect(addTimelogDialog(page)).toBeVisible();
   }
+  await submitTimelogDialog(page, { minutes, note });
+  await expect(dlg.locator(".dlg-timelog-list .dlg-timelog-item")).toHaveCount(
+    before + 1
+  );
+  if (note) {
+    await expect(
+      dlg.locator(".dlg-timelog-note", { hasText: note })
+    ).toBeVisible();
+  }
+}
+
+/** Jump to Timelogs filtered to the open task (Open in Timelogs…). */
+export async function openInTimelogsFromTask(page) {
+  const dlg = taskDialog(page);
+  const hasSection = (await dlg.locator(".dlg-timelogs").count()) > 0;
+  if (hasSection) {
+    await openCardTimelogActions(page);
+    await page.getByRole("option", { name: "Open in Timelogs..." }).click();
+  } else {
+    const menu = await openTaskTimelogsSubmenu(page);
+    await menu.getByRole("menuitem", { name: "Open in Timelogs..." }).click();
+  }
+  await expect(page.locator(".ov-top .dlg")).toHaveCount(0);
+  await expect(page.locator(".log.timelogs")).toBeVisible();
+  await expect(page.locator(".log-filter")).toBeVisible();
 }
 
 export async function openTimelogsView(page) {

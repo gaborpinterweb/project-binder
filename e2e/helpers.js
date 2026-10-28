@@ -397,3 +397,26 @@ export async function deleteFirstCardTimelog(page) {
     .click();
   await expect(dlg.locator(".dlg-timelog-list")).toHaveCount(0);
 }
+
+export function pomoBlock(page) {
+  return page.locator("#pomo-block");
+}
+
+/** Start countdown from Add to card → Timelogs (task dialog open). */
+export async function startCountdownFromOpenTask(page) {
+  const menu = await openTaskTimelogsSubmenu(page);
+  await menu.getByRole("menuitem", { name: /Start \d+m countdown/ }).click();
+  await expect(pomoBlock(page)).toBeVisible();
+}
+
+/** Start stopwatch from Add to card → Timelogs (task dialog open). */
+export async function startStopwatchFromOpenTask(page) {
+  const menu = await openTaskTimelogsSubmenu(page);
+  await menu.getByRole("menuitem", { name: "Start stopwatch" }).click();
+  await expect(pomoBlock(page)).toBeVisible();
+}
+
+export async function stopSidebarTimer(page) {
+  await page.locator("#pomo-stop").click();
+  await expect(pomoBlock(page)).toHaveCount(0);
+}

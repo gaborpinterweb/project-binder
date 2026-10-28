@@ -10,6 +10,10 @@ import {
   openInTimelogsFromTask,
   openTaskCard,
   openTimelogsView,
+  pomoBlock,
+  startCountdownFromOpenTask,
+  startStopwatchFromOpenTask,
+  stopSidebarTimer,
   taskDialog,
   timelogRow,
 } from "./helpers.js";
@@ -145,5 +149,72 @@ test.describe("Time tracking", () => {
     await expect(page.locator(".log-view-head .log-agg")).toHaveText(
       formatMinutesLabel(60)
     );
+  });
+
+  test("starting a countdown should show the sidebar timer", async ({ page }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Countdown task");
+    await openTaskCard(page, "Countdown task");
+
+    await startCountdownFromOpenTask(page);
+
+    const block = pomoBlock(page);
+    await expect(block.locator("#pomo-card-title")).toHaveText("Countdown task");
+    await expect(block.locator("#pomo-time")).toHaveText(/^2[0-5]:\d{2}$/);
+    await expect(page.locator("#pomo-stop")).toHaveText("Cancel");
+  });
+
+  test("starting a stopwatch should show the sidebar timer", async ({ page }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Stopwatch task");
+    await openTaskCard(page, "Stopwatch task");
+
+    await startStopwatchFromOpenTask(page);
+
+    const block = pomoBlock(page);
+    await expect(block.locator("#pomo-card-title")).toHaveText("Stopwatch task");
+    await expect(block.locator("#pomo-time")).toHaveText(/^\d{2}:\d{2}$/);
+    await expect(page.locator("#pomo-stop")).toHaveText("Cancel");
+  });
+
+  test("stopping a timer under 1 minute should discard it", async ({ page }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Discard timer");
+    await openTaskCard(page, "Discard timer");
+    await startStopwatchFromOpenTask(page);
+    await closeTaskDialog(page);
+
+    await stopSidebarTimer(page);
+
+    await expect(page.locator(".snackbar-msg")).toContainText(
+      "Timers under 1 minute aren't saved"
+    );
+
+    await openTaskCard(page, "Discard timer");
+    await expect(taskDialog(page).locator(".dlg-timelog-list")).toHaveCount(0);
+  });
+
+  test("stopping a timer after 1 minute should save a timelog", async ({
+    page,
+  }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Save timer");
+    await openTaskCard(page, "Save timer");
+
+    await page.clock.install();
+    await startStopwatchFromOpenTask(page);
+    await closeTaskDialog(page);
+
+    await page.clock.fastForward(61_000);
+    await expect(page.locator("#pomo-stop")).toHaveText("Stop and save");
+    await stopSidebarTimer(page);
+
+    await expect(page.locator(".snackbar-msg")).toContainText("Save timer");
+    await expect(page.locator(".snackbar-msg")).toContainText("1m");
+
+    await openTaskCard(page, "Save timer");
+    const dlg = taskDialog(page);
+    await expect(dlg.locator(".dlg-timelog-list .dlg-timelog-item")).toHaveCount(1);
+    await expect(dlg.locator(".dlg-timelog-dur")).toHaveText("1m");
   });
 });

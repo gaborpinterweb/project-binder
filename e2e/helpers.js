@@ -120,6 +120,33 @@ export async function openMasterBoard(page) {
   await expect(page.locator(".board")).toBeVisible();
 }
 
+export function taskCard(page, title) {
+  return page.locator(".card", { hasText: title });
+}
+
+/** Complete via the card checkbox (default view hides completed cards). */
+export async function completeTaskCard(page, title) {
+  const card = taskCard(page, title);
+  await expect(card).toBeVisible();
+  // click(), not check() — hide-completed unmounts the card before Playwright
+  // can assert the input's checked state.
+  await card.locator(".card-check").click();
+  await expect(taskCard(page, title)).toHaveCount(0);
+}
+
+/** Delete via card context menu → confirm. */
+export async function deleteTaskCard(page, title) {
+  const card = taskCard(page, title);
+  await expect(card).toBeVisible();
+  await card.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete task" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await expect(page.locator(".card-name", { hasText: title })).toHaveCount(0);
+}
+
 /** Add a Tasks (Board) tab on the current project and wait for the board. */
 export async function addTasksTab(page) {
   await page.locator("#add").click();

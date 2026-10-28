@@ -6,7 +6,9 @@ import {
   addTasksTab,
   addToCard,
   boardColumn,
+  completeTaskCard,
   createUserProject,
+  deleteTaskCard,
   ensureTaskDescription,
   enterApp,
   closeTaskDialog,
@@ -159,5 +161,44 @@ test.describe("Tasks", () => {
     await openMasterBoard(page);
     await expect(page.locator(".card-name", { hasText: "Task from A" })).toBeVisible();
     await expect(page.locator(".card-name", { hasText: "Task from B" })).toBeVisible();
+  });
+
+  test("should be able to delete a task from Master board", async ({ page }) => {
+    await openFreshTasksBoard(page, "Project A");
+    await addTaskNamed(page, "Delete on master");
+    await openMasterBoard(page);
+
+    await deleteTaskCard(page, "Delete on master");
+    await expect(
+      page.locator(".card-name", { hasText: "Delete on master" })
+    ).toHaveCount(0);
+  });
+
+  test("should be able to complete a task from Master board", async ({ page }) => {
+    await openFreshTasksBoard(page, "Project A");
+    await addTaskNamed(page, "Complete on master");
+    await openMasterBoard(page);
+
+    await completeTaskCard(page, "Complete on master");
+  });
+
+  test("should be able to delete a task from a Project Tasks tab", async ({
+    page,
+  }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Delete on project");
+
+    await deleteTaskCard(page, "Delete on project");
+    await expect(boardColumn(page, "Idea").locator(".col-count")).toHaveText("0");
+  });
+
+  test("should be able to complete a task from a Project Tasks tab", async ({
+    page,
+  }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Complete on project");
+
+    await completeTaskCard(page, "Complete on project");
+    await expect(boardColumn(page, "Idea").locator(".col-count")).toHaveText("0");
   });
 });

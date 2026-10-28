@@ -66,10 +66,11 @@ function upsertSuperuser() {
 
 runNode(path.join(__dirname, "fetch-pocketbase.cjs"));
 
+// Commercial build so Free-tier paywall limits are exercised in e2e.
 if (process.env.E2E_SKIP_BUILD === "1" && fs.existsSync(path.join(DIST, "index.html"))) {
-  console.log("E2E_SKIP_BUILD=1 — reusing existing dist/");
+  console.log("E2E_SKIP_BUILD=1 — reusing existing dist/ (expect Commercial build)");
 } else {
-  runNpm(["run", "build"]);
+  runNpm(["run", "build:commercial"]);
 }
 
 if (!fs.existsSync(path.join(DIST, "index.html"))) {

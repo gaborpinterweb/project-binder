@@ -1,5 +1,5 @@
 /**
- * PocketBase superuser helpers for Playwright.
+ * PocketBase helpers for Playwright (public create + e2e-only superuser).
  * Talks only to the e2e server (baseURL / E2E_PB_PORT); never production.
  */
 
@@ -86,4 +86,9 @@ export async function markUserVerified(email) {
     headers,
     body: JSON.stringify({ verified: true }),
   });
+}
+
+export async function createVerifiedUser(email, password) {
+  await createUnverifiedUser(email, password);
+  await markUserVerified(email);
 }

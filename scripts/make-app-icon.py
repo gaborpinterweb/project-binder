@@ -2,9 +2,9 @@
 """Build web + desktop icons from assets/logo-transparent.png.
 
 Source is a complete framed icon plate (dark frame + paper + mark) with
-transparent corners. Web assets keep transparency; Electron/macOS icons are
-composited onto a solid frame-edge fill so the system squircle mask clips
-one continuous shape.
+transparent corners. Favicon / in-app PNGs keep transparency. PWA install
+icons and desktop icons are composited onto a solid frame-edge fill so the
+OS squircle mask clips one continuous shape (no gray halo).
 """
 
 from pathlib import Path
@@ -29,6 +29,9 @@ OUT_ICON_512 = PUBLIC / "icon-512.png"
 ICON_SIZE = 1024
 # Nearly fill the canvas; leftover rim is frame-colored for OS masking.
 FILL = 0.98
+# PWA maskable icons: slight overscale so the textured frame bleeds past the
+# canvas edge (no solid-fill rim outside the black border).
+MASKABLE_FILL = 1.04
 ALPHA_CROP = 16
 ICO_SIZES = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
 ICNS_SIZES = {
@@ -91,12 +94,12 @@ def resize(im, size):
     return im.resize((size, size), Image.Resampling.LANCZOS)
 
 
-def compose_desktop(plate, bg_rgb):
-    canvas = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), bg_rgb + (255,))
-    fill = int(ICON_SIZE * FILL)
+def compose_filled(plate, bg_rgb, size, fill_ratio):
+    canvas = Image.new("RGBA", (size, size), bg_rgb + (255,))
+    fill = max(1, int(round(size * fill_ratio)))
     art = resize(plate, fill)
-    x = (ICON_SIZE - art.width) // 2
-    y = (ICON_SIZE - art.height) // 2
+    x = (size - art.width) // 2
+    y = (size - art.height) // 2
     canvas.alpha_composite(art, (x, y))
     return Image.alpha_composite(Image.new("RGBA", canvas.size, bg_rgb + (255,)), canvas)
 
@@ -109,15 +112,16 @@ def main():
     plate_1024 = resize(plate, ICON_SIZE)
     plate_1024.save(SRC, "PNG", optimize=True)
 
+    bg_rgb = frame_fill_color(plate)
+
     PUBLIC.mkdir(parents=True, exist_ok=True)
     resize(plate, 256).save(OUT_APP_ICON, "PNG", optimize=True)
-    resize(plate, 180).save(OUT_APPLE_TOUCH, "PNG", optimize=True)
-    resize(plate, 192).save(OUT_ICON_192, "PNG", optimize=True)
-    resize(plate, 512).save(OUT_ICON_512, "PNG", optimize=True)
+    compose_filled(plate, bg_rgb, 180, MASKABLE_FILL).save(OUT_APPLE_TOUCH, "PNG", optimize=True)
+    compose_filled(plate, bg_rgb, 192, MASKABLE_FILL).save(OUT_ICON_192, "PNG", optimize=True)
+    compose_filled(plate, bg_rgb, 512, MASKABLE_FILL).save(OUT_ICON_512, "PNG", optimize=True)
     plate_1024.save(OUT_FAVICON, format="ICO", sizes=ICO_SIZES)
 
-    bg_rgb = frame_fill_color(plate)
-    desktop = compose_desktop(plate, bg_rgb)
+    desktop = compose_filled(plate, bg_rgb, ICON_SIZE, FILL)
     desktop.save(OUT_PNG, "PNG", optimize=True)
     desktop.convert("RGB").save(OUT_ICO, sizes=ICO_SIZES)
 

@@ -2,6 +2,7 @@
   "name": "project-binder",
   "productName": "Project Binder",
   "version": "0.1.0",
+  "releaseName": "Pine",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -20,7 +21,8 @@
     "pb:fresh": "node scripts/run-pocketbase.cjs --wipe",
     "pb:fresh:commercial": "VITE_COMMERCIAL=true node scripts/run-pocketbase.cjs --wipe --commercial",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "release": "node scripts/release.cjs"
   },
   "dependencies": {
     "@tiptap/extension-highlight": "^3.31.4",

@@ -14,8 +14,12 @@ export { COVER_TAB_ID, newId, isSafePathId };
 
 export const STAGES = ["Backlog", "This week", "Today", "Tomorrow", "Next week"];
 export const APP_NAME = "Project Binder";
-/** Semver only — used for GitHub release update matching (`checkUpdate.js`). */
-export const APP_VERSION = "0.1.0";
+/** Semver from package.json via Vite define — used for GitHub release update matching. */
+export const APP_VERSION =
+  typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
+/** Tree codename from package.json `releaseName` via Vite define. */
+export const APP_RELEASE_NAME =
+  typeof __APP_RELEASE_NAME__ !== "undefined" ? __APP_RELEASE_NAME__ : "";
 /** Short git SHA from Vite `define` at build/dev; not part of update comparison. */
 export const APP_COMMIT = typeof __APP_COMMIT__ !== "undefined" ? __APP_COMMIT__ : "";
 

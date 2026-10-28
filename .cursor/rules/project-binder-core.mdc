@@ -30,3 +30,5 @@ API call (src/api.js) → applyWorkspace(data, opts) in App
 
 - Commit / push / amend / browser QA only when the user asks.
 - Verify with `npm run build` (or existing checks) after substantive edits.
+- **Never** run `fly deploy`. Use `npm run release` (needs `RELEASE_PROD_URL`).
+- Release prep: bump `package.json` `version` (+ new `releaseName` on minor/major), matching `CHANGELOG.md` heading, commit on `main`, then `npm run release`. Do not use `docs/releases.md` in the workflow.

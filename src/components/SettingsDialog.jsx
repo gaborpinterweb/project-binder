@@ -11,6 +11,7 @@ import {
 import {
   APP_NAME,
   APP_COMMIT,
+  APP_RELEASE_NAME,
   APP_VERSION,
   COUNTDOWN_DURATION_OPTIONS,
   STOPTIMER_MAX_OPTIONS_MIN,
@@ -750,6 +751,7 @@ export default function SettingsDialog({
                     <p className="settings-about-byline">
                       {isCommercialMode() ? "Commercial" : "Community"} build{" "}
                       {APP_VERSION}
+                      {APP_RELEASE_NAME ? ` · ${APP_RELEASE_NAME}` : ""}
                       {APP_COMMIT ? ` (${APP_COMMIT})` : ""}
                     </p>
                     <p className="settings-about-byline">

@@ -78,11 +78,16 @@ Local commercial with webhooks: export `POLAR_WEBHOOK_SECRET` before `npm run st
 
 Preferred hosted path (same Docker image keeps a **`/data` volume** across deploys so users/workspace survive new app versions). Config: [`fly.toml`](fly.toml) (Commercial build by default). Deploy from your machine with [flyctl](https://fly.io/docs/hands-on/install-flyctl/).
 
-1. `fly auth login`, then `fly apps create project-binder` (skip if the app already exists).
+**Do not run bare `fly deploy`.** Use the gated script:
+
+1. One-time: `fly auth login`, then `fly apps create project-binder` (skip if the app already exists).
 2. Create a volume once: `fly volumes create pb_data --region ams --size 3` (mount name must match `fly.toml`).
-3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL, e.g. `https://cloud.projectbinder.app`). Add Resend vars for verify/reset mail, and `POLAR_WEBHOOK_SECRET` for billing (`fly secrets set …`).
-4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Set `VITE_POLAR_CHECKOUT_URL` / `VITE_POLAR_PORTAL_URL` there or via `fly deploy --build-arg`.
-5. `fly deploy`. Open the public URL; register after migrations run. Point Polar webhooks at `/api/polar-webhook` (see Commercial billing above).
+3. Set secrets from [`deploy/fly.env.example`](deploy/fly.env.example): at least `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `APP_URL` (your public HTTPS URL). Add Resend vars for verify/reset mail, and `POLAR_WEBHOOK_SECRET` for billing (`fly secrets set …`).
+4. Commercial build-args (`VITE_COMMERCIAL=true`) are in `fly.toml`. Set `VITE_POLAR_CHECKOUT_URL` / `VITE_POLAR_PORTAL_URL` there or via Fly build-args when needed.
+5. Set the release target URL: copy [`deploy/release.env.example`](deploy/release.env.example) → `deploy/release.env` (gitignored) and set `RELEASE_PROD_URL` to your public origin (or export the same env var).
+6. Bump [`package.json`](package.json) `version` (and `releaseName` on a new minor/major), add a matching section in [`CHANGELOG.md`](CHANGELOG.md), commit on `main`, then run **`npm run release`**. The script runs e2e, asks you to type `deploy`, runs Fly deploy, and checks `${RELEASE_PROD_URL}/version.json`. First ship after `/version.json` exists may need `npm run release -- --force`.
+
+Open the public URL; register after migrations run. Point Polar webhooks at `/api/polar-webhook` (see Commercial billing above).
 
 Redeploys replace the image only; do **not** delete the volume unless you intend to wipe data. Keep a **single machine** (SQLite).
 

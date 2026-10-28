@@ -1,5 +1,5 @@
-# Project Binder — Fly.io (Commercial). Deploy locally: fly deploy
-# Attach volume once: fly volumes create pb_data --region ams --size 3
+# Project Binder — Fly.io (Commercial). Deploy via: npm run release
+# (not bare `fly deploy`). Attach volume once: fly volumes create pb_data --region ams --size 3
 
 app = "project-binder"
 primary_region = "ams"

@@ -125,7 +125,7 @@ Restore every HEAD capability on the web / PocketBase path:
 ### 4. Cloud
 
 - Deploy the same image / binary layout (one PocketBase process + volume for `pb_data`)
-- **Host: [Fly.io](https://fly.io)** — local `fly deploy`, attach a volume, expose one port; Commercial build-args in `fly.toml`
+- **Host: [Fly.io](https://fly.io)** — gated `npm run release` (not bare `fly deploy`), attach a volume, expose one port; Commercial build-args in `fly.toml`
 - Packaging in-repo: [`Dockerfile`](../Dockerfile), [`fly.toml`](../fly.toml), [`deploy/fly.env.example`](../deploy/fly.env.example), volume mount **`/data`** (survives redeploys)
 - Public signup; **email verification required** before login (client gate + Resend)
 - **Email: [Resend](https://resend.com)** — simplest transactional mail for **password reset + verification** only (`mail.env` locally or Fly secrets → configure on boot)

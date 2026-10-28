@@ -36,3 +36,11 @@ Unless the user asks otherwise:
 - Do **not** drive the browser for visual QA
 - Do **not** commit, push, or amend
 - Prefer `npm run build` to verify edits
+
+## Release / deploy
+
+- **Never** run `fly deploy` directly. Use **`npm run release`** (gates, e2e, confirm, deploy, verify).
+- Set **`RELEASE_PROD_URL`** (env or gitignored `deploy/release.env`; see `deploy/release.env.example`).
+- Prepare a release on `main` by bumping `package.json` `version` (and a **new** `releaseName` on minor/major), writing a matching `CHANGELOG.md` section `## [x.y.z] - YYYY-MM-DD (Name)`, committing, then running the script.
+- `--force` only for emergencies / first ship after `/version.json` exists on prod.
+- Ignore personal `docs/releases.md` if present (gitignored scratchpad; not part of the workflow).

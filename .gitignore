@@ -2,6 +2,11 @@ node_modules/
 dist/
 release/
 .npm-cache/
+# Personal scratchpad (tree name ideas); not part of release workflow
+/docs/releases.md
+# Local release target URL for npm run release
+/deploy/release.env
+
 .DS_Store
 *.log
 npm-debug.log*

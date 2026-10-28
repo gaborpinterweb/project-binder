@@ -11,17 +11,50 @@ function jsonFile(name, obj) {
   return new File([text], name, { type: "application/json" });
 }
 
+/**
+ * @returns {Promise<
+ *   | { status: "empty" }
+ *   | { status: "ok", data: unknown }
+ *   | { status: "error", error: Error }
+ * >}
+ */
 async function parseJsonFile(pb, record, field) {
   const name = record?.[field];
-  if (!name) return null;
+  if (!name) return { status: "empty" };
   const url = pb.files.getURL(record, name);
-  const res = await fetch(url);
-  if (!res.ok) return null;
+  let res;
   try {
-    return await res.json();
-  } catch {
-    return null;
+    res = await fetch(url);
+  } catch (err) {
+    return {
+      status: "error",
+      error: new Error(
+        `Could not load ${field}: ${err?.message || "network error"}`
+      ),
+    };
   }
+  if (!res.ok) {
+    return {
+      status: "error",
+      error: new Error(`Could not load ${field} (HTTP ${res.status})`),
+    };
+  }
+  try {
+    return { status: "ok", data: await res.json() };
+  } catch (err) {
+    return {
+      status: "error",
+      error: new Error(
+        `Could not parse ${field}: ${err?.message || "invalid JSON"}`
+      ),
+    };
+  }
+}
+
+function unwrapDoc(result) {
+  if (result.status === "error") throw result.error;
+  if (result.status === "empty") return null;
+  return result.data;
 }
 
 export async function ensureUserDataRecord() {
@@ -38,8 +71,8 @@ export async function ensureUserDataRecord() {
 export async function loadUserDocs() {
   const pb = getPb();
   const record = await ensureUserDataRecord();
-  const workspace = await parseJsonFile(pb, record, WS_FIELD);
-  const archive = await parseJsonFile(pb, record, ARCH_FIELD);
+  const workspace = unwrapDoc(await parseJsonFile(pb, record, WS_FIELD));
+  const archive = unwrapDoc(await parseJsonFile(pb, record, ARCH_FIELD));
   return { record, workspace, archive };
 }
 

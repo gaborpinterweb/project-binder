@@ -73,15 +73,21 @@ async function loadSeed() {
 async function bootstrapPbSession() {
   ensurePersistHook();
   const seed = await loadSeed();
+  // loadUserDocs throws on fetch/parse failure so we never seed-overwrite real files.
   const { workspace, archive } = await loadUserDocs();
   if (workspace && Number(workspace.version) >= 2) {
     workspaceEngine.loadFromWorkspaceDoc(workspace);
     workspaceEngine.loadFromArchiveDoc(archive || { version: 2, projects: [] });
-  } else {
+  } else if (workspace == null) {
+    // No workspace file yet (new account) — seed once.
     workspaceEngine.resetToSeed(seed);
     workspaceEngine.loadFromArchiveDoc({ version: 2, projects: [] });
     const docs = workspaceEngine.exportWorkspaceData();
     await saveUserDocs(docs);
+  } else {
+    throw new Error(
+      "Workspace file is present but not usable (unsupported or missing version). Not replacing it with demo data."
+    );
   }
 }
 
@@ -143,7 +149,11 @@ export default function Root() {
         navigatePath("/master-board", { replace: true });
       }
     } catch (err) {
-      setBootError(err?.message || String(err));
+      setBootError(
+        err?.message ||
+          String(err) ||
+          "Could not load your workspace. Try signing in again."
+      );
       setAuthed(false);
     } finally {
       setBooting(false);

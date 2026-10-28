@@ -454,7 +454,8 @@ export default function CardDialog({
   const curLocRef = useRef(curLoc);
   const originLocRef = useRef(originLoc);
   const confirmingRef = useRef(false);
-  draftRef.current = draft;
+  // Keep draftRef in sync only via setDraft updaters — a render-time
+  // `draftRef.current = draft` can clobber TipTap body patches still in flight.
   curLocRef.current = curLoc;
   originLocRef.current = originLoc;
   confirmingRef.current = confirming;
@@ -582,6 +583,8 @@ export default function CardDialog({
 
   const close = async (create) => {
     clearTimeout(persistTimer.current);
+    // Prefer draftRef — TipTap/meta patches may not have re-rendered yet.
+    const row = draftRef.current;
     if (readonly) {
       onClose({});
       return;
@@ -589,13 +592,13 @@ export default function CardDialog({
     if (isDraft) {
       if (create) {
         if (!curLoc || curLoc.mod[0] !== "Board") return;
-        if (!(draft.n || "").trim()) {
+        if (!(row.n || "").trim()) {
           alert("Add a task title first.");
           return;
         }
-        await onCreate(draft, curLoc);
+        await onCreate(row, curLoc);
       } else {
-        onClose({ draftRemember: draft, loc: curLoc });
+        onClose({ draftRemember: row, loc: curLoc });
         return;
       }
       onClose({ created: true });

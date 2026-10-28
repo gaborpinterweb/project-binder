@@ -1,11 +1,21 @@
 import { expect, test } from "@playwright/test";
 import {
+  FIXTURES,
+  addCardMeta,
   addTaskNamed,
   addTasksTab,
+  addToCard,
   boardColumn,
   createUserProject,
+  ensureTaskDescription,
   enterApp,
+  closeTaskDialog,
+  fillRichTaskDescription,
   openFreshTasksBoard,
+  openTaskCard,
+  startNewTaskInColumn,
+  submitNewTask,
+  taskDialog,
 } from "./helpers.js";
 
 test.describe("Tasks", () => {
@@ -50,10 +60,90 @@ test.describe("Tasks", () => {
     await openFreshTasksBoard(page);
     await addTaskNamed(page, "Open me");
 
-    await page.locator(".card", { hasText: "Open me" }).click();
+    await openTaskCard(page, "Open me");
 
-    const title = page.locator(".ov-top .dlg textarea.title");
+    const title = taskDialog(page).locator("textarea.title");
     await expect(title).toBeVisible();
     await expect(title).toHaveValue("Open me");
+  });
+
+  test("should be able to add a task with rich description, effort and impact", async ({
+    page,
+  }) => {
+    await openFreshTasksBoard(page);
+    await startNewTaskInColumn(page);
+    await page.getByPlaceholder("New task...").fill("Rich task");
+
+    await fillRichTaskDescription(page);
+    await addCardMeta(page, "effort", "High");
+    await addCardMeta(page, "impact", "Medium");
+    await submitNewTask(page);
+
+    const card = page.locator(".card", { hasText: "Rich task" });
+    await expect(card).toBeVisible();
+    await expect(card.getByRole("button", { name: "Change effort" })).toBeVisible();
+    await expect(card.getByRole("button", { name: "Change impact" })).toBeVisible();
+
+    await openTaskCard(page, "Rich task");
+    const dlg = taskDialog(page);
+    await expect(dlg.getByText("High effort", { exact: true })).toBeVisible();
+    await expect(dlg.getByText("Medium impact", { exact: true })).toBeVisible();
+    await expect(dlg.locator(".ProseMirror h1")).toContainText("Overview");
+    await expect(dlg.locator(".ProseMirror ul").first()).toContainText("Bullet one");
+    await expect(dlg.locator(".ProseMirror ol")).toContainText("Step one");
+    await expect(dlg.locator('.ProseMirror ul[data-type="taskList"]')).toContainText(
+      "Check me"
+    );
+  });
+
+  test("should be able to add a task with an image in the description", async ({
+    page,
+  }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Image task");
+    await openTaskCard(page, "Image task");
+    await ensureTaskDescription(page);
+
+    const dlg = taskDialog(page);
+    // Caption required — image-only bodies count as empty and hide the editor.
+    await dlg.locator(".ProseMirror").click();
+    await page.keyboard.type("See screenshot");
+    const [chooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      dlg.getByRole("button", { name: "Insert image" }).click(),
+    ]);
+    await chooser.setFiles(FIXTURES.image);
+    await expect(dlg.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+    await dlg.locator("textarea.title").click();
+
+    await closeTaskDialog(page);
+    await openTaskCard(page, "Image task");
+    const open = taskDialog(page);
+    await expect(open.locator(".ProseMirror")).toContainText("See screenshot");
+    await expect(open.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+  });
+
+  test("should be able to add a task with two files", async ({ page }) => {
+    await openFreshTasksBoard(page);
+    await startNewTaskInColumn(page);
+    await page.getByPlaceholder("New task...").fill("Files task");
+
+    const dlg = taskDialog(page);
+    const [chooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      addToCard(page, "File"),
+    ]);
+    await chooser.setFiles([FIXTURES.fileA, FIXTURES.fileB]);
+
+    await expect(dlg.locator(".card-file-chip")).toHaveCount(2);
+    await expect(dlg.getByTitle("brief-a.txt")).toBeVisible();
+    await expect(dlg.getByTitle("brief-b.txt")).toBeVisible();
+
+    await submitNewTask(page);
+    await openTaskCard(page, "Files task");
+    const open = taskDialog(page);
+    await expect(open.locator(".card-file-chip")).toHaveCount(2);
+    await expect(open.getByTitle("brief-a.txt")).toBeVisible();
+    await expect(open.getByTitle("brief-b.txt")).toBeVisible();
   });
 });

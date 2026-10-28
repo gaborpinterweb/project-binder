@@ -1,5 +1,14 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { createVerifiedUser } from "./pbAdmin.js";
+
+const E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const FIXTURES = {
+  image: path.join(E2E_DIR, "fixtures", "sample.png"),
+  fileA: path.join(E2E_DIR, "fixtures", "brief-a.txt"),
+  fileB: path.join(E2E_DIR, "fixtures", "brief-b.txt"),
+};
 
 /** Active (non-archived) demo projects from seedWorkspace.json. */
 export const DEMO_PROJECTS = [
@@ -128,4 +137,89 @@ export async function addTaskNamed(page, title, columnName = "Idea") {
   await page.getByPlaceholder("New task...").fill(title);
   await page.locator(".ov-top .dlg-create").click();
   await expect(page.locator(".card-name", { hasText: title })).toBeVisible();
+}
+
+export function taskDialog(page) {
+  return page.locator(".ov-top .dlg").first();
+}
+
+export async function openTaskCard(page, title) {
+  await page.locator(".card", { hasText: title }).click();
+  await expect(taskDialog(page).locator("textarea.title")).toBeVisible();
+}
+
+/** Open the + Add to card menu and pick a top-level item (Description / File). */
+export async function addToCard(page, menuItemName) {
+  const dlg = taskDialog(page);
+  await dlg.getByRole("button", { name: "Add to card" }).click();
+  await dlg.getByRole("menuitem", { name: menuItemName, exact: true }).click();
+}
+
+/** Pick Effort or Impact level from the Add-to-card submenu. */
+export async function addCardMeta(page, kind, level) {
+  const label = kind === "effort" ? "Effort" : "Impact";
+  const dlg = taskDialog(page);
+  await dlg.getByRole("button", { name: "Add to card" }).click();
+  const sub = dlg.locator(".card-add-sub").filter({
+    has: page.getByRole("menuitem", { name: label, exact: true }),
+  });
+  await sub.getByRole("menuitem", { name: label, exact: true }).hover();
+  await expect(sub.locator(".card-add-sub-menu")).toBeVisible();
+  await sub.locator(".card-add-sub-menu").getByRole("menuitem", { name: level, exact: true }).click();
+  const chip = kind === "effort" ? `${level} effort` : `${level} impact`;
+  await expect(dlg.getByText(chip, { exact: true })).toBeVisible();
+}
+
+export async function ensureTaskDescription(page) {
+  const dlg = taskDialog(page);
+  if (await dlg.locator(".ProseMirror").count()) return;
+  await addToCard(page, "Description");
+  await expect(dlg.locator(".ProseMirror")).toBeVisible();
+}
+
+/** Type rich blocks into the open task description editor. */
+export async function fillRichTaskDescription(page) {
+  const dlg = taskDialog(page);
+  await ensureTaskDescription(page);
+  const editor = dlg.locator(".ProseMirror");
+
+  await editor.click();
+  await dlg.getByRole("button", { name: "Heading 1" }).click();
+  await page.keyboard.type("Overview");
+  await expect(editor.locator("h1")).toContainText("Overview");
+  await page.keyboard.press("Enter");
+
+  await dlg.getByRole("button", { name: "List", exact: true }).click();
+  await page.keyboard.type("Bullet one");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Bullet two");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(editor.locator("ul").first()).toContainText("Bullet one");
+
+  await dlg.getByRole("button", { name: "Numbered list" }).click();
+  await page.keyboard.type("Step one");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Step two");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(editor.locator("ol")).toContainText("Step one");
+
+  await dlg.getByRole("button", { name: "Checklist" }).click();
+  await page.keyboard.type("Check me");
+  await expect(editor.locator('ul[data-type="taskList"]')).toContainText("Check me");
+
+  // Blur editor so the last TipTap onUpdate is committed before create/persist.
+  await dlg.locator("textarea.title").click();
+}
+
+export async function submitNewTask(page) {
+  await page.locator(".ov-top .dlg-create").click();
+  await expect(page.locator(".ov-top .dlg")).toHaveCount(0);
+}
+
+/** Close an existing (non-draft) task dialog and wait for it to persist away. */
+export async function closeTaskDialog(page) {
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".ov-top .dlg")).toHaveCount(0);
 }

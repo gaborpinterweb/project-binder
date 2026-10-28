@@ -12,6 +12,7 @@ import {
   closeTaskDialog,
   fillRichTaskDescription,
   openFreshTasksBoard,
+  openMasterBoard,
   openTaskCard,
   startNewTaskInColumn,
   submitNewTask,
@@ -145,5 +146,18 @@ test.describe("Tasks", () => {
     await expect(open.locator(".card-file-chip")).toHaveCount(2);
     await expect(open.getByTitle("brief-a.txt")).toBeVisible();
     await expect(open.getByTitle("brief-b.txt")).toBeVisible();
+  });
+
+  test("should see tasks from both projects on Master board", async ({ page }) => {
+    await openFreshTasksBoard(page, "Project A");
+    await addTaskNamed(page, "Task from A");
+
+    await createUserProject(page, "Project B", { clearDemos: false });
+    await addTasksTab(page);
+    await addTaskNamed(page, "Task from B");
+
+    await openMasterBoard(page);
+    await expect(page.locator(".card-name", { hasText: "Task from A" })).toBeVisible();
+    await expect(page.locator(".card-name", { hasText: "Task from B" })).toBeVisible();
   });
 });

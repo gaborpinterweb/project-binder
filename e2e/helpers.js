@@ -96,9 +96,16 @@ export async function leaveDemoProjects(page, count) {
   await expect(projectList(page).getByRole("button")).toHaveCount(count);
 }
 
-/** Empty binder + one user project (no demos). */
-export async function createUserProject(page, name = "Tasks Lab") {
-  await leaveDemoProjects(page, 0);
+/**
+ * Create a user project. By default clears seed demos first (empty binder).
+ * Pass `{ clearDemos: false }` when adding another project in the same session.
+ */
+export async function createUserProject(
+  page,
+  name = "Tasks Lab",
+  { clearDemos = true } = {}
+) {
+  if (clearDemos) await leaveDemoProjects(page, 0);
   await page.getByRole("button", { name: "New project" }).click();
   await expect(page.getByPlaceholder("Project name...")).toBeVisible();
   await page.getByPlaceholder("Project name...").fill(name);
@@ -106,6 +113,11 @@ export async function createUserProject(page, name = "Tasks Lab") {
   await expect(
     projectList(page).getByRole("button", { name, exact: true })
   ).toBeVisible();
+}
+
+export async function openMasterBoard(page) {
+  await page.getByRole("button", { name: "Master board" }).click();
+  await expect(page.locator(".board")).toBeVisible();
 }
 
 /** Add a Tasks (Board) tab on the current project and wait for the board. */

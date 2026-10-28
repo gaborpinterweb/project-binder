@@ -6,6 +6,10 @@ release/
 *.log
 npm-debug.log*
 userWorkspace.json
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 # PocketBase runtime + binary; keep committed migrations, hooks, mail example
 /pocketbase/*
 !/pocketbase/pb_migrations/

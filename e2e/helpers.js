@@ -86,3 +86,46 @@ export async function leaveDemoProjects(page, count) {
   }
   await expect(projectList(page).getByRole("button")).toHaveCount(count);
 }
+
+/** Empty binder + one user project (no demos). */
+export async function createUserProject(page, name = "Tasks Lab") {
+  await leaveDemoProjects(page, 0);
+  await page.getByRole("button", { name: "New project" }).click();
+  await expect(page.getByPlaceholder("Project name...")).toBeVisible();
+  await page.getByPlaceholder("Project name...").fill(name);
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(
+    projectList(page).getByRole("button", { name, exact: true })
+  ).toBeVisible();
+}
+
+/** Add a Tasks (Board) tab on the current project and wait for the board. */
+export async function addTasksTab(page) {
+  await page.locator("#add").click();
+  await page.locator("#menu").getByRole("button", { name: /Tasks/ }).click();
+  await expect(page.locator("#tabs .tab", { hasText: "Tasks" })).toBeVisible();
+  await expect(page.locator(".board")).toBeVisible();
+}
+
+export async function openFreshTasksBoard(page, projectName = "Tasks Lab") {
+  await enterApp(page);
+  await createUserProject(page, projectName);
+  await addTasksTab(page);
+}
+
+export function boardColumn(page, name) {
+  return page.locator(`.col[data-col="${name}"]`);
+}
+
+/** Double-click empty column body to open the new-task dialog. */
+export async function startNewTaskInColumn(page, columnName = "Idea") {
+  await boardColumn(page, columnName).locator(".col-body").dblclick();
+  await expect(page.getByPlaceholder("New task...")).toBeVisible();
+}
+
+export async function addTaskNamed(page, title, columnName = "Idea") {
+  await startNewTaskInColumn(page, columnName);
+  await page.getByPlaceholder("New task...").fill(title);
+  await page.locator(".ov-top .dlg-create").click();
+  await expect(page.locator(".card-name", { hasText: title })).toBeVisible();
+}

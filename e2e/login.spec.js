@@ -4,25 +4,7 @@ import {
   createVerifiedUser,
   markUserVerified,
 } from "./pbAdmin.js";
-
-function uniqueEmail() {
-  return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-}
-
-async function signIn(page, email, password) {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-}
-
-async function dismissOnboarding(page) {
-  const dialog = page.getByRole("dialog", { name: /Project Binder welcome/ });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Next", exact: true }).click();
-  await dialog.getByRole("button", { name: "Let's go" }).click();
-  await expect(dialog).toHaveCount(0);
-}
+import { dismissOnboarding, signIn, uniqueEmail } from "./helpers.js";
 
 test.describe("Login", () => {
   test("user can sign up and see verification pending", async ({ page }) => {

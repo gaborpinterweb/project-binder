@@ -6,6 +6,9 @@ const baseURL = `http://127.0.0.1:${port}`;
 process.env.E2E_PB_PORT ||= port;
 process.env.E2E_ADMIN_EMAIL ||= "e2e-admin@example.com";
 process.env.E2E_ADMIN_PASSWORD ||= "e2e-admin-password";
+process.env.E2E_POLAR_CHECKOUT_URL ||= "https://buy.polar.sh/e2e-test-checkout";
+process.env.E2E_POLAR_PORTAL_URL ||= "https://polar.sh/e2e/portal";
+process.env.E2E_POLAR_WEBHOOK_SECRET ||= "e2e_polar_webhook_secret";
 
 export default defineConfig({
   testDir: "e2e",
@@ -29,6 +32,9 @@ export default defineConfig({
       E2E_PB_PORT: port,
       E2E_ADMIN_EMAIL: process.env.E2E_ADMIN_EMAIL,
       E2E_ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD,
+      E2E_POLAR_CHECKOUT_URL: process.env.E2E_POLAR_CHECKOUT_URL,
+      E2E_POLAR_PORTAL_URL: process.env.E2E_POLAR_PORTAL_URL,
+      E2E_POLAR_WEBHOOK_SECRET: process.env.E2E_POLAR_WEBHOOK_SECRET,
     },
   },
 });

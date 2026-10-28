@@ -94,9 +94,9 @@ export async function createVerifiedUser(email, password) {
 }
 
 /** Superuser patch of billing entitlement (Commercial Free vs Pro). */
-export async function setUserPro(email, pro = true) {
+async function findUserByEmail(email) {
   const addr = String(email || "").trim();
-  if (!addr) throw new Error("setUserPro: email required");
+  if (!addr) throw new Error("findUserByEmail: email required");
   const token = await superuserToken();
   const headers = {
     Authorization: token,
@@ -107,9 +107,19 @@ export async function setUserPro(email, pro = true) {
     `${pbBaseUrl()}/api/collections/users/records?filter=${filter}&perPage=1`,
     { headers }
   );
-  const id = list?.items?.[0]?.id;
-  if (!id) throw new Error(`setUserPro: no user for ${addr}`);
-  await jsonFetch(`${pbBaseUrl()}/api/collections/users/records/${id}`, {
+  const record = list?.items?.[0];
+  if (!record?.id) throw new Error(`findUserByEmail: no user for ${addr}`);
+  return { token, headers, record };
+}
+
+export async function getUserByEmail(email) {
+  const { record } = await findUserByEmail(email);
+  return record;
+}
+
+export async function setUserPro(email, pro = true) {
+  const { headers, record } = await findUserByEmail(email);
+  await jsonFetch(`${pbBaseUrl()}/api/collections/users/records/${record.id}`, {
     method: "PATCH",
     headers,
     body: JSON.stringify({

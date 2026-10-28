@@ -22,7 +22,13 @@ const HTTP = `http://${HOST}:${PORT}`;
 /** E2E-only superuser (not used by npm start / Docker / Fly). */
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "e2e-admin@example.com";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "e2e-admin-password";
-
+/** Commercial billing fixtures for e2e (not production secrets). */
+const POLAR_CHECKOUT_URL =
+  process.env.E2E_POLAR_CHECKOUT_URL || "https://buy.polar.sh/e2e-test-checkout";
+const POLAR_PORTAL_URL =
+  process.env.E2E_POLAR_PORTAL_URL || "https://polar.sh/e2e/portal";
+const POLAR_WEBHOOK_SECRET =
+  process.env.E2E_POLAR_WEBHOOK_SECRET || "e2e_polar_webhook_secret";
 
 function runNode(script, args = []) {
   const r = spawnSync(process.execPath, [script, ...args], {
@@ -32,9 +38,13 @@ function runNode(script, args = []) {
   if (r.status !== 0) process.exit(r.status || 1);
 }
 
-function runNpm(args) {
+function runNpm(args, extraEnv = {}) {
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-  const r = spawnSync(npm, args, { cwd: ROOT, stdio: "inherit" });
+  const r = spawnSync(npm, args, {
+    cwd: ROOT,
+    stdio: "inherit",
+    env: { ...process.env, ...extraEnv },
+  });
   if (r.status !== 0) process.exit(r.status || 1);
 }
 
@@ -66,11 +76,14 @@ function upsertSuperuser() {
 
 runNode(path.join(__dirname, "fetch-pocketbase.cjs"));
 
-// Commercial build so Free-tier paywall limits are exercised in e2e.
+// Commercial build so Free-tier paywall limits + Polar checkout URL are exercised.
 if (process.env.E2E_SKIP_BUILD === "1" && fs.existsSync(path.join(DIST, "index.html"))) {
-  console.log("E2E_SKIP_BUILD=1 — reusing existing dist/ (expect Commercial build)");
+  console.log("E2E_SKIP_BUILD=1 — reusing existing dist/ (expect Commercial + Polar URLs)");
 } else {
-  runNpm(["run", "build:commercial"]);
+  runNpm(["run", "build:commercial"], {
+    VITE_POLAR_CHECKOUT_URL: POLAR_CHECKOUT_URL,
+    VITE_POLAR_PORTAL_URL: POLAR_PORTAL_URL,
+  });
 }
 
 if (!fs.existsSync(path.join(DIST, "index.html"))) {
@@ -102,7 +115,14 @@ if (fs.existsSync(HOOKS)) {
 console.log(`E2E PocketBase: ${HTTP}`);
 console.log(`Data: ${DATA}`);
 
-const child = spawn(BIN_PATH, serveArgs, { cwd: PB_DIR, stdio: "inherit" });
+const child = spawn(BIN_PATH, serveArgs, {
+  cwd: PB_DIR,
+  stdio: "inherit",
+  env: {
+    ...process.env,
+    POLAR_WEBHOOK_SECRET,
+  },
+});
 
 child.on("exit", (code, signal) => {
   if (signal) process.kill(process.pid, signal);

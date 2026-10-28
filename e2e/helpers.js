@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
-import { createVerifiedUser } from "./pbAdmin.js";
+import { createVerifiedUser, setUserPro } from "./pbAdmin.js";
 
 const E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURES = {
@@ -36,16 +36,51 @@ export async function dismissOnboarding(page) {
   await expect(dialog).toHaveCount(0);
 }
 
-/** Fresh verified account, signed in, onboarding dismissed. */
-export async function enterApp(page) {
+/**
+ * Fresh verified account, signed in, onboarding dismissed.
+ * @param {{ pro?: boolean }} [opts] — Commercial Pro entitlement (for share / limits).
+ */
+export async function enterApp(page, { pro = false } = {}) {
   const email = uniqueEmail();
   const password = "password123";
   await createVerifiedUser(email, password);
+  if (pro) await setUserPro(email, true);
   await signIn(page, email, password);
   await dismissOnboarding(page);
   await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
   await expect(projectList(page).getByRole("button")).toHaveCount(DEMO_PROJECTS.length);
   return { email, password };
+}
+
+export async function openTabOptions(page) {
+  await page
+    .locator('button.tab-more-btn[aria-label="Tab options"]:not([disabled])')
+    .click();
+}
+
+/** Enable “Public read-only link” in an open Sharing dialog; returns the public URL. */
+export async function enablePublicShare(page, targetName) {
+  const sharing = page.getByRole("dialog", {
+    name: `Sharing for ${targetName}`,
+  });
+  await expect(sharing).toBeVisible();
+  await sharing.getByRole("radio", { name: "Public read-only link" }).click();
+  const link = sharing.locator("a.sharing-link-anchor");
+  await expect(link).toBeVisible();
+  const url = await link.getAttribute("href");
+  expect(url).toMatch(/\/share\//);
+  return { sharing, url };
+}
+
+export async function disablePublicShare(page, targetName) {
+  const sharing = page.getByRole("dialog", {
+    name: `Sharing for ${targetName}`,
+  });
+  await expect(sharing).toBeVisible();
+  await sharing.getByRole("radio", { name: "No sharing" }).click();
+  await expect(sharing.locator("a.sharing-link-anchor")).toHaveCount(0);
+  await sharing.getByRole("button", { name: "Done" }).click();
+  await expect(sharing).toHaveCount(0);
 }
 
 export function projectList(page) {

@@ -92,3 +92,29 @@ export async function createVerifiedUser(email, password) {
   await createUnverifiedUser(email, password);
   await markUserVerified(email);
 }
+
+/** Superuser patch of billing entitlement (Commercial Free vs Pro). */
+export async function setUserPro(email, pro = true) {
+  const addr = String(email || "").trim();
+  if (!addr) throw new Error("setUserPro: email required");
+  const token = await superuserToken();
+  const headers = {
+    Authorization: token,
+    "Content-Type": "application/json",
+  };
+  const filter = encodeURIComponent(`email="${addr.replace(/"/g, '\\"')}"`);
+  const list = await jsonFetch(
+    `${pbBaseUrl()}/api/collections/users/records?filter=${filter}&perPage=1`,
+    { headers }
+  );
+  const id = list?.items?.[0]?.id;
+  if (!id) throw new Error(`setUserPro: no user for ${addr}`);
+  await jsonFetch(`${pbBaseUrl()}/api/collections/users/records/${id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      pro: !!pro,
+      proStatus: pro ? "active" : "",
+    }),
+  });
+}

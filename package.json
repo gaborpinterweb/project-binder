@@ -1,7 +1,7 @@
 {
   "name": "project-binder",
   "productName": "Project Binder",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "releaseName": "Pine",
   "private": true,
   "license": "MIT",

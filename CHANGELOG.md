@@ -9,8 +9,8 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-28 (Pine)
+## [1.0.0] - 2026-10-28 (Pine)
 
 ### Added
 
-- Initial public baseline for gated Fly releases (`version.json`, `npm run release`).
+- Initial public 1.0 baseline with gated Fly releases (`version.json`, `npm run release`).

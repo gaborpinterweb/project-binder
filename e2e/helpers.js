@@ -262,3 +262,84 @@ export async function closeTaskDialog(page) {
   await page.keyboard.press("Escape");
   await expect(page.locator(".ov-top .dlg")).toHaveCount(0);
 }
+
+export function addTimelogDialog(page) {
+  return page.getByRole("dialog", { name: "Add timelog" });
+}
+
+export function editTimelogDialog(page) {
+  return page.getByRole("dialog", { name: "Edit timelog" });
+}
+
+/** Open Add to card → Timelogs → Add timelog manually (task dialog open). */
+export async function openAddManualTimelogFromTask(page) {
+  const dlg = taskDialog(page);
+  await dlg.getByRole("button", { name: "Add to card" }).click();
+  const sub = dlg.locator(".card-add-sub").filter({
+    has: page.getByRole("menuitem", { name: "Timelogs", exact: true }),
+  });
+  await sub.getByRole("menuitem", { name: "Timelogs", exact: true }).hover();
+  await expect(sub.locator(".card-add-sub-menu")).toBeVisible();
+  await sub
+    .locator(".card-add-sub-menu")
+    .getByRole("menuitem", { name: "Add timelog manually" })
+    .click();
+  await expect(addTimelogDialog(page)).toBeVisible();
+}
+
+export async function submitTimelogDialog(page, { minutes, note } = {}) {
+  const dlg = page.getByRole("dialog", { name: /^(Add|Edit) timelog$/ });
+  if (note != null) await dlg.getByLabel("Note").fill(note);
+  if (minutes != null) {
+    await dlg.getByLabel("Minutes").fill(String(minutes));
+  }
+  const submit = dlg.getByRole("button", { name: /^(Add|Save)$/ });
+  await submit.click();
+  await expect(dlg).toHaveCount(0);
+}
+
+/** Add a manual timelog on the open task; returns after the card list reloads. */
+export async function addManualTimelogOnOpenTask(page, { minutes = 45, note = "E2E log" } = {}) {
+  await openAddManualTimelogFromTask(page);
+  await submitTimelogDialog(page, { minutes, note });
+  const dlg = taskDialog(page);
+  await expect(dlg.locator(".dlg-timelog-list .dlg-timelog-item")).toHaveCount(1);
+  await expect(dlg.locator(".dlg-timelog-dur").first()).toHaveText(`${minutes}m`);
+  if (note) {
+    await expect(dlg.locator(".dlg-timelog-note").first()).toHaveText(note);
+  }
+}
+
+export async function openTimelogsView(page) {
+  await page.locator("#globals").getByRole("button", { name: "Timelogs" }).click();
+  await expect(page.locator(".log.timelogs")).toBeVisible();
+}
+
+export function timelogRow(page, taskTitle) {
+  return page.locator(".timelog-row", {
+    has: page.locator(".card-name", { hasText: taskTitle }),
+  });
+}
+
+/** Edit the first card-dialog timelog via ⋮ → Edit. */
+export async function editFirstCardTimelog(page, { minutes, note } = {}) {
+  const dlg = taskDialog(page);
+  const item = dlg.locator(".dlg-timelog-list .dlg-timelog-item").first();
+  await item.getByRole("button", { name: "Timelog options" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await expect(editTimelogDialog(page)).toBeVisible();
+  await submitTimelogDialog(page, { minutes, note });
+}
+
+/** Delete the first card-dialog timelog via ⋮ → Delete → confirm. */
+export async function deleteFirstCardTimelog(page) {
+  const dlg = taskDialog(page);
+  const item = dlg.locator(".dlg-timelog-list .dlg-timelog-item").first();
+  await item.getByRole("button", { name: "Timelog options" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await expect(dlg.locator(".dlg-timelog-list")).toHaveCount(0);
+}

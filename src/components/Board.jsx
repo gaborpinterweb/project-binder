@@ -97,6 +97,8 @@ const BOARD_SORT_PROJECT_OPTION = {
 };
 
 const DRAG_THRESHOLD_PX = 6;
+/** Touch must hold still this long before a card drag can start (lets the board scroll). */
+const TOUCH_DRAG_HOLD_MS = 1000;
 
 function getCompletedView(scope, completedViewByScope) {
   if (completedViewByScope.has(scope)) {
@@ -181,6 +183,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
   const cleanup = useCallback(() => {
     const session = sessionRef.current;
     if (session) {
+      if (session.holdTimer != null) window.clearTimeout(session.holdTimer);
       window.removeEventListener("pointermove", session.onMove);
       window.removeEventListener("pointerup", session.onUp);
       window.removeEventListener("pointercancel", session.onUp);
@@ -203,6 +206,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
 
       movedRef.current = false;
       const rect = e.currentTarget.getBoundingClientRect();
+      const needsHold = e.pointerType === "touch";
       const session = {
         payload,
         key,
@@ -213,47 +217,66 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         offsetY: e.clientY - rect.top,
         pointerId: e.pointerId,
         started: false,
+        holdTimer: null,
+        movePassive: false,
         height: Math.round(rect.height),
         width: Math.round(rect.width),
       };
 
-      session.onMove = (ev) => {
-        if (ev.pointerId !== session.pointerId) return;
-        const dist = Math.hypot(ev.clientX - session.x, ev.clientY - session.y);
-        if (!session.started) {
-          if (dist < DRAG_THRESHOLD_PX) return;
-          session.started = true;
-          movedRef.current = true;
-          const row = payload.row || payload;
-          const folder = payload.folder;
-          const color =
-            payload.color || folder?.color || PC[0];
-          // payload.src comes from the card (View settings).
-          const src = payload.src || "";
-          setDragKey(key);
-          setDragHeight(session.height);
-          setDragPreview({
-            width: session.width,
-            height: session.height,
-            color,
-            done: isDone(row),
-            impact: payload.impact || row.impact || "",
-            effort: payload.effort || row.effort || "",
-            files: payload.files || row.files,
-            metaShow: payload.metaShow || null,
-            timerActive: !!payload.timerActive,
-            title: row.n || "Untitled",
-            src,
-            spentSec: payload.spentSec || 0,
-            x: ev.clientX - session.offsetX,
-            y: ev.clientY - session.offsetY,
-          });
-          document.body.classList.add("is-card-dragging");
-        } else {
-          movePreview(ev.clientX, ev.clientY, session);
+      const beginDrag = (clientX, clientY) => {
+        if (session.started) return;
+        session.started = true;
+        movedRef.current = true;
+        const row = payload.row || payload;
+        const folder = payload.folder;
+        const color = payload.color || folder?.color || PC[0];
+        // payload.src comes from the card (View settings).
+        const src = payload.src || "";
+        setDragKey(key);
+        setDragHeight(session.height);
+        setDragPreview({
+          width: session.width,
+          height: session.height,
+          color,
+          done: isDone(row),
+          impact: payload.impact || row.impact || "",
+          effort: payload.effort || row.effort || "",
+          files: payload.files || row.files,
+          metaShow: payload.metaShow || null,
+          timerActive: !!payload.timerActive,
+          title: row.n || "Untitled",
+          src,
+          spentSec: payload.spentSec || 0,
+          x: clientX - session.offsetX,
+          y: clientY - session.offsetY,
+        });
+        document.body.classList.add("is-card-dragging");
+        setHint(findDropTarget(clientX, clientY));
+      };
+
+      const bindMove = (passive) => {
+        if (session.onMove) {
+          window.removeEventListener("pointermove", session.onMove);
         }
-        ev.preventDefault();
-        setHint(findDropTarget(ev.clientX, ev.clientY));
+        session.movePassive = passive;
+        session.onMove = (ev) => {
+          if (ev.pointerId !== session.pointerId) return;
+          const dist = Math.hypot(ev.clientX - session.x, ev.clientY - session.y);
+          if (!session.started) {
+            if (session.movePassive) {
+              // Hold phase: abort if the finger moved (user is scrolling).
+              if (dist >= DRAG_THRESHOLD_PX) cleanup();
+              return;
+            }
+            if (dist < DRAG_THRESHOLD_PX) return;
+            beginDrag(ev.clientX, ev.clientY);
+          } else {
+            movePreview(ev.clientX, ev.clientY, session);
+            setHint(findDropTarget(ev.clientX, ev.clientY));
+          }
+          if (!session.movePassive) ev.preventDefault();
+        };
+        window.addEventListener("pointermove", session.onMove, { passive });
       };
 
       session.onUp = (ev) => {
@@ -266,9 +289,26 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
       };
 
       sessionRef.current = session;
-      window.addEventListener("pointermove", session.onMove, { passive: false });
       window.addEventListener("pointerup", session.onUp);
       window.addEventListener("pointercancel", session.onUp);
+
+      if (needsHold) {
+        // Passive move only — a non-passive window listener would block scroll.
+        bindMove(true);
+        session.holdTimer = window.setTimeout(() => {
+          session.holdTimer = null;
+          if (sessionRef.current !== session || session.started) return;
+          bindMove(false);
+          beginDrag(session.x, session.y);
+          try {
+            navigator.vibrate?.(10);
+          } catch {
+            /* ignore */
+          }
+        }, TOUCH_DRAG_HOLD_MS);
+      } else {
+        bindMove(false);
+      }
     },
     [boardEdit, cleanup, movePreview, setHint]
   );

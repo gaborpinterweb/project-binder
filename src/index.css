@@ -830,6 +830,11 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .card-timelog-menu .card-ctx-add-sub:hover > .card-ctx-add-sub-menu,.card-timelog-menu .card-ctx-add-sub:focus-within > .card-ctx-add-sub-menu{display:block}
 .timelog-row .timelog-card{margin:0;padding:5px 10px}
 .board .card{cursor:grab;touch-action:none;user-select:none}
+/* Coarse pointers: allow board/column scroll until long-press starts a drag. */
+@media (pointer: coarse){
+  .board .card{touch-action:pan-x pan-y}
+  body.is-card-dragging .board .card{touch-action:none}
+}
 .board .card:active,.board .card.dragging,.is-card-dragging{cursor:grabbing}
 .board .card.dragging{display:none}
 .drop-shadow{flex:none;height:42px;margin-bottom:8px;border-radius:10px;background:color-mix(in srgb,var(--ink) 9%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent);pointer-events:none}

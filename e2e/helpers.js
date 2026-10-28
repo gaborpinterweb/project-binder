@@ -1,6 +1,10 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
+import JSZip from "jszip";
+import { FREE_STORAGE_BYTES } from "../src/billingLimits.js";
 import { createVerifiedUser, setUserPro } from "./pbAdmin.js";
 
 const E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -454,4 +458,99 @@ export async function startStopwatchFromOpenTask(page) {
 export async function stopSidebarTimer(page) {
   await page.locator("#pomo-stop").click();
   await expect(pomoBlock(page)).toHaveCount(0);
+}
+
+/**
+ * Export workspace, attach synthetic card-file meta with a large `size`, import back.
+ * Quota math uses metadata sizes; no real multi-MB blob is written.
+ * Call with at least one board card already present.
+ */
+export async function inflateWorkspaceAttachmentQuota(
+  page,
+  // Leave ~1 KiB under Free cap so a tiny real upload tips Free over; JSON meta also counts.
+  bytes = FREE_STORAGE_BYTES - 1024
+) {
+  await page.getByRole("button", { name: "Settings" }).click();
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings).toBeVisible();
+  await settings.getByRole("tab", { name: "Data" }).click();
+
+  const downloadPromise = page.waitForEvent("download", { timeout: 15_000 });
+  await settings.getByRole("button", { name: "Export" }).click();
+  const download = await downloadPromise;
+  const zipPath = path.join(os.tmpdir(), `pb-e2e-quota-${Date.now()}.zip`);
+  await download.saveAs(zipPath);
+
+  const zip = await JSZip.loadAsync(fs.readFileSync(zipPath));
+  fs.unlinkSync(zipPath);
+  const wsName = "userWorkspace.json";
+  const wsText = await zip.file(wsName)?.async("string");
+  if (!wsText) throw new Error("inflateWorkspaceAttachmentQuota: missing workspace");
+  const ws = JSON.parse(wsText);
+
+  let patched = false;
+  for (const project of ws.projects || []) {
+    for (const board of project.boards || []) {
+      const card = (board.cards || [])[0];
+      if (!card) continue;
+      card.files = [
+        {
+          id: "quotaPad0001",
+          name: "quota-pad.bin",
+          mime: "application/octet-stream",
+          size: bytes,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      patched = true;
+      break;
+    }
+    if (patched) break;
+  }
+  if (!patched) {
+    throw new Error(
+      "inflateWorkspaceAttachmentQuota: no board card found to attach quota pad"
+    );
+  }
+
+  zip.file(wsName, `${JSON.stringify(ws, null, 2)}\n`);
+  const out = await zip.generateAsync({ type: "nodebuffer" });
+
+  // Match export-import: close Settings then reopen before choosing the zip.
+  await page.keyboard.press("Escape");
+  await expect(settings).toHaveCount(0);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(settings).toBeVisible();
+  await settings.getByRole("tab", { name: "Data" }).click();
+
+  await settings.locator('input[type="file"][accept*="zip"]').setInputFiles({
+    name: "project-binder-backup.zip",
+    mimeType: "application/zip",
+    buffer: out,
+  });
+  const confirm = page.getByRole("alertdialog");
+  await expect(
+    confirm.getByRole("heading", { name: "Import workspace data?" })
+  ).toBeVisible();
+  await confirm.getByRole("button", { name: "Import" }).click();
+
+  // Import reloads; URL may restore Settings — wait for app shell then dismiss.
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible({
+    timeout: 30_000,
+  });
+  if (await settings.isVisible().catch(() => false)) {
+    await page.keyboard.press("Escape");
+  }
+  await expect(settings).toHaveCount(0);
+  await expect(page.locator("#folders")).toBeVisible();
+}
+
+/** Open card → Add File via file chooser; returns after chooser is set. */
+export async function uploadFilesToOpenTask(page, filePaths) {
+  const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    addToCard(page, "File"),
+  ]);
+  await chooser.setFiles(paths);
 }

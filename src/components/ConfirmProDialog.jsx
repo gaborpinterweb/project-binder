@@ -7,6 +7,17 @@ import {
   isProUser,
 } from "../pb/client.js";
 import { navigatePath } from "../routes.js";
+import { Icon } from "../icons.jsx";
+import useDlgBounce from "../hooks/useDlgBounce.js";
+
+function feedbackLinkLabel(url) {
+  try {
+    const u = new URL(url);
+    return `${u.host}${u.pathname}`.replace(/\/$/, "") || url;
+  } catch {
+    return url;
+  }
+}
 
 const POLL_MS = 1500;
 const TIMEOUT_MS = 45000;
@@ -34,19 +45,19 @@ function burstConfetti(canvas) {
   };
   resize();
   const colors = ["#3b82f6", "#22c55e", "#eab308", "#f97316", "#a855f7", "#ec4899"];
-  const parts = Array.from({ length: 42 }, () => {
+  const parts = Array.from({ length: 64 }, () => {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 3 + Math.random() * 7;
+    const speed = 4 + Math.random() * 10;
     return {
-      x: window.innerWidth / 2 + (Math.random() - 0.5) * 80,
+      x: window.innerWidth / 2 + (Math.random() - 0.5) * 120,
       y: window.innerHeight * 0.38,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 4,
-      g: 0.18 + Math.random() * 0.12,
-      w: 4 + Math.random() * 5,
-      h: 6 + Math.random() * 6,
+      vy: Math.sin(angle) * speed - 6,
+      g: 0.2 + Math.random() * 0.14,
+      w: 8 + Math.random() * 10,
+      h: 12 + Math.random() * 12,
       rot: Math.random() * Math.PI,
-      vr: (Math.random() - 0.5) * 0.35,
+      vr: (Math.random() - 0.5) * 0.4,
       color: colors[(Math.random() * colors.length) | 0],
       life: 1,
     };
@@ -54,7 +65,7 @@ function burstConfetti(canvas) {
   let raf = 0;
   const start = performance.now();
   const tick = (now) => {
-    const t = (now - start) / 1600;
+    const t = (now - start) / 2000;
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     for (const p of parts) {
       p.vy += p.g;
@@ -89,6 +100,7 @@ function burstConfetti(canvas) {
  * @param {{
  *   open: boolean,
  *   checkoutId?: string,
+ *   emulate?: boolean,
  *   onClose: () => void,
  *   onConfirmed: () => void,
  * }} props
@@ -96,6 +108,7 @@ function burstConfetti(canvas) {
 export default function ConfirmProDialog({
   open,
   checkoutId = "",
+  emulate = false,
   onClose,
   onConfirmed,
 }) {
@@ -103,6 +116,7 @@ export default function ConfirmProDialog({
   const [pollKey, setPollKey] = useState(0);
   const canvasRef = useRef(null);
   const confirmedNotified = useRef(false);
+  const { bounce, onBounceEnd, bounceClass } = useDlgBounce();
 
   useEffect(() => {
     if (!open) {
@@ -130,6 +144,15 @@ export default function ConfirmProDialog({
       }
     };
 
+    // Dev-only UI path (`/confirm-pro?emulate=true`); ignored in production builds.
+    if (emulate) {
+      const t = window.setTimeout(finishSuccess, 700);
+      return () => {
+        cancelled = true;
+        clearTimeout(t);
+      };
+    }
+
     const tick = async () => {
       try {
         await getPb().collection("users").authRefresh();
@@ -154,7 +177,7 @@ export default function ConfirmProDialog({
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [open, pollKey, onConfirmed]);
+  }, [open, pollKey, onConfirmed, emulate]);
 
   useEffect(() => {
     if (!open || phase !== "success") return;
@@ -167,11 +190,13 @@ export default function ConfirmProDialog({
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopImmediatePropagation();
+      // Dismiss only via dialog buttons (Continue / Close), never Escape while pending.
+      if (phase === "waiting" || phase === "success") return;
       onClose();
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, onClose]);
+  }, [open, onClose, phase]);
 
   if (!open) return null;
 
@@ -182,11 +207,14 @@ export default function ConfirmProDialog({
     if (url) window.open(url, "_blank", "noopener");
   };
 
+  const supportUrl = feedbackUrl();
+
   return createPortal(
     <div
       className="ov ov-prompt ov-confirm-pro"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target !== e.currentTarget) return;
+        bounce();
       }}
     >
       <canvas
@@ -195,33 +223,71 @@ export default function ConfirmProDialog({
         aria-hidden="true"
       />
       <div
-        className="dlg prompt-dlg confirm-pro-dlg"
+        className={"dlg prompt-dlg confirm-pro-dlg" + bounceClass}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-pro-title"
         aria-describedby="confirm-pro-msg"
+        onAnimationEnd={onBounceEnd}
       >
-        <div className="dlg-content prompt-body">
+        <div className="dlg-content prompt-body confirm-pro-body">
           {phase === "waiting" ? (
             <>
-              <h2 id="confirm-pro-title" className="prompt-title">
-                Confirming Pro plan…
-              </h2>
+              
               <p id="confirm-pro-msg" className="prompt-msg confirm-pro-waiting">
                 <span className="workspace-boot-spinner" aria-hidden="true" />
-                <span>Checking your account for Pro access.</span>
+                <span>Confirming your Cloud Pro access...</span>
               </p>
             </>
           ) : null}
 
           {phase === "success" ? (
-            <>
-              <h2 id="confirm-pro-title" className="prompt-title">
-                Pro plan confirmed
-              </h2>
-              <p id="confirm-pro-msg" className="prompt-msg">
-                You have access to Pro features.
-              </p>
+            <div className="confirm-pro-success">
+              <div className="confirm-pro-success-copy">
+                <span className="confirm-pro-success-icon" aria-hidden="true">
+                  <Icon name="circleCheck" size={28} />
+                </span>
+                <div>
+                  <h2 id="confirm-pro-title" className="prompt-title">
+                    Cloud Pro plan confirmed
+                  </h2>
+                </div>
+                <ul className="confirm-pro-perks">
+                  <li>
+                    <span className="confirm-pro-perk-icon" aria-hidden="true">
+                      <Icon name="folders" size={16} />
+                    </span>
+                    <span>Unlimited active projects</span>
+                  </li>
+                  <li>
+                    <span className="confirm-pro-perk-icon" aria-hidden="true">
+                      <Icon name="link" size={16} />
+                    </span>
+                    <span>Unlimited public read-only links</span>
+                  </li>
+                  <li>
+                    <span className="confirm-pro-perk-icon" aria-hidden="true">
+                      <Icon name="Database" size={16} />
+                    </span>
+                    <span>Unlimited total storage</span>
+                  </li>
+                  <li>
+                    <span className="confirm-pro-perk-icon" aria-hidden="true">
+                      <Icon name="Help" size={16} />
+                    </span>
+                    <span>
+                      Priority support at{" "}
+                      <a
+                        href={supportUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {feedbackLinkLabel(supportUrl)}
+                      </a>
+                    </span>
+                  </li>
+                </ul>
+              </div>
               <div className="actions prompt-actions">
                 <button
                   type="button"
@@ -232,17 +298,17 @@ export default function ConfirmProDialog({
                   Continue
                 </button>
               </div>
-            </>
+            </div>
           ) : null}
 
           {phase === "failed" ? (
             <>
               <h2 id="confirm-pro-title" className="prompt-title">
-                Pro plan confirmation failed
+                Cloud Pro confirmation failed
               </h2>
               <p id="confirm-pro-msg" className="prompt-msg">
-                Pro confirmation timed out. Please try again. If you believe
-                this to be an error, contact us.
+                Cloud Pro confirmation timed out, please try again. If you believe
+                this to be an error, please contact us.
               </p>
               {checkoutId ? (
                 <p className="confirm-pro-checkout-id">

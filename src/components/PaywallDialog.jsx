@@ -26,7 +26,7 @@ const ROWS = [
   {
     label: "Who's it for",
     free: "Beginner or part-time freelancers",
-    pro: "Profesisonal, full-time freelancers",
+    pro: "Professional, full-time freelancers",
   },
 ];
 
@@ -90,67 +90,100 @@ export default function PaywallDialog() {
         aria-labelledby="paywall-title"
       >
         <div className="dlg-content paywall-body">
-          <header className="paywall-head">
+          <header className="paywall-section paywall-head">
             <h2 id="paywall-title" className="paywall-title">
-              Get <span className="paywall-unlimited">unlimited</span> room to grow
+              An <span className="paywall-unlimited">unlimited</span> binder
+              <br />
+              for all your freelancing business
             </h2>
           </header>
 
-          <div className="paywall-compare" role="table" aria-label="Plan comparison">
-            <div className="paywall-compare-head" role="row">
-              <div className="paywall-compare-label" role="columnheader" />
-              <div className="paywall-plan paywall-plan-free" role="columnheader">
-                <span className="paywall-plan-name">Cloud Free</span>
+          <div className="paywall-section paywall-section-table">
+            <div className="paywall-compare" role="table" aria-label="Plan comparison">
+              <div className="paywall-compare-head" role="row">
+                <div className="paywall-compare-label" role="columnheader" />
+                <div className="paywall-plan paywall-plan-free" role="columnheader">
+                  <span className="paywall-plan-name">Cloud Free</span>
+                  <span className="paywall-price-badge paywall-price-badge-free">FREE FOREVER</span>
+                </div>
+                <div className="paywall-plan paywall-plan-pro" role="columnheader">
+                  <span className="paywall-plan-name">Cloud Pro</span>
+                  <span className="paywall-price-badge">$4.99/m or $49.99/y</span>
+                </div>
               </div>
-              <div className="paywall-plan paywall-plan-pro" role="columnheader">
-                <span className="paywall-plan-name">Cloud Pro</span>
-                <span className="paywall-price-badge">$4.99/m or $49.99/y</span>
-              </div>
+              {ROWS.map((row) => (
+                <div className="paywall-compare-row" role="row" key={row.label}>
+                  <div className="paywall-compare-label" role="rowheader">
+                    <span className="paywall-feature-text">{row.label}</span>
+                    {row.tip ? (
+                      <button
+                        type="button"
+                        className="paywall-tip"
+                        data-tip={row.tip}
+                        aria-label={row.tip}
+                      >
+                        <Icon name="About" size={13} />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div
+                    className={
+                      "paywall-plan paywall-plan-free" +
+                      (highlightFree && row.free === highlightFree
+                        ? " paywall-free-hit"
+                        : "")
+                    }
+                    role="cell"
+                  >
+                    {row.free}
+                  </div>
+                  <div className="paywall-plan paywall-plan-pro" role="cell">
+                    {row.pro}
+                  </div>
+                </div>
+              ))}
             </div>
-            {ROWS.map((row) => (
-              <div className="paywall-compare-row" role="row" key={row.label}>
-                <div className="paywall-compare-label" role="rowheader">
-                  <span className="paywall-feature-text">{row.label}</span>
-                  {row.tip ? (
-                    <button
-                      type="button"
-                      className="paywall-tip"
-                      data-tip={row.tip}
-                      aria-label={row.tip}
-                    >
-                      <Icon name="About" size={13} />
-                    </button>
-                  ) : null}
-                </div>
-                <div
-                  className={
-                    "paywall-plan paywall-plan-free" +
-                    (highlightFree && row.free === highlightFree
-                      ? " paywall-free-hit"
-                      : "")
-                  }
-                  role="cell"
-                >
-                  {row.free}
-                </div>
-                <div className="paywall-plan paywall-plan-pro" role="cell">
-                  {row.pro}
-                </div>
-              </div>
-            ))}
           </div>
 
-          <div className="actions prompt-actions paywall-actions">
-            <button
-              ref={ctaRef}
-              type="button"
-              className="dlg-create dlg-create-icon paywall-cta"
-              disabled={!polarCheckoutUrl()}
-              onClick={openCheckout}
-            >
-              Checkout
-              <Icon name="external" size={15} />
-            </button>
+          <div className="paywall-section paywall-section-actions">
+            <div className="actions prompt-actions paywall-actions">
+              <button
+                ref={ctaRef}
+                type="button"
+                className="dlg-create dlg-create-icon paywall-cta"
+                disabled={!polarCheckoutUrl()}
+                onClick={openCheckout}
+              >
+                Subscribe to Cloud Pro
+                <Icon name="arrowRight" size={15} />
+              </button>
+              <p className="paywall-meta">
+                Plans sold by{" "}
+                <a
+                  className="paywall-meta-seller"
+                  href="https://gaborpinter.com/?utm_source=project-binder&utm_medium=app&utm_campaign=paywall"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    className="paywall-meta-avatar"
+                    src="/icons/gabor-pinter.png"
+                    alt=""
+                    width={16}
+                    height={16}
+                  />
+                  <span>Gábor Pintér</span>
+                </a>{" "}
+                via{" "}
+                <a
+                  href="https://polar.sh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Polar
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       </div>

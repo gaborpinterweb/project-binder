@@ -639,6 +639,7 @@ export default function SettingsDialog({
                       onClick={() => void openPaywallFromSettings()}
                     >
                       Get Cloud Pro
+                      <Icon name="arrowRight" size={14} />
                     </button>
                   )}
                 </div>

@@ -994,12 +994,16 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .bm span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .none{color:var(--side-mute);font-size:13px;margin:0 8px}
 @keyframes dlg-enter{from{transform:translateY(-10px)}to{transform:translateY(0)}}
+@keyframes dlg-bounce{0%,100%{transform:translateY(0)}28%{transform:translateY(-9px)}55%{transform:translateY(0)}78%{transform:translateY(-4px)}}
 @keyframes ov-fade{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.55)}}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,0);display:grid;place-items:center;z-index:10;padding:16px;animation:ov-fade .24s ease forwards}
 .ov > .dlg{animation:dlg-enter .24s cubic-bezier(.22,.8,.28,1)}
+.ov > .dlg.dlg-bounce{animation:dlg-bounce .45s cubic-bezier(.22,.8,.28,1)}
+.ov > .dlg.dlg-settled{animation:none}
 @media (prefers-reduced-motion:reduce){
   .ov{animation:none;background:rgba(0,0,0,.55)}
   .ov > .dlg{animation:none}
+  .ov > .dlg.dlg-bounce{animation:none}
 }
 /* Scroll the overlay, not .dlg, so in-dialog menus can overflow the card. */
 .ov.ov-top{align-items:start;justify-items:center;padding-top:48px;padding-bottom:48px;overflow-x:hidden;overflow-y:auto}
@@ -1038,20 +1042,44 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .confirm-pro-confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 .ov.ov-confirm-pro > .dlg{position:relative;z-index:2}
 .confirm-pro-waiting{display:flex;align-items:center;gap:12px}
+.prompt-dlg.confirm-pro-dlg{width:min(440px,100%);border-radius:20px;box-shadow:0 8px 28px #00000014,0 28px 80px #0000002e}
+.dlg .dlg-content.confirm-pro-body{padding:28px 40px 28px;gap:20px}
+.confirm-pro-success{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0;width:100%}
+.confirm-pro-success-copy{display:flex;flex-direction:column;align-items:center;gap:22px;width:100%;max-width:36ch}
+.confirm-pro-success-copy > div{display:flex;flex-direction:column;align-items:center;gap:6px}
+.confirm-pro-success .prompt-title{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+.confirm-pro-success .prompt-msg{margin:0;font-size:14px;line-height:1.55}
+.confirm-pro-success-icon{display:grid;place-items:center;flex:none;width:56px;height:56px;border-radius:14px;color:#34c759;background:color-mix(in srgb,#34c759 14%,transparent);line-height:0}
+.confirm-pro-success-icon svg{display:block}
+.confirm-pro-perks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;width:max-content;max-width:100%;text-align:left}
+.confirm-pro-perks li{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.4;color:var(--mute)}
+.confirm-pro-perk-icon{display:grid;place-items:center;flex:none;width:22px;height:22px;margin-top:1px;color:var(--ink);opacity:.72}
+.confirm-pro-perk-icon svg{display:block}
+.confirm-pro-perks a{font-weight:600;color:var(--acc);text-decoration:none;word-break:break-all}
+.confirm-pro-perks a:hover{text-decoration:underline}
+.confirm-pro-success .actions.prompt-actions{width:100%;margin-top:28px}
+.confirm-pro-success .actions.prompt-actions .dlg-create{flex:none;width:100%}
 .confirm-pro-checkout-id{display:flex;flex-direction:column;gap:4px;margin:0;font-size:12px;color:var(--mute)}
 .confirm-pro-checkout-label{font-weight:600}
 .confirm-pro-checkout-id code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--ink);word-break:break-all}
 /* Beat `.prompt-dlg:has(.prompt-actions-stack)` (440px) so the comparison fits. */
-.prompt-dlg.paywall-dlg{width:min(820px,100%);border-radius:20px;box-shadow:0 8px 28px #00000014,0 28px 80px #0000002e}
-.paywall-body{gap:0;padding:20px 28px 24px}
-.paywall-head{display:flex;flex-direction:column;align-items:center;text-align:center;margin:28px 0 28px}
+.prompt-dlg.paywall-dlg{width:min(820px,100%);border-radius:20px;overflow:hidden;box-shadow:0 8px 28px #00000014,0 28px 80px #0000002e}
+.dlg .dlg-content.paywall-body{gap:0;padding:0}
+.paywall-section.paywall-head{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 28px;margin:0}
+.paywall-section-table{padding:0}
+.paywall-section-actions{padding:8px 28px 24px}
 .paywall-title{margin:0;font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--ink);line-height:1.15}
-.paywall-compare{display:flex;flex-direction:column;margin:0 0 28px;border:1px solid color-mix(in srgb,var(--ink) 8%,transparent);border-radius:16px;overflow:visible;background:color-mix(in srgb,var(--ink) 2.5%,#fff)}
+.paywall-compare{position:relative;display:flex;flex-direction:column;margin:0;width:100%;border:0;border-radius:0;overflow:visible;background:color-mix(in srgb,var(--ink) 2.5%,#fff);box-sizing:border-box}
+/* Top edge only (no side borders); fades out before the bottom veil. */
+.paywall-compare::before{content:"";position:absolute;inset:0;border-radius:0;border:0;border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent);pointer-events:none;z-index:2;-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 48%,transparent 88%);mask-image:linear-gradient(to bottom,#000 0%,#000 48%,transparent 88%)}
+.paywall-compare::after{content:"";position:absolute;left:0;right:0;bottom:0;height:88px;background:linear-gradient(to bottom,transparent 0%,transparent 28%,color-mix(in srgb,var(--card) 45%,transparent) 62%,var(--card) 100%);pointer-events:none;z-index:1}
 .paywall-compare-head,.paywall-compare-row{display:grid;grid-template-columns:minmax(200px,1.15fr) 1fr 1fr;gap:0;align-items:stretch}
-.paywall-compare-head{background:color-mix(in srgb,var(--ink) 4%,#fff);border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent);border-radius:16px 16px 0 0}
+.paywall-compare-head{background:color-mix(in srgb,var(--ink) 4%,#fff);border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent);border-radius:0}
 .paywall-compare-row{border-bottom:1px solid color-mix(in srgb,var(--ink) 7%,transparent)}
-.paywall-compare-row:last-child{border-bottom:0;border-radius:0 0 16px 16px;overflow:hidden}
-.paywall-compare-row:last-child .paywall-plan-pro{border-radius:0 0 16px 0}
+.paywall-compare-row:last-child{border-bottom:0;border-radius:0}
+.paywall-compare-row:nth-last-child(2){border-bottom-color:color-mix(in srgb,var(--ink) 3.5%,transparent)}
+.paywall-compare-row:last-child .paywall-compare-label,
+.paywall-compare-row:last-child .paywall-plan{padding-bottom:88px}
 .paywall-compare-label,.paywall-plan{padding:14px 16px;font-size:13px;line-height:1.45;min-width:0;height:100%;box-sizing:border-box}
 .paywall-compare-head .paywall-compare-label{padding-top:16px}
 .paywall-compare-row .paywall-compare-label{font-weight:600;color:var(--mute)}
@@ -1062,19 +1090,31 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .paywall-tip:hover::after,.paywall-tip:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0)}
 .paywall-plan{color:var(--ink)}
 .paywall-plan-free.paywall-free-hit{color:#b42318;font-weight:700}
-.paywall-compare-head .paywall-plan{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:14px;padding-bottom:14px}
+.paywall-compare-head .paywall-plan{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding-top:14px;padding-bottom:14px}
+.paywall-compare-row .paywall-plan{text-align:center}
 .paywall-plan-name{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
 .paywall-price-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:650;letter-spacing:.01em;line-height:1.2;white-space:nowrap;color:#fff;background:#5856d6;box-shadow:0 1px 2px #5856d640}
+.paywall-price-badge-free{background:#34c759;box-shadow:0 1px 2px #34c75940}
 .paywall-plan-pro{background:color-mix(in srgb,var(--acc) 5%,transparent)}
 .paywall-compare-head .paywall-plan-pro{background:color-mix(in srgb,var(--acc) 8%,transparent)}
 .paywall-unlimited{font-weight:700;background:linear-gradient(90deg,#007aff,#5856d6,#af52de,#ff2d55,#ff9500);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.dlg .actions.paywall-actions{margin-top:2px;flex-direction:column;align-items:stretch;gap:10px}
-.dlg .actions.paywall-actions .paywall-cta{flex:none;width:100%;justify-content:center;padding:12px 18px;border-radius:12px;font-size:15px;background:#5856d6;color:#fff}
-.dlg .actions.paywall-actions .paywall-cta:hover:not(:disabled){background:color-mix(in srgb,#5856d6 82%,#000);color:#fff}
+.dlg .actions.paywall-actions{margin-top:2px;flex-direction:column;align-items:stretch;gap:20px}
+.dlg .actions.paywall-actions .paywall-cta{flex:none;width:100%;justify-content:center;padding:12px 18px;border-radius:12px;font-size:15px;color:#fff;background:linear-gradient(180deg,#6e6ce0 0%,#5856d6 100%);box-shadow:0 1px 2px #00000014,0 4px 14px #5856d628,inset 0 1px 0 #ffffff38;border:0}
+.dlg .actions.paywall-actions .paywall-cta:hover:not(:disabled){background:linear-gradient(180deg,#6563db 0%,#4f4dcc 100%);color:#fff;box-shadow:0 1px 2px #00000018,0 5px 16px #5856d632,inset 0 1px 0 #ffffff30}
+.dlg .actions.paywall-actions .paywall-cta:active:not(:disabled){background:linear-gradient(180deg,#5452d0 0%,#4a48c4 100%);box-shadow:0 1px 1px #00000014,inset 0 1px 2px #00000022}
+.paywall-meta{margin:0;font-size:12px;line-height:1.4;color:var(--mute);text-align:center}
+.paywall-meta a{color:var(--mute);text-decoration:underline;text-underline-offset:2px}
+.paywall-meta a:hover{color:var(--ink)}
+.paywall-meta-seller{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;text-decoration:none}
+.paywall-meta-seller:hover{color:var(--ink)}
+.paywall-meta-seller span{text-decoration:underline;text-underline-offset:2px}
+.paywall-meta-avatar{display:block;width:16px;height:16px;border-radius:999px;object-fit:cover;flex:none}
 @media (max-width:560px){
-  .paywall-body{padding:16px 16px 18px;gap:0}
-  .paywall-head{margin:20px 0 20px}
-  .paywall-compare{margin:0 0 20px}
+  .paywall-section.paywall-head{padding:32px 16px}
+  .paywall-section-actions{padding:4px 16px 18px}
+  .paywall-compare::after{height:76px}
+  .paywall-compare-row:last-child .paywall-compare-label,
+  .paywall-compare-row:last-child .paywall-plan{padding-bottom:76px}
   .paywall-title{font-size:26px}
   .paywall-compare-head,.paywall-compare-row{grid-template-columns:minmax(96px,0.85fr) 1fr 1fr}
   .paywall-compare-label,.paywall-plan{padding:12px 10px;font-size:12px}

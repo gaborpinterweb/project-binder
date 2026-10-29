@@ -115,6 +115,7 @@ import {
   navigatePath,
   currentPathname,
   confirmProCheckoutIdFromSearch,
+  confirmProEmulateFromSearch,
   modTypeToEntityKind,
   entityKindToModType,
   ENTITY_NOTES,
@@ -171,6 +172,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmProOpen, setConfirmProOpen] = useState(false);
   const [confirmProCheckoutId, setConfirmProCheckoutId] = useState("");
+  const [confirmProEmulate, setConfirmProEmulate] = useState(false);
   const [sharingTarget, setSharingTarget] = useState(null);
   /** Note/file entity segments driven by the URL (null = tab-only path). */
   const [routeNoteId, setRouteNoteId] = useState(null);
@@ -397,6 +399,7 @@ export default function App() {
             return;
           }
           setConfirmProCheckoutId(confirmProCheckoutIdFromSearch());
+          setConfirmProEmulate(confirmProEmulateFromSearch());
           setConfirmProOpen(true);
           if (!gRef.current) {
             setG("Masterboard");
@@ -2712,6 +2715,7 @@ export default function App() {
         <ConfirmProDialog
           open={confirmProOpen}
           checkoutId={confirmProCheckoutId}
+          emulate={confirmProEmulate}
           onConfirmed={handleConfirmProConfirmed}
           onClose={closeConfirmPro}
         />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "../icons.jsx";
+import useDlgBounce from "../hooks/useDlgBounce.js";
 import { feedbackUrl } from "../pb/client.js";
 import { APP_NAME } from "../utils.js";
 
@@ -53,6 +54,7 @@ export default function LaunchDialog({ onStart }) {
   const steps = launchSteps();
   const current = steps[step];
   const isLast = step === steps.length - 1;
+  const { bounce, onBounceEnd, bounceClass } = useDlgBounce();
 
   const finish = () => onStart();
   const goNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
@@ -73,12 +75,19 @@ export default function LaunchDialog({ onStart }) {
   }, [step, onStart]);
 
   return (
-    <div className="ov" role="presentation">
+    <div
+      className="ov"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) bounce();
+      }}
+    >
       <div
-        className="dlg launch-dlg"
+        className={"dlg launch-dlg" + bounceClass}
         role="dialog"
         aria-modal="true"
         aria-label={`${APP_NAME} welcome — step ${step + 1} of ${STEPS.length}`}
+        onAnimationEnd={onBounceEnd}
       >
         <div className="dlg-content launch-body">
           <div className="launch-copy">

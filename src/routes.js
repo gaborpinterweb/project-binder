@@ -226,6 +226,20 @@ export function confirmProCheckoutIdFromSearch(search = window.location.search) 
 }
 
 /**
+ * Dev-only: `/confirm-pro?emulate=true` skips Polar polling and shows the success UI.
+ * Ignored in production builds.
+ * @param {string} [search]
+ * @returns {boolean}
+ */
+export function confirmProEmulateFromSearch(search = window.location.search) {
+  if (!import.meta.env.DEV) return false;
+  const raw = String(search || "");
+  const q = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  const v = String(q.get("emulate") || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/**
  * Navigate without adding history when the full URL already matches.
  * @param {string} path
  * @param {{

@@ -312,7 +312,12 @@ export default function App() {
   const syncUrl = useCallback(
     ({ replace = false, ...overrides } = {}) => {
       if (applyingRouteRef.current) return;
-      navigatePath(buildAppPath(overrides), { replace });
+      const path = buildAppPath(overrides);
+      // Drop settings-only ?tab= when leaving /settings (preserve while on it).
+      navigatePath(path, {
+        replace,
+        ...(path !== "/settings" ? { search: "" } : {}),
+      });
     },
     [buildAppPath]
   );
@@ -352,11 +357,14 @@ export default function App() {
 
       applyingRouteRef.current = true;
       try {
+        // Strip leftover settings ?tab= on any non-settings canonicalize.
+        const nav = { replace: true, search: "" };
+
         if (!route || route.kind === "auth") {
           setSettingsOpen(false);
           settingsOpenRef.current = false;
           // Session already applied on initial load; canonicalize address bar.
-          navigatePath(buildAppPath({ settings: false }), { replace: true });
+          navigatePath(buildAppPath({ settings: false }), nav);
           return;
         }
 
@@ -378,7 +386,7 @@ export default function App() {
           clearEntityOverlays();
           setG(nextG);
           gRef.current = nextG;
-          navigatePath(buildPath({ g: nextG }), { replace: true });
+          navigatePath(buildPath({ g: nextG }), nav);
           return;
         }
 
@@ -395,7 +403,7 @@ export default function App() {
           routeFileIdRef.current = null;
           if (route.entityKind !== ENTITY_TASKS) {
             clearEntityOverlays();
-            navigatePath(buildPath({ g: nextG }), { replace: true });
+            navigatePath(buildPath({ g: nextG }), nav);
             return;
           }
           const loc = locateRow(foldersNow, { id: route.entityId });
@@ -405,7 +413,7 @@ export default function App() {
               : null;
           if (!loc || !row) {
             clearEntityOverlays();
-            navigatePath(buildPath({ g: nextG }), { replace: true });
+            navigatePath(buildPath({ g: nextG }), nav);
             return;
           }
           const nextDialog = {
@@ -421,7 +429,7 @@ export default function App() {
               entityKind: ENTITY_TASKS,
               entityId: route.entityId,
             }),
-            { replace: true }
+            nav
           );
           return;
         }
@@ -455,13 +463,13 @@ export default function App() {
                   entityKind: ENTITY_TASKS,
                   entityId: route.entityId,
                 }),
-                { replace: true }
+                nav
               );
               return;
             }
           }
           clearEntityOverlays();
-          navigatePath(buildPath({ g: "Masterboard" }), { replace: true });
+          navigatePath(buildPath({ g: "Masterboard" }), nav);
           return;
         }
 
@@ -470,7 +478,7 @@ export default function App() {
           clearEntityOverlays();
           setG("Masterboard");
           gRef.current = "Masterboard";
-          navigatePath(buildPath({ g: "Masterboard" }), { replace: true });
+          navigatePath(buildPath({ g: "Masterboard" }), nav);
           return;
         }
 
@@ -486,9 +494,7 @@ export default function App() {
           clearEntityOverlays();
           setM(0);
           mRef.current = 0;
-          navigatePath(buildPath({ projectId: project.id }), {
-            replace: true,
-          });
+          navigatePath(buildPath({ projectId: project.id }), nav);
           return;
         }
 
@@ -497,9 +503,7 @@ export default function App() {
           clearEntityOverlays();
           setM(0);
           mRef.current = 0;
-          navigatePath(buildPath({ projectId: project.id }), {
-            replace: true,
-          });
+          navigatePath(buildPath({ projectId: project.id }), nav);
           return;
         }
 
@@ -511,7 +515,7 @@ export default function App() {
           clearEntityOverlays();
           navigatePath(
             buildPath({ projectId: project.id, tabId: route.tabId }),
-            { replace: true }
+            nav
           );
           return;
         }
@@ -522,7 +526,7 @@ export default function App() {
           clearEntityOverlays();
           navigatePath(
             buildPath({ projectId: project.id, tabId: route.tabId }),
-            { replace: true }
+            nav
           );
           return;
         }
@@ -540,7 +544,7 @@ export default function App() {
             routeNoteIdRef.current = null;
             navigatePath(
               buildPath({ projectId: project.id, tabId: route.tabId }),
-              { replace: true }
+              nav
             );
             return;
           }
@@ -562,7 +566,7 @@ export default function App() {
             routeFileIdRef.current = null;
             navigatePath(
               buildPath({ projectId: project.id, tabId: route.tabId }),
-              { replace: true }
+              nav
             );
             return;
           }
@@ -595,7 +599,7 @@ export default function App() {
           dialogRef.current = null;
           navigatePath(
             buildPath({ projectId: project.id, tabId: route.tabId }),
-            { replace: true }
+            nav
           );
           return;
         }
@@ -1873,7 +1877,8 @@ export default function App() {
     settingsPushedRef.current = true;
     setSettingsOpen(true);
     settingsOpenRef.current = true;
-    syncUrl({ settings: true });
+    // Bare /settings (Experience); deep links keep ?tab= via applyLocation.
+    navigatePath("/settings", { search: "" });
   };
 
   const closeSettings = () => {
@@ -1885,7 +1890,10 @@ export default function App() {
         window.history.back();
       } else {
         settingsPushedRef.current = false;
-        syncUrl({ settings: false, replace: true });
+        navigatePath(buildAppPath({ settings: false }), {
+          replace: true,
+          search: "",
+        });
       }
     }
   };

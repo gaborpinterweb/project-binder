@@ -9,6 +9,11 @@ import {
   polarPortalUrl,
 } from "../pb/client.js";
 import {
+  buildSettingsPath,
+  navigatePath,
+  settingsTabFromSearch,
+} from "../routes.js";
+import {
   APP_NAME,
   APP_COMMIT,
   APP_RELEASE_NAME,
@@ -75,7 +80,23 @@ export default function SettingsDialog({
     return list;
   }, []);
 
-  const [tab, setTab] = useState("experience");
+  const replaceSettingsTabUrl = (nextTab) => {
+    const full = buildSettingsPath(nextTab);
+    const q = full.indexOf("?");
+    navigatePath(q === -1 ? full : full.slice(0, q), {
+      replace: true,
+      search: q === -1 ? "" : full.slice(q),
+    });
+  };
+
+  const [tab, setTabState] = useState(() => {
+    const fromUrl = settingsTabFromSearch();
+    return tabs.some((t) => t.id === fromUrl) ? fromUrl : "experience";
+  });
+  const setTab = (nextTab) => {
+    setTabState(nextTab);
+    replaceSettingsTabUrl(nextTab);
+  };
   const [archivedProjects, setArchivedProjects] = useState([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [resetting, setResetting] = useState(null);
@@ -154,10 +175,14 @@ export default function SettingsDialog({
   }, [tab]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV && tab === "developer") setTab("experience");
-    if (!isPbMode() && tab === "account") setTab("experience");
-    if (!isCommercialMode() && tab === "billing") setTab("experience");
-  }, [tab]);
+    // Canonicalize deep links (invalid / unavailable ?tab= → experience).
+    if (!tabs.some((t) => t.id === tab)) {
+      setTab("experience");
+      return;
+    }
+    replaceSettingsTabUrl(tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount + tab availability
+  }, [tabs]);
 
   const openProUrl = (url, missingLabel) => {
     if (url) {

@@ -176,11 +176,70 @@ export function currentPathname() {
   return window.location.pathname || "/";
 }
 
-/** Navigate without adding history when path already matches. */
-export function navigatePath(path, { replace = false } = {}) {
+/** Settings dialog section ids (URL `?tab=`). */
+export const SETTINGS_TABS = [
+  "experience",
+  "account",
+  "billing",
+  "data",
+  "archive",
+  "help",
+  "about",
+  "developer",
+];
+
+const SETTINGS_TAB_SET = new Set(SETTINGS_TABS);
+
+/**
+ * @param {string} [search] location.search (with or without `?`)
+ * @returns {string} valid tab id, default `experience`
+ */
+export function settingsTabFromSearch(search = window.location.search) {
+  const raw = String(search || "");
+  const q = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  const tab = String(q.get("tab") || "").trim();
+  return SETTINGS_TAB_SET.has(tab) ? tab : "experience";
+}
+
+/**
+ * @param {string} [tab]
+ * @returns {string} `/settings` or `/settings?tab=<id>` (experience → bare path)
+ */
+export function buildSettingsPath(tab) {
+  const id = String(tab || "").trim();
+  if (!id || id === "experience" || !SETTINGS_TAB_SET.has(id)) {
+    return "/settings";
+  }
+  return `/settings?tab=${encodeURIComponent(id)}`;
+}
+
+/**
+ * Navigate without adding history when the full URL already matches.
+ * @param {string} path
+ * @param {{
+ *   replace?: boolean,
+ *   search?: string | null,
+ * }} [opts]
+ *   `search` omitted — keep current query string.
+ *   `search` `""` or `null` — clear query.
+ *   otherwise use that query (with or without leading `?`).
+ */
+export function navigatePath(path, { replace = false, search } = {}) {
   const next = path || "/";
-  if (currentPathname() === next) return;
-  const url = next + window.location.search + window.location.hash;
+  let searchPart;
+  if (search === null || search === "") {
+    searchPart = "";
+  } else if (search !== undefined) {
+    const s = String(search);
+    searchPart = !s ? "" : s.startsWith("?") ? s : `?${s}`;
+  } else {
+    searchPart = window.location.search;
+  }
+  const hash = window.location.hash || "";
+  const url = next + searchPart + hash;
+  const current =
+    currentPathname() + (window.location.search || "") + (window.location.hash || "");
+  if (current === url) return;
   if (replace) window.history.replaceState({}, "", url);
   else window.history.pushState({}, "", url);
 }

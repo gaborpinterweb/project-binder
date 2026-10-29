@@ -12,6 +12,24 @@ function paywallDialog(page) {
 }
 
 test.describe("Billing", () => {
+  test("Settings ?tab=billing deep link opens Billing and clears on close", async ({
+    page,
+  }) => {
+    await enterApp(page);
+    await page.goto("/settings?tab=billing");
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    await expect(settings).toBeVisible();
+    await expect(settings.getByText("Cloud Free", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\?tab=billing/);
+
+    await settings.getByRole("tab", { name: "Data" }).click();
+    await expect(page).toHaveURL(/\/settings\?tab=data/);
+
+    await page.keyboard.press("Escape");
+    await expect(settings).toHaveCount(0);
+    await expect(page).not.toHaveURL(/[?&]tab=/);
+  });
+
   test("Settings billing opens paywall with checkout link to the payment provider", async ({
     page,
   }) => {
@@ -22,6 +40,7 @@ test.describe("Billing", () => {
     await expect(settings).toBeVisible();
     await settings.getByRole("tab", { name: "Billing" }).click();
     await expect(settings.getByText("Cloud Free", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\?tab=billing/);
 
     await settings.getByRole("button", { name: "Get Cloud Pro" }).click();
     const paywall = paywallDialog(page);

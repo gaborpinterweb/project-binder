@@ -9,6 +9,19 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-29 (Pine)
+
+### Added
+
+- Download action for files in the Files module and file preview dialog.
+- Paywall gate that blocks importing a workspace incompatible with the current plan limits.
+
+### Changed
+
+- Timelogs UI polish and empty state for the project list.
+- Project cover preview updates correctly when switching projects.
+- Demo seed: Files tab with sample text files; task tab names renamed.
+
 ## [1.0.0] - 2026-10-29 (Pine)
 
 ### Added

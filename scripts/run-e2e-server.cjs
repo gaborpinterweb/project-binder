@@ -83,6 +83,8 @@ if (process.env.E2E_SKIP_BUILD === "1" && fs.existsSync(path.join(DIST, "index.h
   runNpm(["run", "build:commercial"], {
     VITE_POLAR_CHECKOUT_URL: POLAR_CHECKOUT_URL,
     VITE_POLAR_PORTAL_URL: POLAR_PORTAL_URL,
+    // Keep confirm-pro timeout tests snappy (production default is 45s).
+    VITE_CONFIRM_PRO_TIMEOUT_MS: process.env.E2E_CONFIRM_PRO_TIMEOUT_MS || "3000",
   });
 }
 

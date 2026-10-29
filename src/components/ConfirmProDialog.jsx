@@ -20,7 +20,10 @@ function feedbackLinkLabel(url) {
 }
 
 const POLL_MS = 1500;
-const TIMEOUT_MS = 45000;
+const TIMEOUT_MS = (() => {
+  const n = Number(import.meta.env.VITE_CONFIRM_PRO_TIMEOUT_MS);
+  return Number.isFinite(n) && n > 0 ? n : 45_000;
+})();
 
 function prefersReducedMotion() {
   try {

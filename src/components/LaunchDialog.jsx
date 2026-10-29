@@ -86,7 +86,7 @@ export default function LaunchDialog({ onStart }) {
         className={"dlg launch-dlg" + bounceClass}
         role="dialog"
         aria-modal="true"
-        aria-label={`${APP_NAME} welcome — step ${step + 1} of ${STEPS.length}`}
+        aria-label={`${APP_NAME} welcome — step ${step + 1} of ${steps.length}`}
         onAnimationEnd={onBounceEnd}
       >
         <div className="dlg-content launch-body">
@@ -122,7 +122,7 @@ export default function LaunchDialog({ onStart }) {
 
           <div className="launch-footer">
             <div className="launch-dots" aria-hidden="true">
-              {STEPS.map((_, i) => (
+              {steps.map((_, i) => (
                 <span
                   key={i}
                   className={`launch-dot${i === step ? " is-active" : ""}`}

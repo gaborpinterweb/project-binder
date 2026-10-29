@@ -3,6 +3,7 @@ import {
   FIXTURES,
   addTaskNamed,
   addTasksTab,
+  clickNewProject,
   createUserProject,
   enablePublicShare,
   enterApp,
@@ -10,6 +11,7 @@ import {
   openProjectCover,
   openProjectOptions,
   openTaskCard,
+  projectButtons,
   projectList,
   taskDialog,
   uploadFilesToOpenTask,
@@ -36,9 +38,9 @@ test.describe("Paywall limits", () => {
       await createUserProject(page, "Free One");
       await createUserProject(page, "Free Two", { clearDemos: false });
       await createUserProject(page, "Free Three", { clearDemos: false });
-      await expect(projectList(page).getByRole("button")).toHaveCount(3);
+      await expect(projectButtons(page)).toHaveCount(3);
 
-      await page.getByRole("button", { name: "New project" }).click();
+      await clickNewProject(page);
 
       const paywall = paywallDialog(page);
       await expect(paywall).toBeVisible();
@@ -47,7 +49,7 @@ test.describe("Paywall limits", () => {
 
       await page.keyboard.press("Escape");
       await expect(paywall).toHaveCount(0);
-      await expect(projectList(page).getByRole("button")).toHaveCount(3);
+      await expect(projectButtons(page)).toHaveCount(3);
     });
 
     test("public share on Free opens the paywall", async ({ page }) => {
@@ -116,9 +118,9 @@ test.describe("Paywall limits", () => {
       await createUserProject(page, "Pro One");
       await createUserProject(page, "Pro Two", { clearDemos: false });
       await createUserProject(page, "Pro Three", { clearDemos: false });
-      await expect(projectList(page).getByRole("button")).toHaveCount(3);
+      await expect(projectButtons(page)).toHaveCount(3);
 
-      await page.getByRole("button", { name: "New project" }).click();
+      await clickNewProject(page);
       await expect(page.getByPlaceholder("Project name...")).toBeVisible();
       await expect(paywallDialog(page)).toHaveCount(0);
 
@@ -127,7 +129,7 @@ test.describe("Paywall limits", () => {
       await expect(
         projectList(page).getByRole("button", { name: "Pro Four", exact: true })
       ).toBeVisible();
-      await expect(projectList(page).getByRole("button")).toHaveCount(4);
+      await expect(projectButtons(page)).toHaveCount(4);
     });
 
     test("upload near 200 MB storage does not open the paywall", async ({

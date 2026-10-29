@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 import {
   DEMO_PROJECTS,
+  clickNewProject,
   enterApp,
   leaveDemoProjects,
   openProjectCover,
   openProjectOptions,
+  projectButtons,
   projectList,
 } from "./helpers.js";
 
@@ -15,7 +17,7 @@ test.describe("Projects", () => {
     await enterApp(page);
     await leaveDemoProjects(page, 3);
 
-    await page.getByRole("button", { name: "New project" }).click();
+    await clickNewProject(page);
 
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toBeVisible();
@@ -82,7 +84,7 @@ test.describe("Projects", () => {
     await leaveDemoProjects(page, 1);
     const lastDemo = DEMO_PROJECTS[0];
 
-    await page.getByRole("button", { name: "New project" }).click();
+    await clickNewProject(page);
     const cleanup = page.getByRole("alertdialog");
     await expect(
       cleanup.getByRole("heading", {
@@ -95,7 +97,7 @@ test.describe("Projects", () => {
     await expect(
       projectList(page).getByRole("button", { name: lastDemo, exact: true })
     ).toHaveCount(0);
-    await expect(projectList(page).getByRole("button")).toHaveCount(0);
+    await expect(projectButtons(page)).toHaveCount(0);
 
     await page.getByPlaceholder("Project name...").fill("Alpha");
     await page.getByRole("button", { name: "Create project" }).click();
@@ -107,7 +109,7 @@ test.describe("Projects", () => {
     await openProjectCover(page, "Alpha");
     await expect(page.locator(".cover-title-display")).toHaveText("Alpha");
 
-    await page.getByRole("button", { name: "New project" }).click();
+    await clickNewProject(page);
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
     await expect(page.getByPlaceholder("Project name...")).toBeVisible();
     await page.getByPlaceholder("Project name...").fill("Beta");

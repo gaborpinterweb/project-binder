@@ -52,7 +52,7 @@ export async function enterApp(page, { pro = false } = {}) {
   await signIn(page, email, password);
   await dismissOnboarding(page);
   await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
-  await expect(projectList(page).getByRole("button")).toHaveCount(DEMO_PROJECTS.length);
+  await expect(projectButtons(page)).toHaveCount(DEMO_PROJECTS.length);
   return { email, password };
 }
 
@@ -89,6 +89,16 @@ export async function disablePublicShare(page, targetName) {
 
 export function projectList(page) {
   return page.locator("#folders");
+}
+
+/** Project rows only (excludes empty-state "Add project"). */
+export function projectButtons(page) {
+  return projectList(page).locator("button.bm");
+}
+
+/** Header "+" or empty-state CTA — both use #add-project. */
+export async function clickNewProject(page) {
+  await page.locator("#add-project").click();
 }
 
 export async function openProjectCover(page, name) {
@@ -132,7 +142,7 @@ export async function leaveDemoProjects(page, count) {
       projectList(page).getByRole("button", { name, exact: true })
     ).toBeVisible();
   }
-  await expect(projectList(page).getByRole("button")).toHaveCount(count);
+  await expect(projectButtons(page)).toHaveCount(count);
 }
 
 /**
@@ -145,7 +155,7 @@ export async function createUserProject(
   { clearDemos = true } = {}
 ) {
   if (clearDemos) await leaveDemoProjects(page, 0);
-  await page.getByRole("button", { name: "New project" }).click();
+  await clickNewProject(page);
   await expect(page.getByPlaceholder("Project name...")).toBeVisible();
   await page.getByPlaceholder("Project name...").fill(name);
   await page.getByRole("button", { name: "Create project" }).click();

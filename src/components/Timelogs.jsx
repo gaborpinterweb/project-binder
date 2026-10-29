@@ -189,10 +189,13 @@ function ExportDropdown({ entries, period, folders = [], disabled }) {
   );
 }
 
-function selectedProjects(boards, boardOff) {
+function selectedBoards(boards, boardOff) {
+  return boards.filter((b) => !boardOff.has(b.key));
+}
+
+function selectedProjects(selected) {
   const map = new Map();
-  for (const b of boards) {
-    if (boardOff.has(b.key)) continue;
+  for (const b of selected) {
     const id = b.projectId || b.key.split("/")[0];
     if (map.has(id)) continue;
     map.set(id, {
@@ -204,18 +207,19 @@ function selectedProjects(boards, boardOff) {
   return [...map.values()];
 }
 
-function projectsAriaLabel(projects) {
-  if (!projects.length) return "0 projects";
-  if (projects.length === 1) return projects[0].name;
-  return `${projects.length} projects`;
+function boardsAriaLabel(selected, projects) {
+  if (!selected.length) return "0 project tabs";
+  if (selected.length === 1) return projects[0]?.name || selected[0].label;
+  return `${selected.length} project tabs`;
 }
 
 function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
   const wrapRef = useRef(null);
   const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const projects = selectedProjects(boards, boardOff);
-  const label = projectsAriaLabel(projects);
+  const selected = selectedBoards(boards, boardOff);
+  const projects = selectedProjects(selected);
+  const label = boardsAriaLabel(selected, projects);
 
   useEffect(() => {
     if (!open) return;
@@ -261,15 +265,17 @@ function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
       >
         {inline ? (
           <>
-            {projects.length === 1 ? (
+            {selected.length === 1 ? (
               <>
                 <span
                   className="dot"
-                  style={{ background: projects[0].color }}
+                  style={{ background: projects[0]?.color || GACC }}
                 />
-                <span className="dd-lab">{projects[0].name}</span>
+                <span className="dd-lab">
+                  {projects[0]?.name || selected[0].label}
+                </span>
               </>
-            ) : projects.length > 1 ? (
+            ) : selected.length > 1 ? (
               <>
                 <span className="log-view-dots" aria-hidden="true">
                   {projects.map((p) => (
@@ -280,10 +286,10 @@ function BoardFilterDropdown({ boards, boardOff, onToggle, inline = false }) {
                     />
                   ))}
                 </span>
-                <span className="dd-lab">{projects.length} projects</span>
+                <span className="dd-lab">{selected.length} project tabs</span>
               </>
             ) : (
-              <span className="dd-lab">0 projects</span>
+              <span className="dd-lab">0 project tabs</span>
             )}
             <span className="dd-caret" aria-hidden="true">
               <Icon name="caret" size={12} />
@@ -374,7 +380,7 @@ function TimelogAggHead({ label, totalSec }) {
   );
 }
 
-/** View summary: “[Period] for [N projects] grouped by [Day] sorted by [Newest first]”. */
+/** View summary: “[Period] for [N project tabs] grouped by [Day] sorted by [Newest first]”. */
 function TimelogViewHead({
   totalSec,
   period,
@@ -781,9 +787,9 @@ export default function Timelogs({
                     : `No timelogs for this card in ${period.toLowerCase()}.`
                   : entries?.length
                     ? period === "All time"
-                      ? "No timelogs yet. Start a countdown from a card."
+                      ? "No timelogs yet."
                       : `No timelogs for ${period.toLowerCase()}.`
-                    : "No timelogs yet. Start a countdown from a card."}
+                    : "No timelogs yet."}
               </div>
             ) : (
               <div className="log-view-groups">

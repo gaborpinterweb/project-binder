@@ -272,23 +272,36 @@ export default function Sidebar({
         </div>
         <div className="side-head">
           <h2>Projects</h2>
-          <button
-            type="button"
-            className="side-add"
-            id="add-project"
-            title="New project"
-            aria-label="New project"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddProject();
-            }}
-          >
-            +
-          </button>
+          {active.length > 0 && (
+            <button
+              type="button"
+              className="side-add"
+              id="add-project"
+              title="New project"
+              aria-label="New project"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddProject();
+              }}
+            >
+              +
+            </button>
+          )}
         </div>
         <div id="folders" ref={foldersRef}>
           {active.length === 0 && (
-            <p className="side-empty">No projects yet</p>
+            <button
+              type="button"
+              className="side-add-project"
+              id="add-project"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddProject();
+              }}
+            >
+              <Icon name="plus" size={16} />
+              <span>Add project</span>
+            </button>
           )}
           {visible.map(({ pr, i }, vi) => {
             const editingHere = coverEdit && coverDraft && i === p && !g && !draftProject;

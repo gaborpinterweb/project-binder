@@ -101,7 +101,9 @@ main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;back
 .archive-ribbon span{flex:1;min-width:0;line-height:1.35}
 .archive-ribbon button{flex:none;font:inherit;font-size:13px;font-weight:600;color:var(--side);background:var(--side-ink);border:0;border-radius:calc(var(--radius) - 6px);padding:7px 12px;cursor:pointer}
 .archive-ribbon button:hover{background:#fff}
-.app-side .side-empty{margin:4px 8px 8px;padding:0;font-size:13px;font-style:italic;color:var(--side-mute);opacity:.55}
+.app-side .side-add-project{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:4px 0 8px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--side);background:var(--side-ink);border:0;border-radius:calc(var(--radius) - 4px);cursor:pointer;text-align:center}
+.app-side .side-add-project:hover{background:#fff}
+.app-side .side-add-project svg{flex:none}
 #folders{display:flex;flex-direction:column;gap:2px;min-height:0}
 #folders .bm{touch-action:none;user-select:none}
 .is-project-dragging{cursor:grabbing}

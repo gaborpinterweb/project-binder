@@ -2398,17 +2398,20 @@ function purgeExpiredTrash() {
       purgeRteImageBlobs(item.project, item.board, item.images);
     } else if (item && item.kind === "note") {
       purgeRteImageBlobs(item.project, item.notesTab, item.images);
-    } else if (item && item.kind === "project" && item.snapshot) {
-      purgeRteImageBlobs(item.project, COVER_TAB_ID, item.snapshot.coverImages);
-      for (const tab of item.snapshot.notesTabs || []) {
-        for (const note of tab.notes || []) {
-          purgeRteImageBlobs(item.project, tab.id, note.images);
+    } else if (item && item.kind === "project") {
+      purgeTimelogsForProject(item.project);
+      if (item.snapshot) {
+        purgeRteImageBlobs(item.project, COVER_TAB_ID, item.snapshot.coverImages);
+        for (const tab of item.snapshot.notesTabs || []) {
+          for (const note of tab.notes || []) {
+            purgeRteImageBlobs(item.project, tab.id, note.images);
+          }
         }
-      }
-      for (const board of item.snapshot.boards || []) {
-        for (const card of board.cards || []) {
-          purgeCardFileBlobs(item.project, board.id, card.files);
-          purgeRteImageBlobs(item.project, board.id, card.images);
+        for (const board of item.snapshot.boards || []) {
+          for (const card of board.cards || []) {
+            purgeCardFileBlobs(item.project, board.id, card.files);
+            purgeRteImageBlobs(item.project, board.id, card.images);
+          }
         }
       }
     } else if (
@@ -2819,22 +2822,31 @@ function deleteItem(projectId, databaseId, itemId) {
   return true;
 }
 
+function purgeTimelogsForProject(projectId) {
+  if (!projectId || !Array.isArray(store.timelogs)) return;
+  store.timelogs = store.timelogs.filter((t) => t.project !== projectId);
+}
+
+/** Timelogs for active (non-archived, non-trashed) projects only. */
 function readTimelogs() {
-  const entries = (store.timelogs || []).map((t) => ({
-    id: t.id,
-    project: t.project || "",
-    board: t.board || "",
-    card: t.card || "",
-    title: t.title || t.card || "Untitled",
-    projectName: t.projectName || t.project || "",
-    boardName: t.boardName || t.board || "",
-    color: t.color || "#3c3c40",
-    kind: t.kind || "pomodoro",
-    note: typeof t.note === "string" ? t.note : "",
-    startedAt: t.startedAt || "",
-    endedAt: t.endedAt || "",
-    durationSec: Math.max(0, parseInt(t.durationSec, 10) || 0),
-  }));
+  const active = new Set((store.projects || []).map((p) => p.id));
+  const entries = (store.timelogs || [])
+    .filter((t) => t && active.has(t.project))
+    .map((t) => ({
+      id: t.id,
+      project: t.project || "",
+      board: t.board || "",
+      card: t.card || "",
+      title: t.title || t.card || "Untitled",
+      projectName: t.projectName || t.project || "",
+      boardName: t.boardName || t.board || "",
+      color: t.color || "#3c3c40",
+      kind: t.kind || "pomodoro",
+      note: typeof t.note === "string" ? t.note : "",
+      startedAt: t.startedAt || "",
+      endedAt: t.endedAt || "",
+      durationSec: Math.max(0, parseInt(t.durationSec, 10) || 0),
+    }));
   entries.sort((a, b) => String(b.endedAt || b.startedAt).localeCompare(String(a.endedAt || a.startedAt)));
   return entries;
 }

@@ -406,6 +406,16 @@ export async function exportWorkspace() {
   URL.revokeObjectURL(url);
 }
 
+/** Parse `userWorkspace.json` from a backup zip without applying it. */
+export async function peekBackupWorkspace(file) {
+  if (!file) throw new Error("Choose a backup zip");
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(file);
+  const wsText = await zip.file("userWorkspace.json")?.async("string");
+  if (!wsText) throw new Error("backup missing userWorkspace.json");
+  return JSON.parse(wsText);
+}
+
 export async function importBackup(body) {
   if (!isPbMode()) throw new Error("Import requires PocketBase");
   const file = body?.file;

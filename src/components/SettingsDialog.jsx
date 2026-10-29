@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { exportWorkspace, fetchArchivedProjects, importBackup } from "../api.js";
+import { exportWorkspace, fetchArchivedProjects, importBackup, peekBackupWorkspace } from "../api.js";
 import {
   feedbackUrl,
   getPb,
@@ -23,6 +23,11 @@ import {
   STOPTIMER_MAX_OPTIONS_MIN,
   PC,
 } from "../utils.js";
+import {
+  shouldBlockWorkspaceImport,
+  workspaceImportBlockReason,
+  workspaceImportPaywallHighlight,
+} from "../billingLimits.js";
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
 import { askPaywall } from "../paywallDialog.js";
@@ -208,6 +213,34 @@ export default function SettingsDialog({
 
   const handleImportZip = async (file) => {
     if (!file) return;
+    let workspaceDoc;
+    try {
+      workspaceDoc = await peekBackupWorkspace(file);
+    } catch (e) {
+      alert(e.message || "Could not read backup zip.");
+      return;
+    }
+    if (shouldBlockWorkspaceImport(workspaceDoc)) {
+      showSnackbar({
+        icon: "bell",
+        tone: "error",
+        center: true,
+        message:
+          workspaceImportBlockReason(workspaceDoc) ||
+          "Not Cloud Free compatible",
+        durationMs: 6000,
+      });
+      setPaywallCovering(true);
+      try {
+        await askPaywall({
+          underExistingOverlay: true,
+          highlightFree: workspaceImportPaywallHighlight(workspaceDoc),
+        });
+      } finally {
+        setPaywallCovering(false);
+      }
+      return;
+    }
     const ok = await askConfirm({
       title: "Import workspace data?",
       message:

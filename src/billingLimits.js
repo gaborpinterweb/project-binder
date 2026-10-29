@@ -27,6 +27,58 @@ export function shouldBlockPublicShare() {
   return isCommercialMode() && !isProUser();
 }
 
+/** Active projects in a workspace JSON doc (backup / persist shape). */
+export function activeProjectCountFromDoc(workspaceDoc) {
+  return activeProjectCount(workspaceDoc?.projects);
+}
+
+/** True when any project or tab in the doc has a public read-only link enabled. */
+export function workspaceDocHasPublicShares(workspaceDoc) {
+  const projects = workspaceDoc?.projects;
+  if (!Array.isArray(projects)) return false;
+  for (const p of projects) {
+    if (p?.shareId && p?.shareEnabled) return true;
+    for (const list of [p.boards, p.notesTabs, p.filesTabs, p.databases]) {
+      for (const entity of list || []) {
+        if (entity?.shareId && entity?.shareEnabled) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Commercial Free users cannot import a binder that exceeds Free limits.
+ * Community builds and Pro users are never blocked.
+ */
+export function shouldBlockWorkspaceImport(workspaceDoc) {
+  if (!isCommercialMode() || isProUser()) return false;
+  if (activeProjectCountFromDoc(workspaceDoc) > FREE_ACTIVE_PROJECT_LIMIT) {
+    return true;
+  }
+  return workspaceDocHasPublicShares(workspaceDoc);
+}
+
+/** Paywall Free-column value to highlight for a blocked import. */
+export function workspaceImportPaywallHighlight(workspaceDoc) {
+  if (activeProjectCountFromDoc(workspaceDoc) > FREE_ACTIVE_PROJECT_LIMIT) {
+    return "3";
+  }
+  if (workspaceDocHasPublicShares(workspaceDoc)) return "None";
+  return "";
+}
+
+/** Short reason for a blocked Free import (empty when not blocked by limits). */
+export function workspaceImportBlockReason(workspaceDoc) {
+  const overProjects =
+    activeProjectCountFromDoc(workspaceDoc) > FREE_ACTIVE_PROJECT_LIMIT;
+  const hasShares = workspaceDocHasPublicShares(workspaceDoc);
+  if (overProjects && hasShares) return "Too many projects & public links";
+  if (overProjects) return "Too many active projects";
+  if (hasShares) return "Has public read-only links";
+  return "";
+}
+
 /** Match persist.js jsonFile: pretty JSON + trailing newline, UTF-8 bytes. */
 export function jsonDocByteLength(obj) {
   if (obj == null) return 0;

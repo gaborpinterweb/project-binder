@@ -475,6 +475,19 @@ export async function resolvePbBlobUrl(url) {
   return URL.createObjectURL(new Blob([bytes]));
 }
 
+/** Swap pb-blob:// <img> srcs under a DOM root for object URLs (locked note preview). */
+export async function hydratePbBlobImages(root) {
+  if (!root?.querySelectorAll) return;
+  const imgs = [...root.querySelectorAll('img[src^="pb-blob://"]')];
+  await Promise.all(
+    imgs.map(async (img) => {
+      const raw = img.getAttribute("src") || "";
+      const url = await resolvePbBlobUrl(raw);
+      if (url && url !== raw && img.isConnected) img.src = url;
+    })
+  );
+}
+
 export async function enableProjectShare(projectId) {
   const { workspaceEngine } = await import("./engine/workspaceEngine.js");
   const { ensureShareRecord, syncSharePayload, sharePublicUrl } = await import(

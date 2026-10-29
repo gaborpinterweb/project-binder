@@ -354,6 +354,32 @@ function previewHtml(body) {
   }
 }
 
+/** Locked note body: static HTML + resolve pb-blob:// images (TipTap does this in edit mode). */
+function NotesLockedPreview({ body }) {
+  const ref = useRef(null);
+  const html = useMemo(() => previewHtml(body), [body]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let cancelled = false;
+    import("../api.js")
+      .then(({ hydratePbBlobImages }) => {
+        if (!cancelled) return hydratePbBlobImages(el);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [html]);
+  return (
+    <div
+      ref={ref}
+      className="tiptap"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 function clampMenuPos(left, top, menuEl) {
   const pad = 8;
   const w = menuEl?.offsetWidth || 180;
@@ -1403,10 +1429,7 @@ export default function Notes({
                     <EmptyNotePlaceholder body={selected.body} />
                   </div>
                 ) : (
-                  <div
-                    className="tiptap"
-                    dangerouslySetInnerHTML={{ __html: previewHtml(selected.body) }}
-                  />
+                  <NotesLockedPreview body={selected.body} />
                 )}
               </div>
             </div>

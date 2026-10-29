@@ -122,4 +122,24 @@ test.describe("Projects", () => {
       projectList(page).getByRole("button", { name: "Alpha", exact: true })
     ).toBeVisible();
   });
+
+  test("cover description updates when switching projects", async ({ page }) => {
+    await enterApp(page);
+
+    await openProjectCover(page, "Freelancing");
+    const coverBody = page.locator(".cover-view .tiptap");
+    await expect(coverBody).toContainText("non-billable backbone");
+    await expect(page.locator(".cover-view .dlg-desc-label")).toHaveCount(0);
+
+    await openProjectCover(page, "Client project A");
+    await expect(page.locator(".cover-title-display")).toHaveText(
+      "Client project A"
+    );
+    await expect(coverBody).toContainText("product demo, not a brochure");
+    await expect(coverBody).not.toContainText("non-billable backbone");
+
+    await openProjectCover(page, "Client project B");
+    await expect(coverBody).toContainText("Launch window");
+    await expect(coverBody).not.toContainText("product demo, not a brochure");
+  });
 });

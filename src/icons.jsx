@@ -298,6 +298,7 @@ export const IC = {
   alert: CircleAlert,
   flag: Flag,
   export: Download,
+  download: Download,
   import: Upload,
   share: Share,
   move: FolderInput,

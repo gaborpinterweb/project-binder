@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
-import { fileDownloadUrl } from "../api.js";
+import { downloadNamedFile, fileDownloadUrl } from "../api.js";
 import FileTypeIcon from "./FileTypeIcon.jsx";
 import pdfiumWasmUrl from "@embedpdf/pdfium/pdfium.wasm?url";
 
@@ -473,6 +473,21 @@ export default function FilePreviewDialog({
               </button>
             </div>
           ) : null}
+          <button
+            type="button"
+            className="file-preview-icon"
+            aria-label="Download"
+            title="Download"
+            onClick={async () => {
+              try {
+                await downloadNamedFile(url, file.name);
+              } catch (err) {
+                window.alert(err.message || "Could not download file");
+              }
+            }}
+          >
+            <Icon name="download" size={16} />
+          </button>
         </div>
         <div className="file-preview-stage">
           {status === "loading" ? (

@@ -4,6 +4,8 @@ import {
   putFile,
   deleteFileApi,
   moveFileApi,
+  fileDownloadUrl,
+  downloadNamedFile,
 } from "../api.js";
 import { isPaywallAbortError } from "../billingLimits.js";
 import { Icon } from "../icons.jsx";
@@ -90,6 +92,7 @@ function readFileAsBase64(file) {
 function FileMoreMenu({
   disabled,
   moveTargets = [],
+  onDownload,
   onRename,
   onMove,
   onDelete,
@@ -177,6 +180,17 @@ function FileMoreMenu({
           role="menu"
           style={{ top: pos.top, right: pos.right, left: "auto" }}
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation();
+              run(onDownload);
+            }}
+          >
+            <Icon name="download" size={14} />
+            Download
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -382,6 +396,18 @@ export default function Files({
     await uploadFiles(ev.dataTransfer?.files);
   };
 
+  const downloadFile = async (file) => {
+    if (!file?.id) return;
+    try {
+      await downloadNamedFile(
+        fileDownloadUrl(folder.id, d.id, file.id),
+        file.name
+      );
+    } catch (err) {
+      window.alert(err.message || "Could not download file");
+    }
+  };
+
   const renameFile = async (file) => {
     if (readonly || busy) return;
     const nextName = await askPrompt({
@@ -545,6 +571,7 @@ export default function Files({
                     <FileMoreMenu
                       disabled={busy}
                       moveTargets={moveTargets}
+                      onDownload={() => downloadFile(file)}
                       onRename={() => renameFile(file)}
                       onMove={(dest) => moveFile(file, dest)}
                       onDelete={() => removeFile(file)}

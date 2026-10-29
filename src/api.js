@@ -293,6 +293,20 @@ export function fileDownloadUrl(project, filesTab, file) {
   return `/api/file?${q.toString()}`;
 }
 
+/** Fetch a files/card/blob URL and trigger a named browser download. */
+export async function downloadNamedFile(url, filename) {
+  let fetchUrl = url;
+  if (String(url).startsWith("pb-blob://")) {
+    fetchUrl = await resolvePbBlobUrl(url);
+    if (!fetchUrl || fetchUrl === url) throw new Error("Could not download file");
+  }
+  const res = await fetch(fetchUrl);
+  if (!res.ok) throw new Error("Could not download file");
+  const blob = await res.blob();
+  const { downloadBlob } = await import("./utils.js");
+  downloadBlob(filename || "download", blob);
+}
+
 export async function moveFileApi(body) {
   if (isPbMode()) return bridge.bridgeMoveFile(body);
   return apiOkData("/api/file/move", { method: "POST", body }, "Could not move file");

@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { PC } from "./utils.js";
+import RunningClockIcon from "./icons/RunningClockIcon.jsx";
 import {
   AlignLeft,
   AppWindow,
@@ -232,22 +233,6 @@ function RainbowAsterisk({ size = 16, strokeWidth = 2, className, ...rest }) {
         <path key={arm.d} d={arm.d} stroke={`url(#${gid}-${i})`} />
       ))}
     </svg>
-  );
-}
-
-/** Animated stopwatch APNG (public/icons/stopwatch-running.png). */
-function RunningClockIcon({ size = 18, className, strokeWidth, fill, ...rest }) {
-  return (
-    <img
-      src="/icons/stopwatch-running.png"
-      alt=""
-      width={size}
-      height={size}
-      className={["card-timer-clock", className].filter(Boolean).join(" ")}
-      draggable={false}
-      aria-hidden="true"
-      {...rest}
-    />
   );
 }
 

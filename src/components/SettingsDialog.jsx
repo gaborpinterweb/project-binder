@@ -788,22 +788,6 @@ export default function SettingsDialog({
                     </p>
                   </div>
                 </div>
-                  <div className="settings-about-credits">
-                  <b>Credits</b>
-                  <p>
-                    <a
-                      href="https://icons8.com/icon/vj8GRDfKf8Ac/stopwatch"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Stopwatch
-                    </a>{" "}
-                    icon by{" "}
-                    <a href="https://icons8.com" target="_blank" rel="noopener noreferrer">
-                      Icons8
-                    </a>
-                  </p>
-                </div>
               </div>
             </section>
           )}

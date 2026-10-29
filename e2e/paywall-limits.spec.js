@@ -16,7 +16,9 @@ import {
 } from "./helpers.js";
 
 function paywallDialog(page) {
-  return page.getByRole("dialog", { name: /unlimited room to grow/i });
+  return page.getByRole("dialog", {
+    name: /unlimited binder for all your freelancing business/i,
+  });
 }
 
 async function openProjectTasksBoard(page, projectName) {

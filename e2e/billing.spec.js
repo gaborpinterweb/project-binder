@@ -9,7 +9,7 @@ import {
 
 function paywallDialog(page) {
   return page.getByRole("dialog", {
-    name: /unlimited binder for all your freelancing work/i,
+    name: /unlimited binder for all your freelancing business/i,
   });
 }
 
@@ -53,19 +53,26 @@ test.describe("Billing", () => {
     });
     await expect(checkout).toBeEnabled();
 
-    // Stub location.assign so we assert the checkout URL without following Polar.
-    await page.evaluate(() => {
-      window.__pbCheckoutUrls = [];
-      window.location.assign = (url) => {
-        window.__pbCheckoutUrls.push(String(url || ""));
-      };
-    });
-    await checkout.click();
-    const opened = await page.evaluate(() => window.__pbCheckoutUrls || []);
-    expect(opened.length).toBe(1);
-    expect(opened[0]).toContain(new URL(polarCheckoutUrl()).host);
-    expect(opened[0]).toMatch(/reference_id=/);
-    expect(opened[0]).toMatch(/customer_email=/);
+    // Block Polar navigation and capture the assign URL via the request.
+    const checkoutHost = new URL(polarCheckoutUrl()).host;
+    await page.route(
+      (url) => url.host === checkoutHost,
+      (route) => route.abort(),
+    );
+    const [request] = await Promise.all([
+      page.waitForRequest((req) => {
+        try {
+          return new URL(req.url()).host === checkoutHost;
+        } catch {
+          return false;
+        }
+      }),
+      checkout.click(),
+    ]);
+    const opened = request.url();
+    expect(opened).toContain(checkoutHost);
+    expect(opened).toMatch(/reference_id=/);
+    expect(opened).toMatch(/customer_email=/);
   });
 
   test("valid subscribe webhook marks the user Pro", async () => {

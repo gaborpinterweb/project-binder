@@ -186,6 +186,38 @@ function syncRteImageBox(img) {
   }
 }
 
+/**
+ * TipTap's Image resize node view writes attrs.src onto <img> on every update.
+ * Saved HTML uses pb-blob:// (PB mode), which the browser cannot load — we swap
+ * in an object URL for display. Cache so updates (resize, selection) can re-apply
+ * synchronously after TipTap resets the DOM src back to pb-blob://.
+ */
+const pbBlobObjectUrls = new Map();
+
+function warmPbBlobObjectUrl(pbSrc, objectUrl) {
+  if (!pbSrc?.startsWith("pb-blob://") || !objectUrl || objectUrl === pbSrc) {
+    return;
+  }
+  pbBlobObjectUrls.set(pbSrc, objectUrl);
+}
+
+function applyPbBlobImgSrc(img, rawSrc, cancelled) {
+  if (!img || cancelled?.() || !rawSrc?.startsWith("pb-blob://")) return;
+  const cached = pbBlobObjectUrls.get(rawSrc);
+  if (cached) {
+    if (img.getAttribute("src") !== cached) img.src = cached;
+    return;
+  }
+  import("../api.js")
+    .then(({ resolvePbBlobUrl }) => resolvePbBlobUrl(rawSrc))
+    .then((url) => {
+      if (cancelled?.() || !url || url === rawSrc) return;
+      warmPbBlobObjectUrl(rawSrc, url);
+      if (img.isConnected) img.src = url;
+    })
+    .catch(() => {});
+}
+
 /** TipTap Image + resize, with box sync so the handle stays on the image corner. */
 const RteImage = Image.extend({
   addNodeView() {
@@ -208,16 +240,23 @@ const RteImage = Image.extend({
       if (!img.style.width && !img.getAttribute("width")) {
         img.style.maxWidth = `${RTE_IMAGE_MAX_W}px`;
       }
-      const rawSrc = img.getAttribute("src") || "";
       let cancelled = false;
-      if (rawSrc.startsWith("pb-blob://")) {
-        import("../api.js")
-          .then(({ resolvePbBlobUrl }) => resolvePbBlobUrl(rawSrc))
-          .then((url) => {
-            if (!cancelled && url && url !== rawSrc) img.src = url;
-          })
-          .catch(() => {});
+      const isCancelled = () => cancelled;
+      const pbSrcFrom = (node) =>
+        String(node?.attrs?.src || img.getAttribute("src") || "");
+      applyPbBlobImgSrc(img, pbSrcFrom(props.node), isCancelled);
+
+      const origUpdate = view.update?.bind(view);
+      if (origUpdate) {
+        view.update = (node, decorations, innerDecorations) => {
+          const ok = origUpdate(node, decorations, innerDecorations);
+          if (ok !== false) {
+            applyPbBlobImgSrc(img, pbSrcFrom(node), isCancelled);
+          }
+          return ok;
+        };
       }
+
       sync();
       requestAnimationFrame(sync);
 
@@ -288,6 +327,11 @@ async function uploadRteImageFile(imageUpload, file) {
     card: imageUpload.card,
     file: fileId,
   });
+  // Seed display cache before TipTap mounts the node (PB pb-blob:// only).
+  if (String(src).startsWith("pb-blob://")) {
+    const { resolvePbBlobUrl } = await import("../api.js");
+    warmPbBlobObjectUrl(src, await resolvePbBlobUrl(src));
+  }
   return { src, res };
 }
 
@@ -931,11 +975,10 @@ export default function RichTextEditor({
     },
     onUpdate: ({ editor: ed }) => {
       if (!editable) return;
-      if (ed.isEmpty) {
-        onChange(startInHeading ? "<h1></h1>" : "");
-        return;
-      }
-      onChange(ed.getHTML());
+      const html = ed.getHTML();
+      // Image-only docs must persist even if TipTap reports isEmpty.
+      const empty = (!html || ed.isEmpty) && !/<img\b/i.test(html || "");
+      onChange(empty ? (startInHeading ? "<h1></h1>" : "") : html);
     },
   });
 

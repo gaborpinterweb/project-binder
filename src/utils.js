@@ -408,7 +408,10 @@ export function noteListTitle(body) {
     const text = (first?.textContent || doc.body?.textContent || "")
       .replace(/\s+/g, " ")
       .trim();
-    return text || "New note...";
+    if (text) return text;
+    // Image-only (or other media) bodies are not empty — used by task/note UI.
+    if (doc.body.querySelector("img")) return "Image";
+    return "New note...";
   } catch {
     return "New note...";
   }

@@ -109,12 +109,21 @@ export async function uploadAttachment(key, blob, filename = "file") {
         });
   const fd = new FormData();
   fd.append("file", file);
-  if (list.items[0]) {
-    return pb.collection("attachments").update(list.items[0].id, fd);
+  try {
+    if (list.items[0]) {
+      return await pb.collection("attachments").update(list.items[0].id, fd);
+    }
+    fd.append("user", uid);
+    fd.append("key", key);
+    return await pb.collection("attachments").create(fd);
+  } catch (err) {
+    const detail =
+      err?.response?.message ||
+      err?.data?.message ||
+      err?.message ||
+      "Could not upload attachment";
+    throw new Error(detail);
   }
-  fd.append("user", uid);
-  fd.append("key", key);
-  return pb.collection("attachments").create(fd);
 }
 
 export async function downloadAttachment(key) {

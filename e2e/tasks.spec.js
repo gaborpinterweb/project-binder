@@ -108,7 +108,6 @@ test.describe("Tasks", () => {
     await ensureTaskDescription(page);
 
     const dlg = taskDialog(page);
-    // Caption required — image-only bodies count as empty and hide the editor.
     await dlg.locator(".ProseMirror").click();
     await page.keyboard.type("See screenshot");
     const [chooser] = await Promise.all([
@@ -123,6 +122,27 @@ test.describe("Tasks", () => {
     await openTaskCard(page, "Image task");
     const open = taskDialog(page);
     await expect(open.locator(".ProseMirror")).toContainText("See screenshot");
+    await expect(open.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+  });
+
+  test("should persist an image-only task description", async ({ page }) => {
+    await openFreshTasksBoard(page);
+    await addTaskNamed(page, "Image only task");
+    await openTaskCard(page, "Image only task");
+    await ensureTaskDescription(page);
+
+    const dlg = taskDialog(page);
+    const [chooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      dlg.getByRole("button", { name: "Insert image" }).click(),
+    ]);
+    await chooser.setFiles(FIXTURES.image);
+    await expect(dlg.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+    await dlg.locator("textarea.title").click();
+
+    await closeTaskDialog(page);
+    await openTaskCard(page, "Image only task");
+    const open = taskDialog(page);
     await expect(open.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
   });
 

@@ -7,7 +7,9 @@ import RichTextEditor from "./RichTextEditor.jsx";
 const DESC_PLACEHOLDER = "Project description with goals, deadlines, links and more...";
 
 function isEmptyDescription(html) {
-  const text = String(html || "")
+  const s = String(html || "");
+  if (/<img\b/i.test(s)) return false;
+  const text = s
     .replace(/<br\s*\/?>/gi, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/<[^>]+>/g, " ")

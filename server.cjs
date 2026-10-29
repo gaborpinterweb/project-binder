@@ -317,6 +317,9 @@ const ID_LENGTH = 12;
 const ID_ALPHABET =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const ID_RE = new RegExp(`^[${ID_ALPHABET}]{${ID_LENGTH}}$`);
+/** Pre-short-id migrations used crypto.randomUUID() — still present in some prod workspaces. */
+const LEGACY_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_BYTE_MAX = 256 - (256 % ID_ALPHABET.length);
 /** Same fixed id as client COVER_TAB_ID — cover RTE images live under this upload folder. */
 const COVER_TAB_ID = "0000000000c0";
@@ -335,7 +338,7 @@ function newId() {
 }
 
 function isSafePathId(s) {
-  return typeof s === "string" && ID_RE.test(s);
+  return typeof s === "string" && (ID_RE.test(s) || LEGACY_UUID_RE.test(s));
 }
 
 function isDemoValue(v) {

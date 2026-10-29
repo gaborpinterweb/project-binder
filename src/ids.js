@@ -1,4 +1,4 @@
-/** Workspace entity ids: 12-char base62, safe as URL + upload path segments. */
+/** Workspace entity ids: 12-char base62 (current) or legacy UUID, safe as path segments. */
 
 export const ID_LENGTH = 12;
 export const ID_ALPHABET =
@@ -7,11 +7,14 @@ export const ID_ALPHABET =
 export const COVER_TAB_ID = "0000000000c0";
 
 const ID_RE = new RegExp(`^[${ID_ALPHABET}]{${ID_LENGTH}}$`);
+/** Pre-short-id migrations used crypto.randomUUID() — still present in some prod workspaces. */
+const LEGACY_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Rejection sampling bound: largest multiple of alphabet length ≤ 256. */
 const ID_BYTE_MAX = 256 - (256 % ID_ALPHABET.length);
 
 export function isSafePathId(s) {
-  return typeof s === "string" && ID_RE.test(s);
+  return typeof s === "string" && (ID_RE.test(s) || LEGACY_UUID_RE.test(s));
 }
 
 export function newId() {

@@ -2091,7 +2091,6 @@ export default function App() {
         <div className="stage">
           {!isGlobal && (
             <TabBar
-              key={folder?.id || "none"}
               folder={folder}
               mods={mods}
               m={m}

@@ -220,7 +220,7 @@ main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;back
 .db-cols-item.locked input{cursor:default}
 #view.mod{place-items:unset}
 #view.cover-view{position:relative;background-color:color-mix(in srgb,var(--tab) 68%,#000);background-image:var(--leather),var(--leather-on);background-size:160px 160px,auto;background-blend-mode:soft-light,soft-light}
-/* Viewport-locked leather so Cover tab + page share one texture (no seam). */
+/* Viewport-locked leather so Cover tab + page share one texture (no seam). #bar stays dark. */
 .stage:has(> .cover-view){overflow:clip;isolation:auto}
 .stage:has(> .cover-view) #bar .tab.on,
 .stage:has(> .cover-view) #view.cover-view{background-attachment:fixed,fixed}

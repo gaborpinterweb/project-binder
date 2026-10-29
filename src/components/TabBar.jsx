@@ -656,9 +656,19 @@ export default function TabBar({
     });
   }, [mods, m, archived]);
 
+  // Reset overflow fit on project switch without remounting #bar.
+  useLayoutEffect(() => {
+    setFit({
+      visible: null,
+      hidden: [],
+      showAdd: true,
+      showOverflow: false,
+    });
+  }, [folder?.id]);
+
   useLayoutEffect(() => {
     recompute();
-  }, [recompute, tabC, boardEdit, coverEdit]);
+  }, [recompute, tabC, boardEdit, coverEdit, folder?.id]);
 
   useEffect(() => {
     const tabsEl = tabsRef.current;

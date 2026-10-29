@@ -23,6 +23,7 @@ function CoverDescription({ value, onChange, editable, imageUpload = null }) {
         value={value || ""}
         placeholder={DESC_PLACEHOLDER}
         editable={editable}
+        showLabel={editable}
         showToolbar={editable}
         variant="full"
         imageUpload={editable ? imageUpload : null}
@@ -170,7 +171,7 @@ export default function Cover({
                 <ColorDropdown draft={draft} onChange={onCoverDraftChange} />
               </div>
               <CoverDescription
-                key="edit"
+                key={`${folder.id}-edit`}
                 value={viewDesc}
                 editable
                 imageUpload={imageUpload}
@@ -185,7 +186,11 @@ export default function Cover({
               {isEmptyDescription(viewDesc) ? (
                 <p className="cover-desc-display is-empty">{DESC_PLACEHOLDER}</p>
               ) : (
-                <CoverDescription key="view" value={viewDesc} editable={false} />
+                <CoverDescription
+                  key={`${folder.id}-view`}
+                  value={viewDesc}
+                  editable={false}
+                />
               )}
             </>
           )}

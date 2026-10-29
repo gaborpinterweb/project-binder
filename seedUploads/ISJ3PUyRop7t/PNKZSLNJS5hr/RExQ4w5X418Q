@@ -1,53 +1,31 @@
-%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R] /Count 3 >>
-endobj
-3 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-4 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
-endobj
-5 0 obj
-<< /Length 200 >>
-stream
-BT /F1 16 Tf 72 720 Td (Page 1) Tj 0 -28 Td /F1 12 Tf (Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod ) Tj 0 -16 Td (tempor incididunt ut labore et dolore magna aliqua.) Tj ET
-endstream
-endobj
-6 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
-endobj
-7 0 obj
-<< /Length 200 >>
-stream
-BT /F1 16 Tf 72 720 Td (Page 2) Tj 0 -28 Td /F1 12 Tf (Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod ) Tj 0 -16 Td (tempor incididunt ut labore et dolore magna aliqua.) Tj ET
-endstream
-endobj
-8 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
-endobj
-9 0 obj
-<< /Length 200 >>
-stream
-BT /F1 16 Tf 72 720 Td (Page 3) Tj 0 -28 Td /F1 12 Tf (Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod ) Tj 0 -16 Td (tempor incididunt ut labore et dolore magna aliqua.) Tj ET
-endstream
-endobj
-xref
-0 10
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000127 00000 n 
-0000000197 00000 n 
-0000000323 00000 n 
-0000000574 00000 n 
-0000000700 00000 n 
-0000000951 00000 n 
-0000001077 00000 n 
-trailer << /Size 10 /Root 1 0 R >>
-startxref
-1328
-%%EOF
+Discovery notes — Client project A
+==================================
+
+Goals
+-----
+1. Clarify brand voice for the relaunch site.
+2. Map primary journeys: homepage → pricing → contact.
+3. Identify content owners on the client side.
+
+Stakeholders
+------------
+- Ana (marketing lead) — decision maker for copy.
+- Jordan (product) — owns feature messaging.
+- Priya (ops) — schedules interviews and reviews.
+
+Open questions
+--------------
+- Do we keep the current logo lockup or refresh it?
+- Is the pricing page public at launch, or gated?
+- Which analytics tool is canonical after cutover?
+
+Interview backlog
+-----------------
+[ ] Ana — brand tone and forbidden phrases
+[ ] Jordan — product differentiators
+[ ] Support lead — top 10 support themes
+
+Next checkpoint
+---------------
+Share a one-page brief after the first interview round.
+Flag blockers in the Ops board the same day.

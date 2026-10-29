@@ -11,6 +11,7 @@ import {
   deleteAttachment,
   attachmentKey,
 } from "../pb/persist.js";
+import { installSeedDemoAttachments } from "../seedDemoFiles.js";
 import { deleteShareRecord, syncEnabledShares } from "../pb/shares.js";
 import { showSnackbar } from "../snackbar.js";
 
@@ -234,7 +235,11 @@ export async function bridgeRestoreTrash(body) {
 }
 
 export async function bridgeResetSeed(seedDoc) {
-  return after(await eng.resetWorkspaceToSeed(seedDoc));
+  const data = await eng.resetWorkspaceToSeed(seedDoc);
+  if (isPbMode()) {
+    await installSeedDemoAttachments({ wipeExisting: true });
+  }
+  return after(data);
 }
 
 export async function bridgeResetEmpty() {

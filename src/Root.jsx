@@ -9,6 +9,7 @@ import { getPb, isPbMode } from "./pb/client.js";
 import { loadUserDocs, saveUserDocs } from "./pb/persist.js";
 import { workspaceEngine } from "./engine/workspaceEngine.js";
 import { ensurePersistHook } from "./engine/apiBridge.js";
+import { installSeedDemoAttachments } from "./seedDemoFiles.js";
 import { showSnackbar } from "./snackbar.js";
 import {
   AUTH_RESET_PASSWORD,
@@ -84,6 +85,7 @@ async function bootstrapPbSession() {
     workspaceEngine.loadFromArchiveDoc({ version: 2, projects: [] });
     const docs = workspaceEngine.exportWorkspaceData();
     await saveUserDocs(docs);
+    await installSeedDemoAttachments();
   } else {
     throw new Error(
       "Workspace file is present but not usable (unsupported or missing version). Not replacing it with demo data."

@@ -12,6 +12,21 @@ function paywallDialog(page) {
 }
 
 test.describe("Billing", () => {
+  test("confirm-pro shows success for a Pro user and Continue opens the workspace", async ({
+    page,
+  }) => {
+    await enterApp(page, { pro: true });
+    await page.goto("/confirm-pro?checkout_id=e2e_test");
+    const dlg = page.getByRole("dialog", { name: /pro plan confirmed/i });
+    await expect(dlg).toBeVisible();
+    await expect(dlg.getByText("You have access to Pro features.")).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await dlg.getByRole("button", { name: "Continue" }).click();
+    await expect(dlg).toHaveCount(0);
+    await expect(page).not.toHaveURL(/confirm-pro/);
+    await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  });
+
   test("Settings ?tab=billing deep link opens Billing and clears on close", async ({
     page,
   }) => {

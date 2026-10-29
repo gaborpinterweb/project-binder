@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../icons.jsx";
 import { exportWorkspace, fetchArchivedProjects, importBackup } from "../api.js";
 import {
+  feedbackUrl,
   getPb,
   isCommercialMode,
   isPbMode,
@@ -33,7 +34,6 @@ const GITHUB_URL = "https://github.com/gaborpinterweb/project-binder";
 const SITE_URL =
   "https://gaborpinter.com/?utm_source=project-binder&utm_medium=app&utm_campaign=settings-about";
 const LEARN_URL = "https://projectbinder.app/learn";
-const FEEDBACK_URL = "https://projectbinder.app/feedback";
 
 const COUNTDOWN_DURATION_DD_OPTIONS = COUNTDOWN_DURATION_OPTIONS.map((min) => ({
   value: String(min),
@@ -729,7 +729,7 @@ export default function SettingsDialog({
                   </div>
                   <a
                     className="settings-row-btn"
-                    href={FEEDBACK_URL}
+                    href={feedbackUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

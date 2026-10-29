@@ -1,52 +1,61 @@
 import { useEffect, useState } from "react";
 import { Icon } from "../icons.jsx";
+import { feedbackUrl } from "../pb/client.js";
 import { APP_NAME } from "../utils.js";
 
-const FEEDBACK_URL = "https://projectbinder.app/feedback";
-
-const STEPS = [
-  {
-    logo: true,
-    title: `Welcome to ${APP_NAME}`,
-    points: [
-      { icon: "plus", text: "Create projects, tasks, notes and more" },
-      { icon: "stopwatch", text: "Track time spent on tasks and projects" },
-      { icon: "asterisk", text: "Master board shows all tasks from all projects" },
-    ],
-  },
-  {
-    icon: "check",
-    title: "Your binder is ready",
-    points: [
-      { icon: "Workspace", text: "Demo projects are now ready to explore" },
-      { icon: "Trash", text: "Delete them whenever you like and create new ones" },
-      {
-        icon: "external",
-        text: (
-          <>
-            Submit feedback at{" "}
-            <a
-              className="launch-link"
-              href={FEEDBACK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              projectbinder.app/feedback
-            </a>
-          </>
-        ),
-      },
-    ],
-  },
-];
+function launchSteps() {
+  const feedback = feedbackUrl();
+  let feedbackLabel = "projectbinder.app/feedback";
+  try {
+    feedbackLabel = new URL(feedback).host + new URL(feedback).pathname.replace(/\/$/, "");
+  } catch {
+    /* keep default label */
+  }
+  return [
+    {
+      logo: true,
+      title: `Welcome to ${APP_NAME}`,
+      points: [
+        { icon: "plus", text: "Create projects, tasks, notes and more" },
+        { icon: "stopwatch", text: "Track time spent on tasks and projects" },
+        { icon: "asterisk", text: "Master board shows all tasks from all projects" },
+      ],
+    },
+    {
+      icon: "check",
+      title: "Your binder is ready",
+      points: [
+        { icon: "Workspace", text: "Demo projects are now ready to explore" },
+        { icon: "Trash", text: "Delete them whenever you like and create new ones" },
+        {
+          icon: "external",
+          text: (
+            <>
+              Submit feedback at{" "}
+              <a
+                className="launch-link"
+                href={feedback}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {feedbackLabel}
+              </a>
+            </>
+          ),
+        },
+      ],
+    },
+  ];
+}
 
 export default function LaunchDialog({ onStart }) {
   const [step, setStep] = useState(0);
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const steps = launchSteps();
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
 
   const finish = () => onStart();
-  const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const goNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
 
   useEffect(() => {
     const onKey = (e) => {

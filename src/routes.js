@@ -62,7 +62,7 @@ export function entityKindToModType(entityKind) {
 
 /**
  * @returns {null | {
- *   kind: "global" | "globalEntity" | "settings" | "project" | "cover" | "tab" | "entity" | "share" | "auth",
+ *   kind: "global" | "globalEntity" | "settings" | "confirmPro" | "project" | "cover" | "tab" | "entity" | "share" | "auth",
  *   g?: string,
  *   projectId?: string,
  *   tabId?: string,
@@ -81,6 +81,7 @@ export function parsePath(pathname) {
 
   if (parts.length === 1) {
     if (parts[0] === "settings") return { kind: "settings" };
+    if (parts[0] === "confirm-pro") return { kind: "confirmPro" };
     const authMode = pathToAuthMode("/" + parts[0]);
     if (authMode) return { kind: "auth", mode: authMode };
     const g = GLOBAL_PATH[parts[0]];
@@ -211,6 +212,17 @@ export function buildSettingsPath(tab) {
     return "/settings";
   }
   return `/settings?tab=${encodeURIComponent(id)}`;
+}
+
+/**
+ * Optional Polar `checkout_id` on `/confirm-pro` (accepted for support display; unused for entitlement).
+ * @param {string} [search]
+ * @returns {string}
+ */
+export function confirmProCheckoutIdFromSearch(search = window.location.search) {
+  const raw = String(search || "");
+  const q = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  return String(q.get("checkout_id") || "").trim();
 }
 
 /**

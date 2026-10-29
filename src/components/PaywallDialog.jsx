@@ -25,8 +25,8 @@ const ROWS = [
   },
   {
     label: "Who's it for",
-    free: "Beginner freelancers, part-time freelancers or pro freelancers testing the waters",
-    pro: "Committed, full-time freelancers with a large client base",
+    free: "Beginner or part-time freelancers",
+    pro: "Profesisonal, full-time freelancers",
   },
 ];
 

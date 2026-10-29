@@ -45,6 +45,13 @@ export function polarPortalUrl() {
   return trimUrl(import.meta.env.VITE_POLAR_PORTAL_URL);
 }
 
+const DEFAULT_FEEDBACK_URL = "https://projectbinder.app/feedback";
+
+/** Public feedback / contact URL (overridable via `VITE_FEEDBACK_URL`). */
+export function feedbackUrl() {
+  return trimUrl(import.meta.env.VITE_FEEDBACK_URL) || DEFAULT_FEEDBACK_URL;
+}
+
 /** True when the signed-in user has Pro entitlement (Commercial). */
 export function isProUser() {
   return !!getPb().authStore.record?.pro;

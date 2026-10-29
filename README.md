@@ -63,14 +63,15 @@ Auth mail (Resend) is independent of the commercial flag.
 #### Polar billing (Commercial / sandbox)
 
 1. In Polar, create a **subscription** product, then a **Checkout Link** with **`require_billing_address: true`**. Portal URL is `https://polar.sh/<org-slug>/portal`.
-2. Set build-args `VITE_POLAR_CHECKOUT_URL` (Checkout Link) and `VITE_POLAR_PORTAL_URL`.
+2. Set build-args `VITE_POLAR_CHECKOUT_URL` (Checkout Link) and `VITE_POLAR_PORTAL_URL`. Optional: `VITE_FEEDBACK_URL` (Contact us / Settings feedback; default `https://projectbinder.app/feedback`).
 3. Set runtime secret: `fly secrets set POLAR_WEBHOOK_SECRET=…` (same value as the Polar webhook endpoint secret).
 4. In Polar (prefer **sandbox** while testing) → Webhooks → URL `https://cloud.projectbinder.app/api/polar-webhook`, events: `subscription.created`, `subscription.updated`, `subscription.active`, `subscription.canceled`, `subscription.uncanceled`, `subscription.revoked`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`, …
-5. Deploy so migrations + `pb_hooks` are live. Unsigned POSTs to the webhook should return 401/503.
-6. Sign in → Settings → Billing → **Subscribe** (checkout appends `reference_id` = PocketBase user id + `customer_email`). Complete a test purchase.
-7. Settings → Billing should show **Pro** after **Refresh** (or reopen the tab). PB Admin: user `pro` / `proStatus` / `polar*` fields.
-8. Cancel / revoke in Polar sandbox → Refresh → **Free** when entitlement ends.
-9. Escape hatch: set `pro` in PB Admin to exercise the status UI without a purchase.
+5. Checkout Link **Success URL**: `https://cloud.projectbinder.app/confirm-pro?checkout_id={CHECKOUT_ID}` (Return URL can be `/settings?tab=billing`). The app polls for Pro on `/confirm-pro`.
+6. Deploy so migrations + `pb_hooks` are live. Unsigned POSTs to the webhook should return 401/503.
+7. Sign in → Settings → Billing → **Get Cloud Pro** (checkout appends `reference_id` = PocketBase user id + `customer_email`). Complete a test purchase; Polar should return to `/confirm-pro`.
+8. Settings → Billing should show **Pro** after confirmation (or **Refresh**). PB Admin: user `pro` / `proStatus` / `polar*` fields.
+9. Cancel / revoke in Polar sandbox → Refresh → **Free** when entitlement ends.
+10. Escape hatch: set `pro` in PB Admin to exercise the status UI without a purchase.
 
 Local commercial with webhooks: export `POLAR_WEBHOOK_SECRET` before `npm run start:commercial`, and point a sandbox webhook at a tunnel to `http://127.0.0.1:8090/api/polar-webhook` (or use `polar webhook listen`), or test against Fly only.
 

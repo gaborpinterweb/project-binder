@@ -107,19 +107,21 @@ import { showSnackbar } from "./snackbar.js";
 import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
-import { isPbMode } from "./pb/client.js";
+import { isCommercialMode, isPbMode } from "./pb/client.js";
 import useIsPhone from "./hooks/useIsPhone.js";
 import {
   parsePath,
   buildPath,
   navigatePath,
   currentPathname,
+  confirmProCheckoutIdFromSearch,
   modTypeToEntityKind,
   entityKindToModType,
   ENTITY_NOTES,
   ENTITY_FILES,
   ENTITY_TASKS,
 } from "./routes.js";
+import ConfirmProDialog from "./components/ConfirmProDialog.jsx";
 
 function nextTabName(mods, base) {
   const used = new Set((mods || []).map((mod) => mod[1]));
@@ -167,6 +169,8 @@ export default function App() {
   const [timelogRefresh, setTimelogRefresh] = useState(0);
   const [trashRefresh, setTrashRefresh] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmProOpen, setConfirmProOpen] = useState(false);
+  const [confirmProCheckoutId, setConfirmProCheckoutId] = useState("");
   const [sharingTarget, setSharingTarget] = useState(null);
   /** Note/file entity segments driven by the URL (null = tab-only path). */
   const [routeNoteId, setRouteNoteId] = useState(null);
@@ -200,6 +204,7 @@ export default function App() {
   const routeNoteIdRef = useRef(routeNoteId);
   const routeFileIdRef = useRef(routeFileId);
   const settingsPushedRef = useRef(false);
+  const confirmProHoldingRef = useRef(false);
   const routeReadyRef = useRef(false);
   const applyingRouteRef = useRef(false);
   const isPhoneRef = useRef(isPhone);
@@ -363,20 +368,49 @@ export default function App() {
         if (!route || route.kind === "auth") {
           setSettingsOpen(false);
           settingsOpenRef.current = false;
+          if (confirmProHoldingRef.current) {
+            // Success replaced URL to `/`; keep dialog until Continue.
+            return;
+          }
+          setConfirmProOpen(false);
           // Session already applied on initial load; canonicalize address bar.
           navigatePath(buildAppPath({ settings: false }), nav);
           return;
         }
 
         if (route.kind === "settings") {
+          setConfirmProOpen(false);
+          confirmProHoldingRef.current = false;
           setSettingsOpen(true);
           settingsOpenRef.current = true;
+          return;
+        }
+
+        if (route.kind === "confirmPro") {
+          setSettingsOpen(false);
+          settingsOpenRef.current = false;
+          settingsPushedRef.current = false;
+          confirmProHoldingRef.current = false;
+          if (!isCommercialMode()) {
+            setConfirmProOpen(false);
+            navigatePath(buildAppPath({ settings: false }), nav);
+            return;
+          }
+          setConfirmProCheckoutId(confirmProCheckoutIdFromSearch());
+          setConfirmProOpen(true);
+          if (!gRef.current) {
+            setG("Masterboard");
+            gRef.current = "Masterboard";
+          }
           return;
         }
 
         setSettingsOpen(false);
         settingsOpenRef.current = false;
         settingsPushedRef.current = false;
+        if (!confirmProHoldingRef.current) {
+          setConfirmProOpen(false);
+        }
 
         if (route.kind === "global") {
           const nextG =
@@ -1898,6 +1932,24 @@ export default function App() {
     }
   };
 
+  const handleConfirmProConfirmed = useCallback(() => {
+    confirmProHoldingRef.current = true;
+  }, []);
+
+  const closeConfirmPro = useCallback(() => {
+    confirmProHoldingRef.current = false;
+    setConfirmProOpen(false);
+    setSettingsOpen(false);
+    settingsOpenRef.current = false;
+    clearEntityOverlays();
+    setG("Masterboard");
+    gRef.current = "Masterboard";
+    navigatePath(buildPath({ g: "Masterboard" }), {
+      replace: true,
+      search: "",
+    });
+  }, [clearEntityOverlays]);
+
   const masterBoard = (
     <Board
       mode="master"
@@ -2655,6 +2707,15 @@ export default function App() {
           onClose={() => setUpdateOpen(false)}
         />
       )}
+
+      {confirmProOpen ? (
+        <ConfirmProDialog
+          open={confirmProOpen}
+          checkoutId={confirmProCheckoutId}
+          onConfirmed={handleConfirmProConfirmed}
+          onClose={closeConfirmPro}
+        />
+      ) : null}
 
       {settingsOpen &&
         (isPhone ? (

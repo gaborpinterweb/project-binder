@@ -11,6 +11,7 @@ import {
   deleteTaskCard,
   ensureTaskDescription,
   enterApp,
+  expectImgLoaded,
   closeTaskDialog,
   fillRichTaskDescription,
   openFreshTasksBoard,
@@ -115,14 +116,14 @@ test.describe("Tasks", () => {
       dlg.getByRole("button", { name: "Insert image" }).click(),
     ]);
     await chooser.setFiles(FIXTURES.image);
-    await expect(dlg.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+    await expectImgLoaded(dlg.locator(".ProseMirror img"));
     await dlg.locator("textarea.title").click();
 
     await closeTaskDialog(page);
     await openTaskCard(page, "Image task");
     const open = taskDialog(page);
     await expect(open.locator(".ProseMirror")).toContainText("See screenshot");
-    await expect(open.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+    await expectImgLoaded(open.locator(".ProseMirror img"));
   });
 
   test("should persist an image-only task description", async ({ page }) => {
@@ -137,13 +138,14 @@ test.describe("Tasks", () => {
       dlg.getByRole("button", { name: "Insert image" }).click(),
     ]);
     await chooser.setFiles(FIXTURES.image);
-    await expect(dlg.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+    await expectImgLoaded(dlg.locator(".ProseMirror img"));
     await dlg.locator("textarea.title").click();
 
     await closeTaskDialog(page);
     await openTaskCard(page, "Image only task");
     const open = taskDialog(page);
-    await expect(open.locator(".ProseMirror img")).toBeVisible({ timeout: 15000 });
+    await expect(open.locator(".ProseMirror")).toBeVisible();
+    await expectImgLoaded(open.locator(".ProseMirror img"));
   });
 
   test("should be able to add a task with two files", async ({ page }) => {

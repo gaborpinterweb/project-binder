@@ -204,10 +204,50 @@ export async function addTasksTab(page) {
   await expect(page.locator(".board")).toBeVisible();
 }
 
+/** Add a Notes tab on the current project. */
+export async function addNotesTab(page) {
+  await page.locator("#add").click();
+  await page.locator("#menu").getByRole("button", { name: /Notes/ }).click();
+  await expect(page.locator("#tabs .tab", { hasText: "Notes" })).toBeVisible();
+  await expect(page.locator(".notes-view")).toBeVisible();
+}
+
 export async function openFreshTasksBoard(page, projectName = "Tasks Lab") {
   await enterApp(page);
   await createUserProject(page, projectName);
   await addTasksTab(page);
+}
+
+export async function openFreshNotesTab(page, projectName = "Notes Lab") {
+  await enterApp(page);
+  await createUserProject(page, projectName);
+  await addNotesTab(page);
+}
+
+/** Assert an <img> is visible and has decoded pixels (not a broken pb-blob://). */
+export async function expectImgLoaded(locator, timeout = 15000) {
+  await expect(locator).toBeVisible({ timeout });
+  await expect
+    .poll(async () => locator.evaluate((img) => img.naturalWidth || 0), {
+      timeout,
+    })
+    .toBeGreaterThan(0);
+}
+
+/** Create a note and wait for the unlocked editor. */
+export async function addNote(page) {
+  await page.getByRole("button", { name: "Add note" }).click();
+  await expect(page.locator(".notes-main .ProseMirror")).toBeVisible();
+}
+
+export async function lockSelectedNote(page) {
+  await page.locator(".modbar").getByRole("button", { name: "Lock", exact: true }).click();
+  await expect(page.locator(".notes-preview")).toBeVisible();
+}
+
+export async function unlockSelectedNote(page) {
+  await page.locator(".modbar").getByRole("button", { name: "Unlock", exact: true }).click();
+  await expect(page.locator(".notes-main .ProseMirror")).toBeVisible();
 }
 
 export function boardColumn(page, name) {

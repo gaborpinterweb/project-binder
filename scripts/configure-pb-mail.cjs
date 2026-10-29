@@ -113,11 +113,13 @@ async function main() {
 
   const users = await jsonFetch(`${c.pbUrl}/api/collections/users`, { headers });
   const verificationTemplate = {
-    subject: "Verify your Project Binder email",
-    body: `<p>Hello,</p>
-<p>Please verify your email for Project Binder by clicking the link below:</p>
-<p><a href="${c.appUrl}/sign-in?verify={TOKEN}">Verify email</a></p>
-<p>If you did not create an account, you can ignore this email.</p>`,
+    subject: "Welcome to Project Binder: confirm your email",
+    body: `<p>Hi there,</p>
+<p>Thanks for signing up for Project Binder. I'm glad you're here.</p>
+<p>Confirm your email with the link below and you're all set:</p>
+<p><a href="${c.appUrl}/sign-in?verify={TOKEN}">Confirm email</a></p>
+<p>If you didn't create an account, you can safely ignore this email.</p>
+<p>Thanks again,<br>Gábor</p>`,
   };
   const resetPasswordTemplate = {
     subject: "Reset your Project Binder password",

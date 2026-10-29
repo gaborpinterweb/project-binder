@@ -49,12 +49,11 @@ test.describe("Billing", () => {
     const checkout = paywall.getByRole("button", { name: "Checkout" });
     await expect(checkout).toBeEnabled();
 
-    // Stub window.open so we assert the checkout URL without following Polar redirects.
+    // Stub location.assign so we assert the checkout URL without following Polar.
     await page.evaluate(() => {
       window.__pbCheckoutUrls = [];
-      window.open = (url) => {
+      window.location.assign = (url) => {
         window.__pbCheckoutUrls.push(String(url || ""));
-        return null;
       };
     });
     await checkout.click();

@@ -65,8 +65,7 @@ export default function PaywallDialog() {
   const openCheckout = () => {
     const url = polarCheckoutUrlForUser();
     if (url) {
-      window.open(url, "_blank", "noopener");
-      settlePaywall();
+      window.location.assign(url);
       return;
     }
     alert("Checkout URL is not configured for this build.");

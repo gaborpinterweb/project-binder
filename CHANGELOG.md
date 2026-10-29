@@ -9,8 +9,13 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-10-28 (Pine)
+## [1.0.0] - 2026-10-29 (Pine)
 
 ### Added
 
-- Initial public 1.0 baseline with gated Fly releases (`version.json`, `npm run release`).
+- First public release of Project Binder on PocketBase (auth, per-user workspace, attachments).
+- Community and Commercial builds; Commercial Free/Pro via Polar checkout, webhooks, and `/confirm-pro`.
+- Workspace modules: boards (including Master board), notes, files, databases, tasks, timelogs/timers, trash, and archive.
+- Export/import, public read-only sharing, Settings (including Billing deep links), onboarding, and web manifest.
+- Commercial paywall for active-project, storage, and public-share limits.
+- Gated Fly releases (`version.json`, `npm run release`) and Playwright e2e coverage for auth, projects, tasks, timelogs, sharing, and billing.

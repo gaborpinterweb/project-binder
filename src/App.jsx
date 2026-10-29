@@ -762,6 +762,16 @@ export default function App() {
     []
   );
 
+  // Preserve whatever project/tab is currently on screen (do not follow the mutated entity).
+  const keepCurrentNav = useCallback(
+    () =>
+      keepNav(
+        foldersRef.current[pRef.current]?.id,
+        foldersRef.current[pRef.current]?.mods[mRef.current]?.[2]?.id
+      ),
+    [keepNav]
+  );
+
   const reload = useCallback(async () => {
     const data = await fetchWorkspace();
     const initial = !foldersRef.current.length;
@@ -1081,7 +1091,7 @@ export default function App() {
         ...(Array.isArray(row.files) ? { files: row.files } : {}),
         ...(Array.isArray(row.images) ? { images: row.images } : {}),
       });
-      applyWorkspace(data, keepNav(folder.id, mod[2].id));
+      applyWorkspace(data, keepCurrentNav());
       const cur = activePomoRef.current;
       if (
         cur &&
@@ -1109,7 +1119,7 @@ export default function App() {
       });
       return data;
     },
-    [applyWorkspace, keepNav]
+    [applyWorkspace, keepCurrentNav]
   );
 
   const deleteCard = useCallback(
@@ -1185,9 +1195,48 @@ export default function App() {
         permanent: true,
         keepFiles: true,
       });
-      applyWorkspace(data, keepNav(to.folder.id, to.mod[2].id));
+      applyWorkspace(data, keepCurrentNav());
+      const destLabel = `${to.folder.name || "Project"} / ${to.mod[1] || "Board"}`;
+      showSnackbar({
+        icon: "check",
+        tone: "success",
+        message: `Task moved to ${destLabel}`,
+        durationMs: 7000,
+        action: {
+          label: "Open tab",
+          onClick: () => {
+            const list = foldersRef.current;
+            const pi = list.findIndex((f) => f.id === toProject);
+            if (pi < 0) return;
+            const mi = (list[pi]?.mods || []).findIndex(
+              (mod) => mod?.[2]?.id === toBoard
+            );
+            if (mi < 0) return;
+            clearEntityOverlays();
+            setSettingsOpen(false);
+            settingsOpenRef.current = false;
+            setG(null);
+            gRef.current = null;
+            setP(pi);
+            pRef.current = pi;
+            setM(mi);
+            mRef.current = mi;
+            rememberCurrentTab(list, pi, mi);
+            syncUrl({
+              folders: list,
+              p: pi,
+              m: mi,
+              g: null,
+              settings: false,
+              dialog: null,
+              routeNoteId: null,
+              routeFileId: null,
+            });
+          },
+        },
+      });
     },
-    [saveCard, applyWorkspace, keepNav]
+    [saveCard, applyWorkspace, keepCurrentNav, clearEntityOverlays, rememberCurrentTab, syncUrl]
   );
 
   const createCard = useCallback(

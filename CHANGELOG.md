@@ -9,6 +9,18 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-30 (Pine)
+
+### Fixed
+
+- Images in task descriptions and notes (including locked note preview).
+- Board view is preserved after moving a task to another tab.
+
+### Changed
+
+- PWA theme color darkened to match the sidebar chrome.
+- Friendlier email confirmation message.
+
 ## [1.0.1] - 2026-10-29 (Pine)
 
 ### Added

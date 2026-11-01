@@ -848,15 +848,6 @@ body.is-card-dragging .col-body{
   touch-action:none;
   overscroll-behavior:none;
 }
-body.is-card-dragging::after{
-  content:"";
-  position:fixed;
-  inset:0;
-  z-index:2000;
-  pointer-events:none;
-  border:3px dashed #ff2d55;
-  box-sizing:border-box;
-}
 .card-drag-edge-hint{
   position:fixed;
   z-index:1990;
@@ -885,33 +876,6 @@ body.is-card-dragging::after{
 }
 .card-drag-edge-hint.is-scrolling{
   background-color:rgba(60,60,64,calc(.06 + var(--edge-p) * .08));
-}
-.card-drag-debug{
-  position:fixed;
-  left:8px;
-  right:8px;
-  bottom:max(8px,env(safe-area-inset-bottom,0px));
-  z-index:2001;
-  pointer-events:none;
-  padding:8px 10px;
-  border-radius:10px;
-  background:rgba(0,0,0,.82);
-  color:#9ef01a;
-  font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  box-shadow:0 8px 24px #00000066;
-}
-.card-drag-debug b{
-  display:block;
-  margin:0 0 4px;
-  color:#fff;
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.02em;
-}
-.card-drag-debug pre{
-  margin:0;
-  white-space:pre-wrap;
-  word-break:break-word;
 }
 .board .card:active,.board .card.dragging,.is-card-dragging{cursor:grabbing}
 /* Keep the source card mounted for touch, but take no layout space so the drop

@@ -102,7 +102,7 @@ const DRAG_THRESHOLD_PX = 6;
 const TOUCH_DRAG_HOLD_MS = 1000;
 const DRAG_EDGE_PX = 56;
 /** Dwell in an edge band before auto-scroll starts. */
-const DRAG_EDGE_DWELL_MS = 800;
+const DRAG_EDGE_DWELL_MS = 350;
 const DRAG_EDGE_SCROLL_PX_PER_SEC = 320;
 
 function findColBodyAt(clientX, clientY) {
@@ -226,24 +226,17 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
   const [dragHeight, setDragHeight] = useState(null);
   const [dragPreview, setDragPreview] = useState(null);
   const [dropHint, setDropHint] = useState(null);
-  const [dragDebugActive, setDragDebugActive] = useState(false);
   const [edgeHint, setEdgeHint] = useState(null);
   const sessionRef = useRef(null);
   const hintRef = useRef(null);
   const movedRef = useRef(false);
   const previewElRef = useRef(null);
-  const dragDebugRef = useRef(null);
   const resolveRef = useRef(resolveDrop);
   resolveRef.current = resolveDrop;
 
   const setHint = useCallback((hint) => {
     hintRef.current = hint;
     setDropHint(hint);
-  }, []);
-
-  const patchDebug = useCallback((patch) => {
-    const prev = dragDebugRef.current || {};
-    dragDebugRef.current = { ...prev, ...patch, t: performance.now() };
   }, []);
 
   const movePreview = useCallback((clientX, clientY, session) => {
@@ -281,16 +274,11 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
       window.removeEventListener("pointerup", session.onUp);
       window.removeEventListener("pointercancel", session.onCancel);
     }
-    const last = dragDebugRef.current;
-    dragDebugRef.current = last
-      ? { ...last, phase: "ended", endedAt: performance.now() }
-      : null;
     sessionRef.current = null;
     setDragKey(null);
     setDragHeight(null);
     setDragPreview(null);
     setHint(null);
-    setDragDebugActive(false);
     setEdgeHint(null);
     document.body.classList.remove("is-card-dragging");
   }, [setHint]);
@@ -317,7 +305,6 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         offsetX: e.clientX - rect.left,
         offsetY: e.clientY - rect.top,
         pointerId: e.pointerId,
-        pointerType: e.pointerType || "unknown",
         started: false,
         holdTimer: null,
         movePassive: false,
@@ -334,48 +321,15 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         onTouchMove: null,
         onTouchEnd: null,
         capturedEl: null,
-        moveCount: 0,
-        touchMoveCount: 0,
-        cancelCount: 0,
-        lastMoveAt: 0,
-        lastTouchMoveAt: 0,
-        captureError: "",
         finished: false,
       };
-      patchDebug({
-        phase: needsHold ? "hold" : "armed",
-        pointerType: session.pointerType,
-        pointerId: session.pointerId,
-        key,
-        x: Math.round(e.clientX),
-        y: Math.round(e.clientY),
-        moveCount: 0,
-        touchMoveCount: 0,
-        cancelCount: 0,
-        captured: false,
-        captureError: "",
-        hasCapture: false,
-        movePassive: needsHold,
-        edge: null,
-        drop: null,
-        lastMoveAgeMs: 0,
-        lastTouchAgeMs: 0,
-        cardW: session.width,
-        cardH: session.height,
-      });
-      setDragDebugActive(true);
 
-      const finishDrag = (reason, clientX, clientY) => {
+      const finishDrag = (_reason, _clientX, _clientY) => {
         if (session.finished) return;
         session.finished = true;
         const started = session.started;
         const hint = hintRef.current;
         const dragPayload = session.payload;
-        patchDebug({
-          phase: reason,
-          x: clientX != null ? Math.round(clientX) : undefined,
-          y: clientY != null ? Math.round(clientY) : undefined,
-        });
         cleanup();
         if (started) resolveRef.current?.(dragPayload, hint);
       };
@@ -482,16 +436,6 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         if (!session.onTouchMove) {
           session.onTouchMove = (ev) => {
             if (!session.started) return;
-            session.touchMoveCount += 1;
-            session.lastTouchMoveAt = performance.now();
-            const t = ev.touches?.[0];
-            patchDebug({
-              touchMoveCount: session.touchMoveCount,
-              lastTouchMoveAt: session.lastTouchMoveAt,
-              touchX: t ? Math.round(t.clientX) : null,
-              touchY: t ? Math.round(t.clientY) : null,
-              touchCancelable: !!ev.cancelable,
-            });
             if (ev.cancelable) ev.preventDefault();
           };
           window.addEventListener("touchmove", session.onTouchMove, {
@@ -499,11 +443,6 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             passive: false,
           });
         }
-        patchDebug({
-          phase: "dragging",
-          x: Math.round(clientX),
-          y: Math.round(clientY),
-        });
         setHint(findDropTarget(clientX, clientY));
         updateEdgeScroll(clientX, clientY);
       };
@@ -515,16 +454,9 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         try {
           document.body.setPointerCapture(session.pointerId);
           session.capturedEl = document.body;
-          session.captureError = "";
-        } catch (err) {
+        } catch {
           session.capturedEl = null;
-          session.captureError = err?.message || String(err);
         }
-        patchDebug({
-          captured: !!session.capturedEl,
-          captureError: session.captureError || "",
-          hasCapture: document.body.hasPointerCapture?.(session.pointerId) || false,
-        });
       };
 
       const bindMove = (passive) => {
@@ -534,42 +466,14 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         session.movePassive = passive;
         session.onMove = (ev) => {
           if (ev.pointerId !== session.pointerId) return;
-          session.moveCount += 1;
-          session.lastMoveAt = performance.now();
           const dist = Math.hypot(ev.clientX - session.x, ev.clientY - session.y);
           const hint = session.started
             ? findDropTarget(ev.clientX, ev.clientY)
             : null;
-          patchDebug({
-            moveCount: session.moveCount,
-            lastMoveAt: session.lastMoveAt,
-            x: Math.round(ev.clientX),
-            y: Math.round(ev.clientY),
-            dist: Math.round(dist),
-            movePassive: session.movePassive,
-            started: session.started,
-            edge: session.edgeZone,
-            drop: hint
-              ? hint.done
-                ? "done"
-                : `${hint.column}@${hint.index}`
-              : null,
-            captured: !!session.capturedEl,
-            hasCapture:
-              document.body.hasPointerCapture?.(session.pointerId) || false,
-            target:
-              ev.target instanceof Element
-                ? ev.target.className?.toString?.().slice(0, 40) ||
-                  ev.target.tagName
-                : String(ev.target),
-          });
           if (!session.started) {
             if (session.movePassive) {
               // Hold phase: abort if the finger moved (user is scrolling).
-              if (dist >= DRAG_THRESHOLD_PX) {
-                patchDebug({ phase: "aborted-hold-move" });
-                cleanup();
-              }
+              if (dist >= DRAG_THRESHOLD_PX) cleanup();
               return;
             }
             if (dist < DRAG_THRESHOLD_PX) return;
@@ -580,12 +484,10 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
             movePreview(ev.clientX, ev.clientY, session);
             setHint(hint);
             updateEdgeScroll(ev.clientX, ev.clientY);
-            patchDebug({ edge: session.edgeZone });
           }
           if (!session.movePassive) ev.preventDefault();
         };
         window.addEventListener("pointermove", session.onMove, { passive });
-        patchDebug({ movePassive: passive });
       };
 
       session.onUp = (ev) => {
@@ -597,11 +499,6 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
       // Never leave drag mode stuck; commit at the last drop hint.
       session.onCancel = (ev) => {
         if (ev.pointerId !== session.pointerId) return;
-        session.cancelCount += 1;
-        patchDebug({
-          cancelCount: session.cancelCount,
-          lastCancelAt: performance.now(),
-        });
         finishDrag("pointercancel", ev.clientX, ev.clientY);
       };
 
@@ -646,7 +543,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         bindMove(false);
       }
     },
-    [boardEdit, cleanup, movePreview, patchDebug, setEdgeHint, setHint]
+    [boardEdit, cleanup, movePreview, setEdgeHint, setHint]
   );
 
   const consumeDragClick = useCallback(() => {
@@ -663,8 +560,6 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
     dropHint,
     armDrag,
     consumeDragClick,
-    dragDebugActive,
-    dragDebugRef,
     edgeHint,
   };
 }
@@ -681,56 +576,6 @@ function CardDragEdgeHint({ hint }) {
       style={{ ["--edge-p"]: String(p) }}
       aria-hidden="true"
     />,
-    document.body
-  );
-}
-
-function CardDragDebugPanel({ active, debugRef }) {
-  const preRef = useRef(null);
-
-  useEffect(() => {
-    if (!active) return undefined;
-    let raf = 0;
-    const tick = () => {
-      const el = preRef.current;
-      const d = debugRef.current;
-      if (el && d) {
-        const now = performance.now();
-        const moveAge =
-          d.lastMoveAt != null ? Math.round(now - d.lastMoveAt) : null;
-        const touchAge =
-          d.lastTouchMoveAt != null
-            ? Math.round(now - d.lastTouchMoveAt)
-            : null;
-        el.textContent = [
-          `phase: ${d.phase || "?"}`,
-          `ptr: ${d.pointerType || "?"} #${d.pointerId ?? "?"}`,
-          `xy: ${d.x ?? "—"}, ${d.y ?? "—"}  dist:${d.dist ?? "—"}`,
-          `moves: ${d.moveCount ?? 0}  touchmoves: ${d.touchMoveCount ?? 0}`,
-          `lastMoveAge: ${moveAge == null ? "—" : moveAge + "ms"}`,
-          `lastTouchAge: ${touchAge == null ? "—" : touchAge + "ms"}`,
-          `passive: ${d.movePassive ? "yes" : "no"}  started: ${d.started ? "yes" : "no"}`,
-          `capture: ${d.captured ? "yes" : "no"}  hasCapture: ${d.hasCapture ? "yes" : "no"}`,
-          `captureErr: ${d.captureError || "—"}`,
-          `cancels: ${d.cancelCount ?? 0}`,
-          `edge: ${d.edge || "—"}  drop: ${d.drop || "—"}`,
-          `target: ${d.target || "—"}`,
-          `card: ${d.cardW ?? "?"}×${d.cardH ?? "?"}`,
-          `touchXY: ${d.touchX ?? "—"}, ${d.touchY ?? "—"}  cancelable:${d.touchCancelable ?? "—"}`,
-        ].join("\n");
-      }
-      raf = window.requestAnimationFrame(tick);
-    };
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, [active, debugRef]);
-
-  if (!active) return null;
-  return createPortal(
-    <div className="card-drag-debug" aria-hidden="true">
-      <b>card drag debug</b>
-      <pre ref={preRef} />
-    </div>,
     document.body
   );
 }
@@ -1586,8 +1431,6 @@ function ProjectBoard({
     dropHint,
     armDrag,
     consumeDragClick,
-    dragDebugActive,
-    dragDebugRef,
     edgeHint,
   } = useBoardCardDrag(boardEdit, resolveDrop);
 
@@ -1754,7 +1597,6 @@ function ProjectBoard({
     >
       <DragPreview preview={dragPreview} previewElRef={previewElRef} />
       <CardDragEdgeHint hint={edgeHint} />
-      <CardDragDebugPanel active={dragDebugActive} debugRef={dragDebugRef} />
       {cols.map((s, i) => {
         const colRows = (data.rows || []).filter((r) => r.s === s);
         const split = columnRows(colRows, mode);
@@ -1998,8 +1840,6 @@ function MasterBoard({
     dropHint,
     armDrag,
     consumeDragClick,
-    dragDebugActive,
-    dragDebugRef,
     edgeHint,
   } = useBoardCardDrag(boardEdit, resolveDrop);
 
@@ -2148,7 +1988,6 @@ function MasterBoard({
       >
         <DragPreview preview={dragPreview} previewElRef={previewElRef} />
         <CardDragEdgeHint hint={edgeHint} />
-        <CardDragDebugPanel active={dragDebugActive} debugRef={dragDebugRef} />
         {cols.map((s, i) => {
           const stageTasks = tasks.filter((t) => t.row.ms === s);
           const split = columnRows(

@@ -121,7 +121,7 @@ export default function MobileGlobalBar({
                               aria-disabled="true"
                             >
                               {type && IC[type] ? (
-                                <span style={{ color: "var(--mute)" }}>
+                                <span style={{ color }}>
                                   <Icon name={type} />
                                 </span>
                               ) : (

@@ -41,6 +41,12 @@ export function MobileCoverMoreMenu({ onShare, onArchive, onDelete }) {
   );
 }
 
+/** Tabs that can be opened from the mobile nav sheet. */
+export function isMobileOpenableMod(mod) {
+  const type = mod?.[0];
+  return type === "Cover" || type === "Database";
+}
+
 export default function MobileGlobalBar({
   name,
   title,
@@ -51,6 +57,7 @@ export default function MobileGlobalBar({
   activeModId = null,
   onSelectGlobal,
   onSelectCover,
+  onSelectMod,
   onOpenSettings,
   children,
 }) {
@@ -76,6 +83,12 @@ export default function MobileGlobalBar({
     if (!onSelectCover) return;
     close();
     onSelectCover(projectIndex);
+  };
+
+  const selectMod = (projectIndex, modIndex) => {
+    if (!onSelectMod) return;
+    close();
+    onSelectMod(projectIndex, modIndex);
   };
 
   return (
@@ -196,23 +209,28 @@ export default function MobileGlobalBar({
                             type === "Cover" &&
                             !!onSelectCover &&
                             projectIndex >= 0;
-                          const Row = canOpenCover ? "button" : "div";
+                          const canOpenMod =
+                            type === "Database" &&
+                            !!onSelectMod &&
+                            projectIndex >= 0;
+                          const canOpen = canOpenCover || canOpenMod;
+                          const Row = canOpen ? "button" : "div";
                           return (
                             <Row
                               key={modId || `${pr.id}-${mi}`}
-                              type={canOpenCover ? "button" : undefined}
+                              type={canOpen ? "button" : undefined}
                               className={
                                 "mobile-nav-row mobile-nav-mod" +
                                 (on ? " on" : "") +
-                                (canOpenCover ? " mobile-nav-row-btn" : "")
+                                (canOpen ? " mobile-nav-row-btn" : "")
                               }
-                              aria-disabled={
-                                canOpenCover ? undefined : "true"
-                              }
+                              aria-disabled={canOpen ? undefined : "true"}
                               onClick={
                                 canOpenCover
                                   ? () => selectCover(projectIndex)
-                                  : undefined
+                                  : canOpenMod
+                                    ? () => selectMod(projectIndex, mi)
+                                    : undefined
                               }
                             >
                               {type && IC[type] ? (

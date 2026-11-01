@@ -15,13 +15,18 @@ import { isPaywallAbortError } from "../billingLimits.js";
 import { flipSwapHorizontal } from "../flipSwap.js";
 import {
   appendSelectOption,
+  coerceFieldValue,
   defaultColumnLabel,
   emptyFieldValue,
   ensureNameColumn,
   fieldTypeIcon,
+  findSelectOption,
+  formatNumberValue,
   isNameCol,
   NAME_COL_ID,
   normalizeDbCol,
+  plainFromHtml,
+  selectColor,
   serializeDbCol,
 } from "../dbFields.js";
 import { filterRows } from "../dbFilters.js";
@@ -2692,6 +2697,107 @@ function DbGallery({ d, onOpen, displayRows }) {
   );
 }
 
+function DbMobileChip({ label, color }) {
+  const c = selectColor(color);
+  return (
+    <span className="db-chip" style={{ background: c.bg, color: c.fg }}>
+      {label}
+    </span>
+  );
+}
+
+/** First-line plain preview for text / rich text / scalar fields. */
+function dbMobileTextPreview(col, raw) {
+  let text = "";
+  if (col.type === "longtext") text = plainFromHtml(raw);
+  else if (col.type === "number") text = formatNumberValue(raw);
+  else text = String(raw ?? "");
+  text = text.split(/\r?\n/)[0].replace(/\s+/g, " ").trim();
+  if (!text && isNameCol(col)) return "Untitled";
+  return text;
+}
+
+function DbMobileFieldPreview({ col, value, stages }) {
+  const coerced = coerceFieldValue(col, value);
+
+  if (col.type === "select") {
+    const cur = coerced || "";
+    if (!cur) return null;
+    const selected = findSelectOption(col, cur, stages);
+    return (
+      <DbMobileChip
+        label={selected?.label || cur}
+        color={selected?.color || "default"}
+      />
+    );
+  }
+
+  if (col.type === "multiselect") {
+    const arr = Array.isArray(coerced) ? coerced : [];
+    if (!arr.length) return null;
+    return (
+      <span className="db-chip-row">
+        {arr.map((v) => {
+          const selected = findSelectOption(col, v, stages);
+          return (
+            <DbMobileChip
+              key={v}
+              label={selected?.label || String(v)}
+              color={selected?.color || "default"}
+            />
+          );
+        })}
+      </span>
+    );
+  }
+
+  if (col.type === "checkbox") {
+    if (!coerced) return null;
+    return (
+      <span className="db-mobile-check" title={col.label || "Checked"}>
+        <Icon name="check" size={14} />
+      </span>
+    );
+  }
+
+  const text = dbMobileTextPreview(col, coerced);
+  if (!text) return null;
+  return <span className="db-mobile-text">{text}</span>;
+}
+
+function DbMobileCards({ cols, rows, stages, onOpen }) {
+  if (!rows.length) {
+    return (
+      <div className="db-mobile-list">
+        <div className="db-mobile-empty">No records yet</div>
+      </div>
+    );
+  }
+  return (
+    <div className="db-mobile-list">
+      {rows.map((r) => (
+        <button
+          key={r.id}
+          type="button"
+          className="db-mobile-card"
+          onClick={() => onOpen(r)}
+        >
+          <div className="db-mobile-card-row">
+            {cols.map((c) => (
+              <DbMobileFieldPreview
+                key={c.id}
+                col={c}
+                value={r[c.id]}
+                stages={stages}
+              />
+            ))}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DbViewMoreMenu({ canDelete, onRename, onDelete }) {
   const wrapRef = useRef(null);
   const btnRef = useRef(null);
@@ -2783,13 +2889,19 @@ function DbViewMoreMenu({ canDelete, onRename, onDelete }) {
 export function DatabaseView({
   mod,
   folder,
+  folders,
   tabC,
   stages,
   readonly = false,
+  compact = false,
   onOpenCard,
   onApplyWorkspace,
   onDuplicateRecord,
   onDeleteRecord,
+  onOpenSettings,
+  onSelectGlobal,
+  onSelectCover,
+  onSelectMod,
 }) {
   const scope = boardKey(folder, mod);
   const [showPresets, setShowPresets] = useState(
@@ -2966,6 +3078,47 @@ export function DatabaseView({
     }
   };
 
+  const visibleCols = visibleDbCols(d.cols || [], hiddenCols);
+
+  if (compact) {
+    return (
+      <div
+        id="view"
+        className="db"
+        style={{ ["--tab"]: tabC, ["--tab-ink"]: "#fff" }}
+      >
+        <MobileGlobalBar
+          name="Database"
+          title={mod[1] || "Records"}
+          folders={folders || []}
+          activeProjectId={folder?.id}
+          activeModId={mod?.[2]?.id}
+          onSelectGlobal={onSelectGlobal}
+          onSelectCover={onSelectCover}
+          onSelectMod={onSelectMod}
+          onOpenSettings={onOpenSettings}
+        />
+        <DbMobileCards
+          cols={visibleCols}
+          rows={displayRows}
+          stages={stages}
+          onOpen={(r) => onOpenCard(r, { folder, mod })}
+        />
+        {!readonly ? (
+          <button
+            type="button"
+            className="mobile-fab"
+            title="Add record"
+            aria-label="Add record"
+            onClick={addEntry}
+          >
+            <Icon name="plus" size={24} />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   const main =
     d.views[d.cur].t === "gallery" ? (
       <DbGallery
@@ -3056,7 +3209,7 @@ export function DatabaseView({
             />
           ) : null}
           <DbExportDropdown
-            cols={visibleDbCols(d.cols || [], hiddenCols)}
+            cols={visibleCols}
             rows={displayRows}
             name={mod[1]}
           />
@@ -3142,6 +3295,7 @@ export default function Board({
   onOpenSettings,
   onSelectGlobal,
   onSelectCover,
+  onSelectMod,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -3179,6 +3333,7 @@ export default function Board({
             activeGlobal="Masterboard"
             onSelectGlobal={onSelectGlobal}
             onSelectCover={onSelectCover}
+            onSelectMod={onSelectMod}
             onOpenSettings={onOpenSettings}
           >
             <CompletedViewBtn

@@ -124,7 +124,9 @@ import {
   ENTITY_NOTES,
   ENTITY_FILES,
   ENTITY_TASKS,
+  ENTITY_RECORDS,
 } from "./routes.js";
+import { isMobileOpenableMod } from "./components/MobileGlobalBar.jsx";
 import ConfirmProDialog from "./components/ConfirmProDialog.jsx";
 
 function nextTabName(mods, base) {
@@ -356,6 +358,8 @@ export default function App() {
       (mNow === coverIdx ||
         mods[mNow]?.[0] === "Cover" ||
         mods[mNow]?.[2]?.id === COVER_TAB_ID);
+    const onOpenableMod =
+      !gNow && folder && isMobileOpenableMod(mods[mNow]);
 
     if (onCover) {
       if (coverIdx >= 0 && mNow !== coverIdx) {
@@ -374,7 +378,10 @@ export default function App() {
       return;
     }
 
-    // Project tabs other than Cover → snap to that project's Cover.
+    // Database (and other phone-openable tabs) stay put.
+    if (onOpenableMod) return;
+
+    // Project tabs other than Cover / openable mods → snap to Cover.
     if (!gNow && folder && coverIdx >= 0) {
       setM(coverIdx);
       mRef.current = coverIdx;
@@ -524,10 +531,26 @@ export default function App() {
           return;
         }
 
-        // Phone: Masterboard + project Cover. Other project/tab URLs → Cover
+        // Phone: Masterboard + Cover + Database. Other tab URLs → Cover
         // (or Masterboard). Task entity deep links still open on Masterboard.
+        const phoneDbRoute =
+          isPhoneRef.current &&
+          route.projectId &&
+          route.tabId &&
+          (route.kind === "tab" ||
+            (route.kind === "entity" &&
+              route.entityKind === ENTITY_RECORDS)) &&
+          (() => {
+            const pi = foldersNow.findIndex((f) => f.id === route.projectId);
+            const mod = (foldersNow[pi]?.mods || []).find(
+              (m) => m?.[2]?.id === route.tabId
+            );
+            return mod?.[0] === "Database";
+          })();
+
         if (
           isPhoneRef.current &&
+          !phoneDbRoute &&
           route.kind !== "project" &&
           route.kind !== "cover"
         ) {
@@ -1420,14 +1443,17 @@ export default function App() {
       routeFileIdRef.current = null;
       setSettingsOpen(false);
       settingsOpenRef.current = false;
-      // Phone always stays on Masterboard. Desktop: keep Timelogs/Trash/Masterboard;
-      // only jump into the project tab when opening from inside a project.
-      if (isPhoneRef.current) {
+      const phoneDb = isPhoneRef.current && loc?.mod?.[0] === "Database";
+      // Phone board tasks stay on Masterboard; database records stay on the tab.
+      // Desktop: keep Timelogs/Trash/Masterboard; only jump into the project tab
+      // when opening from inside a project.
+      if (isPhoneRef.current && !phoneDb) {
         setG("Masterboard");
         gRef.current = "Masterboard";
       }
-      const stayGlobal = isPhoneRef.current || !!gRef.current;
-      if (!stayGlobal && loc?.folder && loc?.mod) {
+      const stayGlobal =
+        (isPhoneRef.current && !phoneDb) || !!gRef.current;
+      if ((!stayGlobal || phoneDb) && loc?.folder && loc?.mod) {
         const pi = foldersRef.current.findIndex((f) => f.id === loc.folder.id);
         const mi = (foldersRef.current[pi]?.mods || []).findIndex(
           (mod) => mod?.[2]?.id === loc.mod[2]?.id
@@ -1451,7 +1477,9 @@ export default function App() {
         routeFileId: null,
         settings: false,
         g: isPhoneRef.current
-          ? "Masterboard"
+          ? phoneDb
+            ? null
+            : "Masterboard"
           : stayGlobal
             ? gRef.current
             : null,
@@ -1802,6 +1830,37 @@ export default function App() {
         g: null,
         p: projectIndex,
         m: nextM,
+        settings: false,
+        dialog: null,
+        routeNoteId: null,
+        routeFileId: null,
+      });
+    },
+    [discardCoverEdit, clearEntityOverlays, syncUrl]
+  );
+
+  const selectMobileMod = useCallback(
+    (projectIndex, modIndex) => {
+      const foldersNow = foldersRef.current;
+      const nextFolder = foldersNow[projectIndex];
+      const mod = nextFolder?.mods?.[modIndex];
+      if (!nextFolder || isProjectArchived(nextFolder)) return;
+      if (!isMobileOpenableMod(mod) || mod?.[0] === "Cover") return;
+      discardCoverEdit();
+      setBoardEdit(false);
+      clearEntityOverlays();
+      setSettingsOpen(false);
+      settingsOpenRef.current = false;
+      setG(null);
+      gRef.current = null;
+      setP(projectIndex);
+      pRef.current = projectIndex;
+      setM(modIndex);
+      mRef.current = modIndex;
+      syncUrl({
+        g: null,
+        p: projectIndex,
+        m: modIndex,
         settings: false,
         dialog: null,
         routeNoteId: null,
@@ -2162,8 +2221,34 @@ export default function App() {
       onOpenSettings={isPhone ? openSettings : undefined}
       onSelectGlobal={isPhone ? selectMobileGlobal : undefined}
       onSelectCover={isPhone ? selectMobileCover : undefined}
+      onSelectMod={isPhone ? selectMobileMod : undefined}
     />
   );
+
+  const mobileDatabase =
+    loaded && !loadError && !g && folder && x?.[0] === "Database" ? (
+      <DatabaseView
+        mod={x}
+        folder={folder}
+        folders={folders}
+        tabC={tabC}
+        stages={stages}
+        readonly={archived}
+        compact
+        onOpenCard={openItem}
+        onApplyWorkspace={applyWorkspace}
+        onDuplicateRecord={
+          archived ? undefined : (row) => duplicateDbItem(row, folder, x)
+        }
+        onDeleteRecord={
+          archived ? undefined : (row) => deleteDbItem(folder, x, row.id)
+        }
+        onOpenSettings={openSettings}
+        onSelectGlobal={selectMobileGlobal}
+        onSelectCover={selectMobileCover}
+        onSelectMod={selectMobileMod}
+      />
+    ) : null;
 
   const mobileCover =
     loaded && !loadError && !g && folder && x?.[0] === "Cover" ? (
@@ -2184,6 +2269,7 @@ export default function App() {
             activeModId={x?.[2]?.id || COVER_TAB_ID}
             onSelectGlobal={selectMobileGlobal}
             onSelectCover={selectMobileCover}
+            onSelectMod={selectMobileMod}
             onOpenSettings={openSettings}
           >
             {!archived ? (
@@ -2220,7 +2306,9 @@ export default function App() {
               </div>
             </div>
           )}
-          {loaded && !loadError && (mobileCover || masterBoard)}
+          {loaded &&
+            !loadError &&
+            (mobileCover || mobileDatabase || masterBoard)}
         </MobileShell>
       ) : (
         <>

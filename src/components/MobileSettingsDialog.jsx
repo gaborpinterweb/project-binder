@@ -51,6 +51,11 @@ export default function MobileSettingsDialog({ onClose }) {
           ) : (
             <p className="mobile-settings-empty">No settings yet.</p>
           )}
+          <p className="mobile-settings-meta">
+            The mobile view of Project Binder is actively being developed.
+            Some features are missing; for the complete experience, please open
+            it on desktop.
+          </p>
         </div>
       </div>
     </div>

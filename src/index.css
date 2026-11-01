@@ -1750,6 +1750,8 @@ html.is-phone .mobile-shell{flex:1;min-width:0;min-height:0;display:flex;flex-di
 html.is-phone .mobile-shell .stage{margin:0 6px 6px;margin-top:max(6px,env(safe-area-inset-top,0px));border-radius:var(--radius);overflow:hidden}
 html.is-phone .mobile-shell .modbar.gbar{border-radius:var(--radius) var(--radius) 0 0}
 html.is-phone .mobile-shell .modbar .mod-act{width:40px;height:40px;padding:0}
+html.is-phone .mobile-shell .modbar .mod-act-lab{display:none}
+html.is-phone .mobile-shell .modbar .gbar-tools .mod-view-dd{width:40px}
 html.is-phone .mobile-shell #view.db{position:relative}
 html.is-phone .mobile-shell .board .col{flex:1 0 100%;min-width:100%;max-width:100%;width:100%}
 html.is-phone .mobile-shell .board .col.collapsed{flex:0 0 44px;min-width:44px;max-width:44px;width:44px}
@@ -1768,6 +1770,7 @@ html.is-phone .mobile-settings-head{flex:none;display:flex;align-items:center;ga
 html.is-phone .mobile-settings-head b{flex:1;min-width:0;font-size:16px;font-weight:650}
 html.is-phone .mobile-settings-body{flex:1;min-height:0;overflow:auto;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
 html.is-phone .mobile-settings-empty{margin:0;color:var(--mute);font-size:14px;text-align:center;padding:24px 8px}
+html.is-phone .mobile-settings-meta{margin:24px 0 0;padding:0 4px;font-size:12px;line-height:1.45;color:var(--mute);text-align:center}
 /* Mobile GlobalBar title → bottom nav drawer */
 html.is-phone .gbar-title-btn{display:inline-flex;align-items:center;gap:8px;min-width:0;margin:0;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:600;cursor:pointer;text-align:left}
 html.is-phone .gbar-title-btn b{font-size:14px;font-weight:600;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1782,10 +1785,13 @@ html.is-phone .mobile-nav-sec{margin:0 0 18px}
 html.is-phone .mobile-nav-sec:last-child{margin-bottom:0}
 html.is-phone .mobile-nav-sec h2{margin:0 8px 8px;font-size:13px;font-weight:600;color:var(--mute)}
 html.is-phone .mobile-nav-list{display:flex;flex-direction:column;gap:2px}
-html.is-phone .mobile-nav-row{display:flex;align-items:center;gap:8px;padding:10px 8px;border-radius:calc(var(--radius) - 4px);color:var(--ink);font-size:14px;font-weight:500;cursor:default}
+html.is-phone .mobile-nav-row{display:flex;align-items:center;gap:8px;width:100%;padding:10px 8px;border-radius:calc(var(--radius) - 4px);color:var(--ink);font-size:14px;font-weight:500;cursor:default;text-align:left;box-sizing:border-box}
 html.is-phone .mobile-nav-row span:first-child{display:flex;flex:none}
 html.is-phone .mobile-nav-row span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 html.is-phone .mobile-nav-row.on{background:var(--sel)}
+html.is-phone .mobile-nav-row-btn{cursor:pointer;background:none;border:0;font:inherit}
+html.is-phone .mobile-nav-row-btn:hover{background:var(--sel)}
+html.is-phone .mobile-nav-row-btn:active{background:color-mix(in srgb,var(--ink) 8%,var(--sel))}
 html.is-phone .mobile-nav-project{display:flex;flex-direction:column;gap:2px;margin-top:4px}
 html.is-phone .mobile-nav-project:first-child{margin-top:0}
 html.is-phone .mobile-nav-project-head{font-weight:600}

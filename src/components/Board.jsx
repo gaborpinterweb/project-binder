@@ -687,6 +687,7 @@ function CompletedViewBtn({
   onChange,
   onSetBoardShow,
   triggerLabel,
+  triggerIcon = "eye",
   align = "right",
 }) {
   const mode = getCompletedView(scope, completedViewByScope);
@@ -743,7 +744,7 @@ function CompletedViewBtn({
     >
       {asViewMenu ? (
         <>
-          <Icon name="eye" size={18} />
+          <Icon name={triggerIcon} size={18} />
           <span className="mod-act-lab">{triggerLabel}</span>
         </>
       ) : undefined}
@@ -2893,16 +2894,22 @@ export default function Board({
     return (
       <div id="view" className="db" style={{ ["--tab"]: tabC }}>
         {compact ? (
-          <MobileGlobalBar name="Masterboard" titleRainbow folders={folders}>
-            <button
-              type="button"
-              className="mod-act"
-              title="Settings"
-              aria-label="Settings"
-              onClick={onOpenSettings}
-            >
-              <Icon name="settings" size={18} />
-            </button>
+          <MobileGlobalBar
+            name="Masterboard"
+            titleRainbow
+            folders={folders}
+            onOpenSettings={onOpenSettings}
+          >
+            <CompletedViewBtn
+              scope="master"
+              completedViewByScope={completedViewByScope}
+              boardShowByScope={boardShowByScope}
+              onChange={onSetCompletedView}
+              onSetBoardShow={onSetBoardShow}
+              triggerLabel="View"
+              triggerIcon="ellipsis"
+              align="right"
+            />
           </MobileGlobalBar>
         ) : (
           <GlobalBar name="Masterboard">

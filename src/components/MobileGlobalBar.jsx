@@ -11,10 +11,16 @@ export default function MobileGlobalBar({
   name,
   titleRainbow = false,
   folders = [],
+  onOpenSettings,
   children,
 }) {
   const [open, setOpen] = useState(false);
   const active = folders.filter((pr) => !isProjectArchived(pr));
+
+  const openSettings = () => {
+    setOpen(false);
+    onOpenSettings?.();
+  };
 
   return (
     <>
@@ -71,6 +77,18 @@ export default function MobileGlobalBar({
                     </div>
                   );
                 })}
+                {onOpenSettings ? (
+                  <button
+                    type="button"
+                    className="mobile-nav-row mobile-nav-row-btn"
+                    onClick={openSettings}
+                  >
+                    <span style={{ color: "var(--mute)" }}>
+                      <Icon name="settings" />
+                    </span>
+                    <span>Settings</span>
+                  </button>
+                ) : null}
               </div>
             </div>
             <div className="mobile-nav-sec">

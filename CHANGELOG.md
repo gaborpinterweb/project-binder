@@ -9,6 +9,12 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-01 (Pine)
+
+### Added
+
+- Mobile database tab: open records from the nav sheet, card list preview, and FAB to create a record.
+
 ## [1.0.2] - 2026-10-30 (Pine)
 
 ### Fixed

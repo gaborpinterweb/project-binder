@@ -97,6 +97,9 @@ import TimelogDialog from "./components/TimelogDialog.jsx";
 import SettingsDialog from "./components/SettingsDialog.jsx";
 import MobileSettingsDialog from "./components/MobileSettingsDialog.jsx";
 import MobileShell from "./components/MobileShell.jsx";
+import MobileGlobalBar, {
+  MobileCoverMoreMenu,
+} from "./components/MobileGlobalBar.jsx";
 import SharingSettingsDialog from "./components/SharingSettingsDialog.jsx";
 import PromptDialog from "./components/PromptDialog.jsx";
 import { askPrompt } from "./promptDialog.js";
@@ -335,16 +338,66 @@ export default function App() {
     setDraftProject(null);
     setCoverEdit(false);
     setCoverDraft(null);
-    if (gRef.current !== "Masterboard") {
-      setG("Masterboard");
-      gRef.current = "Masterboard";
+
+    const gNow = gRef.current;
+    if (gNow === "Masterboard") return;
+
+    const foldersNow = foldersRef.current;
+    const pNow = pRef.current;
+    const folder = foldersNow[pNow];
+    const mods = folder?.mods || [];
+    const coverIdx = mods.findIndex(
+      (mod) => mod?.[0] === "Cover" || mod?.[2]?.id === COVER_TAB_ID
+    );
+    const mNow = mRef.current;
+    const onCover =
+      !gNow &&
+      coverIdx >= 0 &&
+      (mNow === coverIdx ||
+        mods[mNow]?.[0] === "Cover" ||
+        mods[mNow]?.[2]?.id === COVER_TAB_ID);
+
+    if (onCover) {
+      if (coverIdx >= 0 && mNow !== coverIdx) {
+        setM(coverIdx);
+        mRef.current = coverIdx;
+        if (routeReadyRef.current) {
+          syncUrl({
+            g: null,
+            p: pNow,
+            m: coverIdx,
+            settings: settingsOpenRef.current,
+            replace: true,
+          });
+        }
+      }
+      return;
+    }
+
+    // Project tabs other than Cover → snap to that project's Cover.
+    if (!gNow && folder && coverIdx >= 0) {
+      setM(coverIdx);
+      mRef.current = coverIdx;
       if (routeReadyRef.current) {
         syncUrl({
-          g: "Masterboard",
+          g: null,
+          p: pNow,
+          m: coverIdx,
           settings: settingsOpenRef.current,
           replace: true,
         });
       }
+      return;
+    }
+
+    setG("Masterboard");
+    gRef.current = "Masterboard";
+    if (routeReadyRef.current) {
+      syncUrl({
+        g: "Masterboard",
+        settings: settingsOpenRef.current,
+        replace: true,
+      });
     }
   }, [isPhone, syncUrl]);
 
@@ -471,16 +524,20 @@ export default function App() {
           return;
         }
 
-        // Phone shell is Masterboard-only: project/tab URLs redirect there.
-        // Task entity deep links still open the card on Masterboard.
-        if (isPhoneRef.current) {
-          setG("Masterboard");
-          gRef.current = "Masterboard";
+        // Phone: Masterboard + project Cover. Other project/tab URLs → Cover
+        // (or Masterboard). Task entity deep links still open on Masterboard.
+        if (
+          isPhoneRef.current &&
+          route.kind !== "project" &&
+          route.kind !== "cover"
+        ) {
           setRouteNoteId(null);
           setRouteFileId(null);
           routeNoteIdRef.current = null;
           routeFileIdRef.current = null;
           if (route.entityKind === ENTITY_TASKS && route.entityId) {
+            setG("Masterboard");
+            gRef.current = "Masterboard";
             const loc = locateRow(foldersNow, { id: route.entityId });
             const row =
               loc?.mod?.[0] === "Board"
@@ -505,7 +562,23 @@ export default function App() {
               return;
             }
           }
+          if (route.projectId) {
+            const pi = foldersNow.findIndex((f) => f.id === route.projectId);
+            if (pi >= 0) {
+              clearEntityOverlays();
+              setG(null);
+              gRef.current = null;
+              setP(pi);
+              pRef.current = pi;
+              setM(0);
+              mRef.current = 0;
+              navigatePath(buildPath({ projectId: route.projectId }), nav);
+              return;
+            }
+          }
           clearEntityOverlays();
+          setG("Masterboard");
+          gRef.current = "Masterboard";
           navigatePath(buildPath({ g: "Masterboard" }), nav);
           return;
         }
@@ -1574,7 +1647,7 @@ export default function App() {
     if (archived) {
       const next = applyWorkspace(data);
       clearEntityOverlays();
-      if (!next.length) {
+      if (!next.length || isPhoneRef.current) {
         setP(0);
         setM(0);
         setG("Masterboard");
@@ -1660,7 +1733,7 @@ export default function App() {
     setBoardEdit(false);
     const next = applyWorkspace(data);
     clearEntityOverlays();
-    if (!next.length) {
+    if (!next.length || isPhoneRef.current) {
       setP(0);
       setM(0);
       setG("Masterboard");
@@ -1689,6 +1762,54 @@ export default function App() {
     }
     setTrashRefresh((n) => n + 1);
   };
+
+  const selectMobileGlobal = useCallback(
+    (n) => {
+      if (n !== "Masterboard") return;
+      discardCoverEdit();
+      setBoardEdit(false);
+      clearEntityOverlays();
+      setSettingsOpen(false);
+      settingsOpenRef.current = false;
+      setG("Masterboard");
+      gRef.current = "Masterboard";
+      syncUrl({ g: "Masterboard", settings: false, dialog: null });
+    },
+    [discardCoverEdit, clearEntityOverlays, syncUrl]
+  );
+
+  const selectMobileCover = useCallback(
+    (projectIndex) => {
+      const foldersNow = foldersRef.current;
+      const nextFolder = foldersNow[projectIndex];
+      if (!nextFolder || isProjectArchived(nextFolder)) return;
+      discardCoverEdit();
+      setBoardEdit(false);
+      clearEntityOverlays();
+      setSettingsOpen(false);
+      settingsOpenRef.current = false;
+      setG(null);
+      gRef.current = null;
+      setP(projectIndex);
+      pRef.current = projectIndex;
+      const coverIdx = (nextFolder.mods || []).findIndex(
+        (mod) => mod?.[0] === "Cover" || mod?.[2]?.id === COVER_TAB_ID
+      );
+      const nextM = coverIdx >= 0 ? coverIdx : 0;
+      setM(nextM);
+      mRef.current = nextM;
+      syncUrl({
+        g: null,
+        p: projectIndex,
+        m: nextM,
+        settings: false,
+        dialog: null,
+        routeNoteId: null,
+        routeFileId: null,
+      });
+    },
+    [discardCoverEdit, clearEntityOverlays, syncUrl]
+  );
 
   const confirmArchiveProject = async (folder) => {
     if (!folder) return;
@@ -2039,8 +2160,43 @@ export default function App() {
       onDuplicateCard={duplicateCard}
       onDeleteCard={deleteCard}
       onOpenSettings={isPhone ? openSettings : undefined}
+      onSelectGlobal={isPhone ? selectMobileGlobal : undefined}
+      onSelectCover={isPhone ? selectMobileCover : undefined}
     />
   );
+
+  const mobileCover =
+    loaded && !loadError && !g && folder && x?.[0] === "Cover" ? (
+      <Cover
+        folder={folder}
+        mod={x}
+        tabC={tabC}
+        readonly={archived}
+        coverEdit={false}
+        coverDraft={null}
+        hideEmptyDescription
+        header={
+          <MobileGlobalBar
+            name="folder"
+            title={folder.name || "Untitled"}
+            folders={folders}
+            activeProjectId={folder.id}
+            activeModId={x?.[2]?.id || COVER_TAB_ID}
+            onSelectGlobal={selectMobileGlobal}
+            onSelectCover={selectMobileCover}
+            onOpenSettings={openSettings}
+          >
+            {!archived ? (
+              <MobileCoverMoreMenu
+                onShare={isPbMode() ? onCoverShare : undefined}
+                onArchive={() => confirmArchiveProject(folder)}
+                onDelete={() => confirmDeleteProject(folder)}
+              />
+            ) : null}
+          </MobileGlobalBar>
+        }
+      />
+    ) : null;
 
   return (
     <>
@@ -2064,7 +2220,7 @@ export default function App() {
               </div>
             </div>
           )}
-          {loaded && !loadError && masterBoard}
+          {loaded && !loadError && (mobileCover || masterBoard)}
         </MobileShell>
       ) : (
         <>

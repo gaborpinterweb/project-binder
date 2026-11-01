@@ -1804,6 +1804,16 @@ html.is-phone .mobile-shell .modbar.gbar{border-radius:var(--radius) var(--radiu
 html.is-phone .mobile-shell .modbar .mod-act{width:40px;height:40px;padding:0}
 html.is-phone .mobile-shell .modbar .mod-act-lab{display:none}
 html.is-phone .mobile-shell .modbar .gbar-tools .mod-view-dd{width:40px}
+html.is-phone .mobile-shell #view.cover-view{border-radius:var(--radius)}
+html.is-phone .mobile-shell #view.cover-view .modbar.gbar{flex:none;background:transparent;background-image:none;box-shadow:none;color:#fff}
+html.is-phone .mobile-shell #view.cover-view .modbar .mod-act{color:#fff}
+html.is-phone .mobile-shell #view.cover-view .modbar .mod-act:hover{background:color-mix(in srgb,#fff 12%,transparent);color:#fff}
+html.is-phone .mobile-shell #view.cover-view .cover-page{padding:24px 20px 32px}
+html.is-phone .mobile-shell #view.cover-view .cover-fields{gap:28px}
+html.is-phone .mobile-shell #view.cover-view .cover-fields .cover-title-display{font-size:26px;padding:8px 10px}
+html.is-phone .mobile-cover-more-opt{display:inline-flex;align-items:center;gap:8px;min-width:0}
+html.is-phone .mobile-cover-more-opt.danger{color:#b42318}
+html.is-phone .mobile-cover-more-opt svg{flex:none;opacity:.75}
 html.is-phone .mobile-shell #view.db{position:relative}
 html.is-phone .mobile-shell .board .col{flex:1 0 100%;min-width:100%;max-width:100%;width:100%}
 html.is-phone .mobile-shell .board .col.collapsed{flex:0 0 44px;min-width:44px;max-width:44px;width:44px}

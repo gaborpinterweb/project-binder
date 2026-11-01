@@ -6,20 +6,76 @@ import {
   globalLabel,
   isProjectArchived,
 } from "../utils.js";
+import Dropdown from "./Dropdown.jsx";
+
+/** Share / Archive / Delete (no Edit) for the read-only mobile cover. */
+export function MobileCoverMoreMenu({ onShare, onArchive, onDelete }) {
+  const options = [
+    ...(onShare ? [{ value: "share", label: "Share", icon: "share" }] : []),
+    { value: "archive", label: "Archive project", icon: "Archive" },
+    { value: "delete", label: "Delete project", icon: "Trash", danger: true },
+  ];
+  return (
+    <Dropdown
+      className="mod-view-dd"
+      buttonClassName="mod-act"
+      ariaLabel="Project options"
+      title="Project options"
+      align="right"
+      caret={false}
+      options={options}
+      onChange={(v) => {
+        if (v === "share") onShare?.();
+        else if (v === "archive") onArchive?.();
+        else if (v === "delete") onDelete?.();
+      }}
+      renderOption={(o) => (
+        <span className={"mobile-cover-more-opt" + (o.danger ? " danger" : "")}>
+          <Icon name={o.icon} size={14} />
+          {o.label}
+        </span>
+      )}
+    >
+      <Icon name="ellipsis" size={18} />
+    </Dropdown>
+  );
+}
 
 export default function MobileGlobalBar({
   name,
+  title,
   titleRainbow = false,
   folders = [],
+  activeGlobal = null,
+  activeProjectId = null,
+  activeModId = null,
+  onSelectGlobal,
+  onSelectCover,
   onOpenSettings,
   children,
 }) {
   const [open, setOpen] = useState(false);
   const active = folders.filter((pr) => !isProjectArchived(pr));
+  const label = title || globalLabel(name);
+  const currentGlobal = activeGlobal || (activeProjectId ? null : name);
+
+  const close = () => setOpen(false);
 
   const openSettings = () => {
-    setOpen(false);
+    close();
     onOpenSettings?.();
+  };
+
+  const selectGlobal = (n) => {
+    if (!onSelectGlobal) return;
+    close();
+    onSelectGlobal(n);
+  };
+
+  const selectCover = (projectIndex) => {
+    if (!onSelectCover) return;
+    close();
+    onSelectCover(projectIndex);
   };
 
   return (
@@ -35,7 +91,7 @@ export default function MobileGlobalBar({
           <span>
             <Icon name={name} rainbow={titleRainbow} />
           </span>
-          <b>{globalLabel(name)}</b>
+          <b>{label}</b>
           <span className="dd-caret" aria-hidden="true">
             <Icon name="caret" size={12} />
           </span>
@@ -46,7 +102,7 @@ export default function MobileGlobalBar({
         className={"mobile-nav-ov" + (open ? " is-open" : "")}
         aria-hidden={!open}
         onMouseDown={(e) => {
-          if (e.target === e.currentTarget) setOpen(false);
+          if (e.target === e.currentTarget) close();
         }}
       >
         <div
@@ -60,13 +116,21 @@ export default function MobileGlobalBar({
               <h2>Workspace</h2>
               <div className="mobile-nav-list">
                 {WORKSPACE_ITEMS.map((n) => {
-                  const on = n === name;
+                  const on = currentGlobal === n;
                   const rainbow = n === "Masterboard" && on;
+                  const canSelect = n === "Masterboard" && !!onSelectGlobal;
+                  const Row = canSelect ? "button" : "div";
                   return (
-                    <div
+                    <Row
                       key={n}
-                      className={"mobile-nav-row" + (on ? " on" : "")}
-                      aria-disabled="true"
+                      type={canSelect ? "button" : undefined}
+                      className={
+                        "mobile-nav-row" +
+                        (on ? " on" : "") +
+                        (canSelect ? " mobile-nav-row-btn" : "")
+                      }
+                      aria-disabled={canSelect ? undefined : "true"}
+                      onClick={canSelect ? () => selectGlobal(n) : undefined}
                     >
                       <span
                         style={rainbow ? undefined : { color: "var(--mute)" }}
@@ -74,7 +138,7 @@ export default function MobileGlobalBar({
                         <Icon name={n} rainbow={rainbow} />
                       </span>
                       <span>{globalLabel(n)}</span>
-                    </div>
+                    </Row>
                   );
                 })}
                 {onOpenSettings ? (
@@ -100,25 +164,56 @@ export default function MobileGlobalBar({
                   active.map((pr, i) => {
                     const color = pr.color || PC[i % PC.length];
                     const mods = pr.mods || [];
+                    const projectOn = pr.id === activeProjectId;
+                    // Original folders index (active is filtered).
+                    const projectIndex = folders.indexOf(pr);
                     return (
                       <div key={pr.id || i} className="mobile-nav-project">
-                        <div
-                          className="mobile-nav-row mobile-nav-project-head"
-                          aria-disabled="true"
+                        <button
+                          type="button"
+                          className={
+                            "mobile-nav-row mobile-nav-project-head mobile-nav-row-btn" +
+                            (projectOn && !activeModId ? " on" : "")
+                          }
+                          disabled={!onSelectCover || projectIndex < 0}
+                          onClick={() => selectCover(projectIndex)}
                         >
                           <span style={{ color }}>
                             <Icon name="folder" filled />
                           </span>
                           <span>{pr.name}</span>
-                        </div>
+                        </button>
                         {mods.map((mod, mi) => {
                           const type = mod?.[0];
                           const label = mod?.[1] || type || "Tab";
+                          const modId = mod?.[2]?.id;
+                          const on =
+                            projectOn &&
+                            (activeModId
+                              ? modId === activeModId
+                              : type === "Cover");
+                          const canOpenCover =
+                            type === "Cover" &&
+                            !!onSelectCover &&
+                            projectIndex >= 0;
+                          const Row = canOpenCover ? "button" : "div";
                           return (
-                            <div
-                              key={mod?.[2]?.id || `${pr.id}-${mi}`}
-                              className="mobile-nav-row mobile-nav-mod"
-                              aria-disabled="true"
+                            <Row
+                              key={modId || `${pr.id}-${mi}`}
+                              type={canOpenCover ? "button" : undefined}
+                              className={
+                                "mobile-nav-row mobile-nav-mod" +
+                                (on ? " on" : "") +
+                                (canOpenCover ? " mobile-nav-row-btn" : "")
+                              }
+                              aria-disabled={
+                                canOpenCover ? undefined : "true"
+                              }
+                              onClick={
+                                canOpenCover
+                                  ? () => selectCover(projectIndex)
+                                  : undefined
+                              }
                             >
                               {type && IC[type] ? (
                                 <span style={{ color }}>
@@ -128,7 +223,7 @@ export default function MobileGlobalBar({
                                 <span />
                               )}
                               <span>{label}</span>
-                            </div>
+                            </Row>
                           );
                         })}
                       </div>

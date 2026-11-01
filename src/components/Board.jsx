@@ -3140,6 +3140,8 @@ export default function Board({
   activeTimerKey = null,
   compact = false,
   onOpenSettings,
+  onSelectGlobal,
+  onSelectCover,
   onStartPomo,
   onAddManualTimelog,
   onOpenTimelogs,
@@ -3174,6 +3176,9 @@ export default function Board({
             name="Masterboard"
             titleRainbow
             folders={folders}
+            activeGlobal="Masterboard"
+            onSelectGlobal={onSelectGlobal}
+            onSelectCover={onSelectCover}
             onOpenSettings={onOpenSettings}
           >
             <CompletedViewBtn

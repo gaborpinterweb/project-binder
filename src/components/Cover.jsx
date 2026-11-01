@@ -111,6 +111,8 @@ export default function Cover({
   onSave,
   onCommitDraft,
   onApplyWorkspace,
+  header = null,
+  hideEmptyDescription = false,
 }) {
   if (draftProject) {
     return (
@@ -156,6 +158,7 @@ export default function Cover({
 
   return (
     <div id="view" className="mod cover-view" style={{ ["--tab"]: viewColor }}>
+      {header}
       <div className="cover-page">
         <div className="cover-fields">
           {editing ? (
@@ -186,7 +189,9 @@ export default function Cover({
             <>
               <h1 className="cover-title-display">{viewName || "Untitled"}</h1>
               {isEmptyDescription(viewDesc) ? (
-                <p className="cover-desc-display is-empty">{DESC_PLACEHOLDER}</p>
+                hideEmptyDescription ? null : (
+                  <p className="cover-desc-display is-empty">{DESC_PLACEHOLDER}</p>
+                )
               ) : (
                 <CoverDescription
                   key={`${folder.id}-view`}

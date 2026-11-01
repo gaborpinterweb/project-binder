@@ -100,6 +100,69 @@ const BOARD_SORT_PROJECT_OPTION = {
 const DRAG_THRESHOLD_PX = 6;
 /** Touch must hold still this long before a card drag can start (lets the board scroll). */
 const TOUCH_DRAG_HOLD_MS = 1000;
+const DRAG_EDGE_PX = 56;
+/** Dwell in an edge band before auto-scroll starts. */
+const DRAG_EDGE_DWELL_MS = 800;
+const DRAG_EDGE_SCROLL_PX_PER_SEC = 320;
+
+function findColBodyAt(clientX, clientY) {
+  const stack = document.elementsFromPoint(clientX, clientY);
+  for (const el of stack) {
+    if (!(el instanceof Element)) continue;
+    if (el.classList.contains("col-body")) return el;
+    if (el.classList.contains("col")) {
+      return el.querySelector(":scope > .col-body");
+    }
+  }
+  return null;
+}
+
+/** Closest edge band under the pointer, or null. Corners pick the nearer axis. */
+function classifyDragEdge(clientX, clientY, board) {
+  const rect = board?.getBoundingClientRect?.() || {
+    left: 0,
+    top: 0,
+    right: window.innerWidth,
+    bottom: window.innerHeight,
+  };
+  const distLeft = clientX - rect.left;
+  const distRight = rect.right - clientX;
+  const distTop = clientY - rect.top;
+  const distBottom = rect.bottom - clientY;
+  let best = null;
+  let bestDist = Infinity;
+  if (distLeft >= 0 && distLeft <= DRAG_EDGE_PX && distLeft < bestDist) {
+    best = "left";
+    bestDist = distLeft;
+  }
+  if (distRight >= 0 && distRight <= DRAG_EDGE_PX && distRight < bestDist) {
+    best = "right";
+    bestDist = distRight;
+  }
+  if (distTop >= 0 && distTop <= DRAG_EDGE_PX && distTop < bestDist) {
+    best = "top";
+    bestDist = distTop;
+  }
+  if (distBottom >= 0 && distBottom <= DRAG_EDGE_PX && distBottom < bestDist) {
+    best = "bottom";
+  }
+  return best;
+}
+
+function stopEdgeScroll(session) {
+  if (!session) return;
+  if (session.edgeRaf != null) {
+    window.cancelAnimationFrame(session.edgeRaf);
+    session.edgeRaf = null;
+  }
+  if (session.edgeHintRaf != null) {
+    window.cancelAnimationFrame(session.edgeHintRaf);
+    session.edgeHintRaf = null;
+  }
+  session.edgeZone = null;
+  session.edgeDwellAt = null;
+  session.edgeScrollLast = null;
+}
 
 function getCompletedView(scope, completedViewByScope) {
   if (completedViewByScope.has(scope)) {
@@ -163,16 +226,24 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
   const [dragHeight, setDragHeight] = useState(null);
   const [dragPreview, setDragPreview] = useState(null);
   const [dropHint, setDropHint] = useState(null);
+  const [dragDebugActive, setDragDebugActive] = useState(false);
+  const [edgeHint, setEdgeHint] = useState(null);
   const sessionRef = useRef(null);
   const hintRef = useRef(null);
   const movedRef = useRef(false);
   const previewElRef = useRef(null);
+  const dragDebugRef = useRef(null);
   const resolveRef = useRef(resolveDrop);
   resolveRef.current = resolveDrop;
 
   const setHint = useCallback((hint) => {
     hintRef.current = hint;
     setDropHint(hint);
+  }, []);
+
+  const patchDebug = useCallback((patch) => {
+    const prev = dragDebugRef.current || {};
+    dragDebugRef.current = { ...prev, ...patch, t: performance.now() };
   }, []);
 
   const movePreview = useCallback((clientX, clientY, session) => {
@@ -185,15 +256,42 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
     const session = sessionRef.current;
     if (session) {
       if (session.holdTimer != null) window.clearTimeout(session.holdTimer);
+      stopEdgeScroll(session);
+      if (session.capturedEl) {
+        try {
+          session.capturedEl.releasePointerCapture(session.pointerId);
+        } catch {
+          /* ignore */
+        }
+        session.capturedEl = null;
+      }
+      if (session.onContextMenu) {
+        window.removeEventListener("contextmenu", session.onContextMenu, true);
+      }
+      if (session.onTouchMove) {
+        window.removeEventListener("touchmove", session.onTouchMove, {
+          capture: true,
+        });
+      }
+      if (session.onTouchEnd) {
+        window.removeEventListener("touchend", session.onTouchEnd, true);
+        window.removeEventListener("touchcancel", session.onTouchEnd, true);
+      }
       window.removeEventListener("pointermove", session.onMove);
       window.removeEventListener("pointerup", session.onUp);
-      window.removeEventListener("pointercancel", session.onUp);
+      window.removeEventListener("pointercancel", session.onCancel);
     }
+    const last = dragDebugRef.current;
+    dragDebugRef.current = last
+      ? { ...last, phase: "ended", endedAt: performance.now() }
+      : null;
     sessionRef.current = null;
     setDragKey(null);
     setDragHeight(null);
     setDragPreview(null);
     setHint(null);
+    setDragDebugActive(false);
+    setEdgeHint(null);
     document.body.classList.remove("is-card-dragging");
   }, [setHint]);
 
@@ -212,16 +310,145 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         payload,
         key,
         el: e.currentTarget,
+        boardEl: e.currentTarget.closest?.(".board") || null,
+        colBodyEl: e.currentTarget.closest?.(".col-body") || null,
         x: e.clientX,
         y: e.clientY,
         offsetX: e.clientX - rect.left,
         offsetY: e.clientY - rect.top,
         pointerId: e.pointerId,
+        pointerType: e.pointerType || "unknown",
         started: false,
         holdTimer: null,
         movePassive: false,
         height: Math.round(rect.height),
         width: Math.round(rect.width),
+        edgeZone: null,
+        edgeDwellAt: null,
+        edgeRaf: null,
+        edgeHintRaf: null,
+        edgeScrollLast: null,
+        edgePointerX: e.clientX,
+        edgePointerY: e.clientY,
+        onContextMenu: null,
+        onTouchMove: null,
+        onTouchEnd: null,
+        capturedEl: null,
+        moveCount: 0,
+        touchMoveCount: 0,
+        cancelCount: 0,
+        lastMoveAt: 0,
+        lastTouchMoveAt: 0,
+        captureError: "",
+        finished: false,
+      };
+      patchDebug({
+        phase: needsHold ? "hold" : "armed",
+        pointerType: session.pointerType,
+        pointerId: session.pointerId,
+        key,
+        x: Math.round(e.clientX),
+        y: Math.round(e.clientY),
+        moveCount: 0,
+        touchMoveCount: 0,
+        cancelCount: 0,
+        captured: false,
+        captureError: "",
+        hasCapture: false,
+        movePassive: needsHold,
+        edge: null,
+        drop: null,
+        lastMoveAgeMs: 0,
+        lastTouchAgeMs: 0,
+        cardW: session.width,
+        cardH: session.height,
+      });
+      setDragDebugActive(true);
+
+      const finishDrag = (reason, clientX, clientY) => {
+        if (session.finished) return;
+        session.finished = true;
+        const started = session.started;
+        const hint = hintRef.current;
+        const dragPayload = session.payload;
+        patchDebug({
+          phase: reason,
+          x: clientX != null ? Math.round(clientX) : undefined,
+          y: clientY != null ? Math.round(clientY) : undefined,
+        });
+        cleanup();
+        if (started) resolveRef.current?.(dragPayload, hint);
+      };
+
+      const startEdgeHintPulse = () => {
+        if (session.edgeHintRaf != null) return;
+        const pulse = () => {
+          if (sessionRef.current !== session || !session.started || !session.edgeZone) {
+            session.edgeHintRaf = null;
+            setEdgeHint(null);
+            return;
+          }
+          const elapsed = performance.now() - (session.edgeDwellAt || 0);
+          const progress = Math.min(1, elapsed / DRAG_EDGE_DWELL_MS);
+          setEdgeHint({
+            zone: session.edgeZone,
+            progress,
+            scrolling: progress >= 1,
+          });
+          session.edgeHintRaf = window.requestAnimationFrame(pulse);
+        };
+        session.edgeHintRaf = window.requestAnimationFrame(pulse);
+      };
+
+      const updateEdgeScroll = (clientX, clientY) => {
+        const zone = classifyDragEdge(clientX, clientY, session.boardEl);
+        session.edgePointerX = clientX;
+        session.edgePointerY = clientY;
+        if (!zone) {
+          stopEdgeScroll(session);
+          setEdgeHint(null);
+          return;
+        }
+        if (session.edgeZone !== zone) {
+          if (session.edgeRaf != null) {
+            window.cancelAnimationFrame(session.edgeRaf);
+            session.edgeRaf = null;
+          }
+          session.edgeZone = zone;
+          session.edgeDwellAt = performance.now();
+          session.edgeScrollLast = null;
+          startEdgeHintPulse();
+          return;
+        }
+        startEdgeHintPulse();
+        if (performance.now() - session.edgeDwellAt < DRAG_EDGE_DWELL_MS) return;
+        if (session.edgeRaf != null) return;
+
+        const tick = (t) => {
+          if (sessionRef.current !== session || !session.started || !session.edgeZone) {
+            session.edgeRaf = null;
+            return;
+          }
+          const last = session.edgeScrollLast ?? t;
+          const dt = Math.min(48, t - last) / 1000;
+          session.edgeScrollLast = t;
+          const delta = DRAG_EDGE_SCROLL_PX_PER_SEC * dt;
+          const z = session.edgeZone;
+          const x = session.edgePointerX;
+          const y = session.edgePointerY;
+          if (z === "left" || z === "right") {
+            if (session.boardEl) {
+              session.boardEl.scrollLeft += z === "left" ? -delta : delta;
+            }
+          } else {
+            const body = findColBodyAt(x, y) || session.colBodyEl;
+            if (body) body.scrollTop += z === "top" ? -delta : delta;
+          }
+          setHint(findDropTarget(x, y));
+          session.edgeRaf = window.requestAnimationFrame(tick);
+        };
+        session.edgeScrollLast = performance.now();
+        session.edgeRaf = window.requestAnimationFrame(tick);
       };
 
       const beginDrag = (clientX, clientY) => {
@@ -252,7 +479,52 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
           y: clientY - session.offsetY,
         });
         document.body.classList.add("is-card-dragging");
+        if (!session.onTouchMove) {
+          session.onTouchMove = (ev) => {
+            if (!session.started) return;
+            session.touchMoveCount += 1;
+            session.lastTouchMoveAt = performance.now();
+            const t = ev.touches?.[0];
+            patchDebug({
+              touchMoveCount: session.touchMoveCount,
+              lastTouchMoveAt: session.lastTouchMoveAt,
+              touchX: t ? Math.round(t.clientX) : null,
+              touchY: t ? Math.round(t.clientY) : null,
+              touchCancelable: !!ev.cancelable,
+            });
+            if (ev.cancelable) ev.preventDefault();
+          };
+          window.addEventListener("touchmove", session.onTouchMove, {
+            capture: true,
+            passive: false,
+          });
+        }
+        patchDebug({
+          phase: "dragging",
+          x: Math.round(clientX),
+          y: Math.round(clientY),
+        });
         setHint(findDropTarget(clientX, clientY));
+        updateEdgeScroll(clientX, clientY);
+      };
+
+      // Capture on body (not the card). Must run inside a pointer event —
+      // the touch hold timer cannot capture, so the first move retries.
+      const ensureCapture = () => {
+        if (session.capturedEl) return;
+        try {
+          document.body.setPointerCapture(session.pointerId);
+          session.capturedEl = document.body;
+          session.captureError = "";
+        } catch (err) {
+          session.capturedEl = null;
+          session.captureError = err?.message || String(err);
+        }
+        patchDebug({
+          captured: !!session.capturedEl,
+          captureError: session.captureError || "",
+          hasCapture: document.body.hasPointerCapture?.(session.pointerId) || false,
+        });
       };
 
       const bindMove = (passive) => {
@@ -262,36 +534,99 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         session.movePassive = passive;
         session.onMove = (ev) => {
           if (ev.pointerId !== session.pointerId) return;
+          session.moveCount += 1;
+          session.lastMoveAt = performance.now();
           const dist = Math.hypot(ev.clientX - session.x, ev.clientY - session.y);
+          const hint = session.started
+            ? findDropTarget(ev.clientX, ev.clientY)
+            : null;
+          patchDebug({
+            moveCount: session.moveCount,
+            lastMoveAt: session.lastMoveAt,
+            x: Math.round(ev.clientX),
+            y: Math.round(ev.clientY),
+            dist: Math.round(dist),
+            movePassive: session.movePassive,
+            started: session.started,
+            edge: session.edgeZone,
+            drop: hint
+              ? hint.done
+                ? "done"
+                : `${hint.column}@${hint.index}`
+              : null,
+            captured: !!session.capturedEl,
+            hasCapture:
+              document.body.hasPointerCapture?.(session.pointerId) || false,
+            target:
+              ev.target instanceof Element
+                ? ev.target.className?.toString?.().slice(0, 40) ||
+                  ev.target.tagName
+                : String(ev.target),
+          });
           if (!session.started) {
             if (session.movePassive) {
               // Hold phase: abort if the finger moved (user is scrolling).
-              if (dist >= DRAG_THRESHOLD_PX) cleanup();
+              if (dist >= DRAG_THRESHOLD_PX) {
+                patchDebug({ phase: "aborted-hold-move" });
+                cleanup();
+              }
               return;
             }
             if (dist < DRAG_THRESHOLD_PX) return;
             beginDrag(ev.clientX, ev.clientY);
+            ensureCapture();
           } else {
+            ensureCapture();
             movePreview(ev.clientX, ev.clientY, session);
-            setHint(findDropTarget(ev.clientX, ev.clientY));
+            setHint(hint);
+            updateEdgeScroll(ev.clientX, ev.clientY);
+            patchDebug({ edge: session.edgeZone });
           }
           if (!session.movePassive) ev.preventDefault();
         };
         window.addEventListener("pointermove", session.onMove, { passive });
+        patchDebug({ movePassive: passive });
       };
 
       session.onUp = (ev) => {
         if (ev.pointerId !== session.pointerId) return;
-        const started = session.started;
-        const hint = hintRef.current;
-        const dragPayload = session.payload;
-        cleanup();
-        if (started) resolveRef.current?.(dragPayload, hint);
+        finishDrag("pointerup", ev.clientX, ev.clientY);
+      };
+
+      // After pointercancel the pointer is dead — pointerup will not come.
+      // Never leave drag mode stuck; commit at the last drop hint.
+      session.onCancel = (ev) => {
+        if (ev.pointerId !== session.pointerId) return;
+        session.cancelCount += 1;
+        patchDebug({
+          cancelCount: session.cancelCount,
+          lastCancelAt: performance.now(),
+        });
+        finishDrag("pointercancel", ev.clientX, ev.clientY);
+      };
+
+      session.onTouchEnd = (ev) => {
+        if (!session.started || session.finished) return;
+        const t = ev.changedTouches?.[0];
+        finishDrag(
+          ev.type === "touchcancel" ? "touchcancel" : "touchend",
+          t?.clientX,
+          t?.clientY
+        );
+      };
+
+      session.onContextMenu = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
       };
 
       sessionRef.current = session;
       window.addEventListener("pointerup", session.onUp);
-      window.addEventListener("pointercancel", session.onUp);
+      window.addEventListener("pointercancel", session.onCancel);
+      window.addEventListener("touchend", session.onTouchEnd, true);
+      window.addEventListener("touchcancel", session.onTouchEnd, true);
+      // Block the browser/card context menu for the whole hold+drag gesture.
+      window.addEventListener("contextmenu", session.onContextMenu, true);
 
       if (needsHold) {
         // Passive move only — a non-passive window listener would block scroll.
@@ -311,7 +646,7 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
         bindMove(false);
       }
     },
-    [boardEdit, cleanup, movePreview, setHint]
+    [boardEdit, cleanup, movePreview, patchDebug, setEdgeHint, setHint]
   );
 
   const consumeDragClick = useCallback(() => {
@@ -328,7 +663,76 @@ function useBoardCardDrag(boardEdit, resolveDrop) {
     dropHint,
     armDrag,
     consumeDragClick,
+    dragDebugActive,
+    dragDebugRef,
+    edgeHint,
   };
+}
+
+function CardDragEdgeHint({ hint }) {
+  if (!hint?.zone) return null;
+  const p = Math.max(0, Math.min(1, hint.progress || 0));
+  return createPortal(
+    <div
+      className={
+        "card-drag-edge-hint" + (hint.scrolling ? " is-scrolling" : "")
+      }
+      data-edge={hint.zone}
+      style={{ ["--edge-p"]: String(p) }}
+      aria-hidden="true"
+    />,
+    document.body
+  );
+}
+
+function CardDragDebugPanel({ active, debugRef }) {
+  const preRef = useRef(null);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    let raf = 0;
+    const tick = () => {
+      const el = preRef.current;
+      const d = debugRef.current;
+      if (el && d) {
+        const now = performance.now();
+        const moveAge =
+          d.lastMoveAt != null ? Math.round(now - d.lastMoveAt) : null;
+        const touchAge =
+          d.lastTouchMoveAt != null
+            ? Math.round(now - d.lastTouchMoveAt)
+            : null;
+        el.textContent = [
+          `phase: ${d.phase || "?"}`,
+          `ptr: ${d.pointerType || "?"} #${d.pointerId ?? "?"}`,
+          `xy: ${d.x ?? "—"}, ${d.y ?? "—"}  dist:${d.dist ?? "—"}`,
+          `moves: ${d.moveCount ?? 0}  touchmoves: ${d.touchMoveCount ?? 0}`,
+          `lastMoveAge: ${moveAge == null ? "—" : moveAge + "ms"}`,
+          `lastTouchAge: ${touchAge == null ? "—" : touchAge + "ms"}`,
+          `passive: ${d.movePassive ? "yes" : "no"}  started: ${d.started ? "yes" : "no"}`,
+          `capture: ${d.captured ? "yes" : "no"}  hasCapture: ${d.hasCapture ? "yes" : "no"}`,
+          `captureErr: ${d.captureError || "—"}`,
+          `cancels: ${d.cancelCount ?? 0}`,
+          `edge: ${d.edge || "—"}  drop: ${d.drop || "—"}`,
+          `target: ${d.target || "—"}`,
+          `card: ${d.cardW ?? "?"}×${d.cardH ?? "?"}`,
+          `touchXY: ${d.touchX ?? "—"}, ${d.touchY ?? "—"}  cancelable:${d.touchCancelable ?? "—"}`,
+        ].join("\n");
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [active, debugRef]);
+
+  if (!active) return null;
+  return createPortal(
+    <div className="card-drag-debug" aria-hidden="true">
+      <b>card drag debug</b>
+      <pre ref={preRef} />
+    </div>,
+    document.body
+  );
 }
 
 function DropShadow({ height }) {
@@ -380,24 +784,31 @@ function DragPreview({ preview, previewElRef }) {
 
 function renderOpenCards(items, column, dropHint, dragHeight, dragKey, renderCard) {
   const hintHere = dropHint && !dropHint.done && dropHint.column === column;
-  const visible = dragKey
-    ? items.filter((item) => item.dragKey !== dragKey)
-    : items;
-  return (
-    <>
-      {visible.map((item, i) => (
-        <Fragment key={item.key}>
-          {hintHere && dropHint.index === i ? (
-            <DropShadow height={dragHeight} />
-          ) : null}
-          {renderCard(item, i)}
-        </Fragment>
-      ))}
-      {hintHere && dropHint.index === visible.length ? (
-        <DropShadow height={dragHeight} />
-      ) : null}
-    </>
-  );
+  // Keep the dragging card mounted so the active touch pointer is not cancelled.
+  // Drop indices still count only non-dragging cards (matches findDropTarget).
+  const nodes = [];
+  let dropIdx = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const isDragging = !!(dragKey && item.dragKey === dragKey);
+    if (!isDragging) {
+      if (hintHere && dropHint.index === dropIdx) {
+        nodes.push(
+          <DropShadow key={`drop-${column}-${dropIdx}`} height={dragHeight} />
+        );
+      }
+      dropIdx += 1;
+    }
+    nodes.push(
+      <Fragment key={item.key}>{renderCard(item, i)}</Fragment>
+    );
+  }
+  if (hintHere && dropHint.index === dropIdx) {
+    nodes.push(
+      <DropShadow key={`drop-${column}-end`} height={dragHeight} />
+    );
+  }
+  return <>{nodes}</>;
 }
 
 function readFileAsBase64(file) {
@@ -502,9 +913,11 @@ function TaskCard({
         onOpen(row);
       }}
       onContextMenu={(e) => {
-        if (!canCtxMenu) return;
         e.preventDefault();
         e.stopPropagation();
+        if (!canCtxMenu) return;
+        // Touch long-press is reserved for card drag on coarse pointers.
+        if (window.matchMedia("(pointer: coarse)").matches) return;
         setTimelogMenu({ left: e.clientX, top: e.clientY });
       }}
       onPointerDown={(e) => {
@@ -1165,8 +1578,18 @@ function ProjectBoard({
     ]
   );
 
-  const { dragKey, dragHeight, dragPreview, previewElRef, dropHint, armDrag, consumeDragClick } =
-    useBoardCardDrag(boardEdit, resolveDrop);
+  const {
+    dragKey,
+    dragHeight,
+    dragPreview,
+    previewElRef,
+    dropHint,
+    armDrag,
+    consumeDragClick,
+    dragDebugActive,
+    dragDebugRef,
+    edgeHint,
+  } = useBoardCardDrag(boardEdit, resolveDrop);
 
   const cardProps = {
     boardEdit,
@@ -1330,6 +1753,8 @@ function ProjectBoard({
       ref={boardRef}
     >
       <DragPreview preview={dragPreview} previewElRef={previewElRef} />
+      <CardDragEdgeHint hint={edgeHint} />
+      <CardDragDebugPanel active={dragDebugActive} debugRef={dragDebugRef} />
       {cols.map((s, i) => {
         const colRows = (data.rows || []).filter((r) => r.s === s);
         const split = columnRows(colRows, mode);
@@ -1565,8 +1990,18 @@ function MasterBoard({
     ]
   );
 
-  const { dragKey, dragHeight, dragPreview, previewElRef, dropHint, armDrag, consumeDragClick } =
-    useBoardCardDrag(boardEdit, resolveDrop);
+  const {
+    dragKey,
+    dragHeight,
+    dragPreview,
+    previewElRef,
+    dropHint,
+    armDrag,
+    consumeDragClick,
+    dragDebugActive,
+    dragDebugRef,
+    edgeHint,
+  } = useBoardCardDrag(boardEdit, resolveDrop);
 
   const cardProps = {
     boardEdit,
@@ -1712,6 +2147,8 @@ function MasterBoard({
         ref={boardRef}
       >
         <DragPreview preview={dragPreview} previewElRef={previewElRef} />
+        <CardDragEdgeHint hint={edgeHint} />
+        <CardDragDebugPanel active={dragDebugActive} debugRef={dragDebugRef} />
         {cols.map((s, i) => {
           const stageTasks = tasks.filter((t) => t.row.ms === s);
           const split = columnRows(

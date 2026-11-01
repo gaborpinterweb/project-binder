@@ -831,14 +831,92 @@ select{font:inherit;color:inherit;background:var(--sel);border:0;border-radius:4
 .card-timelog-menu .card-ctx-add-sub-menu{display:none;top:0;left:calc(100% - 4px);min-width:160px;width:max-content;z-index:92;padding:6px}
 .card-timelog-menu .card-ctx-add-sub:hover > .card-ctx-add-sub-menu,.card-timelog-menu .card-ctx-add-sub:focus-within > .card-ctx-add-sub-menu{display:block}
 .timelog-row .timelog-card{margin:0;padding:5px 10px}
-.board .card{cursor:grab;touch-action:none;user-select:none}
+.board .card{cursor:grab;touch-action:none;user-select:none;-webkit-touch-callout:none}
 /* Coarse pointers: allow board/column scroll until long-press starts a drag. */
 @media (pointer: coarse){
   .board .card{touch-action:pan-x pan-y}
   body.is-card-dragging .board .card{touch-action:none}
 }
+/* Once drag mode starts, nested board/column scroll must not steal the gesture. */
+body.is-card-dragging{
+  touch-action:none;
+  overscroll-behavior:none;
+}
+body.is-card-dragging .board,
+body.is-card-dragging .col-body{
+  overflow:hidden;
+  touch-action:none;
+  overscroll-behavior:none;
+}
+body.is-card-dragging::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:2000;
+  pointer-events:none;
+  border:3px dashed #ff2d55;
+  box-sizing:border-box;
+}
+.card-drag-edge-hint{
+  position:fixed;
+  z-index:1990;
+  pointer-events:none;
+  --edge-p:0;
+}
+.card-drag-edge-hint[data-edge="left"]{
+  left:0;top:0;bottom:0;width:56px;
+  background:linear-gradient(90deg,rgba(28,28,30,calc(.14 + var(--edge-p) * .34)),rgba(28,28,30,calc(.04 + var(--edge-p) * .1)) 55%,transparent);
+  box-shadow:inset 4px 0 16px rgba(0,0,0,calc(.08 + var(--edge-p) * .28));
+}
+.card-drag-edge-hint[data-edge="right"]{
+  right:0;top:0;bottom:0;width:56px;
+  background:linear-gradient(270deg,rgba(28,28,30,calc(.14 + var(--edge-p) * .34)),rgba(28,28,30,calc(.04 + var(--edge-p) * .1)) 55%,transparent);
+  box-shadow:inset -4px 0 16px rgba(0,0,0,calc(.08 + var(--edge-p) * .28));
+}
+.card-drag-edge-hint[data-edge="top"]{
+  left:0;right:0;top:0;height:56px;
+  background:linear-gradient(180deg,rgba(28,28,30,calc(.14 + var(--edge-p) * .34)),rgba(28,28,30,calc(.04 + var(--edge-p) * .1)) 55%,transparent);
+  box-shadow:inset 0 4px 16px rgba(0,0,0,calc(.08 + var(--edge-p) * .28));
+}
+.card-drag-edge-hint[data-edge="bottom"]{
+  left:0;right:0;bottom:0;height:56px;
+  background:linear-gradient(0deg,rgba(28,28,30,calc(.14 + var(--edge-p) * .34)),rgba(28,28,30,calc(.04 + var(--edge-p) * .1)) 55%,transparent);
+  box-shadow:inset 0 -4px 16px rgba(0,0,0,calc(.08 + var(--edge-p) * .28));
+}
+.card-drag-edge-hint.is-scrolling{
+  background-color:rgba(60,60,64,calc(.06 + var(--edge-p) * .08));
+}
+.card-drag-debug{
+  position:fixed;
+  left:8px;
+  right:8px;
+  bottom:max(8px,env(safe-area-inset-bottom,0px));
+  z-index:2001;
+  pointer-events:none;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(0,0,0,.82);
+  color:#9ef01a;
+  font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-shadow:0 8px 24px #00000066;
+}
+.card-drag-debug b{
+  display:block;
+  margin:0 0 4px;
+  color:#fff;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.card-drag-debug pre{
+  margin:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
 .board .card:active,.board .card.dragging,.is-card-dragging{cursor:grabbing}
-.board .card.dragging{display:none}
+/* Keep the source card mounted (opacity only). display:none/unmount cancels the
+   touch pointer on WebKit and leaves drag stuck if pointercancel is ignored. */
+.board .card.dragging{opacity:0;pointer-events:none}
 .drop-shadow{flex:none;height:42px;margin-bottom:8px;border-radius:10px;background:color-mix(in srgb,var(--ink) 9%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent);pointer-events:none}
 .drag-preview{position:fixed;left:0;top:0;z-index:1000;margin:0;pointer-events:none;box-shadow:0 12px 32px #00000030,0 2px 8px #00000018;cursor:grabbing}
 .drag-preview .drag-preview-check{flex:none;width:16px;height:16px;border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);border-radius:3px;background:#fff;box-sizing:border-box}

@@ -77,6 +77,7 @@ import {
 import { showSnackbar } from "../snackbar.js";
 import CardTitleIcons, { CardPreviewMeta } from "./CardTitleIcons.jsx";
 import GlobalBar from "./GlobalBar.jsx";
+import MobileGlobalBar from "./MobileGlobalBar.jsx";
 import { TimelogContextMenu } from "./TimelogDropdown.jsx";
 
 const BOARD_SORT_OPTIONS_BASE = [
@@ -2891,8 +2892,8 @@ export default function Board({
 
     return (
       <div id="view" className="db" style={{ ["--tab"]: tabC }}>
-        <GlobalBar name="Masterboard" titleRainbow={compact}>
-          {compact ? (
+        {compact ? (
+          <MobileGlobalBar name="Masterboard" titleRainbow folders={folders}>
             <button
               type="button"
               className="mod-act"
@@ -2902,44 +2903,44 @@ export default function Board({
             >
               <Icon name="settings" size={18} />
             </button>
-          ) : (
-            <>
-              {!boardEdit && (
-                <button
-                  type="button"
-                  className="mod-act"
-                  title="Add task"
-                  aria-label="Add task"
-                  onClick={addMasterTask}
-                >
-                  <Icon name="plus" size={18} />
-                  <span className="mod-act-lab">Add task</span>
-                </button>
-              )}
-              {!boardEdit && (
-                <CompletedViewBtn
-                  scope="master"
-                  completedViewByScope={completedViewByScope}
-                  boardShowByScope={boardShowByScope}
-                  onChange={onSetCompletedView}
-                  onSetBoardShow={onSetBoardShow}
-                  triggerLabel="View"
-                  align="right"
-                />
-              )}
-              {!boardEdit && (
-                <BoardSortBtn
-                  scope="master"
-                  boardSortByScope={boardSortByScope}
-                  onChange={onSetBoardSort}
-                  allowProject
-                  align="right"
-                />
-              )}
-              <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
-            </>
-          )}
-        </GlobalBar>
+          </MobileGlobalBar>
+        ) : (
+          <GlobalBar name="Masterboard">
+            {!boardEdit && (
+              <button
+                type="button"
+                className="mod-act"
+                title="Add task"
+                aria-label="Add task"
+                onClick={addMasterTask}
+              >
+                <Icon name="plus" size={18} />
+                <span className="mod-act-lab">Add task</span>
+              </button>
+            )}
+            {!boardEdit && (
+              <CompletedViewBtn
+                scope="master"
+                completedViewByScope={completedViewByScope}
+                boardShowByScope={boardShowByScope}
+                onChange={onSetCompletedView}
+                onSetBoardShow={onSetBoardShow}
+                triggerLabel="View"
+                align="right"
+              />
+            )}
+            {!boardEdit && (
+              <BoardSortBtn
+                scope="master"
+                boardSortByScope={boardSortByScope}
+                onChange={onSetBoardSort}
+                allowProject
+                align="right"
+              />
+            )}
+            <BoardEditBtn boardEdit={boardEdit} onToggle={onToggleBoardEdit} />
+          </GlobalBar>
+        )}
         <MasterBoard
           folders={folders}
           stages={stages}

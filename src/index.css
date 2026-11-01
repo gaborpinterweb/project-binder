@@ -914,9 +914,19 @@ body.is-card-dragging::after{
   word-break:break-word;
 }
 .board .card:active,.board .card.dragging,.is-card-dragging{cursor:grabbing}
-/* Keep the source card mounted (opacity only). display:none/unmount cancels the
-   touch pointer on WebKit and leaves drag stuck if pointercancel is ignored. */
-.board .card.dragging{opacity:0;pointer-events:none}
+/* Keep the source card mounted for touch, but take no layout space so the drop
+   shadow sits in the original slot (not one below a ghost placeholder). */
+.board .card.dragging{
+  opacity:0;
+  pointer-events:none;
+  height:0!important;
+  min-height:0;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  overflow:hidden;
+  box-shadow:none!important;
+}
 .drop-shadow{flex:none;height:42px;margin-bottom:8px;border-radius:10px;background:color-mix(in srgb,var(--ink) 9%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent);pointer-events:none}
 .drag-preview{position:fixed;left:0;top:0;z-index:1000;margin:0;pointer-events:none;box-shadow:0 12px 32px #00000030,0 2px 8px #00000018;cursor:grabbing}
 .drag-preview .drag-preview-check{flex:none;width:16px;height:16px;border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);border-radius:3px;background:#fff;box-sizing:border-box}

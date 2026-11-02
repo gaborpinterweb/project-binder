@@ -9,6 +9,17 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-02 (Pine)
+
+### Added
+
+- Mobile Notes tab: open from the nav sheet, pinned-first list, and read/edit drawer with lock/unlock.
+- Floating TipTap toolbar on phone (slides with lock state) and FAB to add a note.
+
+### Changed
+
+- Mobile Notes list uses flat native-style rows instead of cards.
+
 ## [1.0.3] - 2026-11-01 (Pine)
 
 ### Added

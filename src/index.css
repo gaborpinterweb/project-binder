@@ -1829,6 +1829,19 @@ html.is-phone .db-mobile-card-row{display:flex;flex-wrap:wrap;align-items:center
 html.is-phone .db-mobile-text{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:500;line-height:1.35;min-width:0}
 html.is-phone .db-mobile-check{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:4px;background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc);flex:none}
 html.is-phone .db-mobile-empty{padding:28px 12px;text-align:center;color:var(--mute);font-size:14px}
+html.is-phone .mobile-shell #view.notes-view{position:relative;display:flex;flex-direction:column;min-height:0}
+html.is-phone .notes-mobile-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:12px;padding-bottom:max(88px,calc(72px + env(safe-area-inset-bottom,0px)));background:var(--bg)}
+html.is-phone .notes-mobile-card{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:inherit;font:inherit;text-align:left;cursor:pointer;box-sizing:border-box}
+html.is-phone .notes-mobile-card:hover{background:color-mix(in srgb,var(--ink) 3%,var(--card))}
+html.is-phone .notes-mobile-card:active{background:color-mix(in srgb,var(--ink) 6%,var(--card))}
+html.is-phone .notes-mobile-card-head{display:flex;align-items:center;min-width:0;width:100%}
+html.is-phone .notes-mobile-card-title{flex:1;min-width:0;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.is-phone .notes-mobile-card-preview{font-size:13px;font-weight:400;color:var(--mute);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;word-break:break-word}
+html.is-phone .notes-mobile-empty{padding:28px 12px;text-align:center;color:var(--mute);font-size:14px}
+html.is-phone .notes-mobile-dlg{display:flex;flex-direction:column;padding:0}
+html.is-phone .notes-mobile-dlg-head{flex:none;display:flex;align-items:center;gap:12px;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
+html.is-phone .notes-mobile-dlg-head b{flex:1;min-width:0;font-size:16px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.is-phone .notes-mobile-dlg-body{flex:1;min-height:0;overflow:auto;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
 html.is-phone .dlg .dlg-controls{padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
 /* Flyouts can't open to the right of a right-edge chip on a narrow screen. */
 html.is-phone .dlg .card-add-chip .card-add-sub-menu{top:100%;left:0;right:auto;min-width:100%;max-width:min(280px,calc(100vw - 24px))}

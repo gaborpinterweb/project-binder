@@ -2250,6 +2250,23 @@ export default function App() {
       />
     ) : null;
 
+  const mobileNotes =
+    loaded && !loadError && !g && folder && x?.[0] === "Notes" ? (
+      <Notes
+        mod={x}
+        folder={folder}
+        folders={folders}
+        tabC={tabC}
+        readonly={archived}
+        compact
+        onApplyWorkspace={applyWorkspace}
+        onOpenSettings={openSettings}
+        onSelectGlobal={selectMobileGlobal}
+        onSelectCover={selectMobileCover}
+        onSelectMod={selectMobileMod}
+      />
+    ) : null;
+
   const mobileCover =
     loaded && !loadError && !g && folder && x?.[0] === "Cover" ? (
       <Cover
@@ -2308,7 +2325,7 @@ export default function App() {
           )}
           {loaded &&
             !loadError &&
-            (mobileCover || mobileDatabase || masterBoard)}
+            (mobileCover || mobileDatabase || mobileNotes || masterBoard)}
         </MobileShell>
       ) : (
         <>

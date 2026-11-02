@@ -18,6 +18,7 @@ import { copyNoteAs, exportNoteAs } from "../noteExport.js";
 import { askConfirm } from "../confirmDialog.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
+import MobileGlobalBar from "./MobileGlobalBar.jsx";
 import RichTextEditor, { RteToolbar } from "./RichTextEditor.jsx";
 
 const EMPTY_NOTE_BODY = "<h1></h1>";
@@ -892,9 +893,14 @@ export default function Notes({
   folders = [],
   tabC,
   readonly,
+  compact = false,
   onApplyWorkspace,
   routeNoteId = null,
   onNoteRouteSelect = null,
+  onOpenSettings,
+  onSelectGlobal,
+  onSelectCover,
+  onSelectMod,
 }) {
   const d = mod[2] || { id: "", notes: [] };
   const [sort, setSort] = useState("updated-desc");
@@ -903,6 +909,7 @@ export default function Notes({
   const [showCreated, setShowCreated] = useState(true);
   const [showUpdated, setShowUpdated] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [previewId, setPreviewId] = useState(null);
   const notes = useMemo(
     () => sortNotes(filterNotes(d.notes, filter), sort),
     [d.notes, filter, sort]
@@ -1184,6 +1191,110 @@ export default function Notes({
     setSelectedId(note.id);
     setCtxMenu({ left: e.clientX, top: e.clientY, note });
   };
+
+  if (compact) {
+    const previewNote =
+      (previewId && (d.notes || []).find((n) => n.id === previewId)) || null;
+    const closePreview = () => setPreviewId(null);
+    return (
+      <div
+        id="view"
+        className="mod notes-view"
+        style={{ ["--tab"]: tabC }}
+      >
+        <MobileGlobalBar
+          name="Notes"
+          title={mod[1] || "Notes"}
+          folders={folders || []}
+          activeProjectId={folder?.id}
+          activeModId={mod?.[2]?.id}
+          onSelectGlobal={onSelectGlobal}
+          onSelectCover={onSelectCover}
+          onSelectMod={onSelectMod}
+          onOpenSettings={onOpenSettings}
+        />
+        {(d.notes || []).length === 0 ? (
+          <div className="notes-mobile-list">
+            <div className="notes-mobile-empty">No notes yet</div>
+          </div>
+        ) : (
+          <div className="notes-mobile-list">
+            {notes.map((n) => {
+              const preview = noteListPreview(
+                n.body,
+                NOTE_PREVIEW_LEN.md || 140
+              );
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  className="notes-mobile-card"
+                  onClick={() => setPreviewId(n.id)}
+                >
+                  <span className="notes-mobile-card-head">
+                    {n.pinned ? (
+                      <span
+                        className="notes-item-pin"
+                        title="Pinned"
+                        aria-label="Pinned"
+                      >
+                        <Icon name="pin" size={12} />
+                      </span>
+                    ) : null}
+                    <span className="notes-mobile-card-title">
+                      {noteListTitle(n.body)}
+                    </span>
+                  </span>
+                  {preview ? (
+                    <span className="notes-mobile-card-preview">{preview}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {previewNote
+          ? createPortal(
+              <div
+                className="ov"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) closePreview();
+                }}
+              >
+                <div
+                  className="dlg notes-mobile-dlg"
+                  role="dialog"
+                  aria-label={noteListTitle(previewNote.body) || "Note"}
+                >
+                  <div className="notes-mobile-dlg-head">
+                    <b>{noteListTitle(previewNote.body) || "Untitled"}</b>
+                    <button
+                      type="button"
+                      className="settings-row-btn"
+                      onClick={closePreview}
+                    >
+                      Done
+                    </button>
+                  </div>
+                  <div className="notes-mobile-dlg-body notes-preview">
+                    <div className="rte">
+                      {isEmptyNoteBody(previewNote.body) ? (
+                        <div className="tiptap">
+                          <EmptyNotePlaceholder body={previewNote.body} />
+                        </div>
+                      ) : (
+                        <NotesLockedPreview body={previewNote.body} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
+      </div>
+    );
+  }
 
   return (
     <div id="view" className="mod notes-view" style={{ ["--tab"]: tabC }}>

@@ -1084,7 +1084,7 @@ export default function Notes({
   };
 
   const addNote = async () => {
-    if (readonly) return;
+    if (readonly) return null;
     const data = await postNote({
       project: folder.id,
       notesTab: d.id,
@@ -1095,7 +1095,9 @@ export default function Notes({
     if (data.id) {
       setSelectedId(data.id);
       setUnlocked((prev) => ({ ...prev, [unlockKey(data.id)]: true }));
+      return data.id;
     }
+    return null;
   };
 
   const clearNoteUnlock = (noteId) => {
@@ -1195,7 +1197,19 @@ export default function Notes({
   if (compact) {
     const previewNote =
       (previewId && (d.notes || []).find((n) => n.id === previewId)) || null;
-    const closePreview = () => setPreviewId(null);
+    const openNote = (id) => {
+      if (!id) return;
+      setSelectedId(id);
+      setPreviewId(id);
+    };
+    const closePreview = () => {
+      if (previewId) setNoteLocked(previewId, true);
+      setPreviewId(null);
+    };
+    const addAndOpen = async () => {
+      const id = await addNote();
+      if (id) setPreviewId(id);
+    };
     return (
       <div
         id="view"
@@ -1229,7 +1243,7 @@ export default function Notes({
                   key={n.id}
                   type="button"
                   className="notes-mobile-card"
-                  onClick={() => setPreviewId(n.id)}
+                  onClick={() => openNote(n.id)}
                 >
                   <span className="notes-mobile-card-head">
                     {n.pinned ? (
@@ -1253,6 +1267,17 @@ export default function Notes({
             })}
           </div>
         )}
+        {!readonly ? (
+          <button
+            type="button"
+            className="mobile-fab"
+            title="Add note"
+            aria-label="Add note"
+            onClick={() => void addAndOpen()}
+          >
+            <Icon name="plus" size={24} />
+          </button>
+        ) : null}
         {previewNote
           ? createPortal(
               <div
@@ -1267,26 +1292,92 @@ export default function Notes({
                   aria-label={noteListTitle(previewNote.body) || "Note"}
                 >
                   <div className="notes-mobile-dlg-head">
-                    <b>{noteListTitle(previewNote.body) || "Untitled"}</b>
                     <button
                       type="button"
-                      className="settings-row-btn"
+                      className="notes-mobile-dlg-back"
                       onClick={closePreview}
+                      title="Back"
+                      aria-label="Back"
                     >
-                      Done
+                      <Icon name="arrowLeft" size={20} />
                     </button>
+                    <b>{noteListTitle(previewNote.body) || "Untitled"}</b>
+                    {!readonly ? (
+                      <div className="notes-mobile-dlg-actions">
+                        {locked ? (
+                          <button
+                            type="button"
+                            className="settings-row-btn"
+                            onClick={() => setLocked(false)}
+                            title="Unlock"
+                            aria-label="Unlock"
+                          >
+                            <Icon name="unlock" size={18} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="settings-row-btn"
+                            onClick={() => setLocked(true)}
+                            title="Lock"
+                            aria-label="Lock"
+                          >
+                            <Icon name="lock" size={18} />
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="notes-mobile-dlg-body notes-preview">
-                    <div className="rte">
-                      {isEmptyNoteBody(previewNote.body) ? (
-                        <div className="tiptap">
-                          <EmptyNotePlaceholder body={previewNote.body} />
-                        </div>
-                      ) : (
-                        <NotesLockedPreview body={previewNote.body} />
-                      )}
+                  {editingView ? (
+                    <div className="notes-mobile-dlg-body is-editing">
+                      <div className="notes-rte-wrap">
+                        <RichTextEditor
+                          key={previewNote.id}
+                          value={previewNote.body || EMPTY_NOTE_BODY}
+                          onChange={saveBody}
+                          showLabel={false}
+                          showToolbar={false}
+                          variant="full"
+                          autofocus
+                          startInHeading
+                          hashtags
+                          imageUpload={imageUpload}
+                          onEditor={setEditor}
+                          placeholder={NOTE_PLACEHOLDER}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="notes-mobile-dlg-body notes-preview">
+                      <div className="notes-rte-wrap">
+                        <div className="rte">
+                          {isEmptyNoteBody(previewNote.body) ? (
+                            <div className="tiptap">
+                              <EmptyNotePlaceholder body={previewNote.body} />
+                            </div>
+                          ) : (
+                            <NotesLockedPreview body={previewNote.body} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {toolbarMounted && editor ? (
+                    <div
+                      className={
+                        "notes-mobile-rte-bar" + (toolbarIn ? " in" : "")
+                      }
+                      aria-hidden={!toolbarIn}
+                    >
+                      <div className="notes-mobile-rte-bar-scroll">
+                        <RteToolbar
+                          editor={editor}
+                          variant="full"
+                          imageUpload={imageUpload}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>,
               document.body

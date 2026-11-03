@@ -531,26 +531,28 @@ export default function App() {
           return;
         }
 
-        // Phone: Masterboard + Cover + Database. Other tab URLs → Cover
-        // (or Masterboard). Task entity deep links still open on Masterboard.
-        const phoneDbRoute =
+        // Phone: Masterboard + Cover + openable tabs (Board / Database / Notes).
+        // Other tab URLs → Cover (or Masterboard). Orphan task deep links still
+        // open on Masterboard when they are not under an openable tab path.
+        const phoneOpenableRoute =
           isPhoneRef.current &&
           route.projectId &&
           route.tabId &&
-          (route.kind === "tab" ||
-            (route.kind === "entity" &&
-              route.entityKind === ENTITY_RECORDS)) &&
+          (route.kind === "tab" || route.kind === "entity") &&
           (() => {
             const pi = foldersNow.findIndex((f) => f.id === route.projectId);
             const mod = (foldersNow[pi]?.mods || []).find(
               (m) => m?.[2]?.id === route.tabId
             );
-            return mod?.[0] === "Database";
+            if (!isMobileOpenableMod(mod) || mod?.[0] === "Cover") return false;
+            if (route.kind === "tab") return true;
+            const expected = entityKindToModType(route.entityKind);
+            return !!expected && mod[0] === expected;
           })();
 
         if (
           isPhoneRef.current &&
-          !phoneDbRoute &&
+          !phoneOpenableRoute &&
           route.kind !== "project" &&
           route.kind !== "cover"
         ) {
@@ -1443,17 +1445,26 @@ export default function App() {
       routeFileIdRef.current = null;
       setSettingsOpen(false);
       settingsOpenRef.current = false;
-      const phoneDb = isPhoneRef.current && loc?.mod?.[0] === "Database";
-      // Phone board tasks stay on Masterboard; database records stay on the tab.
+      // Phone: stay on Masterboard when already there; stay on openable project
+      // tabs (Board / Database / Notes). Otherwise snap to Masterboard.
       // Desktop: keep Timelogs/Trash/Masterboard; only jump into the project tab
       // when opening from inside a project.
-      if (isPhoneRef.current && !phoneDb) {
+      const phoneOnMaster =
+        isPhoneRef.current && gRef.current === "Masterboard";
+      const phoneOpenableTab =
+        isPhoneRef.current &&
+        !phoneOnMaster &&
+        isMobileOpenableMod(loc?.mod) &&
+        loc?.mod?.[0] !== "Cover";
+      if (isPhoneRef.current && !phoneOnMaster && !phoneOpenableTab) {
         setG("Masterboard");
         gRef.current = "Masterboard";
       }
       const stayGlobal =
-        (isPhoneRef.current && !phoneDb) || !!gRef.current;
-      if ((!stayGlobal || phoneDb) && loc?.folder && loc?.mod) {
+        phoneOnMaster ||
+        (isPhoneRef.current && !phoneOpenableTab) ||
+        !!gRef.current;
+      if ((!stayGlobal || phoneOpenableTab) && loc?.folder && loc?.mod) {
         const pi = foldersRef.current.findIndex((f) => f.id === loc.folder.id);
         const mi = (foldersRef.current[pi]?.mods || []).findIndex(
           (mod) => mod?.[2]?.id === loc.mod[2]?.id
@@ -1477,9 +1488,11 @@ export default function App() {
         routeFileId: null,
         settings: false,
         g: isPhoneRef.current
-          ? phoneDb
-            ? null
-            : "Masterboard"
+          ? phoneOnMaster
+            ? "Masterboard"
+            : phoneOpenableTab
+              ? null
+              : "Masterboard"
           : stayGlobal
             ? gRef.current
             : null,
@@ -2225,6 +2238,53 @@ export default function App() {
     />
   );
 
+  const mobileBoard =
+    loaded && !loadError && !g && folder && x?.[0] === "Board" ? (
+      <Board
+        mode="project"
+        mod={x}
+        folder={folder}
+        folders={folders}
+        stages={stages}
+        tabC={tabC}
+        readonly={archived}
+        boardEdit={false}
+        onToggleBoardEdit={() => {}}
+        masterOff={masterOff.current}
+        colCollapsed={colCollapsed.current}
+        completedViewByScope={completedViewByScope.current}
+        boardShowByScope={boardShowByScope.current}
+        boardSortByScope={boardSortByScope.current}
+        uiTick={uiTick}
+        compact
+        onBump={bump}
+        onSetCompletedView={setCompletedView}
+        onSetBoardShow={setBoardShow}
+        onSetBoardSort={setBoardSort}
+        onOpenCard={openItem}
+        onToggleDone={onToggleDone}
+        onSetCardMeta={onSetCardMeta}
+        onStartNewCard={startNewCard}
+        onApplyWorkspace={applyWorkspace}
+        locateRow={(r) => locateRow(foldersRef.current, r)}
+        keepNav={keepNav}
+        activeTimerKey={
+          activePomo
+            ? taskKey(activePomo.project, activePomo.board, activePomo.card)
+            : null
+        }
+        onStartPomo={startPomodoro}
+        onAddManualTimelog={addManualTimelog}
+        onOpenTimelogs={openTimelogs}
+        onDuplicateCard={duplicateCard}
+        onDeleteCard={deleteCard}
+        onOpenSettings={openSettings}
+        onSelectGlobal={selectMobileGlobal}
+        onSelectCover={selectMobileCover}
+        onSelectMod={selectMobileMod}
+      />
+    ) : null;
+
   const mobileDatabase =
     loaded && !loadError && !g && folder && x?.[0] === "Database" ? (
       <DatabaseView
@@ -2325,7 +2385,11 @@ export default function App() {
           )}
           {loaded &&
             !loadError &&
-            (mobileCover || mobileDatabase || mobileNotes || masterBoard)}
+            (mobileCover ||
+              mobileBoard ||
+              mobileDatabase ||
+              mobileNotes ||
+              masterBoard)}
         </MobileShell>
       ) : (
         <>

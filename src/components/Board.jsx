@@ -3430,6 +3430,83 @@ export default function Board({
   const editing = readonly ? false : boardEdit;
   const d = mod[2] || { rows: [], columns: stages.slice() };
   const scope = boardKey(folder, mod);
+  const addProjectTask = () =>
+    onStartNewCard(folder, mod, {
+      status: (d.columns || stages)[0],
+      master: stages[0],
+    });
+
+  const projectBoard = (
+    <ProjectBoard
+      data={d}
+      folder={folder}
+      mod={mod}
+      stages={stages}
+      boardEdit={editing}
+      colCollapsed={colCollapsed}
+      completedViewByScope={completedViewByScope}
+      boardShowByScope={boardShowByScope}
+      boardSortByScope={boardSortByScope}
+      uiTick={uiTick}
+      onBumpCollapse={onBump}
+      onSetCompletedView={onSetCompletedView}
+      onSetBoardSort={onSetBoardSort}
+      onOpenCard={onOpenCard}
+      onToggleDone={onToggleDone}
+      onSetCardMeta={onSetCardMeta}
+      onStartNewCard={onStartNewCard}
+      onApplyWorkspace={onApplyWorkspace}
+      keepNav={keepNav}
+      activeTimerKey={activeTimerKey}
+      onStartPomo={onStartPomo}
+      onAddManualTimelog={onAddManualTimelog}
+      onOpenTimelogs={onOpenTimelogs}
+      onDuplicateCard={onDuplicateCard}
+      onDeleteCard={onDeleteCard}
+      readonly={readonly}
+    />
+  );
+
+  if (compact) {
+    return (
+      <div id="view" className="db" style={{ ["--tab"]: tabC }}>
+        <MobileGlobalBar
+          name="Board"
+          title={mod[1] || "Tasks"}
+          folders={folders || []}
+          activeProjectId={folder?.id}
+          activeModId={mod?.[2]?.id}
+          onSelectGlobal={onSelectGlobal}
+          onSelectCover={onSelectCover}
+          onSelectMod={onSelectMod}
+          onOpenSettings={onOpenSettings}
+        >
+          <CompletedViewBtn
+            scope={scope}
+            completedViewByScope={completedViewByScope}
+            boardShowByScope={boardShowByScope}
+            onChange={onSetCompletedView}
+            onSetBoardShow={onSetBoardShow}
+            triggerLabel="View"
+            triggerIcon="ellipsis"
+            align="right"
+          />
+        </MobileGlobalBar>
+        {projectBoard}
+        {!readonly ? (
+          <button
+            type="button"
+            className="mobile-fab"
+            title="Add task"
+            aria-label="Add task"
+            onClick={addProjectTask}
+          >
+            <Icon name="plus" size={24} />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div id="view" className="db" style={{ ["--tab"]: tabC }}>
@@ -3441,12 +3518,7 @@ export default function Board({
               className="mod-act"
               title="Add task"
               aria-label="Add task"
-              onClick={() =>
-                onStartNewCard(folder, mod, {
-                  status: (d.columns || stages)[0],
-                  master: stages[0],
-                })
-              }
+              onClick={addProjectTask}
             >
               <Icon name="plus" size={18} />
               <span className="mod-act-lab">Add task</span>
@@ -3477,34 +3549,7 @@ export default function Board({
           <BoardEditBtn boardEdit={editing} onToggle={onToggleBoardEdit} />
         )}
       </div>
-      <ProjectBoard
-        data={d}
-        folder={folder}
-        mod={mod}
-        stages={stages}
-        boardEdit={editing}
-        colCollapsed={colCollapsed}
-        completedViewByScope={completedViewByScope}
-        boardShowByScope={boardShowByScope}
-        boardSortByScope={boardSortByScope}
-        uiTick={uiTick}
-        onBumpCollapse={onBump}
-        onSetCompletedView={onSetCompletedView}
-        onSetBoardSort={onSetBoardSort}
-        onOpenCard={onOpenCard}
-        onToggleDone={onToggleDone}
-        onSetCardMeta={onSetCardMeta}
-        onStartNewCard={onStartNewCard}
-        onApplyWorkspace={onApplyWorkspace}
-        keepNav={keepNav}
-        activeTimerKey={activeTimerKey}
-        onStartPomo={onStartPomo}
-        onAddManualTimelog={onAddManualTimelog}
-        onOpenTimelogs={onOpenTimelogs}
-        onDuplicateCard={onDuplicateCard}
-        onDeleteCard={onDeleteCard}
-        readonly={readonly}
-      />
+      {projectBoard}
     </div>
   );
 }

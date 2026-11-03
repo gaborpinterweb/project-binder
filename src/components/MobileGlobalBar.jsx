@@ -44,7 +44,12 @@ export function MobileCoverMoreMenu({ onShare, onArchive, onDelete }) {
 /** Tabs that can be opened from the mobile nav sheet. */
 export function isMobileOpenableMod(mod) {
   const type = mod?.[0];
-  return type === "Cover" || type === "Database" || type === "Notes";
+  return (
+    type === "Cover" ||
+    type === "Board" ||
+    type === "Database" ||
+    type === "Notes"
+  );
 }
 
 export default function MobileGlobalBar({

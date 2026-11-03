@@ -1333,6 +1333,11 @@ body.is-card-dragging .col-body{
 .dlg .db-entry-lab{display:inline-flex;align-items:center;gap:7px;min-width:0;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--mute)}
 .dlg .db-entry-row.is-rich .db-entry-lab{padding-top:12px}
 .dlg .db-entry-row.is-title .db-entry-lab{padding-top:10px}
+@media (max-width:560px){
+  .dlg .db-entry-row{grid-template-columns:1fr;gap:6px;align-items:stretch}
+  .dlg .db-entry-row.is-rich .db-entry-lab,
+  .dlg .db-entry-row.is-title .db-entry-lab{padding-top:0}
+}
 .dlg .db-entry-row.is-title .db-entry-val{padding:8px 10px}
 .dlg .db-entry-row.is-title .db-entry-val .title{width:100%}
 .dlg .db-entry-lab>svg{flex:none;opacity:.65}

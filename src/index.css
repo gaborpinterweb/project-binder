@@ -1868,7 +1868,9 @@ html.is-phone .notes-mobile-rte-bar .rte-btn:disabled{opacity:.35;cursor:default
 @media (prefers-reduced-motion:reduce){
   html.is-phone .notes-mobile-rte-bar{transition:none}
 }
-html.is-phone .dlg .dlg-controls{padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+/* Pin Done/Cancel/Add under scrollable body (Task + Record CardDialog). */
+html.is-phone .ov:not(.ov-prompt):not(.ov-confirm) .dlg > .dlg-content{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+html.is-phone .dlg .dlg-controls{flex:none;padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
 /* Flyouts can't open to the right of a right-edge chip on a narrow screen. */
 html.is-phone .dlg .card-add-chip .card-add-sub-menu{top:100%;left:0;right:auto;min-width:100%;max-width:min(280px,calc(100vw - 24px))}
 html.is-phone .dlg .card-dlg-more .pop,html.is-phone .dlg .dlg-timelog-more .pop{max-width:min(280px,calc(100vw - 24px))}

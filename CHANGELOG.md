@@ -9,6 +9,21 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-03 (Pine)
+
+### Added
+
+- Mobile Project Tasks tab: open from the nav sheet with the same compact board chrome as Master board (View menu and Add-task FAB).
+
+### Fixed
+
+- Notes on mobile: scrolling and truncated title in the editor drawer.
+
+### Changed
+
+- Record dialog stacks vertically on mobile.
+- Dialog action buttons stay sticky on mobile.
+
 ## [1.0.4] - 2026-11-02 (Pine)
 
 ### Added

@@ -1839,20 +1839,21 @@ html.is-phone .notes-mobile-card-head{display:flex;align-items:center;min-width:
 html.is-phone .notes-mobile-card-title{flex:1;min-width:0;font-size:16px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html.is-phone .notes-mobile-card-preview{font-size:13px;font-weight:400;line-height:1.35;color:var(--mute);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;white-space:normal;word-break:break-word}
 html.is-phone .notes-mobile-empty{padding:36px 16px;text-align:center;color:var(--mute);font-size:14px}
-html.is-phone .notes-mobile-dlg{display:flex;flex-direction:column;padding:0;position:relative}
-html.is-phone .notes-mobile-dlg-head{flex:none;display:flex;align-items:center;gap:10px;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
+html.is-phone .notes-mobile-dlg{display:flex;flex-direction:column;padding:0;position:relative;width:100%;max-width:100%;min-width:0;height:100%;overflow:hidden}
+html.is-phone .notes-mobile-dlg-head{flex:none;display:flex;align-items:center;gap:10px;min-width:0;width:100%;box-sizing:border-box;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);overflow:hidden}
 html.is-phone .notes-mobile-dlg-back{flex:none;display:inline-grid;place-items:center;width:36px;height:36px;margin:0;padding:0;border:0;border-radius:calc(var(--radius) - 4px);background:transparent;color:var(--ink);cursor:pointer}
 html.is-phone .notes-mobile-dlg-back:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
 html.is-phone .notes-mobile-dlg-back:active{background:color-mix(in srgb,var(--ink) 10%,transparent)}
-html.is-phone .notes-mobile-dlg-head b{flex:1;min-width:0;display:block;font-size:16px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.is-phone .notes-mobile-dlg-head b{flex:1 1 0%;min-width:0;max-width:100%;display:block;font-size:16px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html.is-phone .notes-mobile-dlg-actions{flex:none;display:flex;align-items:center;gap:6px}
-/* Same bottom inset locked/unlocked so tables don't jump when the bar slides. */
-html.is-phone .notes-mobile-dlg-body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0;padding-bottom:max(96px,calc(80px + env(safe-area-inset-bottom,0px)))}
-html.is-phone .notes-mobile-dlg-body .notes-rte-wrap{flex:1;min-height:0;display:flex;flex-direction:column}
-html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .rte{flex:1;min-height:0;display:flex;flex-direction:column}
+/* Body scrolls on phone; keep bottom inset for the floating toolbar. */
+html.is-phone .notes-mobile-dlg-body{flex:1;min-height:0;min-width:0;overflow:auto;-webkit-overflow-scrolling:touch;display:block;padding:0;padding-bottom:max(96px,calc(80px + env(safe-area-inset-bottom,0px)))}
+html.is-phone .notes-mobile-dlg-body .notes-rte-wrap,
+html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .rte,
+html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .rte > div:not(.tiptap){display:block;flex:none;height:auto;min-height:0;overflow:visible}
 html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .tiptap,
 html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .rte-content,
-html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .ProseMirror{padding:16px;padding-bottom:24px}
+html.is-phone .notes-mobile-dlg-body .notes-rte-wrap .ProseMirror{flex:none;height:auto;min-height:0;overflow:visible;padding:16px;padding-bottom:24px;word-break:break-word}
 html.is-phone .notes-mobile-rte-bar{position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:22px;background:color-mix(in srgb,var(--ink) 8%,var(--bg));box-shadow:0 2px 14px #00000018;overflow:hidden;transform:translateY(calc(100% + 28px));opacity:0;pointer-events:none;transition:transform .24s cubic-bezier(.22,.61,.36,1),opacity .2s ease;will-change:transform,opacity}
 html.is-phone .notes-mobile-rte-bar.in{transform:translateY(0);opacity:1;pointer-events:auto}
 html.is-phone .notes-mobile-rte-bar-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:6px 10px}
@@ -1871,8 +1872,8 @@ html.is-phone .dlg .dlg-controls{padding-bottom:max(16px,env(safe-area-inset-bot
 /* Flyouts can't open to the right of a right-edge chip on a narrow screen. */
 html.is-phone .dlg .card-add-chip .card-add-sub-menu{top:100%;left:0;right:auto;min-width:100%;max-width:min(280px,calc(100vw - 24px))}
 html.is-phone .dlg .card-dlg-more .pop,html.is-phone .dlg .dlg-timelog-more .pop{max-width:min(280px,calc(100vw - 24px))}
-html.is-phone .ov:not(.ov-prompt):not(.ov-confirm){padding:0;align-items:stretch;justify-items:stretch}
-html.is-phone .ov:not(.ov-prompt):not(.ov-confirm) .dlg{width:100%;max-width:none;height:100%;max-height:none;border-radius:0;border:0}
+html.is-phone .ov:not(.ov-prompt):not(.ov-confirm){padding:0;align-items:stretch;justify-items:stretch;overflow:hidden}
+html.is-phone .ov:not(.ov-prompt):not(.ov-confirm) .dlg{width:100%;max-width:100%;min-width:0;height:100%;max-height:none;border-radius:0;border:0;overflow:hidden}
 html.is-phone .mobile-settings-dlg{display:flex;flex-direction:column;padding:0}
 html.is-phone .mobile-settings-head{flex:none;display:flex;align-items:center;gap:12px;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}
 html.is-phone .mobile-settings-head b{flex:1;min-width:0;font-size:16px;font-weight:650}

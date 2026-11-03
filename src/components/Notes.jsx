@@ -1304,27 +1304,15 @@ export default function Notes({
                     <b>{noteListTitle(previewNote.body) || "Untitled"}</b>
                     {!readonly ? (
                       <div className="notes-mobile-dlg-actions">
-                        {locked ? (
-                          <button
-                            type="button"
-                            className="settings-row-btn"
-                            onClick={() => setLocked(false)}
-                            title="Unlock"
-                            aria-label="Unlock"
-                          >
-                            <Icon name="unlock" size={18} />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="settings-row-btn"
-                            onClick={() => setLocked(true)}
-                            title="Lock"
-                            aria-label="Lock"
-                          >
-                            <Icon name="lock" size={18} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="settings-row-btn"
+                          onClick={() => setLocked(!locked)}
+                          title={locked ? "Locked" : "Unlocked"}
+                          aria-label={locked ? "Locked" : "Unlocked"}
+                        >
+                          <Icon name={locked ? "lock" : "unlock"} size={18} />
+                        </button>
                       </div>
                     ) : null}
                   </div>

@@ -9,6 +9,17 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-04 (Pine)
+
+### Changed
+
+- Database mobile preview cards: title on its own row, then a label/value table with single-line truncation.
+- External links open in a new browser tab.
+
+### Fixed
+
+- Canceling a new record on mobile discards the draft instead of leaving an empty entry.
+
 ## [1.0.5] - 2026-11-03 (Pine)
 
 ### Added

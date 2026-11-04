@@ -1432,11 +1432,12 @@ export default function App() {
   const openItem = useCallback(
     (r, opts) => {
       const isDraft = !!(opts && opts.draft);
+      const justCreated = !!(opts && opts.justCreated);
       let loc = isDraft ? null : locateRow(foldersRef.current, r);
       if ((!loc || isDraft) && opts?.folder && opts?.mod) {
         loc = { folder: opts.folder, mod: opts.mod };
       }
-      const nextDialog = { row: { ...r }, isDraft, loc };
+      const nextDialog = { row: { ...r }, isDraft, justCreated, loc };
       setDialog(nextDialog);
       dialogRef.current = nextDialog;
       setRouteNoteId(null);
@@ -2904,6 +2905,7 @@ export default function App() {
         <CardDialog
           row={dialog.row}
           isDraft={dialog.isDraft}
+          justCreated={!!dialog.justCreated}
           loc={dialog.loc}
           folders={folders}
           stages={stages}

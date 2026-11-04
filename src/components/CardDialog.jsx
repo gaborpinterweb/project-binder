@@ -398,6 +398,7 @@ function CardAddChip({
 export default function CardDialog({
   row,
   isDraft,
+  justCreated = false,
   loc,
   folders,
   stages,
@@ -602,6 +603,15 @@ export default function CardDialog({
         return;
       }
       onClose({ created: true });
+      return;
+    }
+    // Add-record open: Cancel / Escape / backdrop discard the new row.
+    if (justCreated && !create) {
+      const loc = originLocRef.current || curLocRef.current;
+      if (onDelete && row?.id && loc) {
+        await onDelete(loc.folder, loc.mod, row.id);
+      }
+      onClose({ deleted: true });
       return;
     }
     await persist();
@@ -1333,10 +1343,19 @@ export default function CardDialog({
         {!readonly && !isDraft && compact ? (
           <div className="dlg-controls">
             <div className="actions">
+              {justCreated ? (
+                <button
+                  type="button"
+                  className="dlg-delete"
+                  onClick={() => close(false)}
+                >
+                  Cancel
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="dlg-create"
-                onClick={() => close(false)}
+                onClick={() => close(true)}
               >
                 Done
               </button>

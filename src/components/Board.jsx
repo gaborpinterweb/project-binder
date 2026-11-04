@@ -3074,7 +3074,11 @@ export function DatabaseView({
     const nextMod = nextFolder?.mods?.find((m) => m[2]?.id === mod[2].id);
     const row = nextMod?.[2]?.rows?.find((r) => r.id === data.id);
     if (row && nextFolder && nextMod) {
-      onOpenCard(row, { folder: nextFolder, mod: nextMod });
+      onOpenCard(row, {
+        folder: nextFolder,
+        mod: nextMod,
+        justCreated: true,
+      });
     }
   };
 

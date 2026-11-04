@@ -5,6 +5,7 @@ import {
   isProUser,
   polarPortalUrl,
 } from "../pb/client.js";
+import { openExternal } from "../openExternal.js";
 import { showSnackbar } from "../snackbar.js";
 
 const CONFIRM_PHRASE = "delete forever";
@@ -59,7 +60,7 @@ export default function DeleteAccountDialog({ open, onClose }) {
   const openPortal = () => {
     const url = polarPortalUrl();
     if (url) {
-      window.open(url, "_blank", "noopener");
+      openExternal(url);
       return;
     }
     alert("Portal URL is not configured for this build.");

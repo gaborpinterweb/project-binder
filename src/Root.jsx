@@ -20,6 +20,7 @@ import {
   parsePath,
   pathToAuthMode,
 } from "./routes.js";
+import { isExternalHref, openExternal } from "./openExternal.js";
 
 function readShareId() {
   const parsed = parsePath(currentPathname());
@@ -246,23 +247,26 @@ export default function Root() {
   }, [finishAuth, shareId]);
 
   useEffect(() => {
-    if (!shareId && !isPbMode()) return;
     const onClick = async (e) => {
-      const a = e.target.closest?.("a[href^='pb-blob://']");
-      if (!a) return;
-      e.preventDefault();
-      const { resolvePbBlobUrl } = await import("./api.js");
-      const obj = await resolvePbBlobUrl(a.getAttribute("href"));
-      if (obj && obj !== a.getAttribute("href")) {
-        const w = window.open(obj, "_blank");
-        if (!w) {
-          const link = document.createElement("a");
-          link.href = obj;
-          link.target = "_blank";
-          link.rel = "noopener";
-          link.click();
-        }
+      if (e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target.closest?.("a[href]");
+      if (!a || a.hasAttribute("download")) return;
+      const href = a.getAttribute("href");
+      if (!href) return;
+
+      if (href.startsWith("pb-blob://")) {
+        if (!shareId && !isPbMode()) return;
+        e.preventDefault();
+        const { resolvePbBlobUrl } = await import("./api.js");
+        const obj = await resolvePbBlobUrl(href);
+        if (obj && obj !== href) openExternal(obj);
+        return;
       }
+
+      if (!isExternalHref(href)) return;
+      e.preventDefault();
+      openExternal(href);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);

@@ -6,6 +6,7 @@ import {
   isCommercialMode,
   isProUser,
 } from "../pb/client.js";
+import { openExternal } from "../openExternal.js";
 import { navigatePath } from "../routes.js";
 import { Icon } from "../icons.jsx";
 import useDlgBounce from "../hooks/useDlgBounce.js";
@@ -207,7 +208,7 @@ export default function ConfirmProDialog({
 
   const openContact = () => {
     const url = feedbackUrl();
-    if (url) window.open(url, "_blank", "noopener");
+    if (url) openExternal(url);
   };
 
   const supportUrl = feedbackUrl();

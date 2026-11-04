@@ -31,6 +31,7 @@ import {
 import { askConfirm } from "../confirmDialog.js";
 import { askPrompt } from "../promptDialog.js";
 import { askPaywall } from "../paywallDialog.js";
+import { openExternal } from "../openExternal.js";
 import { showSnackbar } from "../snackbar.js";
 import Dropdown from "./Dropdown.jsx";
 import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
@@ -191,7 +192,7 @@ export default function SettingsDialog({
 
   const openProUrl = (url, missingLabel) => {
     if (url) {
-      window.open(url, "_blank", "noopener");
+      openExternal(url);
       return;
     }
     alert(`${missingLabel} URL is not configured for this build.`);

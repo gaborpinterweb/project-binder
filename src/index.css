@@ -1827,12 +1827,18 @@ html.is-phone .mobile-fab:hover{background:color-mix(in srgb,var(--acc) 82%,#000
 html.is-phone .mobile-fab:active{transform:scale(.96)}
 html.is-phone .mobile-fab svg{display:block}
 html.is-phone .db-mobile-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:12px;padding-bottom:max(88px,calc(72px + env(safe-area-inset-bottom,0px)));background:var(--bg)}
-html.is-phone .db-mobile-card{display:block;width:100%;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:inherit;font:inherit;text-align:left;cursor:pointer;box-sizing:border-box}
+html.is-phone .db-mobile-card{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:inherit;font:inherit;text-align:left;cursor:pointer;box-sizing:border-box;min-width:0}
 html.is-phone .db-mobile-card:hover{background:color-mix(in srgb,var(--ink) 3%,var(--card))}
 html.is-phone .db-mobile-card:active{background:color-mix(in srgb,var(--ink) 6%,var(--card))}
-html.is-phone .db-mobile-card-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;min-width:0}
-html.is-phone .db-mobile-text{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:500;line-height:1.35;min-width:0}
-html.is-phone .db-mobile-check{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:4px;background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc);flex:none}
+html.is-phone .db-mobile-card-title{min-width:0;font-size:15px;font-weight:600;letter-spacing:-.01em;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.is-phone .db-mobile-card-table{display:flex;flex-direction:column;gap:4px;min-width:0}
+html.is-phone .db-mobile-card-prop{display:grid;grid-template-columns:minmax(0,38%) minmax(0,1fr);gap:8px;align-items:center;min-width:0}
+html.is-phone .db-mobile-card-lab{min-width:0;font-size:13px;font-weight:500;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.is-phone .db-mobile-card-val{min-width:0;overflow:hidden;white-space:nowrap;display:block}
+html.is-phone .db-mobile-card-val .db-chip-row{display:inline-flex;flex-wrap:nowrap;max-width:100%;overflow:hidden;vertical-align:middle}
+html.is-phone .db-mobile-card-val .db-chip{max-width:100%;vertical-align:middle}
+html.is-phone .db-mobile-text{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:500;line-height:1.35;min-width:0;vertical-align:middle}
+html.is-phone .db-mobile-check{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:4px;background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc);flex:none;vertical-align:middle}
 html.is-phone .db-mobile-empty{padding:28px 12px;text-align:center;color:var(--mute);font-size:14px}
 html.is-phone .mobile-shell #view.notes-view{position:relative;display:flex;flex-direction:column;min-height:0}
 html.is-phone .notes-mobile-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:0;padding:0;padding-bottom:max(88px,calc(72px + env(safe-area-inset-bottom,0px)));background:var(--bg)}

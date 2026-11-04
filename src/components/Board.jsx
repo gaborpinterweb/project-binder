@@ -2717,6 +2717,16 @@ function dbMobileTextPreview(col, raw) {
   return text;
 }
 
+function dbMobileFieldEmpty(col, value) {
+  const coerced = coerceFieldValue(col, value);
+  if (col.type === "select") return !coerced;
+  if (col.type === "multiselect") {
+    return !Array.isArray(coerced) || !coerced.length;
+  }
+  if (col.type === "checkbox") return !coerced;
+  return !dbMobileTextPreview(col, coerced);
+}
+
 function DbMobileFieldPreview({ col, value, stages }) {
   const coerced = coerceFieldValue(col, value);
 
@@ -2765,6 +2775,22 @@ function DbMobileFieldPreview({ col, value, stages }) {
   return <span className="db-mobile-text">{text}</span>;
 }
 
+function DbMobilePropRow({ col, value, stages }) {
+  if (dbMobileFieldEmpty(col, value)) return null;
+  return (
+    <div className="db-mobile-card-prop">
+      <span className="db-mobile-card-lab">{col.label}</span>
+      <span className="db-mobile-card-val">
+        <DbMobileFieldPreview col={col} value={value} stages={stages} />
+      </span>
+    </div>
+  );
+}
+
+function dbMobileTitleCol(cols) {
+  return cols.find((c) => c.id === "n") || cols.find((c) => c.type === "text");
+}
+
 function DbMobileCards({ cols, rows, stages, onOpen }) {
   if (!rows.length) {
     return (
@@ -2773,6 +2799,10 @@ function DbMobileCards({ cols, rows, stages, onOpen }) {
       </div>
     );
   }
+  const titleCol = dbMobileTitleCol(cols);
+  const restCols = titleCol
+    ? cols.filter((c) => c.id !== titleCol.id)
+    : cols;
   return (
     <div className="db-mobile-list">
       {rows.map((r) => (
@@ -2782,16 +2812,26 @@ function DbMobileCards({ cols, rows, stages, onOpen }) {
           className="db-mobile-card"
           onClick={() => onOpen(r)}
         >
-          <div className="db-mobile-card-row">
-            {cols.map((c) => (
-              <DbMobileFieldPreview
-                key={c.id}
-                col={c}
-                value={r[c.id]}
-                stages={stages}
-              />
-            ))}
-          </div>
+          {titleCol ? (
+            <div className="db-mobile-card-title">
+              {dbMobileTextPreview(
+                titleCol,
+                coerceFieldValue(titleCol, r[titleCol.id]),
+              )}
+            </div>
+          ) : null}
+          {restCols.length ? (
+            <div className="db-mobile-card-table">
+              {restCols.map((c) => (
+                <DbMobilePropRow
+                  key={c.id}
+                  col={c}
+                  value={r[c.id]}
+                  stages={stages}
+                />
+              ))}
+            </div>
+          ) : null}
         </button>
       ))}
     </div>

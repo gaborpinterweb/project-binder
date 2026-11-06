@@ -917,7 +917,8 @@ export default function RichTextEditor({
       ...(feat.highlight ? [Highlight] : []),
       ...(feat.table
         ? [
-            Table.configure({ resizable: true }),
+            // 100px × 3 cols ≈ fits phone content; 4+ cols scroll via .tableWrapper
+            Table.configure({ resizable: true, cellMinWidth: 100 }),
             TableRow,
             TableHeader,
             TableCell,

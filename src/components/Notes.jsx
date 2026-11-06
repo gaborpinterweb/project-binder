@@ -183,6 +183,42 @@ function collectTabTags(notes) {
   );
 }
 
+/** Match counts for Filter menu options (one pass over the tab). */
+function countNotesByFilter(notes) {
+  const list = notes || [];
+  const counts = {
+    all: list.length,
+    todo: 0,
+    checklist: 0,
+    table: 0,
+    code: 0,
+    "updated-today": 0,
+    "updated-week": 0,
+    "updated-month": 0,
+    empty: 0,
+  };
+  const tags = new Map();
+  const today = startOfLocalDay();
+  const week = startOfLocalWeek();
+  const month = startOfLocalMonth();
+  for (const n of list) {
+    const body = n.body;
+    if (noteHasOpenTodo(body)) counts.todo += 1;
+    if (noteHasChecklist(body)) counts.checklist += 1;
+    if (noteHasTable(body)) counts.table += 1;
+    if (noteHasCodeBlock(body)) counts.code += 1;
+    if (noteUpdatedSince(n, today)) counts["updated-today"] += 1;
+    if (noteUpdatedSince(n, week)) counts["updated-week"] += 1;
+    if (noteUpdatedSince(n, month)) counts["updated-month"] += 1;
+    if (isEmptyNoteBody(body)) counts.empty += 1;
+    for (const t of extractNoteTags(body)) {
+      const key = t.toLowerCase();
+      tags.set(key, (tags.get(key) || 0) + 1);
+    }
+  }
+  return { counts, tags };
+}
+
 /** One-line tag chips for the notes list; hides overflow and ellipsizes the last visible. */
 function NotesItemTags({ body }) {
   const tags = useMemo(() => extractNoteTags(body), [body]);
@@ -915,31 +951,32 @@ export default function Notes({
     [d.notes, filter, sort]
   );
   const filterSections = useMemo(() => {
+    const { counts, tags: tagCounts } = countNotesByFilter(d.notes);
+    const withCounts = NOTE_FILTER_SECTIONS.map((sec) => ({
+      ...sec,
+      options: sec.options.map((o) => ({
+        ...o,
+        count: counts[o.value] ?? 0,
+      })),
+    }));
     const tags = collectTabTags(d.notes);
-    const submenu = tags.length
-      ? tags.map((t) => ({
-          value: `tag:${t.toLowerCase()}`,
-          label: `#${t}`,
-          checked: filter === `tag:${t.toLowerCase()}`,
-        }))
-      : [{ value: "", label: "No tags yet", disabled: true }];
+    if (!tags.length) return withCounts;
     return [
-      ...NOTE_FILTER_SECTIONS,
+      ...withCounts,
       {
         key: "tags",
-        options: [
-          {
-            value: "tags",
-            label: "Tags",
+        options: tags.map((t) => {
+          const key = t.toLowerCase();
+          return {
+            value: `tag:${key}`,
+            label: `#${t}`,
             icon: "tag",
-            submenu,
-            checked: String(filter).startsWith("tag:"),
-            closeOnSelect: false,
-          },
-        ],
+            count: tagCounts.get(key) || 0,
+          };
+        }),
       },
     ];
-  }, [d.notes, filter]);
+  }, [d.notes]);
   const tabKey = notesTabKey(folder?.id, d.id);
   const [selectedByTab, setSelectedByTab] = useState(() => loadNotesSelected());
   const [unlocked, setUnlocked] = useState(() => loadNotesUnlocked());
@@ -1435,16 +1472,26 @@ export default function Notes({
             <span className="mod-act-lab">View</span>
           </Dropdown>
           <Dropdown
-            className="mod-view-dd"
+            className="mod-view-dd notes-filter-dd"
             buttonClassName={"mod-act" + (filter !== "all" ? " on" : "")}
             ariaLabel="Filter notes"
             title="Filter notes"
             align="left"
             caret={false}
+            fitToViewport
             sections={filterSections.map((sec) => ({
               ...sec,
               value: filter,
               onChange: setFilter,
+              renderOption: (o) => (
+                <>
+                  <span className="dd-opt">
+                    {o.icon ? <Icon name={o.icon} size={14} /> : null}
+                    {o.label}
+                  </span>
+                  <span className="dd-opt-count">({o.count ?? 0})</span>
+                </>
+              ),
             }))}
           >
             <Icon name="filter" size={18} />

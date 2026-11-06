@@ -29,8 +29,9 @@ export function noteStandaloneHtml(body) {
   h1,h2,h3{line-height:1.25}
   pre{overflow:auto;padding:12px;background:#f4f4f5;border-radius:8px}
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
-  table{border-collapse:collapse;width:100%}
-  th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+  .tableWrapper{overflow-x:auto;max-width:100%}
+  table{border-collapse:collapse;width:max-content;min-width:100%}
+  th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;min-width:100px}
   ul[data-type="taskList"]{list-style:none;padding-left:0}
   ul[data-type="taskList"] li{display:flex;gap:.5em}
   mark{background:#ffe566;padding:0 .15em}

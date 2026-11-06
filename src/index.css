@@ -435,12 +435,17 @@ main.global-view #view{margin:0;border-radius:var(--radius);overflow:hidden;back
 .notes-rte-wrap .tiptap ul[data-type="taskList"] li[data-checked="true"] > div,
 .notes-rte-wrap .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div{color:var(--mute);text-decoration:line-through}
 .notes-preview .tiptap{min-height:100%;-webkit-user-select:text;user-select:text;cursor:text}
+/* Prefer sideways scroll over squeezed columns; TipTap wraps tables in .tableWrapper */
+.notes-rte-wrap .tiptap .tableWrapper,
+.notes-rte-wrap .ProseMirror .tableWrapper{overflow-x:auto;max-width:100%;margin:1.15em 0;-webkit-overflow-scrolling:touch}
 .notes-rte-wrap .tiptap table,
-.notes-rte-wrap .ProseMirror table{width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;table-layout:fixed;overflow:hidden;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px)}
+.notes-rte-wrap .ProseMirror table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px)}
+.notes-rte-wrap .tiptap .tableWrapper table,
+.notes-rte-wrap .ProseMirror .tableWrapper table{margin:0}
 .notes-rte-wrap .tiptap td,
 .notes-rte-wrap .tiptap th,
 .notes-rte-wrap .ProseMirror td,
-.notes-rte-wrap .ProseMirror th{position:relative;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 14px;vertical-align:top;min-width:48px;font:inherit;color:var(--ink);line-height:1.55}
+.notes-rte-wrap .ProseMirror th{position:relative;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 14px;vertical-align:top;min-width:100px;font:inherit;color:var(--ink);line-height:1.55;word-break:normal;overflow-wrap:anywhere}
 .notes-rte-wrap .tiptap tr:last-child td,
 .notes-rte-wrap .tiptap tr:last-child th,
 .notes-rte-wrap .ProseMirror tr:last-child td,
@@ -515,6 +520,8 @@ main.global-view .modbar{border-radius:var(--radius) var(--radius) 0 0;backgroun
 .modbar .mod-view-dd .mod-act{width:100%}
 .modbar .mod-view-dd .dd-caret{display:none}
 .modbar .mod-view-dd .dd-menu{min-width:220px;max-height:none;overflow:visible}
+.modbar .notes-filter-dd .dd-menu{overflow:auto}
+.modbar .notes-filter-dd .dd-menu button .dd-opt{flex:1;min-width:0}
 .modbar .mod-sort-dd .dd-menu{min-width:280px}
 .modbar .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .modbar .gbar-tools .mod-view-dd .dd-menu button{display:flex;align-items:center;gap:8px}
@@ -1011,8 +1018,10 @@ body.is-card-dragging .col-body{
 .cover-description .rte .tiptap ul[data-type="taskList"] li[data-checked="true"] > div{color:color-mix(in srgb,#fff 55%,transparent);text-decoration:line-through}
 .cover-description .rte .tiptap p.is-editor-empty:first-child::before{content:attr(data-placeholder);float:left;color:color-mix(in srgb,#fff 45%,transparent);pointer-events:none;height:0}
 .cover-description .rte .tiptap a{color:#fff;text-decoration:underline;text-underline-offset:2px}
-.cover-description .rte .tiptap table{width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;table-layout:fixed;overflow:hidden;border:1px solid color-mix(in srgb,#fff 28%,transparent);border-radius:calc(var(--radius) - 6px)}
-.cover-description .rte .tiptap td,.cover-description .rte .tiptap th{position:relative;border:0;border-right:1px solid color-mix(in srgb,#fff 28%,transparent);border-bottom:1px solid color-mix(in srgb,#fff 28%,transparent);padding:10px 14px;vertical-align:top;min-width:48px;font:inherit;color:#fff;line-height:1.55}
+.cover-description .rte .tiptap .tableWrapper{overflow-x:auto;max-width:100%;margin:1.15em 0;-webkit-overflow-scrolling:touch}
+.cover-description .rte .tiptap table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;border:1px solid color-mix(in srgb,#fff 28%,transparent);border-radius:calc(var(--radius) - 6px)}
+.cover-description .rte .tiptap .tableWrapper table{margin:0}
+.cover-description .rte .tiptap td,.cover-description .rte .tiptap th{position:relative;border:0;border-right:1px solid color-mix(in srgb,#fff 28%,transparent);border-bottom:1px solid color-mix(in srgb,#fff 28%,transparent);padding:10px 14px;vertical-align:top;min-width:100px;font:inherit;color:#fff;line-height:1.55;word-break:normal;overflow-wrap:anywhere}
 .cover-description .rte .tiptap tr:last-child td,.cover-description .rte .tiptap tr:last-child th{border-bottom:0}
 .cover-description .rte .tiptap td:last-child,.cover-description .rte .tiptap th:last-child{border-right:0}
 .cover-description .rte .tiptap td > p,.cover-description .rte .tiptap th > p{margin:0;min-height:1.55em}
@@ -1196,6 +1205,7 @@ body.is-card-dragging .col-body{
 .dd-menu button:hover,.dd-menu button.on{background:var(--sel)}
 .dd-opt{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .dd-opt>svg{flex:none;opacity:.75}
+.dd-opt-count{margin-left:auto;flex:none;color:var(--mute)}
 .dd-check{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .dd-check.nested{padding-left:18px}
 .dd-check input{flex:none;width:15px;height:15px;margin:0;accent-color:var(--acc);pointer-events:none}
@@ -1422,7 +1432,8 @@ body.is-card-dragging .col-body{
 .dlg input[readonly],.dlg input:disabled,.dlg textarea.title[readonly]{cursor:default}
 .dlg input[readonly]:hover,.dlg input:disabled:hover,.dlg textarea.title[readonly]:hover{background:transparent}
 .trash-note-dlg{background:#fff;width:min(640px,100%);max-height:min(80vh,760px);overflow:auto}
-.trash-note-dlg .trash-note-body{padding:20px 24px}
+/* Raw HTML has no TipTap .tableWrapper; let the body absorb wide tables. */
+.trash-note-dlg .trash-note-body{padding:20px 24px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .trash-note-dlg .tiptap{font:inherit;color:var(--ink);line-height:1.55;outline:none}
 .trash-note-dlg .tiptap > :first-child{margin-top:0}
 .trash-note-dlg .tiptap p{margin:0 0 .9em}
@@ -1445,8 +1456,10 @@ body.is-card-dragging .col-body{
 .trash-note-dlg .tiptap pre code{padding:0;background:transparent}
 .trash-note-dlg .tiptap mark{background:color-mix(in srgb,#e8c547 55%,#fff);color:inherit;border-radius:2px;padding:.05em .15em}
 .trash-note-dlg .tiptap a{color:var(--acc)}
-.trash-note-dlg .tiptap table{width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;table-layout:fixed;overflow:hidden;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px)}
-.trash-note-dlg .tiptap td,.trash-note-dlg .tiptap th{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 14px;vertical-align:top}
+.trash-note-dlg .tiptap .tableWrapper{overflow-x:auto;max-width:100%;margin:1.15em 0;-webkit-overflow-scrolling:touch}
+.trash-note-dlg .tiptap table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;margin:1.15em 0;border:1px solid var(--line);border-radius:calc(var(--radius) - 6px)}
+.trash-note-dlg .tiptap .tableWrapper table{margin:0}
+.trash-note-dlg .tiptap td,.trash-note-dlg .tiptap th{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 14px;vertical-align:top;min-width:100px;word-break:normal;overflow-wrap:anywhere}
 .trash-note-dlg .tiptap tr:last-child td,.trash-note-dlg .tiptap tr:last-child th{border-bottom:0}
 .trash-note-dlg .tiptap td:last-child,.trash-note-dlg .tiptap th:last-child{border-right:0}
 .trash-note-dlg .tiptap th{background:color-mix(in srgb,var(--ink) 4%,#fff);font-weight:650}

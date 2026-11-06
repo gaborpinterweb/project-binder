@@ -9,6 +9,18 @@ Minor lines use a tree codename from `package.json` `releaseName` (shown in sect
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-11-06 (Pine)
+
+### Added
+
+- Workspace sync conflict handling via `changeId`, with a syncing dialog while remote changes apply.
+
+### Changed
+
+- Notes Filter menu uses a flat dropdown with per-option counts.
+- Note tables scroll sideways in the editor and locked preview (including on mobile).
+- Mobile note editing: floating controls stay on top while editing.
+
 ## [1.0.6] - 2026-11-04 (Pine)
 
 ### Changed

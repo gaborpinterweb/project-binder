@@ -347,6 +347,17 @@ function EmptyNotePlaceholder({ body }) {
   );
 }
 
+/** TipTap NodeView wraps tables in-editor; getHTML() often stores bare <table>. */
+function wrapPreviewTables(doc) {
+  [...doc.querySelectorAll("table")].forEach((table) => {
+    if (table.parentElement?.classList?.contains("tableWrapper")) return;
+    const wrap = doc.createElement("div");
+    wrap.className = "tableWrapper";
+    table.parentNode?.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+}
+
 /** Wrap plain `#tags` for locked preview when marks are not yet in HTML. */
 function previewHtml(body) {
   if (!body) return "<p></p>";
@@ -385,6 +396,7 @@ function previewHtml(body) {
       }
     };
     [...doc.body.childNodes].forEach(walk);
+    wrapPreviewTables(doc);
     return doc.body.innerHTML || body;
   } catch {
     return body;
@@ -946,6 +958,9 @@ export default function Notes({
   const [showUpdated, setShowUpdated] = useState(true);
   const [filter, setFilter] = useState("all");
   const [previewId, setPreviewId] = useState(null);
+  const [headPinned, setHeadPinned] = useState(false);
+  const previewBodyRef = useRef(null);
+  const lastScrollTopRef = useRef(0);
   const notes = useMemo(
     () => sortNotes(filterNotes(d.notes, filter), sort),
     [d.notes, filter, sort]
@@ -1094,6 +1109,30 @@ export default function Notes({
       cancelAnimationFrame(raf2);
     };
   }, [locked, selectedId, editor]);
+
+  // Phone note chrome: in-flow (scrolls away); sticky only while scrolling up.
+  useEffect(() => {
+    if (!compact || !previewId) {
+      setHeadPinned(false);
+      lastScrollTopRef.current = 0;
+      return undefined;
+    }
+    setHeadPinned(false);
+    lastScrollTopRef.current = 0;
+    const el = previewBodyRef.current;
+    if (!el) return undefined;
+    lastScrollTopRef.current = el.scrollTop;
+    const onScroll = () => {
+      const top = el.scrollTop;
+      const delta = top - lastScrollTopRef.current;
+      if (top <= 8) setHeadPinned(false);
+      else if (delta < -8) setHeadPinned(true);
+      else if (delta > 8) setHeadPinned(false);
+      lastScrollTopRef.current = top;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [compact, previewId, editingView]);
 
   const selected = notes.find((n) => n.id === selectedId) || null;
 
@@ -1328,33 +1367,41 @@ export default function Notes({
                   role="dialog"
                   aria-label={noteListTitle(previewNote.body) || "Note"}
                 >
-                  <div className="notes-mobile-dlg-head">
-                    <button
-                      type="button"
-                      className="notes-mobile-dlg-back"
-                      onClick={closePreview}
-                      title="Back"
-                      aria-label="Back"
+                  <div
+                    ref={previewBodyRef}
+                    className={
+                      "notes-mobile-dlg-body" +
+                      (editingView ? " is-editing" : " notes-preview")
+                    }
+                  >
+                    <div
+                      className={
+                        "notes-mobile-dlg-head" +
+                        (headPinned ? " is-pinned" : "")
+                      }
                     >
-                      <Icon name="arrowLeft" size={20} />
-                    </button>
-                    <b>{noteListTitle(previewNote.body) || "Untitled"}</b>
-                    {!readonly ? (
-                      <div className="notes-mobile-dlg-actions">
+                      <button
+                        type="button"
+                        className="notes-mobile-dlg-icon-btn"
+                        onClick={closePreview}
+                        title="Back"
+                        aria-label="Back"
+                      >
+                        <Icon name="arrowLeft" size={20} />
+                      </button>
+                      {!readonly ? (
                         <button
                           type="button"
-                          className="settings-row-btn"
+                          className="notes-mobile-dlg-icon-btn"
                           onClick={() => setLocked(!locked)}
                           title={locked ? "Locked" : "Unlocked"}
                           aria-label={locked ? "Locked" : "Unlocked"}
                         >
                           <Icon name={locked ? "lock" : "unlock"} size={18} />
                         </button>
-                      </div>
-                    ) : null}
-                  </div>
-                  {editingView ? (
-                    <div className="notes-mobile-dlg-body is-editing">
+                      ) : null}
+                    </div>
+                    {editingView ? (
                       <div className="notes-rte-wrap">
                         <RichTextEditor
                           key={previewNote.id}
@@ -1371,9 +1418,7 @@ export default function Notes({
                           placeholder={NOTE_PLACEHOLDER}
                         />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="notes-mobile-dlg-body notes-preview">
+                    ) : (
                       <div className="notes-rte-wrap">
                         <div className="rte">
                           {isEmptyNoteBody(previewNote.body) ? (
@@ -1385,8 +1430,8 @@ export default function Notes({
                           )}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {toolbarMounted && editor ? (
                     <div
                       className={

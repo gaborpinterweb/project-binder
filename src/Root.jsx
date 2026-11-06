@@ -8,9 +8,14 @@ import Snackbar from "./components/Snackbar.jsx";
 import { getPb, isPbMode } from "./pb/client.js";
 import { loadUserDocs, saveUserDocs } from "./pb/persist.js";
 import { workspaceEngine } from "./engine/workspaceEngine.js";
-import { ensurePersistHook } from "./engine/apiBridge.js";
+import {
+  ensurePersistHook,
+  ensureFocusPullListeners,
+  setLocalBaseChangeId,
+} from "./engine/apiBridge.js";
 import { installSeedDemoAttachments } from "./seedDemoFiles.js";
 import { showSnackbar } from "./snackbar.js";
+import SyncingDialog from "./components/SyncingDialog.jsx";
 import {
   AUTH_RESET_PASSWORD,
   AUTH_SIGN_IN,
@@ -74,18 +79,22 @@ async function loadSeed() {
 
 async function bootstrapPbSession() {
   ensurePersistHook();
+  ensureFocusPullListeners();
   const seed = await loadSeed();
   // loadUserDocs throws on fetch/parse failure so we never seed-overwrite real files.
-  const { workspace, archive } = await loadUserDocs();
+  const { workspace, archive, changeId } = await loadUserDocs();
   if (workspace && Number(workspace.version) >= 2) {
     workspaceEngine.loadFromWorkspaceDoc(workspace);
     workspaceEngine.loadFromArchiveDoc(archive || { version: 2, projects: [] });
+    setLocalBaseChangeId(changeId || "");
   } else if (workspace == null) {
     // No workspace file yet (new account) — seed once.
     workspaceEngine.resetToSeed(seed);
     workspaceEngine.loadFromArchiveDoc({ version: 2, projects: [] });
     const docs = workspaceEngine.exportWorkspaceData();
-    await saveUserDocs(docs);
+    const newChangeId = crypto.randomUUID();
+    await saveUserDocs({ ...docs, changeId: newChangeId });
+    setLocalBaseChangeId(newChangeId);
     await installSeedDemoAttachments();
   } else {
     throw new Error(
@@ -275,6 +284,7 @@ export default function Root() {
   const hosts = (
     <>
       <ConfirmDialog />
+      <SyncingDialog />
       <PaywallDialog />
       <Snackbar />
     </>

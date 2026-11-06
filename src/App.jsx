@@ -111,6 +111,7 @@ import LaunchDialog from "./components/LaunchDialog.jsx";
 import UpdateDialog from "./components/UpdateDialog.jsx";
 import { checkForUpdate } from "./checkUpdate.js";
 import { isCommercialMode, isPbMode } from "./pb/client.js";
+import { bindWorkspaceReplaced } from "./engine/apiBridge.js";
 import useIsPhone from "./hooks/useIsPhone.js";
 import {
   parsePath,
@@ -869,6 +870,15 @@ export default function App() {
       ),
     [keepNav]
   );
+
+  // Remote pull / conflict recovery replaced engine docs — refresh UI, keep nav.
+  useEffect(() => {
+    if (!isPbMode()) return undefined;
+    bindWorkspaceReplaced((data) => {
+      applyWorkspace(data, keepCurrentNav());
+    });
+    return () => bindWorkspaceReplaced(null);
+  }, [applyWorkspace, keepCurrentNav]);
 
   const reload = useCallback(async () => {
     const data = await fetchWorkspace();

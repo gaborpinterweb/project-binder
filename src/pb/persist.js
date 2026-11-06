@@ -68,25 +68,45 @@ export async function ensureUserDataRecord() {
   return pb.collection(COLLECTION).create({ user: uid });
 }
 
+/** Lightweight read for conflict checks (id + changeId). */
+export async function fetchUserDataMeta() {
+  const record = await ensureUserDataRecord();
+  return {
+    id: record.id,
+    changeId: record.changeId ? String(record.changeId) : "",
+  };
+}
+
 export async function loadUserDocs() {
   const pb = getPb();
   const record = await ensureUserDataRecord();
   const workspace = unwrapDoc(await parseJsonFile(pb, record, WS_FIELD));
   const archive = unwrapDoc(await parseJsonFile(pb, record, ARCH_FIELD));
-  return { record, workspace, archive };
+  return {
+    record,
+    workspace,
+    archive,
+    changeId: record.changeId ? String(record.changeId) : "",
+  };
 }
 
-export async function saveUserDocs({ workspace, archive }) {
+export async function saveUserDocs({ workspace, archive, changeId }) {
   const pb = getPb();
   const record = await ensureUserDataRecord();
-  const fd = new FormData();
+  // Plain object so the SDK builds multipart with both files and text fields.
+  // (Manual FormData often drops scalar fields alongside files in PB.)
+  const body = {};
   if (workspace != null) {
-    fd.append(WS_FIELD, jsonFile("userWorkspace.json", workspace));
+    body[WS_FIELD] = jsonFile("userWorkspace.json", workspace);
   }
   if (archive != null) {
-    fd.append(ARCH_FIELD, jsonFile("userArchive.json", archive));
+    body[ARCH_FIELD] = jsonFile("userArchive.json", archive);
   }
-  return pb.collection(COLLECTION).update(record.id, fd);
+  if (changeId != null && changeId !== "") {
+    body.changeId = String(changeId);
+  }
+  if (!Object.keys(body).length) return record;
+  return pb.collection(COLLECTION).update(record.id, body);
 }
 
 /** Attachment key: project/tab/fileId (matches legacy upload paths). */

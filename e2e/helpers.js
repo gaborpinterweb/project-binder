@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import JSZip from "jszip";
 import { FREE_STORAGE_BYTES } from "../src/billingLimits.js";
-import { createVerifiedUser, setUserPro } from "./pbAdmin.js";
+import {
+  createVerifiedUser,
+  getUserDataChangeId,
+  setUserPro,
+} from "./pbAdmin.js";
 
 const E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURES = {
@@ -54,6 +58,43 @@ export async function enterApp(page, { pro = false } = {}) {
   await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
   await expect(projectButtons(page)).toHaveCount(DEMO_PROJECTS.length);
   return { email, password };
+}
+
+/** Sign in an existing account in a second browser context (no onboarding). */
+export async function enterAppAs(page, email, password) {
+  await signIn(page, email, password);
+  await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: /Project Binder welcome/ })
+  ).toHaveCount(0);
+}
+
+/** Wait until user_data.changeId differs from `previous` (successful remote save). */
+export async function waitForChangeIdChange(email, previous, { timeout = 20_000 } = {}) {
+  await expect
+    .poll(
+      async () => {
+        const id = await Promise.race([
+          getUserDataChangeId(email),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("getUserDataChangeId timeout")), 5_000)
+          ),
+        ]).catch(() => previous);
+        return id;
+      },
+      { timeout }
+    )
+    .not.toBe(previous);
+  return getUserDataChangeId(email);
+}
+
+/** Open a named project's Tasks tab (assumes the tab already exists). */
+export async function openProjectTasksTab(page, projectName) {
+  await projectList(page)
+    .getByRole("button", { name: projectName, exact: true })
+    .click();
+  await page.locator("#tabs .tab", { hasText: "Tasks" }).click();
+  await expect(page.locator(".board")).toBeVisible();
 }
 
 export async function openTabOptions(page) {

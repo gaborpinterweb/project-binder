@@ -6,6 +6,8 @@ import { fileBlobStore, blobKey } from "./fileBlobStore.js";
 import { isPbMode } from "../pb/client.js";
 import {
   saveUserDocs,
+  loadUserDocs,
+  fetchUserDataMeta,
   uploadAttachment,
   downloadAttachment,
   deleteAttachment,
@@ -14,14 +16,101 @@ import {
 import { installSeedDemoAttachments } from "../seedDemoFiles.js";
 import { deleteShareRecord, syncEnabledShares } from "../pb/shares.js";
 import { showSnackbar } from "../snackbar.js";
+import { setSyncingVisible } from "../syncingDialog.js";
 
 let persistTimer = null;
 let persistChain = Promise.resolve();
 let persistHooked = false;
+let pullTimer = null;
+let focusPullBound = false;
+
+/** changeId of the last loaded or successfully saved remote docs. */
+let localBaseChangeId = "";
+/** True after local mutations until a successful save or remote-wins adopt. */
+let dirty = false;
+/** True while blocking conflict recovery is running. */
+let syncing = false;
+/** Bumped when local edits start so in-flight quiet pulls abort. */
+let pullGeneration = 0;
+/** When true, quiet/focus pulls no-op (conflict e2e forces the Syncing path). */
+let backgroundPullPaused = false;
+
+let onWorkspaceReplaced = null;
+
+export function setBackgroundPullPaused(paused) {
+  backgroundPullPaused = !!paused;
+}
+
+export function setLocalBaseChangeId(id) {
+  localBaseChangeId = id ? String(id) : "";
+}
+
+export function getLocalBaseChangeId() {
+  return localBaseChangeId;
+}
+
+/** App registers to re-apply engine workspace after a remote pull. */
+export function bindWorkspaceReplaced(fn) {
+  onWorkspaceReplaced = typeof fn === "function" ? fn : null;
+}
+
+function notifyWorkspaceReplaced() {
+  onWorkspaceReplaced?.(eng.getWorkspace());
+}
+
+function remoteIsNewer(remoteChangeId) {
+  const remote = remoteChangeId ? String(remoteChangeId) : "";
+  if (!remote || !localBaseChangeId) return false;
+  return remote !== localBaseChangeId;
+}
+
+/**
+ * Replace in-memory docs with remote. Remote wins; discards local dirty state.
+ * @param {{ blocking?: boolean }} [opts]
+ */
+async function adoptRemoteDocs({ blocking = false } = {}) {
+  if (blocking) {
+    syncing = true;
+    setSyncingVisible(true);
+    // Yield so React can paint the non-dismissible Syncing overlay.
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  try {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+    const { workspace, archive, changeId } = await loadUserDocs();
+    if (workspace && Number(workspace.version) >= 2) {
+      eng.loadFromWorkspaceDoc(workspace);
+      eng.loadFromArchiveDoc(archive || { version: 2, projects: [] });
+    } else {
+      throw new Error("Remote workspace is missing or unsupported");
+    }
+    localBaseChangeId = changeId || "";
+    dirty = false;
+    notifyWorkspaceReplaced();
+  } finally {
+    if (blocking) {
+      syncing = false;
+      setSyncingVisible(false);
+    }
+  }
+}
 
 async function persistWorkspaceAndShares() {
+  if (!isPbMode() || syncing) return;
+
+  const meta = await fetchUserDataMeta();
+  if (remoteIsNewer(meta.changeId)) {
+    await adoptRemoteDocs({ blocking: true });
+    return;
+  }
+
+  const newChangeId = crypto.randomUUID();
   const { workspace, archive } = eng.exportWorkspaceData();
-  await saveUserDocs({ workspace, archive });
+  await saveUserDocs({ workspace, archive, changeId: newChangeId });
+  localBaseChangeId = newChangeId;
+  dirty = false;
+
   const targets = eng.listEnabledShares();
   if (!targets.length) return;
   try {
@@ -39,6 +128,11 @@ async function persistWorkspaceAndShares() {
 
 export function schedulePersist() {
   if (!isPbMode()) return;
+  dirty = true;
+  pullGeneration += 1;
+  // Local edits win over a pending quiet pull (avoid adopting mid-type).
+  clearTimeout(pullTimer);
+  pullTimer = null;
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistChain = persistChain
@@ -50,13 +144,67 @@ export function schedulePersist() {
 export function ensurePersistHook() {
   if (persistHooked) return;
   persistHooked = true;
-  eng.setOnChange(() => schedulePersist());
+  eng.setOnChange(() => {
+    dirty = true;
+    schedulePersist();
+  });
+}
+
+/** Non-blocking pull when remote changeId advanced and local is clean. */
+export async function pullRemoteIfChanged() {
+  if (!isPbMode() || syncing || dirty || backgroundPullPaused) return;
+  const gen = pullGeneration;
+  try {
+    const meta = await fetchUserDataMeta();
+    // Re-check after await: a local edit may have started during the fetch.
+    if (gen !== pullGeneration || syncing || dirty || backgroundPullPaused) return;
+    if (!remoteIsNewer(meta.changeId)) return;
+    if (gen !== pullGeneration || dirty || backgroundPullPaused) return;
+    await adoptRemoteDocs({ blocking: false });
+  } catch (err) {
+    console.error("background pull failed", err);
+  }
+}
+
+export function scheduleBackgroundPull() {
+  if (!isPbMode()) return;
+  clearTimeout(pullTimer);
+  pullTimer = setTimeout(() => {
+    pullRemoteIfChanged().catch((err) =>
+      console.error("background pull failed", err)
+    );
+  }, 1000);
+}
+
+/** visibilitychange + focus → debounced background pull (once per session). */
+export function ensureFocusPullListeners() {
+  if (!isPbMode() || focusPullBound || typeof window === "undefined") return;
+  focusPullBound = true;
+  const onVis = () => {
+    if (document.visibilityState === "visible") scheduleBackgroundPull();
+  };
+  const onFocus = () => scheduleBackgroundPull();
+  document.addEventListener("visibilitychange", onVis);
+  window.addEventListener("focus", onFocus);
+  // E2E / programmatic pull without relying on headless focus.
+  window.addEventListener("pb:pull-workspace", () => {
+    void pullRemoteIfChanged();
+  });
+  window.__pbPullRemoteIfChanged = pullRemoteIfChanged;
+  window.__pbSetBackgroundPullPaused = setBackgroundPullPaused;
+  window.__pbSyncDebug = () => ({
+    localBaseChangeId,
+    dirty,
+    syncing,
+    backgroundPullPaused,
+  });
 }
 
 async function flushPersist() {
   clearTimeout(persistTimer);
   await persistChain;
   if (isPbMode()) {
+    dirty = true;
     await persistWorkspaceAndShares();
   }
 }
@@ -318,4 +466,10 @@ export async function bridgeDeleteRteImage(body) {
   return after(data);
 }
 
-export { flushPersist, eng as engine, COVER_TAB_ID, fileBlobStore, blobKey };
+export {
+  flushPersist,
+  eng as engine,
+  COVER_TAB_ID,
+  fileBlobStore,
+  blobKey,
+};

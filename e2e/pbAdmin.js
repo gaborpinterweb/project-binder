@@ -128,3 +128,16 @@ export async function setUserPro(email, pro = true) {
     }),
   });
 }
+
+/** Read user_data.changeId for conflict/sync assertions (superuser). */
+export async function getUserDataChangeId(email) {
+  const { headers, record: user } = await findUserByEmail(email);
+  const filter = encodeURIComponent(`user="${user.id}"`);
+  const list = await jsonFetch(
+    `${pbBaseUrl()}/api/collections/user_data/records?filter=${filter}&perPage=1`,
+    { headers }
+  );
+  const row = list?.items?.[0];
+  if (!row) return "";
+  return row.changeId ? String(row.changeId) : "";
+}

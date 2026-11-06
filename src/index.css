@@ -1066,6 +1066,11 @@ body.is-card-dragging .col-body{
 .ov.ov-prompt{z-index:30}
 /* Above other portaled prompts (e.g. Edit column) so nested confirms aren't buried. */
 .ov.ov-confirm{z-index:40}
+/* Blocks the app while conflict recovery pulls remote (remote wins). */
+.ov.ov-syncing{z-index:50;pointer-events:auto}
+.syncing-dlg{width:min(320px,100%);box-shadow:0 16px 48px #00000033}
+.syncing-body{align-items:center;text-align:center;gap:14px;padding:28px 24px}
+.syncing-body .workspace-boot-spinner{margin:0}
 .prompt-dlg{width:min(400px,100%);box-shadow:0 16px 48px #00000033}
 .prompt-body{gap:10px}
 .prompt-title{margin:0;font-size:16px;font-weight:650;color:var(--ink)}
